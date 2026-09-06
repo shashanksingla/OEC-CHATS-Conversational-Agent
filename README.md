@@ -1,6 +1,6 @@
 
 
-Working on an agent to calculate attendance and payment as diff modules, what i need to get from this repo, objects and fields required for each module in a table and list of calculations done to calculate attendance and payment for a child , another table of schema mapping where relationships and primary fields of those objects are listed down
+Working on an agent to calculate attendance and payment as diff modules, what i need to get from this repo, objects and fields required for each module in a table and list of calculations done to calculate attendance and payment for a child , another table of schema mapping where relationships and primary fields of those objects are listed down, A lot of details are still skipped for things like holiday, provider closures, slots, absences , scan through it thoroughly and do the analysis again in detail, we need exact calculation of both modules
 
 
 
