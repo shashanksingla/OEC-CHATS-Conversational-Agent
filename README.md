@@ -1566,19 +1566,259 @@ MONTH SUMMARY:
 
 ---
 
+# **PART 4: DATA VALIDATION & EDGE CASES**
 
+## **4.1 Fiscal Agreement Validation (CCCAP-6545)**
 
+```sql
+Before any payment is processed:
 
+VALIDATION: Is provider's fiscal agreement active for care date?
 
-CONCLUSION
+Query: t_provr_fiscal_agrement__c pfa
+WHERE: pfa.cde_county__c = county
+AND: pfa.id_service__c = provider
+AND: care_date BETWEEN dte_begin_agrmt__c AND dte_end_agrmt__c
+     (OR dte_end_agrmt__c IS NULL - open-ended)
+AND: pfa.cde_type_status__c IN ('OPN','CLS')
+
+IF count(*) = 0:
+  └─ NO ACTIVE FISCAL AGREEMENT
+     ├─ For regular auth: v_cnt_hour_care := 0 (NO PAYMENT)
+     ├─ For 0-36 enrollment: Set v_ind_0_36_months := FALSE
+     └─ For slot contract: Allow slot payment (slot provides agreement)
+
+IF count(*) > 0:
+  └─ Active agreement exists
+     ├─ Use provider's fiscal schedule for rates
+     ├─ Validate provider qualification level
+     └─ Proceed with payment
+```
+
+---
+
+## **4.2 Care Not Offered (CCCAP-6842)**
+
+```sql
+CARE NOT OFFERED occurs when:
+├─ Provider was not available on care date
+├─ Provider closure or emergency closure
+├─ Child removed from care for behavioral/safety reasons
+
+Indicator: encumbrance status = '5'
+
+Processing:
+├─ FN_GET_ADDNL_INFO: Returns cde_info_addntl = '14'
+├─ FN_GET_UNIT_HRS: Returns 0 (no hours paid)
+├─ Payment: $0
+└─ Record: (cde_type_info_addntl='14', amt_total=$0)
+
+Impact:
+├─ Not counted as attendance day
+├─ Not counted as absence day
+├─ Not counted as holiday
+├─ Family not charged copay
+├─ Provider receives $0 payment
+└─ Authorization remains active (not voided)
+```
+
+---
+
+## **4.3 Holiday Observed Date Handling (CCCAP-1445)**
+
+```sql
+Issue: Holiday may fall on weekend, observed on weekday
+
+Example: Christmas (Dec 25) falls on Saturday
+  └─ Observed on Friday (Dec 24) or Monday (Dec 26)?
+
+Processing:
+1. Get holiday calendar: t_year_hol__c
+2. Retrieve two dates:
+   ├─ DTE_HOL__c (Actual holiday date)
+   └─ dte_observed_hol__c (When it's observed)
+
+3. If actual < observed:
+   ├─ Check if already paid on actual date
+   ├─ If not paid AND current_date = observed_date
+   └─ Pay on observed date
+
+4. If observed < actual:
+   ├─ Check if already paid on observed date
+   ├─ If not paid AND current_date = actual_date
+   └─ Pay on actual date
+
+5. Prevent double payment:
+   └─ If holiday already paid: v_ind_holiday := 'N'
+
+Result: Pay exactly once, on correct date
+```
+
+---
+
+## **4.4 Year Boundary Handling (Dec 31 → Jan 1)**
+
+```sql
+Issue: Determining fiscal year when processing Dec 31
+
+Logic (FN_IS_PAID_HOLIDAY, line 57-58):
+├─ IF EXTRACT(MONTH from care_date) = 12 
+│  AND EXTRACT(DAY from care_date) = 31:
+│  └─ Use NEXT YEAR for holiday lookup
+│  (Because Jan 1 holiday might apply)
+│
+└─ ELSE:
+   └─ Use current year for holiday lookup
+
+Purpose: Handle New Year's Day correctly on Dec 31→Jan 1 transition
+
+Example:
+├─ Care date: Dec 31, 2024
+├─ Check holiday for: Year 2025 (not 2024)
+├─ Find Jan 1, 2025 in holiday list
+└─ May trigger New Year's holiday payment
+```
+
+---
+
+## **4.5 Leap Year Fiscal Year Handling**
+
+```sql
+ART Fee Calculation Leap Year Logic:
+
+Fiscal Year: July 1 - June 30 (example)
+
+Leap Year Feb 29:
+├─ If Feb 29 falls between July X year - June 30 year+1
+│  └─ Add one extra day to fiscal year calculations
+│
+├─ Impacts monthly pro-rating:
+│  ├─ Feb 28 days → Feb 29 days (leap year)
+│  └─ Monthly pro-rating = Days_Authorized / Days_In_Month
+│     (Will be slightly different in leap year)
+│
+└─ ART fee tracking:
+   ├─ t_indiv_rat_fees.dte_begin_effev to dte_end_effev
+   └─ Must account for leap day in fiscal year boundary
+```
+
+---
+
+# **PART 5: SUMMARY - COMPLETE CALCULATION ALGORITHM**
+
+## **DAILY ATTENDANCE & PAYMENT ALGORITHM**
+
+```
+FOR EACH (authorization, care_date) in service_period:
+
+STEP 1: CLASSIFY CARE DAY
+├─ Retrieve: v_cnt_hours_auth, v_cnt_hours_actual, ind_0_36_months
+│
+├─ IF v_cnt_hours_auth = 0 AND v_cnt_hours_actual > 0:
+│  └─ Possible DROP-IN → Branch to Step 3
+│
+├─ ELSIF v_cnt_hours_auth > 0 AND v_cnt_hours_actual = 0:
+│  └─ Possible HOLIDAY/ABSENCE → Branch to Step 2
+│
+├─ ELSIF v_cnt_hours_auth > 0 AND v_cnt_hours_actual > 0:
+│  └─ REGULAR CARE → Branch to Step 4
+│
+└─ ELSE (both 0):
+   └─ NO CARE → cde_info_addntl := '0'
+
+STEP 2: CHECK HOLIDAY (if v_cnt_hours_auth > 0 AND actual = 0)
+├─ Call FN_IS_PAID_HOLIDAY(county, care_date, auth_id)
+├─ IF holiday='Y' AND provider_not_exempt:
+│  ├─ cde_info_addntl := '1' (Holiday)
+│  └─ Go to Step 5 (Calculate payment)
+└─ ELSE: Check absence (fall through)
+
+STEP 2.5: CHECK ABSENCE (if not holiday)
+├─ Call FN_GET_PAID_ABSENCE(county, care_date, provider)
+├─ Call FN_GET_ABSNC_DAY_COUNT(auth_id, care_date)
+├─ Call FN_GET_ABSNC_PARENT_APV(auth_id, care_date)
+├─ Remaining := paid - used
+├─ IF remaining > 0 AND (NOT approved OR (approved AND 0-36 months)):
+│  ├─ cde_info_addntl := '4' (Absence)
+│  └─ Go to Step 5
+├─ ELSIF remaining <= 0 AND 0-36 months:
+│  ├─ cde_info_addntl := '13' (Enrollment override)
+│  └─ Go to Step 5
+└─ ELSE:
+   └─ cde_info_addntl := '0' (No payment)
+
+STEP 3: PROCESS DROP-IN (if auth=0 AND actual>0)
+├─ Call FN_GET_DROP_IN_DAYS(county, care_date, auth_id)
+├─ Call FN_GET_DROP_IN_DAY_COUNT(auth_id, care_date)
+├─ Remaining := paid - used
+├─ IF remaining > 0:
+│  ├─ IF provider_exempt AND p_cde_resp='2': No payment
+│  ├─ ELSE: cde_info_addntl := '3' (Drop-in)
+│  └─ Go to Step 5
+└─ ELSE: cde_info_addntl := '0' (No payment)
+
+STEP 4: REGULAR CARE (if both auth > 0 and actual > 0)
+├─ cde_info_addntl := '0' (Regular)
+└─ Go to Step 5
+
+STEP 5: CALCULATE UNIT HOURS
+├─ Call FN_GET_UNIT_HRS(auth_id, care_date, cde_info_addntl, slot_id)
+├─ Returns: v_cnt_hour_care (hours to pay)
+└─ Continue to Step 6
+
+STEP 6: DETERMINE TIME INDICATOR
+├─ Call FN_GET_TRDNL_TIME_IND(v_cnt_hour_care)
+├─ Returns: cde_time_trdnl (NP/PT/FT/FTPT/FTFT)
+└─ Continue to Step 7
+
+STEP 7: GET PROVIDER RATE
+├─ Call FN_GET_FISCAL_RATE(
+│    std_cfs, provider, unit_care_type, care_level, 
+│    time_ind, county, care_date)
+├─ Returns: amt_rate (per hour or per day)
+└─ Continue to Step 8
+
+STEP 8: CALCULATE PAYMENT AMOUNT
+├─ amt_rate := v_cnt_hour_care × fiscal_rate
+├─ amt_copay := 0
+├─ IF cde_type_info_addntl = '0' (Regular only):
+│  └─ Call FN_CALCULATE_COPAY_FT_PT(case, income, family_size, fpg)
+│  └─ amt_copay := copay_amount
+├─ amt_total := amt_rate - amt_copay
+├─ IF amt_total < 0: amt_total := 0
+└─ Continue to Step 9
+
+STEP 9: APPLY ART FEES (if applicable)
+├─ Call FN_GET_ART_FEES(case, care_date)
+├─ Get transportation, activity, registration fees
+├─ Apply monthly restrictions and ceilings
+├─ Add to total payment (or track separately)
+└─ Continue to Step 10
+
+STEP 10: INSERT PAYMENT DETAIL
+├─ Insert into t_sub_pmt_detail:
+│  ├─ amt_copay, amt_rate, amt_total
+│  ├─ cde_type_info_addntl, cde_time_trdnl
+│  ├─ dte_care, idn_pmt_sub
+│  └─ [Slot contract fields if applicable]
+└─ END FOR EACH
+
+RETURN: Complete payment detail staging table
+```
+
+---
+
+# **CONCLUSION**
+
 This document provides the complete, exact calculation flow for both attendance and payment in the OEC-CHATS system. Key takeaways:
-✅ Attendance depends on a complex matrix of authorization, actual attendance, holidays, absences, drop-ins, and provider status
-✅ Holidays can be observed on different dates and must check against paid holiday lists
-✅ Absences require approval and have monthly limits per provider qualification level
-✅ Drop-ins have county/auth-level limits and may require provider licensing
-✅ Copay is tiered based on federal poverty level percentage and only applies to regular care
-✅ ART Fees have frequency, monthly restrictions, and individual/county ceiling limits
-✅ Slot Contracts provide guaranteed payment for allocated days, regardless of actual use
-✅ 0-36 Months Enrollment provides special protections including absence override
-✅ Fiscal Agreements must be active for any payment to be processed
-✅ Care Not Offered (Status '5') results in zero payment
+
+✅ **Attendance** depends on a complex matrix of authorization, actual attendance, holidays, absences, drop-ins, and provider status
+✅ **Holidays** can be observed on different dates and must check against paid holiday lists
+✅ **Absences** require approval and have monthly limits per provider qualification level
+✅ **Drop-ins** have county/auth-level limits and may require provider licensing
+✅ **Copay** is tiered based on federal poverty level percentage and only applies to regular care
+✅ **ART Fees** have frequency, monthly restrictions, and individual/county ceiling limits
+✅ **Slot Contracts** provide guaranteed payment for allocated days, regardless of actual use
+✅ **0-36 Months Enrollment** provides special protections including absence override
+✅ **Fiscal Agreements** must be active for any payment to be processed
+✅ **Care Not Offered** (Status '5') results in zero payment
