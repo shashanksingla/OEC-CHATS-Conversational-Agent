@@ -150,3 +150,237 @@ For Each Fee Type (Transportation, Activity, Registration):
 ---
 
 This structure will enable you to build your agent with two distinct modules: **Attendance** (handling daily care tracking and rate retrieval) and **Payment** (handling copay, ART fees, and complex fiscal year calculations).
+
+
+Perfect! I now have a comprehensive overview of the OEC-CHATS/PGSQL repository structure. Let me provide you with a detailed analysis of the **Attendance & Payment** architecture for your agent.
+
+---
+
+## **OEC-CHATS PGSQL Repository: Attendance & Payment Module Architecture**
+
+### **Repository Overview**
+The repository contains **500+ PostgreSQL functions** organized into distinct modules. The two primary modules are:
+1. **Attendance Module** - Tracks daily care attendance and rates
+2. **Payment Module** - Calculates provider payments, copays, and ART fees
+
+---
+
+## **ATTENDANCE MODULE STRUCTURE**
+
+### **Key Functions**
+
+| Function | Purpose |
+|----------|---------|
+| `FN_GET_ATTENDANCE_INFO()` | Main attendance information retrieval |
+| `FN_GET_ENCMBR_DATA()` | Retrieves encumbrance details per day |
+| `FN_GET_TRDNL_TIME_IND()` | Converts care hours to time indicator |
+| `FN_GET_FISCAL_RATE()` | Retrieves provider rate for care type |
+| `FN_GET_INDIV_CARE_LEVEL()` | Determines child's current care level |
+| `FN_CREATE_AUTH_ENCMBR_STG()` | Stages encumbrance data |
+| `FN_GET_ENCMBR_DATA()` | Gets authorized hours, actual hours |
+
+### **Data Flow for Attendance**
+
+```
+Authorization (t_auth__c) → 
+  ├─ Encumbrance (t_auth_encmbr) [per care date] →
+  │   ├─ Care Hours (cnt_hour_care)
+  │   ├─ Unit Care Type (cde_type_unit_care)
+  │   ├─ Care Level (cde_level_care)
+  │   └─ Actual Attendance Hours
+  └─ Gets Fiscal Rate via:
+       └─ FN_GET_FISCAL_RATE(provider, care_type, time_indicator)
+```
+
+---
+
+## **PAYMENT MODULE STRUCTURE**
+
+### **A. Subsidiary Payment Processing**
+
+**Key Functions:**
+- `FN_CREATE_SUB_PMT_DETAIL()` - Creates payment detail records
+- `FN_PRCS_SUB_PMT()` - Processes subsidiary payments
+- `FN_PRCS_SUB_PMT_DETAIL()` - Calculates payment details
+- `FN_PRCS_SUB_PMT_DETAIL_RAT_FEE()` - Handles provider rates
+- `FN_PRCS_SUB_PMT_DETAIL_SLOT()` - Handles slot contract payments
+
+**Data Objects:**
+- `t_sub_pmt` (Subsidiary Payment header)
+- `t_sub_pmt_detail` (Payment detail lines with: amt_copay, amt_rate, amt_total)
+
+### **B. Copay Calculation**
+
+**Primary Function:** `FN_CALCULATE_COPAY_FT_PT()`
+
+**Inputs:**
+- `p_idn_case` - Case ID
+- `p_total_household_income` - Total family income
+- `p_family_size` - Number of family members
+- `p_number_children` - Children count
+- `p_fpg` - Federal Poverty Level percentage
+
+**Calculation Logic:**
+```
+IF FPG <= 100:
+   Copay = FLOOR(Monthly_Income × 0.01)
+
+IF FPG > 100:
+   Uses tiered calculation with reference table R00393
+   Applies 1.3x and 1.6x multipliers
+   Dynamic rates based on income brackets
+   
+Copay_PartTime = FLOOR(0.55 × Copay_FullTime)
+```
+
+### **C. ART Fees (Activity, Registration, Transportation)**
+
+**Primary Function:** `FN_GET_ART_FEES()` - 24KB complex function
+
+**Fee Types:**
+1. **Transportation Fee** (amt_trans_provr__c)
+2. **Activity Fee** (amt_act_provr__c)
+3. **Registration Fee** (amt_reg_provr__c)
+
+**Calculation Steps:**
+1. Retrieve provider fee amounts & frequency
+2. Get county ceiling amounts (PAYMENT_Q9_1, Q10_1, Q11_1)
+3. Handle leap year fiscal year boundaries
+4. Apply monthly restrictions
+5. Calculate paid vs. remaining amounts
+
+**Related Functions:**
+- `FN_PRCS_ADJMT_ART_FEES()` - Adjustment processing for ART fees
+- `FN_PRCS_PROVR_ADJMT_PMT_DTL_TRANS()` - Provider adjustment transitions
+
+---
+
+## **DATABASE SCHEMA - KEY TABLES**
+
+### **Attendance Tables**
+```
+t_auth_encmbr
+├─ idn_auth (PK)
+├─ dte_care (PK)
+├─ cnt_hour_care (authorized hours)
+├─ cnt_hour_attnd_actual (actual hours)
+├─ cde_type_unit_care (care type code)
+├─ cde_level_care (care level)
+└─ linked to t_auth__c.idn_extnl__c
+
+t_auth__c (Salesforce)
+├─ idn_extnl__c (auth ID)
+├─ idn_client__c (child reference)
+├─ idn_provr__c (provider)
+├─ cde_county__c (county code)
+├─ dte_begin_effv_auth__c
+└─ dte_end_effv_auth__c
+```
+
+### **Payment Tables**
+```
+t_sub_pmt
+├─ idn_pmt_sub (PK)
+├─ idn_pmt (payment reference)
+├─ idn_auth
+├─ idn_slot_contract
+└─ cde_status_pmt_sub (status)
+
+t_sub_pmt_detail
+├─ idn_pmt_sub (FK)
+├─ dte_care
+├─ amt_copay
+├─ amt_rate
+├─ amt_total
+├─ cde_level_care
+├─ cde_time_trdnl (full-time/part-time)
+├─ cde_type_unit_care
+└─ future_payment__c
+
+t_indiv_rat_fees
+├─ idn_client (FK to child)
+├─ amt_trans_paid (transportation)
+├─ amt_act_paid (activity)
+├─ amt_reg_paid (registration)
+├─ dte_begin_effev (fiscal year start)
+├─ dte_end_effev (fiscal year end)
+└─ dte_paid (date payment made)
+
+t_fiscal_rat_fees__c
+├─ idn_fiscal_sch__c (PK)
+├─ amt_trans_provr__c
+├─ amt_act_provr__c
+├─ amt_reg_provr__c
+├─ cde_trans_freq__c (ANNUAL/MONTHLY/ONE-TIME)
+├─ cde_act_freq__c
+├─ cde_reg_freq__c
+├─ txt_trans_month__c (restricted months)
+└─ txt_act_month__c
+
+t_county_rate__c
+├─ idn_county__c (PK)
+├─ PAYMENT_Q9_1__c (registration ceiling)
+├─ PAYMENT_Q10_1__c (activity ceiling)
+├─ PAYMENT_Q11_1__c (transportation ceiling)
+├─ PAYMENT_Q11_2__c (care level question)
+├─ PAYMENT_Q11_3__c (auth level question)
+├─ dte_begin_effv_rate__c
+└─ dte_end_effv_rate__c
+```
+
+---
+
+## **REFERENCE DATA**
+
+### **Reference Tables (R-codes)**
+| Code | Purpose |
+|------|---------|
+| R00393 | FPG income calculation parameters |
+| R00683 | Unit care type descriptions |
+| R00710 | Care level descriptions |
+| R00715 | Time indicator mappings |
+| R00728 | Program funding codes |
+
+---
+
+## **INTEGRATION POINTS FOR YOUR AGENT**
+
+### **Module 1: Attendance Calculation**
+```
+Input: Authorization ID + Care Date
+Process: 
+  1. Call FN_GET_ENCMBR_DATA()
+  2. Retrieve hours & care type
+  3. Call FN_GET_FISCAL_RATE()
+  4. Format attendance string
+Output: Attendance info for display/reporting
+```
+
+### **Module 2: Payment Calculation**
+```
+Input: Authorization + Service Period
+Process:
+  1. Retrieve all eligible children
+  2. For each child:
+     a. Call FN_CALCULATE_COPAY_FT_PT()
+     b. Call FN_GET_ART_FEES()
+     c. Sum total payment
+  3. Create payment records
+Output: Payment amounts ready for processing
+```
+
+---
+
+## **Available Resources**
+
+The repository contains **700+ SQL files** with supporting functions for:
+- Report generation (FN_RPT_RE207, RE208, RE219, etc.)
+- Eligibility determination (FN_GET_ELIGTY_*)
+- Status management (FN_TGR_*, FN_UPDATE_*)
+- Reversal/adjustment handling (FN_PRCS_ADJMT_*, FN_REVERSE_*)
+
+Would you like me to:
+1. **Drill deeper into any specific function** (e.g., FN_GET_ART_FEES leap year logic)?
+2. **Map out data flow diagrams** for end-to-end scenarios?
+3. **Create pseudocode** for your agent's calculation engine?
+4. **Generate sample test cases** for both modules?
