@@ -1227,6 +1227,343 @@ REFERENCE DATA:
       (Family affordability limit)
 ```
 
+
+---
+
+## **2.5 ADJUSTMENT & REVERSAL PROCESSING**
+
+```sql
+REVERSAL FUNCTIONS (Handled by separate batch):
+├─ FN_PRCS_ADJMT_ART_FEES() 
+│  └─ Adjustments for ART fee overpayments
+│
+├─ FN_PRCS_PROVR_ADJMT_PMT_DTL_TRANS()
+│  └─ Provider adjustment transitions
+│
+├─ FN_REVERSE_PMT_DETAIL()
+│  └─ Reversal of payment details
+│
+└─ FN_REVERSE_SUB_PMT()
+   └─ Reversal of subsidiary payments
+
+TRIGGER SCENARIOS FOR REVERSAL:
+├─ Authorization end date changes (future effective)
+├─ Care level changes retroactively
+├─ Provider rate update retroactive
+├─ Copay adjustment due to income change
+├─ ART fee ceiling correction
+├─ Duplicate payment detected
+└─ Payment dispute resolution
+
+REVERSAL IMPACT:
+├─ Creates negative payment detail line
+├─ Original payment remains visible (audit trail)
+├─ New credit issued to family or provider
+├─ Status updated to indicate reversed
+└─ Corrected amount paid in next payment cycle
+```
+
+---
+
+# **PART 3: COMPLETE DATA FLOW EXAMPLES**
+
+## **SCENARIO 1: Regular Care with Holiday & Absence**
+
+```
+AUTH-001: Child in full-time care, $12/hour rate, 10 hours/day authorized
+Provider: Licensed center care
+County: Has 5 paid holidays, 3 paid absence days, no drop-in
+Family: Income 120% FPG → Copay $20/full-time, $11/part-time
+
+CARE MONTH: September (21 business days)
+
+DAY 1 (Tue, Sept 1): Regular care
+├─ Authorized: 10 hrs, Actual: 10 hrs
+├─ FN_GET_ADDNL_INFO:
+│  └─ v_cnt_hours_auth=10, v_cnt_hours_actual=10
+│  └─ cde_info_addntl := '0' (Regular)
+├─ FN_GET_UNIT_HRS: Returns 10 hrs (min of 10,10)
+├─ FN_GET_TRDNL_TIME_IND: Returns '3' (FT: 5<10≤12)
+├─ FN_GET_FISCAL_RATE: Returns $12/hr
+├─ Payment Calc:
+│  ├─ amt_rate := 10 × $12 = $120
+│  ├─ amt_copay := $20 (regular care copay)
+│  └─ amt_total := $120 - $20 = $100 (provider receives)
+└─ Record: (cde_type_info_addntl='0', amt_rate=$120, amt_copay=$20, amt_total=$100)
+
+DAY 2 (Wed, Sept 2): Regular care
+├─ Same calculation as Day 1
+├─ Payment: $100
+└─ Running monthly total: $200
+
+DAY 3 (Thu, Sept 3): Holiday (Labor Day observed)
+├─ Authorized: 10 hrs, Actual: 0 hrs
+├─ FN_GET_ADDNL_INFO:
+│  ├─ v_cnt_hours_auth=10, v_cnt_hours_actual=0
+│  ├─ FN_IS_PAID_HOLIDAY:
+│  │  ├─ Query t_year_hol__c for Sept 3, 2024
+│  │  ├─ Find holiday code in PAYMENT_Q13_1__c
+│  │  ├─ Check if already paid: NO
+│  │  ├─ Check provider not exempt: YES (licensed center)
+│  │  └─ Return: v_ind_holiday = 'Y'
+│  └─ cde_info_addntl := '1' (Holiday)
+├─ FN_GET_UNIT_HRS: Returns 10 hrs (auth hours for holiday)
+├─ FN_GET_TRDNL_TIME_IND: Returns '3' (FT)
+├─ Payment Calc:
+│  ├─ amt_rate := 10 × $12 = $120
+│  ├─ amt_copay := $0 (no copay for holiday)
+│  └─ amt_total := $120 (full payment to provider)
+└─ Record: (cde_type_info_addntl='1', amt_rate=$120, amt_copay=$0, amt_total=$120)
+
+DAY 4 (Fri, Sept 4): Parent-approved absence (paid)
+├─ Authorized: 10 hrs, Actual: 0 hrs
+├─ FN_GET_ADDNL_INFO:
+│  ├─ v_cnt_hours_auth=10, v_cnt_hours_actual=0
+│  ├─ Check holiday: NO (not a holiday)
+│  ├─ FN_GET_PAID_ABSENCE (county='XX', provider='PROV-01'):
+│  │  ├─ Get provider's fiscal agreement for county XX
+│  │  ├─ Provider rating: Level 3
+│  │  ├─ Query t_county_rate__c:
+│  │  │  └─ payment_q13_c__c = 3 (Level 3 gets 3 paid absence days)
+│  │  └─ Return: v_cnt_absnc_paid = 3
+│  ├─ FN_GET_ABSNC_DAY_COUNT:
+│  │  ├─ Count absences in Sept already paid (Days 1-3): 0
+│  │  └─ Return: v_cnt_absnc_used = 0
+│  ├─ FN_GET_ABSNC_PARENT_APV:
+│  │  ├─ Query t_auth_attnd_check for AUTH-001, Sept 4
+│  │  ├─ attended_flag__c = TRUE (parent approved)
+│  │  └─ Return: v_absnc_apprvd = TRUE
+│  ├─ Remaining_Absence := 3 - 0 = 3 days available ✓
+│  ├─ Check: Remaining > 0 AND (NOT approved OR (approved AND 0-36)) → PAY
+│  └─ cde_info_addntl := '4' (Absence)
+├─ FN_GET_UNIT_HRS: Returns 10 hrs (auth hours for absence)
+├─ FN_GET_TRDNL_TIME_IND: Returns '3' (FT)
+├─ Payment Calc:
+│  ├─ amt_rate := 10 × $12 = $120
+│  ├─ amt_copay := $0 (no copay for absence)
+│  └─ amt_total := $120
+└─ Record: (cde_type_info_addntl='4', amt_rate=$120, amt_copay=$0, amt_total=$120)
+│  Absence used: 1 of 3
+
+Days 5-21: Regular care (17 days @ $100 each)
+├─ No holidays, no absences
+├─ Payment per day: $100 (Rate $120 - Copay $20)
+└─ Running total: $200 + $120 + $120 + $120 + (17×$100) = $2,020
+
+MONTH SUMMARY:
+├─ Total authorized days: 21 business days
+├─ Days paid:
+│  ├─ Regular: 17 days @ $100 = $1,700
+│  ├─ Holiday: 1 day @ $120 = $120
+│  └─ Absence: 1 day @ $120 = $120
+├─ Total provider payment: $1,940
+├─ Total family copay: 17 days × $20 = $340
+└─ Total subsidy (rate - copay): $1,940 × 10/12 = $1,617
+    [Note: This is annualized calculation, actual subsidy is $1,700 + $120 + $120 - $0 = $1,940]
+```
+
+---
+
+## **SCENARIO 2: Drop-In Care (No Authorization)**
+
+```
+DROPINS: Child NOT authorized for ongoing care
+County: Allows 5 drop-in days/month, provider licensing required
+Provider: Licensed center care
+Rate: $15/hour (same as authorized)
+No copay for drop-in
+
+CARE MONTH: September
+
+DAY 1 (Tue, Sept 1): Drop-in care
+├─ Authorized: 0 hrs, Actual: 4 hrs
+├─ FN_GET_ADDNL_INFO:
+│  ├─ v_cnt_hours_auth=0, v_cnt_hours_actual=4
+│  ├─ FN_GET_DROP_IN_DAYS:
+│  │  ├─ Query t_county_rate__c (payment_q14__c='Y')
+│  │  ├─ Return: p_nbr_days=5, p_cde_resp='1' (universal)
+│  │  └─ v_cnt_dropin_paid = 5
+│  ├─ FN_GET_DROP_IN_DAY_COUNT:
+│  │  ├─ Count drop-ins in Sept already paid: 0
+│  │  └─ v_cnt_dropin_used = 0
+│  ├─ Available := 5 - 0 = 5 days ✓
+│  ├─ Check p_cde_resp='1' (universal) → PAY
+│  └─ cde_info_addntl := '3' (Drop-in)
+├─ FN_GET_UNIT_HRS: Returns 4 hrs (actual hours for drop-in)
+├─ FN_GET_TRDNL_TIME_IND: Returns '2' (PT: 0<4≤5)
+├─ FN_GET_FISCAL_RATE: Returns $15/hr
+├─ Payment Calc:
+│  ├─ amt_rate := 4 × $15 = $60
+│  ├─ amt_copay := $0 (no copay for drop-in)
+│  └─ amt_total := $60
+└─ Record: (cde_type_info_addntl='3', amt_rate=$60, amt_copay=$0, amt_total=$60)
+│  Drop-in used: 1 of 5
+
+DAY 2 (Wed, Sept 2): Drop-in care
+├─ Authorized: 0 hrs, Actual: 6 hrs
+├─ FN_GET_DROP_IN_DAYS: Returns p_nbr_days=5, p_cde_resp='1'
+├─ FN_GET_DROP_IN_DAY_COUNT: Returns v_cnt_dropin_used=1
+├─ Available := 5 - 1 = 4 days ✓
+├─ FN_GET_UNIT_HRS: Returns 6 hrs (actual hours)
+├─ FN_GET_TRDNL_TIME_IND: Returns '3' (FT: 5<6≤12)
+├─ Payment Calc:
+│  ├─ amt_rate := 6 × $15 = $90
+│  └─ amt_total := $90
+└─ Drop-in used: 2 of 5
+
+Days 3-5: Drop-in care
+├─ Same pattern, 3 more drop-in days paid
+└─ Drop-in used: 5 of 5 (LIMIT REACHED)
+
+Day 6+: Drop-in attempts after limit
+├─ FN_GET_DROP_IN_DAYS: Returns p_nbr_days=5
+├─ FN_GET_DROP_IN_DAY_COUNT: Returns v_cnt_dropin_used=5
+├─ Available := 5 - 5 = 0 days ✗
+├─ cde_info_addntl := '0' (DO NOT PAY)
+├─ amt_total := $0 (no payment)
+└─ Family must pay full cost to provider (private pay)
+
+MONTH SUMMARY:
+├─ Drop-in days paid: 5 days
+├─ Total drop-in payment: ~$400 (varies by hours each day)
+├─ No copay charged
+└─ Excess drop-in days: Family pays provider directly
+```
+
+---
+
+## **SCENARIO 3: Slot Contract Payment**
+
+```
+SLOT CONTRACT: Vacant slot paid to provider regardless of use
+Provider: Licensed family child care
+Slot: Full-time slot, Monday-Friday, 20 paid days/month
+Program: LI (Licensed Immigrant) funding
+County Rate: $14/hour
+
+CARE MONTH: September (Has 21 business days, but only 20 paid in slot contract)
+
+DAY 1 (Tue, Sept 1): Slot contract day (within days of week)
+├─ idn_auth = NULL (vacant slot)
+├─ idn_slot = SLOT-001
+├─ Check slot day of week:
+│  ├─ Slot v_days_of_weeks_slot = "Monday,Tuesday,Wednesday,Thursday,Friday"
+│  ├─ Sept 1 = Tuesday ✓ (in allowed days)
+│  └─ position(trim(to_char(DATE '2024-09-01','Day')) in "Monday,Tuesday,...") > 0
+├─ FN_GET_SLOTCNTRCT_DAYS:
+│  ├─ Count slot payments in Sept so far: 0
+│  ├─ v_nbr_paid_so_far_slot = 0
+│  ├─ cnt_days_of_month__c = 20 (slot capacity)
+│  └─ Return: 0
+├─ Check capacity: (20 - 0 - row_num) >= 0 ✓ (20-1=19 remaining)
+├─ cde_type_info_addntl := '12' (Vacant slot regular)
+├─ v_cde_time_trdnl = slot's time indicator '3' (FT) [from slot contract]
+├─ Payment Calc:
+│  ├─ amt_rate := slot_rate (typically daily or slot amount)
+│  │  └─ For full-time daily: ~$112 (8 hrs × $14/hr)
+│  ├─ amt_slot_paid := $112 (provider receives full amount)
+│  ├─ amt_copay := $0 (slot contracts have no family copay)
+│  └─ amt_total := $112
+└─ Record: (cde_type_info_addntl='12', amt_slot_paid=$112, amt_rate=$112, amt_copay=$0)
+
+Days 2-20: Slot contract days (Mon-Fri, 20 days total)
+├─ Same calculation as Day 1
+├─ Each day: $112 payment
+└─ Running total: 20 × $112 = $2,240
+
+Day 21 (Mon, Sept 23): NOT a slot payment day
+├─ 20 slot days already paid (capacity reached)
+├─ FN_GET_SLOTCNTRCT_DAYS: v_nbr_paid_so_far_slot = 20
+├─ Check capacity: (20 - 20 - row_num) < 0 ✗
+├─ v_cde_time_trdnl := '1' (NP - No Payment)
+├─ amt_total := $0
+└─ Provider cannot claim payment for this day (slot full)
+
+MONTH SUMMARY:
+├─ Slot capacity: 20 days/month
+├─ Days paid: 20
+├─ Total payment: 20 × $112 = $2,240
+├─ Family copay: $0 (slot contracts subsidize fully)
+├─ Subsidy amount: $2,240
+└─ Provider receives full slot value (no gap)
+```
+
+---
+
+## **SCENARIO 4: 0-36 Months Enrollment with Absence Override**
+
+```
+ENROLLMENT AUTH: Special program for infants/toddlers (0-36 months)
+Child: 14 months old
+Authorization: 8 hrs/day, Level 1 (infant care)
+Provider: Licensed center
+Provider Rate: $18/hour (higher for infant care)
+Copay: $25/day (enrollment families pay higher copay)
+Paid absences: 2 days/month
+County: Allows enrollment override after absence exhaustion
+
+CARE MONTH: September
+
+Days 1-3: Regular care
+├─ Each day: 8 hrs × $18 = $144 rate - $25 copay = $119 provider
+└─ Running absence used: 0 of 2
+
+Day 4: Parent-approved absence (paid)
+├─ Authorized: 8 hrs, Actual: 0 hrs
+├─ FN_GET_PAID_ABSENCE: Returns 2 paid absences available
+├─ FN_GET_ABSNC_DAY_COUNT: Returns 0 used so far
+├─ FN_GET_ABSNC_PARENT_APV: Returns TRUE (approved)
+├─ ind_0_36_months = TRUE
+├─ Check: Remaining=2, approved=TRUE, 0-36=TRUE → PAY AS ABSENCE
+├─ cde_info_addntl := '4' (Absence)
+├─ FN_GET_UNIT_HRS: Returns 8 hrs (auth hours)
+├─ Payment: 8 × $18 = $144 - $0 copay = $144 provider
+└─ Absence used: 1 of 2
+
+Day 5: Parent-approved absence (paid)
+├─ Similar to Day 4
+├─ Payment: $144
+└─ Absence used: 2 of 2 (EXHAUSTED)
+
+Days 6-21: Regular care attempted (but absence would trigger)
+├─ After absence exhaustion, child marked as present but no care
+├─ Authorized: 8 hrs, Actual: 0 hrs
+├─ FN_GET_ADDNL_INFO:
+│  ├─ v_cnt_hours_auth=8, v_cnt_hours_actual=0
+│  ├─ Not a holiday
+│  ├─ FN_GET_PAID_ABSENCE: Returns 2 (unchanged)
+│  ├─ FN_GET_ABSNC_DAY_COUNT: Returns 2 (used)
+│  ├─ Remaining := 2 - 2 = 0 (NO remaining)
+│  ├─ Check: ind_0_36_months=TRUE AND remaining<=0
+│  └─ cde_info_addntl := '13' (ENROLLMENT OVERRIDE)
+├─ FN_GET_UNIT_HRS:
+│  ├─ Special handling for enrollment flag
+│  ├─ v_ind_0_36_months=TRUE, cde_info_addntl='13'
+│  ├─ Check provider fiscal agreement is active: YES
+│  └─ Returns: 8 hrs (auth hours, even though attended=0)
+├─ Payment Calc:
+│  ├─ amt_rate := 8 × $18 = $144
+│  ├─ amt_copay := $25 (copay applies to enrollment)
+│  └─ amt_total := $144 - $25 = $119 provider
+└─ Record: (cde_type_info_addntl='13', amt_rate=$144, amt_copay=$25, amt_total=$119)
+
+KEY DIFFERENCE FROM REGULAR:
+├─ Regular child with absence exhausted: NO PAYMENT (cde_info_addntl='0')
+├─ 0-36 month child with absence exhausted: PAYMENT AS REGULAR (cde_info_addntl='13')
+│  └─ This ensures infants still get paid care
+└─ Copay still applies (family contribution continues)
+
+MONTH SUMMARY:
+├─ Regular days (auth hours paid): 17 days
+├─ Absence days (paid, exhausted): 2 days
+├─ Enrollment override days (paid regular): 2 days
+├─ Total paid days: 21
+├─ Provider payment: (17 + 2 + 2) × $119 = $2,261 average
+│  [Note: Absence/enrollment days don't have copay]
+│  Actual: (17 × $119) + (2 × $144) + (2 × $119) = $2,023 + $288 + $238 = $2,549
+└─ Special benefit: Infants guaranteed payment even after absence exhaustion
+```
+
 ---
 
 
