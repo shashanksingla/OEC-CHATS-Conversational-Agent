@@ -1,3 +1,9 @@
+
+
+Working on an agent to calculate attendance and payment as diff modules, what i need to get from this repo, objects and fields required for each module in a table and list of calculations done to calculate attendance and payment for a child , another table of schema mapping where relationships and primary fields of those objects are listed down
+
+
+
 # OEC-CHATS-Conversational-Agent
 Conversational Agent for OEC-CHATS Attendance &amp; Payment Module Calculations - Python-based implementation guide
 Perfect! I can now provide you with a comprehensive overview of the OEC-CHATS PGSQL repository. Based on my analysis of the codebase, here's what you need for your agent to calculate **Attendance** and **Payment** as diff modules:
