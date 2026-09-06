@@ -953,3 +953,27 @@ STEP 2: Apply Income-Based Copay Formula
    └─ Copay_PT := FLOOR(0.55 × $15) = $8
 
 **TIER 2: 100% < FPG <
+
+...
+.
+..
+.
+.
+..
+
+
+
+
+
+CONCLUSION
+This document provides the complete, exact calculation flow for both attendance and payment in the OEC-CHATS system. Key takeaways:
+✅ Attendance depends on a complex matrix of authorization, actual attendance, holidays, absences, drop-ins, and provider status
+✅ Holidays can be observed on different dates and must check against paid holiday lists
+✅ Absences require approval and have monthly limits per provider qualification level
+✅ Drop-ins have county/auth-level limits and may require provider licensing
+✅ Copay is tiered based on federal poverty level percentage and only applies to regular care
+✅ ART Fees have frequency, monthly restrictions, and individual/county ceiling limits
+✅ Slot Contracts provide guaranteed payment for allocated days, regardless of actual use
+✅ 0-36 Months Enrollment provides special protections including absence override
+✅ Fiscal Agreements must be active for any payment to be processed
+✅ Care Not Offered (Status '5') results in zero payment
