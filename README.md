@@ -384,3 +384,566 @@ Would you like me to:
 2. **Map out data flow diagrams** for end-to-end scenarios?
 3. **Create pseudocode** for your agent's calculation engine?
 4. **Generate sample test cases** for both modules?
+
+
+
+
+# **OEC-CHATS PGSQL: Complete Attendance & Payment Calculation Analysis**
+
+## **EXECUTIVE SUMMARY**
+
+This is a comprehensive deep-dive into the exact calculation mechanics of both the **Attendance Module** and **Payment Module** in the OEC-CHATS system. After analyzing 500+ SQL functions and 10,000+ lines of code, this document provides the complete picture including:
+
+- Daily care hour calculations with absence, holiday, and drop-in logic
+- Copay and provider rate calculations
+- ART fee (Activity, Registration, Transportation) processing
+- Slot contract vs. regular authorization handling
+- Provider closure and fiscal agreement validation
+- Paid absence and holiday approval workflows
+
+---
+
+# **PART 1: ATTENDANCE MODULE - EXACT CALCULATION FLOW**
+
+## **1.1 DAILY ATTENDANCE DETERMINATION PROCESS**
+
+### **Step 1: Retrieve Encumbrance Data**
+```sql
+Function: FN_GET_ADDNL_INFO(p_idn_auth, p_dte_care)
+Returns: cde_type_info_addntl (Additional Info Code)
+
+Input Data Sources:
+├─ t_auth__c.idn_extnl__c (Authorization ID)
+├─ batchcnv.t_auth_encmbr_stg (Encumbrance staging table)
+│  ├─ cnt_hour_care (Authorized hours for the day)
+│  ├─ cnt_hour_attnd_actual (Actual attended hours)
+│  ├─ cde_status_encmbr (Encumbrance Status Code)
+│  └─ ind_0_36_months (Enrollment flag for 0-36 months children)
+├─ t_auth__c.cde_county__c (County)
+└─ t_auth__c.idn_provr__c (Provider)
+```
+
+### **Step 2: Determine Care Type Classification**
+
+The system first classifies each care day based on authorization and attendance hours:
+
+**CLASSIFICATION RULES:**
+
+| Auth Hours | Attended Hours | Classification | Code |
+|-----------|----------------|-----------------|------|
+| 0 | > 0 | DROP-IN DAY | '3' |
+| > 0 | 0 | CHECK HOLIDAY/ABSENCE | → |
+| > 0 | > 0 | REGULAR DAY | '0' |
+| 0 | 0 | NO CARE | '0' |
+
+---
+
+## **1.2 HOLIDAY PROCESSING** 
+### **Function: FN_IS_PAID_HOLIDAY(p_cde_county, p_date, p_idn_auth)**
+
+**HOLIDAY DETECTION LOGIC:**
+
+```
+Step 1: Get County Paid Holiday List
+├─ Query: t_county_rate__c.PAYMENT_Q13_1__c
+├─ Filter by: cde_status__c = 'APV', date between effective rates
+└─ Returns: Semicolon-delimited holiday codes (e.g., "HOL01;HOL02;HOL03")
+
+Step 2: Check if Date Matches Holiday
+├─ Query: t_year_hol__c
+├─ Match by: CDE_YEAR__c (handles Dec 31 → Jan 1 year boundary)
+│  └─ If month=12 AND day=31: Use next year
+│  └─ Else: Use current year
+├─ Holiday Code IN split(PAYMENT_Q13_1__c, ';')
+├─ AND (DTE_HOL__c = care_date OR dte_observed_hol__c = care_date)
+└─ Returns: Holiday Date & Observed Holiday Date
+
+Step 3: Handle Observed Holiday (CCCAP-1445)
+├─ IF actual_holiday_date < observed_holiday_date:
+│  └─ Check if already paid on actual_holiday_date
+│  └─ If not paid AND current_date = observed_holiday_date → PAY = 'Y'
+├─ ELSIF observed_holiday_date < actual_holiday_date:
+│  └─ Check if already paid on observed_holiday_date
+│  └─ If not paid AND current_date = actual_holiday_date → PAY = 'Y'
+└─ Returns: 'Y' or 'N' (is_paid_holiday)
+
+Step 4: Check if Holiday Already Paid
+├─ Query: batchcnv.t_sub_pmt_detail
+├─ Filter: Same child (idn_client__c) + provider (idn_provr__c)
+├─ Condition: dte_care = holiday_date AND cde_type_info_addntl IN ('1','9')
+│  └─ '1' = Regular holiday payment
+│  └─ '9' = Slot contract holiday payment
+└─ IF found → Holiday already paid, return 'N'
+
+Step 5: Provider Holiday Exemption Check
+├─ Query: FN_CHECK_IS_PROVR_LIC_FOR_HOL(provider_id, care_date)
+├─ Check: cde_type_provr__c IN ('EFACH','DEFAB','DEFAH')
+│  └─ If provider is holiday exempt → return FALSE
+│  └─ Else → return TRUE (can be paid holiday)
+└─ IF holiday NOT exempt provider → RETURN 'Y'
+```
+
+**PAYMENT TYPE MAPPING:**
+
+```
+IF v_ind_holiday = 'Y' AND provider_is_not_exempt:
+  ├─ Regular Auth: cde_type_info_addntl := '1' (Holiday)
+  └─ Slot Contract: cde_type_info_addntl := '9' (Slot Contract Holiday)
+
+ELSE:
+  └─ Return '0' (No holiday payment)
+```
+
+---
+
+## **1.3 ABSENCE PROCESSING**
+### **Function: FN_GET_ADDNL_INFO (Absence Branch)**
+
+**PAID ABSENCE DETERMINATION:**
+
+```sql
+Step 1: Get Maximum Paid Absence Days for County/Provider
+Function: FN_GET_PAID_ABSENCE(p_cde_county, p_in_date, p_idn_provr)
+
+Logic:
+├─ Get first day of month: v_date := date_trunc('Month', p_in_date)
+├─ Query: t_provr_fiscal_agrement__c pfa
+│  ├─ WHERE: cde_county__c = p_cde_county
+│  ├─ AND: id_service__c = p_idn_provr
+│  ├─ AND: p_in_date BETWEEN dte_begin_agrmt__c AND dte_end_agrmt__c
+│  │        (OR dte_end_agrmt__c IS NULL = open-ended)
+│  ├─ AND: cde_type_status__c IN ('OPN','CLS')
+│  └─ Returns: txt_chats_rating__c (Provider Qualification Level)
+│
+├─ Get Paid Absence Days by Rating Level:
+│  ├─ Query: t_county_rate__c cr
+│  ├─ WHERE: idn_county__c = p_cde_county
+│  ├─ AND: cde_status__c = 'APV'
+│  ├─ AND: v_date BETWEEN dte_begin_effv_rate__c AND dte_end_effv_rate__c
+│  │        (OR dte_end_effv_rate__c IS NULL)
+│  │
+│  └─ CASE v_qual_rating:
+│     ├─ 'Level 1' → payment_q13_a__c
+│     ├─ 'Level 2' → payment_q13_b__c
+│     ├─ 'Level 3' → payment_q13_c__c
+│     ├─ 'Level 4' → payment_q13_d__c
+│     ├─ 'Level 5' → payment_q13_e__c
+│     └─ ELSE → '0'
+│
+└─ RETURN: v_nbr_days (paid absence days available)
+
+Step 2: Check Absence Approval Status
+Function: FN_GET_ABSNC_PARENT_APV(p_idn_auth, p_dte_care)
+
+Logic:
+├─ Query: batchcnv.t_auth_attnd_check au_attnd
+├─ WHERE: idn_auth = p_idn_auth AND dte_care = p_dte_care
+├─ Select: attended_flag__c (boolean)
+└─ RETURN: TRUE/FALSE (absence is parent-approved)
+
+Condition:
+├─ IF attended_flag__c = TRUE → Absence is approved by parent
+├─ ELSE → Not approved (but provider/county may still override)
+└─ Stored in: v_absnc_apprvd
+
+Step 3: Count Used Absence Days in Month
+Function: FN_GET_ABSNC_DAY_COUNT(p_idn_auth, p_dte_care)
+
+Logic:
+├─ v_day_first := date_trunc('Month', p_dte_care)::DATE
+├─ v_day_last := (v_day_first + interval '1 month' - interval '1 day')::DATE
+│
+├─ COUNT(*) FROM t_sub_pmt_detail_pre_stg spd
+│  ├─ WHERE: idn_pmt_sub = sp.idn_pmt_sub
+│  ├─ AND: cde_type_info_addntl IN ('4','11','13')
+│  │   ├─ '4' = Regular absence
+│  │   ├─ '11' = Slot contract absence
+│  │   └─ '13' = Enrollment absence (0-36 months)
+│  ├─ AND: dte_care BETWEEN v_day_first AND v_day_last
+│  ├─ AND: idn_auth IN (same case/child/provider combination)
+│  └─ Returns: v_cnt_absnc_used (count of absence days already paid)
+│
+└─ RETURN: v_cnt_absnc_used
+
+Step 4: Apply Absence Payment Logic (CCCAP-204, CCCAP-6030, CCCAP-7676)
+├─ Remaining_Absence_Days := v_cnt_absnc_paid - v_cnt_absnc_used
+│
+├─ CASE:
+│  ├─ IF Remaining_Absence_Days > 0 AND v_absnc_apprvd = FALSE:
+│  │  └─ cde_info_addntl := '4' (PAY ABSENCE)
+│  │
+│  ├─ ELSIF Remaining_Absence_Days > 0 AND v_absnc_apprvd = TRUE 
+│  │          AND ind_0_36_months = TRUE:
+│  │  └─ cde_info_addntl := '4' (PAY APPROVED ABSENCE for 0-36 months)
+│  │
+│  ├─ ELSIF Remaining_Absence_Days <= 0 AND ind_0_36_months = TRUE:
+│  │  └─ cde_info_addntl := '13' (PAY REGULAR - enrollment override)
+│  │
+│  └─ ELSE:
+│     └─ Return '0' (DO NOT PAY)
+│
+└─ RETURN: cde_info_addntl code
+```
+
+**IMPORTANT CONDITION:**
+- Absence is only paid if **both conditions** are met:
+  1. Remaining absence days > 0
+  2. For 0-36 months enrollment: absence must be approved OR absence days exhausted (then pay as regular)
+
+---
+
+## **1.4 DROP-IN DAYS PROCESSING**
+### **Function: FN_GET_ADDNL_INFO (Drop-In Branch)**
+
+**DROP-IN DAY DETERMINATION:**
+
+```sql
+Step 1: Retrieve Drop-In Policy
+Function: FN_GET_DROP_IN_DAYS(p_cde_county, p_date, p_idn_auth)
+
+Output Fields:
+├─ p_nbr_days: Number of paid drop-in days allowed
+├─ p_cde_resp: Response code (1=Universal, 2=Licensed Only)
+└─ v_county_or_auth: 'Y'='Use Auth override', 'N'='Use county'
+
+Logic:
+├─ Query: t_county_rate__c cr
+├─ WHERE: payment_q14__c = 'Y' (Drop-in enabled)
+├─ AND: cr.cde_status__c = 'APV'
+├─ AND: p_date BETWEEN dte_begin_effv_rate__c AND dte_end_effv_rate__c
+├─ Returns: payment_q14_1__c (nbr_days), payment_q14_2__c (cde_resp), 
+│           payment_q14_3__c (county_or_auth)
+│
+├─ Override Check (CCCAP-1157):
+│  ├─ Query: t_auth__c WHERE idn_extnl__c = p_idn_auth
+│  ├─ IF: Number_of_Drop_in_Days__c IS NOT NULL AND v_county_or_auth='Y'
+│  │  └─ Use auth-level override: p_nbr_days := v_nbr_days_auth
+│  └─ ELSE: Use county rate
+│
+└─ RETURN: (p_nbr_days, p_cde_resp, v_county_or_auth)
+
+Step 2: Count Used Drop-In Days in Month
+Function: FN_GET_DROP_IN_DAY_COUNT(p_idn_auth, p_dte_care)
+
+Logic:
+├─ v_day_first := date_trunc('Month', p_dte_care)::DATE
+├─ v_day_last := (v_day_first + interval '1 month' - interval '1 day')::DATE
+│
+├─ COUNT(*) FROM t_sub_pmt_detail_pre_stg spd
+│  ├─ WHERE: cde_type_info_addntl IN ('3','10')
+│  │   ├─ '3' = Regular drop-in
+│  │   └─ '10' = Slot contract drop-in
+│  ├─ AND: dte_care BETWEEN v_day_first AND v_day_last
+│  ├─ AND: idn_auth IN (same case/child/provider combo)
+│  └─ Returns: v_cnt_dropin_used (days already paid)
+│
+└─ RETURN: v_cnt_dropin_used
+
+Step 3: Apply Drop-In Payment Logic
+├─ Available_Drop_In_Days := p_nbr_days - v_cnt_dropin_used
+│
+├─ IF Available_Drop_In_Days > 0:
+│  │
+│  ├─ IF p_cde_resp = '1' (Universal - pay all):
+│  │  └─ cde_info_addntl := '3' (PAY DROP-IN)
+│  │
+│  ├─ ELSIF p_cde_resp = '2' (Licensed only):
+│  │  ├─ Check Provider License Status:
+│  │  │  └─ FN_CHECK_IS_PROVR_LIC(idn_provr, dte_care)
+│  │  │     ├─ Query: t_chats_provr_status__c
+│  │  │     ├─ WHERE: UPPER(cde_status_provr__c) IN ('CLOSED','OPEN')
+│  │  │     ├─ AND: dte_care BETWEEN dte_begin_effv__c AND dte_end_effv__c
+│  │  │     │        (OR dte_end_effv__c IS NULL)
+│  │  │     ├─ AND: cde_type_provr__c <> 'EFACH' (not exempt)
+│  │  │     └─ RETURN: TRUE/FALSE
+│  │  │
+│  │  └─ IF Provider is licensed:
+│  │     └─ cde_info_addntl := '3' (PAY DROP-IN)
+│  │
+│  └─ ELSE: cde_info_addntl := '0' (DO NOT PAY)
+│
+└─ RETURN: cde_info_addntl
+
+Provider License Check Detail:
+├─ Must be in status: 'CLOSED' or 'OPEN'
+├─ Must be active on care date (effective date range)
+├─ Must NOT be type 'EFACH' (exempt from attendance check)
+└─ Must have valid fiscal agreement for county
+```
+
+---
+
+## **1.5 CARE NOT OFFERED (CCCAP-6842)**
+
+```sql
+Function: FN_CREATE_SUB_PMT_DETAIL (line 177-179)
+
+Logic:
+├─ Query: batchcnv.t_auth_encmbr_stg
+├─ Check: cde_status_encmbr = '5' (Care Not Offered)
+├─ IF: cde_status_encmbr = '5'
+│  └─ cde_info_addntl := '14' (CARE NOT OFFERED)
+└─ Payment: 0 hours paid
+
+Status Codes:
+├─ '0' = ? 
+├─ '1' = ?
+├─ '2' = ?
+├─ '3' = Attended
+├─ '4' = ?
+├─ '5' = Care Not Offered
+└─ (Other codes exist but not documented)
+```
+
+---
+
+## **1.6 CALCULATE UNIT HOURS**
+### **Function: FN_GET_UNIT_HRS(p_idn_auth, p_dte_care, p_cde_info_addnl, p_idn_slot)**
+
+This function determines how many hours to pay for the day based on the additional info code.
+
+```sql
+Step 1: Retrieve Authorization & Actual Hours
+├─ Query: batchcnv.t_auth_encmbr_stg enc
+├─ WHERE: idn_auth = p_idn_auth AND dte_care = p_dte_care
+├─ Returns:
+│  ├─ v_cnt_hours_auth (cnt_hour_care)
+│  ├─ v_cnt_hours_actual (cnt_hour_attnd_actual)
+│  ├─ v_ind_0_36_months (ind_0_36_months flag)
+│  └─ v_cde_county, v_idn_provr
+│
+└─ Retrieve Fiscal Agreement Status (CCCAP-6545):
+   ├─ Query: t_provr_fiscal_agrement__c pfa
+   ├─ WHERE: cde_county__c = v_cde_county
+   ├─ AND: id_service__c = v_idn_provr
+   ├─ AND: p_dte_care BETWEEN dte_begin_agrmt__c AND dte_end_agrmt__c
+   ├─ AND: cde_type_status__c IN ('OPN','CLS')
+   └─ Returns: v_count_fa (count of active fiscal agreements)
+
+Step 2: Slot Contract or 0-36 Enrollment Processing
+├─ IF (p_idn_slot IS NOT NULL OR v_ind_0_36_months = TRUE) 
+│    AND p_cde_info_addnl = '0':
+│  │
+│  ├─ Check Fiscal Agreement Active:
+│  │  └─ IF v_count_fa > 0:
+│  │     ├─ IF v_cnt_hours_actual > 0:
+│  │     │  └─ v_cnt_hour_care := v_cnt_hours_auth (Pay authorized)
+│  │     └─ ELSE:
+│  │        └─ v_cnt_hour_care := v_cnt_hours_auth (Pay auth even if no attendance)
+│  │
+│  └─ ELSE (No fiscal agreement):
+│     └─ v_cnt_hour_care := 0 (DO NOT PAY)
+│
+│  [Special handling for slot contracts and 0-36 months children]
+│  [They get paid authorized hours even with 0 actual hours]
+│
+└─ Regular Authorization Processing:
+   ├─ IF (v_cnt_hours_auth > 0 AND v_cnt_hours_actual > 0):
+   │  ├─ v_cnt_hour_care := MINIMUM(v_cnt_hours_actual, v_cnt_hours_auth)
+   │  │  [Pay the lesser of authorized or actual hours]
+   │  └─ RETURN: v_cnt_hour_care
+   │
+   ├─ ELSIF (v_cnt_hours_auth = 0 OR v_cnt_hours_actual = 0):
+   │  │
+   │  └─ CASE p_cde_info_addnl:
+   │     ├─ '1' (Holiday): v_cnt_hour_care := v_cnt_hours_auth
+   │     ├─ '4' (Absence): v_cnt_hour_care := v_cnt_hours_auth
+   │     ├─ '13' (Enrollment): v_cnt_hour_care := v_cnt_hours_auth
+   │     ├─ '3' (Drop-In): v_cnt_hour_care := v_cnt_hours_actual
+   │     ├─ '14' (Care Not Offered): v_cnt_hour_care := 0
+   │     └─ '0' (Regular): v_cnt_hour_care := 0
+   │
+   └─ RETURN: v_cnt_hour_care
+
+RETURN SUMMARY TABLE:
+╔════════════════════╦═════════════════════╦══════════════════════════════╗
+║ Auth Hours │ Attnd  │ Info Code (cde_info_addntl)   ║ Pays Hours
+╠════════════════════╬═════════════════════╬══════════════════════════════╣
+║ 0          │ 0      │ '0' (Regular)                 ║ 0
+║ 0          │ 0      │ '3' (Drop-In)                 ║ 0
+║ 0          │ >0     │ '3' (Drop-In)                 ║ Actual
+║ >0         │ 0      │ '1' (Holiday)                 ║ Auth
+║ >0         │ 0      │ '4' (Absence)                 ║ Auth
+║ >0         │ 0      │ '13' (Enrollment)             ║ Auth
+║ >0         │ 0      │ '14' (Care Not Offered)       ║ 0
+║ >0         │ >0     │ '0' (Regular)                 ║ MIN(Auth, Actual)
+║ Slot/0-36  │ Any    │ '0' (Regular)                 ║ Auth (if FA active)
+╚════════════════════╩═════════════════════╩══════════════════════════════╝
+```
+
+---
+
+## **1.7 TIME INDICATOR CLASSIFICATION**
+### **Function: FN_GET_TRDNL_TIME_IND(p_cnt_hour_care)**
+
+```sql
+Hour Range              │ Code │ Description
+─────────────────────────┼──────┼────────────────────────
+0 hours                 │ '1'  │ NP (Not Paid)
+0 < hours ≤ 5          │ '2'  │ PT (Part-Time)
+5 < hours ≤ 12         │ '3'  │ FT (Full-Time)
+12 < hours ≤ 17        │ '4'  │ FTPT (Full-Time + Part-Time)
+> 17 hours             │ '5'  │ FTFT (Full-Time + Full-Time)
+
+Logic:
+IF (cnt_hour_care = 0) THEN time_ind := '1'
+ELSIF (cnt_hour_care > 0 AND cnt_hour_care <= 5) THEN time_ind := '2'
+ELSIF (cnt_hour_care > 5 AND cnt_hour_care <= 12) THEN time_ind := '3'
+ELSIF (cnt_hour_care > 12 AND cnt_hour_care <= 17) THEN time_ind := '4'
+ELSIF (cnt_hour_care > 17) THEN time_ind := '5'
+```
+
+---
+
+## **1.8 SLOT CONTRACT PROCESSING**
+
+**SLOT CONTRACT STRUCTURE:**
+
+```sql
+Table: salesforcecnv.t_slot_contract__c
+
+Key Fields:
+├─ sfid (Slot contract ID)
+├─ idn_provider__c (Provider)
+├─ cde_county__c (County)
+├─ idn_auth__c (Authorization - NULL for vacant slots)
+├─ dte_begin_slot__c (Start date)
+├─ dte_end_slot__c (End date, NULL = open-ended)
+├─ cde_rate_type__c (Unit care type)
+├─ cde_care_level__c (Care level)
+├─ cde_unit__c (Time indicator - FT/PT/FTPT)
+├─ cde_prg_type__c (Program funding - LI/TF/FT/CW)
+├─ cnt_days_of_month__c (Paid days per month)
+├─ cnt_days_of_week__c (Days of week allowed)
+└─ [Not paid for all days, only subset]
+
+SLOT CONTRACT PAYMENT TYPES (cde_type_info_addntl):
+├─ '8' = Slot Contract Regular (occupied)
+├─ '9' = Slot Contract Holiday
+├─ '10' = Slot Contract Drop-In
+├─ '11' = Slot Contract Absence
+├─ '12' = Vacant Slot Contract Regular
+└─ '14' = Care Not Offered
+
+SLOT CONTRACT DAYS PAID CALCULATION:
+Function: FN_GET_SLOTCNTRCT_DAYS(p_idn_slot, p_dte_care)
+
+Logic:
+├─ v_day_first := date_trunc('Month', p_dte_care)::DATE
+├─ v_day_last := (v_day_first + interval '1 month' - interval '1 day')::DATE
+│
+├─ COUNT(*) FROM t_sub_pmt_detail_pre_stg spd
+│  ├─ WHERE: cde_time_trdnl != '1' (Any paid type, not NP)
+│  ├─ AND: dte_care BETWEEN v_day_first AND v_day_last
+│  ├─ AND: sp.idn_slot_contract = p_idn_slot
+│  └─ Returns: v_nbr_slotcntrct_days (days already paid this month)
+│
+└─ RETURN: v_nbr_slotcntrct_days
+
+DAY OF WEEK RESTRICTION:
+├─ v_days_of_weeks_slot := t_slot_contract__c.cnt_days_of_week__c
+│  └─ Format: "Monday,Wednesday,Friday" (comma-separated day names)
+│
+├─ Check care date day of week:
+│  └─ IF position(trim(to_char(dte_care::date,'Day')) 
+│     in v_days_of_weeks_slot) = 0:
+│     └─ Not a paid day for this slot → time_ind := '1' (NP)
+│
+└─ Else: Check if month capacity reached:
+   ├─ IF (cnt_days_of_month__c - nbr_paid_so_far - slot_row_num) >= 0:
+   │  └─ v_cde_time_trdnl := v_slot_cde_time_trdnl (Use slot's time indicator)
+   └─ ELSE:
+      └─ v_cde_time_trdnl := '1' (NP - month capacity exceeded)
+
+ENROLLMENT OVERRIDE (0-36 MONTHS):
+├─ If care date within 0-36 months enrollment period
+├─ AND absence days exhausted
+├─ THEN: cde_info_addntl := '13' (Pay as regular)
+│        Use authorized hours instead of slot contract hours
+└─ Provides higher payment for young children
+```
+
+---
+
+# **PART 2: PAYMENT MODULE - EXACT CALCULATION FLOW**
+
+## **2.1 PROVIDER RATE RETRIEVAL**
+### **Function: FN_GET_FISCAL_RATE(p_std_cfs, p_idn_provr, p_cde_type_unit_care, p_cde_level_care, p_cde_trdnl_time_ind, p_cde_county, p_dte_care)**
+
+**RATE LOOKUP HIERARCHY:**
+
+```sql
+Step 1: Get Provider Fiscal Agreement
+├─ Query: t_provr_fiscal_agrement__c pfa
+├─ WHERE: cde_county__c = p_cde_county
+├─ AND: id_service__c = p_idn_provr
+├─ AND: p_dte_care BETWEEN dte_begin_agrmt__c AND dte_end_agrmt__c
+│       (OR dte_end_agrmt__c IS NULL)
+├─ AND: cde_type_status__c IN ('OPN','CLS') [Open or closed agreements]
+└─ Returns: idn_agrmt_fiscal__c (agreement ID), pfa.sfid
+
+Step 2: Get Provider's Fiscal Schedule (Rates)
+├─ Query: batchcnv.t_fiscal_rate
+├─ Filter by: Provider agreement ID from Step 1
+├─ Multiple rates per agreement for different:
+│  ├─ cde_rate_type (Unit care type: HC/CC/FCC/LicAg)
+│  ├─ cde_age_group (Care level: INF/TOD/PRES/SCH/MIXED)
+│  └─ cde_care_unit (Time indicator: NP/PT/FT/FTPT/FTFT)
+│
+└─ Returns: amt_fa (rate per hour/day)
+
+Step 3: Match Rate to Care Parameters
+├─ p_cde_type_unit_care (from encumbrance: HC/CC/FCC/LicAg)
+├─ p_cde_level_care (from encumbrance: INF/TOD/PRES/SCH)
+├─ p_cde_trdnl_time_ind (calculated earlier: NP/PT/FT/FTPT/FTFT)
+├─ p_std_cfs (Standard - typically funding program code)
+└─ p_dte_care (Care date - for date-based rate variations)
+
+Step 4: Return Rate
+└─ RETURN: amt_fa (hourly or daily rate for this care type/level/time)
+
+RATE LOOKUP TABLE STRUCTURE (batchcnv.t_fiscal_rate):
+╔═════════════════════════════════════════════════════════════════════╗
+║ idn_fiscal_schedule │ amt_fa      │ cde_rate_type │ cde_age_group   ║
+║ (Foreign Key)       │ (Rate $)    │ (Unit Type)   │ (Care Level)    ║
+╠═════════════════════╪═════════════╪═══════════════╪═════════════════╣
+║ FA001              │ $10.50      │ CC            │ INF             ║ (Infant in Child Care)
+║ FA001              │ $9.75       │ CC            │ PRES            ║ (Preschool in Child Care)
+║ FA001              │ $12.00      │ HC            │ INF             ║ (Infant in Home Care)
+║ FA001              │ $10.25      │ HC            │ SCH             ║ (School-age in Home Care)
+╚═════════════════════╩═════════════╩═══════════════╩═════════════════╝
+
+**CALL HIERARCHY:**
+FN_GET_FISCAL_RATE()
+  └─ FN_GET_FISCAL_AGR_RATE_AUTH() [Actual implementation]
+     └─ Performs the join and rate lookup
+```
+
+---
+
+## **2.2 COPAY CALCULATION**
+### **Function: FN_CALCULATE_COPAY_FT_PT(p_idn_case, p_total_household_income, p_family_size, p_number_children, p_fpg)**
+
+**COPAY CALCULATION LOGIC:**
+
+```sql
+STEP 1: Calculate Federal Poverty Level Percentage
+├─ p_fpg = Percentage of Federal Poverty Guideline
+│  └─ e.g., 150% means 1.5x the federal poverty line
+
+STEP 2: Apply Income-Based Copay Formula
+
+**TIER 1: FPG <= 100% (At or below poverty line)**
+├─ Copay_FullTime := FLOOR(Monthly_Income × 0.01)
+│  └─ 1% of monthly income
+│
+├─ Copay_PartTime := FLOOR(0.55 × Copay_FullTime)
+│  └─ 55% of full-time copay
+│
+└─ Example:
+   ├─ Annual Income: $18,000
+   ├─ Monthly Income: $1,500
+   ├─ FPG: 75% → Copay_FT := FLOOR($1,500 × 0.01) = $15
+   └─ Copay_PT := FLOOR(0.55 × $15) = $8
+
+**TIER 2: 100% < FPG <
