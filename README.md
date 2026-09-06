@@ -952,14 +952,282 @@ STEP 2: Apply Income-Based Copay Formula
    ├─ FPG: 75% → Copay_FT := FLOOR($1,500 × 0.01) = $15
    └─ Copay_PT := FLOOR(0.55 × $15) = $8
 
-**TIER 2: 100% < FPG <
+**TIER 2: 100% < FPG <= 200% (Between poverty and 2x poverty)**
+├─ Uses reference table R00393
+├─ Tiered income bracket system
+│  └─ Different rates for different income ranges
+│
+├─ Multipliers applied:
+│  ├─ Base bracket rate (from R00393)
+│  ├─ 1.3x multiplier for income between 100-150% FPG
+│  └─ 1.6x multiplier for income between 150-200% FPG
+│
+└─ Formula: Copay := Tiered_Rate × Income_Bracket_Multiplier
 
-...
-.
-..
-.
-.
-..
+**TIER 3: FPG > 200% (Above 2x poverty line)**
+├─ Maximum copay applied
+├─ May be based on family size and number of children
+└─ Caps may apply per county rate table
+
+COPAY TIME ADJUSTMENT:
+├─ Full-Time Copay := Calculated_Copay
+├─ Part-Time Copay := FLOOR(0.55 × Full-Time_Copay)
+│  └─ Part-time gets 55% discount
+└─ Applies regardless of tier
+
+DATA SOURCES:
+├─ Reference Table R00393 (Income brackets for 100-200% FPG tier)
+├─ County Rate Table (t_county_rate__c) for maximum copays
+├─ Family Information:
+│  ├─ p_total_household_income (annual)
+│  ├─ p_family_size (total members)
+│  └─ p_number_children (children count)
+└─ Authorization (t_auth__c) for child/family info
+
+CORNER CASES:
+├─ IF copay calculated as $0 → minimum copay may apply
+├─ IF copay > county maximum → cap at county maximum
+├─ IF copay changes mid-service → pro-rate or use monthly copay
+└─ Part-time copay always ≤ Full-time copay
+```
+
+---
+
+## **2.3 PAYMENT AMOUNT CALCULATION**
+### **Function: FN_PRCS_SUB_PMT_DETAIL(idn_pmt_sub)**
+
+**PAYMENT CALCULATION FLOW:**
+
+```sql
+FOR EACH payment detail (cde_type_info_addntl):
+
+STEP 1: Determine Payment Type
+├─ '0' = Regular care
+├─ '1' = Holiday
+├─ '3' = Drop-in
+├─ '4' = Absence
+├─ '8' = Slot contract regular
+├─ '9' = Slot contract holiday
+├─ '10' = Slot contract drop-in
+├─ '11' = Slot contract absence
+├─ '12' = Vacant slot contract
+├─ '13' = Enrollment (0-36 months)
+└─ '14' = Care not offered
+
+STEP 2: Calculate Base Rate Amount
+├─ amt_rate := unit_hours × fiscal_rate
+│  ├─ unit_hours (from FN_GET_UNIT_HRS)
+│  └─ fiscal_rate (from FN_GET_FISCAL_RATE)
+│
+└─ amt_slot_paid (for slot contracts only):
+   ├─ If slot contract: amt_slot_paid := amount paid to provider
+   └─ Else: amt_slot_paid := 0
+
+STEP 3: Calculate Copay
+├─ For Regular Care (cde_type_info_addntl = '0'):
+│  └─ amt_copay := FN_CALCULATE_COPAY_FT_PT(...)
+│
+├─ For Holiday/Absence/Drop-In/Enrollment:
+│  └─ amt_copay := 0 (No copay for special cases)
+│
+└─ For Slot Contracts:
+   └─ amt_copay := 0 (Provider contract, no family copay)
+
+STEP 4: Calculate Total Payment
+├─ amt_total := amt_rate - amt_copay
+│  ├─ If amt_total < 0 → amt_total := 0 (Can't have negative)
+│  └─ Payment to provider = amt_total
+│
+└─ Payment Flow:
+   ├─ Total authorization pays: amt_rate
+   ├─ Family pays (copay): amt_copay
+   └─ Provider receives: amt_total
+
+STEP 5: Insert into Payment Detail Table
+├─ t_sub_pmt_detail (for regular authorizations)
+│  ├─ amt_copay
+│  ├─ amt_rate
+│  ├─ amt_total
+│  ├─ cde_type_info_addntl
+│  ├─ cde_time_trdnl
+│  ├─ dte_care
+│  └─ idn_pmt_sub
+│
+└─ For slot contracts:
+   └─ Additional field: amt_slot_paid
+
+PAYMENT TYPE IMPACT ON RATE:
+╔═══════════════════════╦═════════════════╦═══════════════════════╗
+║ Payment Type          ║ Copay Applied   ║ Rate Calculation      ║
+╠═══════════════════════╬═════════════════╬═══════════════════════╣
+║ Regular (0)           ║ YES             ║ Auth Hours × Rate     ║
+║ Holiday (1)           ║ NO              ║ Auth Hours × Rate     ║
+║ Absence (4)           ║ NO              ║ Auth Hours × Rate     ║
+║ Drop-In (3)           ║ NO              ║ Actual Hours × Rate   ║
+║ Enrollment (13)       ║ NO              ║ Auth Hours × Rate     ║
+║ Slot Regular (8)      ║ NO              ║ Slot Hrs × Slot Rate  ║
+║ Slot Holiday (9)      ║ NO              ║ Slot Hrs × Slot Rate  ║
+║ Care Not Offered (14) ║ NO              ║ 0                     ║
+╚═══════════════════════╩═════════════════╩═══════════════════════╝
+```
+
+---
+
+## **2.4 ART FEES PROCESSING (Activity, Registration, Transportation)**
+### **Function: FN_GET_ART_FEES(p_idn_case, p_dte_care)**
+
+**ART FEE RETRIEVAL LOGIC (24KB Complex Function):**
+
+```sql
+STEP 1: Retrieve Individual Care Level & Program Info
+├─ Query: Individual (child) care level for the care date
+├─ Query: Authorization program funding type
+└─ Used to determine which ART fees apply
+
+STEP 2: Get Provider's ART Fee Schedule
+├─ Query: t_fiscal_rat_fees__c (Provider fee schedule)
+├─ Match by: Provider + Child Care Level + Effective Date Range
+├─ Returns:
+│  ├─ amt_trans_provr__c (Transportation fee per unit)
+│  ├─ amt_act_provr__c (Activity fee per unit)
+│  ├─ amt_reg_provr__c (Registration fee per unit)
+│  ├─ cde_trans_freq__c (Frequency: ANNUAL/MONTHLY/ONE-TIME)
+│  ├─ cde_act_freq__c (Frequency: ANNUAL/MONTHLY/ONE-TIME)
+│  ├─ cde_reg_freq__c (Frequency: ANNUAL/MONTHLY/ONE-TIME)
+│  ├─ txt_trans_month__c (Restricted months for transportation)
+│  └─ txt_act_month__c (Restricted months for activity)
+│
+└─ Example:
+   ├─ Transportation: $50/month, can't charge in July/August
+   ├─ Activity: $25/month, no restrictions
+   └─ Registration: $100/annual, charged in September only
+
+STEP 3: Get County Ceiling Amounts
+├─ Query: t_county_rate__c
+├─ Retrieve:
+│  ├─ PAYMENT_Q9_1__c (Registration ceiling per fiscal year)
+│  ├─ PAYMENT_Q10_1__c (Activity ceiling per fiscal year)
+│  ├─ PAYMENT_Q11_1__c (Transportation ceiling per fiscal year)
+│  ├─ PAYMENT_Q11_2__c (Care level question - which levels pay)
+│  └─ PAYMENT_Q11_3__c (Authorization level question)
+│
+└─ County prevents overpayment for all children in county
+
+STEP 4: Check Fiscal Year Boundaries (Leap Year Handling)
+├─ Fiscal Year typically: July 1 - June 30
+├─ IF Feb 29 (leap year) falls in fiscal year:
+│  └─ Add extra day to calculation
+│
+├─ Query: t_indiv_rat_fees (Individual-level fee tracking)
+├─ WHERE: idn_client = child_id
+├─ AND: dte_begin_effev BETWEEN fiscal_year_start AND fiscal_year_end
+│       (Or open-ended)
+└─ Returns: Amount already paid YTD for each fee type
+
+STEP 5: Apply Monthly Restrictions
+├─ Transportation Fee:
+│  ├─ IF current_month IN txt_trans_month__c:
+│  │  └─ DO NOT CHARGE (restricted month)
+│  └─ ELSE: Apply transportation fee
+│
+├─ Activity Fee:
+│  ├─ IF current_month IN txt_act_month__c:
+│  │  └─ DO NOT CHARGE (restricted month)
+│  └─ ELSE: Apply activity fee
+│
+└─ Registration Fee:
+   └─ Only charged once per fiscal year (ONE-TIME)
+
+STEP 6: Calculate Fee Frequency Impact
+├─ ANNUAL fees:
+│  ├─ Charged once per fiscal year (typically Sept 1 or July 1)
+│  ├─ Formula: Annual_Amount = amt_reg_provr__c × 1
+│  └─ Cap: PAYMENT_Q9_1__c per county per child per year
+│
+├─ MONTHLY fees:
+│  ├─ Charged each month when applicable
+│  ├─ Formula: Monthly_Amount = amt_trans_provr__c × 1 (per month)
+│  ├─ If authorized for partial month:
+│  │  └─ Pro-rate: Monthly_Amount × (authorized_days / days_in_month)
+│  └─ Cap: PAYMENT_Q10_1__c OR PAYMENT_Q11_1__c per month per child
+│
+└─ ONE-TIME fees:
+   ├─ Charged once per service/authorization
+   └─ No daily proration
+
+STEP 7: Apply County Ceiling
+├─ Calculate remaining capacity for this fee type YTD:
+│  ├─ County_Ceiling - Amount_Paid_YTD_All_Children = Remaining
+│  └─ OR
+│  ├─ Individual_Ceiling - Amount_Paid_YTD_This_Child = Remaining
+│
+├─ IF Calculated_Fee > Remaining_Capacity:
+│  └─ Charge only: Remaining_Capacity (partial charge)
+│
+└─ IF Remaining_Capacity <= 0:
+   └─ Do not charge fee (ceiling reached)
+
+STEP 8: Apply Individual Ceiling
+├─ Query: t_indiv_rat_fees (Track per-child YTD totals)
+├─ Maintain running totals:
+│  ├─ amt_trans_paid (accumulated transportation)
+│  ├─ amt_act_paid (accumulated activity)
+│  └─ amt_reg_paid (accumulated registration)
+│
+└─ Update after each charge:
+   ├─ amt_trans_paid += amt_charged
+   ├─ amt_act_paid += amt_charged
+   ├─ amt_reg_paid += amt_charged
+   ├─ dte_paid = current date
+   └─ Fiscal year dates tracked
+
+STEP 9: Return ART Fees
+├─ RETURN: (amt_trans, amt_act, amt_reg)
+│  └─ After all restrictions and ceiling application
+│
+└─ Insert into Payment:
+   ├─ Fees added to amt_rate or separate tracking
+   └─ No copay applied to ART fees
+
+ART FEE EXEMPTIONS:
+├─ Care Not Offered days: NO ART fees
+├─ Drop-in days: May have reduced/no ART fees
+├─ Absent days: May have reduced/no ART fees
+├─ Below care level threshold: NO ART fees
+└─ Authorization level restrictions: NO ART fees
+
+REFERENCE DATA:
+├─ R00393: Income brackets (copay calculation)
+└─ County Rate Table fields:
+   ├─ PAYMENT_Q9_1__c: Registration ceiling
+   ├─ PAYMENT_Q10_1__c: Activity ceiling
+   ├─ PAYMENT_Q11_1__c: Transportation ceiling
+   ├─ PAYMENT_Q11_2__c: Applicable care levels
+   └─ PAYMENT_Q11_3__c: Applicable auth levels
+```
+
+**ART FEE FREQUENCY MATRIX:**
+
+```
+╔════════════════════╦═══════════╦════════════════╦═════════════════════╗
+║ Fee Type           ║ Frequency ║ Typical Charge ║ Monthly Restriction ║
+╠════════════════════╬═══════════╬════════════════╬═════════════════════╣
+║ Registration       ║ ANNUAL    ║ $100-200/year  ║ Sept only (usually) ║
+║ Activity           ║ MONTHLY   ║ $20-30/month   ║ May exclude July-Aug║
+║ Transportation     ║ MONTHLY   ║ $40-60/month   ║ Excluded Jul-Aug    ║
+╚════════════════════╩═══════════╩════════════════╩═════════════════════╝
+
+**CEILING ENFORCEMENT:**
+├─ County Ceiling: $500/child/fiscal year (example)
+├─ Once county total reached: NO MORE ART FEES for any child
+│  (County level resource constraint)
+│
+└─ Individual Ceiling: $300/child/fiscal year (example)
+   └─ Once individual reaches limit: NO MORE ART FEES for that child
+      (Family affordability limit)
+```
+
+---
 
 
 
