@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <classAccesses>
+        <apexClass>ChildCareChatProxy</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <description>Allows the child care chat component to invoke its Apex Ascend proxy.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>Child Care Chat Access</label>
+</PermissionSet>

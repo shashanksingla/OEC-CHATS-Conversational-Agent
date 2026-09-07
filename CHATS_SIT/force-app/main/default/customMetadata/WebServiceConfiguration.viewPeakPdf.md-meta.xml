@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>viewPeakPdf</label>
+    <protected>false</protected>
+    <values>
+        <field>AuthId__c</field>
+        <value xsi:type="xsd:string">YBj0x0dhD3Jj/dKdtUeTpMgOJOBlLxzikBUP8lV8+A0ABtlB7iqB7c3ZyNiU7GVTC2x0GR1R2OzKA9n4nvfJeQ==</value>
+    </values>
+    <values>
+        <field>AuthToken__c</field>
+        <value xsi:type="xsd:string">YZmCJPUwz5rU+HG+oq8zAmWpzbt/Qyc3Wy9kwVQRb7AHZqGmLGjOzfytwSNjAgYUdDCXfilrzIMd5PATs85e5Q==</value>
+    </values>
+    <values>
+        <field>EndPoint__c</field>
+        <value xsi:type="xsd:string">https://test-api.state.co.us/ext-qa-cdhs-chats-peak-applicationpdf-eapi/api/file</value>
+    </values>
+    <values>
+        <field>Password__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>ServiceType__c</field>
+        <value xsi:type="xsd:string">REST</value>
+    </values>
+    <values>
+        <field>UserName__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>isActive__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+</CustomMetadata>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>dte_prntd__c</fullName>
+    <description>dte_prntd</description>
+    <externalDeveloperName>dte_prntd</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Dte_prntd</label>
+    <required>false</required>
+    <type>Date</type>
+</CustomField>

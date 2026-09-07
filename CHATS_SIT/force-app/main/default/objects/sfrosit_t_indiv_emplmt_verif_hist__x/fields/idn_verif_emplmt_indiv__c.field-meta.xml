@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_verif_emplmt_indiv__c</fullName>
+    <description>idn_verif_emplmt_indiv</description>
+    <externalDeveloperName>idn_verif_emplmt_indiv</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Employment Verification ID</label>
+    <length>50</length>
+    <referenceTargetField>T_INDIV_EMPLMT_VERIF__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_INDIV_EMPLMT_VERIF__c</referenceTo>
+    <relationshipLabel>Employment Verification Legacy History</relationshipLabel>
+    <relationshipName>sfrosit_t_indiv_emplmt_verif_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

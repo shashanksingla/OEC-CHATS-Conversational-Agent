@@ -1,0 +1,309 @@
+<template>
+    <div role="dialog" aria-modal="true" aria-labelledby="modal-heading"
+         class="slds-modal slds-fade-in-open slds-modal_large">
+
+        <div class="slds-modal__container">
+
+            <!-- Modal Header -->
+            <header class="slds-modal__header">
+                <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+                        title="Close" onclick={handleCancel}>
+                    <lightning-icon icon-name="utility:close" size="small" alternative-text="Close"></lightning-icon>
+                    <span class="slds-assistive-text">Close</span>
+                </button>
+                <h2 id="modal-heading" class="slds-modal__title slds-hyphenate">
+                    {modalTitle}
+                </h2>
+            </header>
+
+            <!-- Modal Body -->
+            <div class="slds-modal__content" id="modal-content">
+
+                <!-- Spinner -->
+                <template lwc:if={isSpinnerVisible}>
+                    <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+                </template>
+
+                <!-- Required info note -->
+                <div class="slds-p-horizontal_medium slds-p-top_small slds-text-align_right slds-text-body_small slds-text-color_weak">
+                    * = Required Information
+                </div>
+
+                <!-- ── SECTION 1: General Information ───────────────────── -->
+                <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                    <div class="slds-section slds-is-open">
+                        <h3 class="slds-section__title slds-theme_shade">
+                            <span class="slds-truncate slds-p-horizontal_small" title="General Information">General Information</span>
+                        </h3>
+                    </div>
+
+                    <div class="slds-form slds-m-top_small" role="list">
+
+                        <!-- Row 1: Case ID | Provider ID -->
+                        <div class="slds-form__row">
+                            <div class="slds-form__item" role="listitem">
+                                <c-custom-lookup_lwc data-id="input-field"
+                                    label="Case ID"
+                                    unique-key="caseId"
+                                    object-api-name="T_SBSD_CASE__c"
+                                    placeholder=""
+                                    is-disabled={isCaseProviderLocked}
+                                    selected-record-id={searchWrapper.selectedCase}
+                                    custom-error-message={caseEffectiveError}
+                                    onvalueselected={handleLookupValue}>
+                                </c-custom-lookup_lwc>
+                            </div>
+                            <div class="slds-form__item" role="listitem">
+                                <c-custom-lookup_lwc data-id="input-field"
+                                    label="Provider ID"
+                                    unique-key="providerId"
+                                    object-api-name="T_CHATS_PROVR_STATUS__c"
+                                    placeholder=""
+                                    is-disabled={isCaseProviderLocked}
+                                    selected-record-id={searchWrapper.selectedProvider}
+                                    custom-error-message={providerEffectiveError}
+                                    onvalueselected={handleLookupValue}>
+                                </c-custom-lookup_lwc>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: County | Person who Provided Complaint -->
+                        <div class="slds-form__row">
+                            <div class="slds-form__item" role="listitem">
+                                <c-custom-lookup_lwc
+                                    label="County" data-id="input-field"
+                                    unique-key="countyId"
+                                    object-api-name="T_COUNTY__c"
+                                    placeholder=""
+                                    required={isCountyRequired}
+                                    is-disabled={isCountyLocked}
+                                    filter="CDE_COUNTY__c != 66"
+                                    selected-record-id={searchWrapper.selectedCounty}
+                                    onvalueselected={handleLookupValue}>
+                                </c-custom-lookup_lwc>
+                                <template lwc:if={showCountyErrorVisible}>
+                                    <c-field-level-message_lwc message={countyError}></c-field-level-message_lwc>
+                                </template>
+                            </div>
+                            <div class="slds-form__item" role="listitem">
+                                <lightning-input
+                                    type="text" data-id="input-field"
+                                    label="Person who Provided Complaint"
+                                    maxlength="100"
+                                    data-field="Person_who_Provided_Complaint__c"
+                                    value={searchWrapper.complaintRecord.Person_who_Provided_Complaint__c}
+                                    onchange={handleInputChange}>
+                                </lightning-input>
+                            </div>
+                        </div>
+
+                        <!-- Row 3: Assignee | Complaint Types -->
+                        <div class="slds-form__row">
+                            <div class="slds-form__item" role="listitem">
+                                <c-custom-lookup_lwc
+                                    label="Assignee" data-id="input-field"
+                                    unique-key="assigneeId"
+                                    object-api-name="User"
+                                    placeholder=""
+                                    required
+                                    filter={assigneeFilter}
+                                    selected-record-id={searchWrapper.selectedAssignee}
+                                    onvalueselected={handleLookupValue}>
+                                </c-custom-lookup_lwc>
+                                <template lwc:if={showAssigneeErrorVisible}>
+                                    <c-field-level-message_lwc message={assigneeError}></c-field-level-message_lwc>
+                                </template>
+                            </div>
+                            <div class="slds-form__item" role="listitem">
+                                <c-multiselect-combobox
+                                    data-id="input-field"
+                                    label="Complaint Types"
+                                    object="Client_Complaint__c"
+                                    field="Complaint_Types__c"
+                                    context="complaintTypes"
+                                    value={searchWrapper.complaintRecord.Complaint_Types__c}
+                                    multi-select
+                                    required
+                                    behavior-type="multiselectWithSearch"
+                                    show-none
+                                    onselect={handlePicklistChange}>
+                                </c-multiselect-combobox>
+                            </div>
+                        </div>
+
+                        <!-- Row 4: Complaint Status | Method of Contact -->
+                        <div class="slds-form__row">
+                            <div class="slds-form__item" role="listitem">
+                                <c-multiselect-combobox
+                                    data-id="input-field"
+                                    label="Complaint Status"
+                                    context="complaintStatus"
+                                    value={searchWrapper.complaintRecord.Complaint_Status__c}
+                                    required
+                                    behavior-type="picklist"
+                                    object="Client_Complaint__c"
+                                    field="Complaint_Status__c"
+                                    onselect={handlePicklistChange}>
+                                </c-multiselect-combobox>
+                            </div>
+                            <div class="slds-form__item" role="listitem">
+                                <c-multiselect-combobox
+                                    data-id="input-field"
+                                    label="Method of Contact"
+                                    context="methodOfContact"
+                                    value={searchWrapper.complaintRecord.Method_of_Contact__c}
+                                    required
+                                    behavior-type="picklist"
+                                    object="Client_Complaint__c"
+                                    field="Method_of_Contact__c"
+                                    onselect={handlePicklistChange}>
+                                </c-multiselect-combobox>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ── SECTION 2: Dates ──────────────────────────────────── -->
+                <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                    <div class="slds-section slds-is-open">
+                        <h3 class="slds-section__title slds-theme_shade">
+                            <span class="slds-truncate slds-p-horizontal_small" title="Dates">Dates</span>
+                        </h3>
+                    </div>
+
+                    <div class="slds-form slds-m-top_small" role="list">
+
+                        <!-- Row 1: Initial Date of Complaint | Initial County Response Date -->
+                        <div class="slds-form__row">
+                            <div class="slds-form__item" role="listitem">
+                                <lightning-input data-id="input-field"
+                                    type="date"
+                                    label="Initial Date of Complaint"
+                                    data-field="DTE_Initial_Complaint__c"
+                                    value={searchWrapper.complaintRecord.DTE_Initial_Complaint__c}
+                                    required
+                                    disabled={isInitialDateLocked}
+                                    onchange={handleInputChange}>
+                                </lightning-input>
+                                <template lwc:if={dteInitialComplaintError}>
+                                    <c-field-level-message_lwc message={dteInitialComplaintError}></c-field-level-message_lwc>
+                                </template>
+                            </div>
+                            <div class="slds-form__item" role="listitem">
+                                <lightning-input data-id="input-field"
+                                    type="date"
+                                    label="Initial County Response Date"
+                                    data-field="DTE_County_Response__c"
+                                    value={searchWrapper.complaintRecord.DTE_County_Response__c}
+                                    required={isCountyResponseRequired}
+                                    disabled={isCountyResponseLocked}
+                                    field-level-help="Counties must respond to contact from families and/or child care providers within three (3) business days."
+                                    onchange={handleInputChange}>
+                                </lightning-input>
+                                <template lwc:if={dteCountyResponseError}>
+                                    <c-field-level-message_lwc message={dteCountyResponseError}></c-field-level-message_lwc>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Complaint Resolved Date | Date of County Transfer -->
+                        <div class="slds-form__row">
+                            <div class="slds-form__item" role="listitem">
+                                <lightning-input data-id="input-field"
+                                    type="date"
+                                    label="Complaint Resolved Date"
+                                    data-field="DTE_Complaint_Resolved__c"
+                                    value={searchWrapper.complaintRecord.DTE_Complaint_Resolved__c}
+                                    required={isResolvedDateRequired}
+                                    disabled={isResolvedDateLocked}
+                                    onchange={handleInputChange}>
+                                </lightning-input>
+                                <template lwc:if={dteComplaintResolvedError}>
+                                    <c-field-level-message_lwc message={dteComplaintResolvedError}></c-field-level-message_lwc>
+                                </template>
+                            </div>
+                            <div class="slds-form__item" role="listitem">
+                                <lightning-input data-id="input-field"
+                                    type="date"
+                                    label="Date of County Transfer"
+                                    value={searchWrapper.complaintRecord.DTE_County_Transfer__c}
+                                    disabled>
+                                </lightning-input>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ── SECTION 3: Complaint or Contact Details ───────────── -->
+                <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                    <div class="slds-section slds-is-open">
+                        <h3 class="slds-section__title slds-theme_shade">
+                            <span class="slds-truncate slds-p-horizontal_small" title="Complaint or Contact Details">Complaint or Contact Details</span>
+                        </h3>
+                    </div>
+
+                    <div class="slds-form slds-m-top_small" role="list">
+
+                        <!-- Row 1: Subject | Complaint Body -->
+                        <div class="slds-form__row">
+                            <div class="slds-form__item" role="listitem">
+                                <lightning-input data-id="input-field"
+                                    type="text"
+                                    label="Subject"
+                                    maxlength="255"
+                                    data-field="Subject__c"
+                                    value={searchWrapper.complaintRecord.Subject__c}
+                                    onchange={handleInputChange}>
+                                </lightning-input>
+                            </div>
+                            <div class="slds-form__item" role="listitem">
+                                <lightning-textarea data-id="input-field"
+                                    label="Complaint Body"
+                                    data-field="Complaint_Body__c"
+                                    value={searchWrapper.complaintRecord.Complaint_Body__c}
+                                    required={isComplaintBodyRequired}
+                                    disabled={isComplaintBodyLocked}
+                                    max-length="5000"
+                                    field-level-help="&quot;Complaint&quot; means a verbal or written expression of dissatisfaction by an applicant, adult caretaker, teen parent, or child care provider to a county or the Department that is: (1) significant, meaning not yet resolved and severe enough that resources should be contributed to resolve it immediately, and (2) controllable, meaning the county had the ability to alter the negative event preceding the complaint, but failed to take the necessary steps to prevent it."
+                                    onchange={handleInputChange}>
+                                </lightning-textarea>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Notes (full width) -->
+                        <div class="slds-form__row">
+                            <div class="slds-form__item slds-size_1-of-1" role="listitem">
+                                <lightning-textarea data-id="input-field"
+                                    label="Notes"
+                                    data-field="Notes__c"
+                                    value={searchWrapper.complaintRecord.Notes__c}
+                                    required={isNotesRequired}
+                                    max-length="5000"
+                                    onchange={handleInputChange}>
+                                </lightning-textarea>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+            <!-- /Modal Body -->
+
+            <!-- Modal Footer -->
+            <footer class="slds-modal__footer">
+                <lightning-button variant="neutral" label="Cancel" onclick={handleCancel}></lightning-button>
+                <lightning-button variant="brand" label="Save" onclick={handleSave} disabled={isSaving} class="slds-m-left_x-small"></lightning-button>
+            </footer>
+
+        </div>
+        <!-- /Modal Container -->
+
+    </div>
+    <!-- /Modal -->
+
+    <!-- Backdrop -->
+    <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+</template>

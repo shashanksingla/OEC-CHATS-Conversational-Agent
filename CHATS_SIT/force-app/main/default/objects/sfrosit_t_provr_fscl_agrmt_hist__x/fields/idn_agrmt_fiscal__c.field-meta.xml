@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_agrmt_fiscal__c</fullName>
+    <description>idn_agrmt_fiscal</description>
+    <externalDeveloperName>idn_agrmt_fiscal</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Fiscal Agreement Id</label>
+    <length>50</length>
+    <referenceTargetField>T_PROVR_FISCAL_AGREMENT__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_PROVR_FISCAL_AGREMENT__c</referenceTo>
+    <relationshipLabel>Provider Fiscal Agreement Legacy History</relationshipLabel>
+    <relationshipName>t_provr_fiscal_agrement_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

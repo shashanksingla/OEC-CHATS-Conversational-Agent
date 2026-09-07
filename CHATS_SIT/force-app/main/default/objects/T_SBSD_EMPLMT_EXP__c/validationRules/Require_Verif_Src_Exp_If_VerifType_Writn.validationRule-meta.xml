@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Require_Verif_Src_Exp_If_VerifType_Writn</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(NOT( IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_Peak_Data__c ),NOT( IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_CBMS_Data__c ), ISPICKVAL(CDE_TYPE_VERIFY__c, &quot;V&quot;) , ISBLANK( TEXT(CDE_SOURCE_VRFYD_EXP__c) ) )</errorConditionFormula>
+    <errorDisplayField>CDE_SOURCE_VRFYD_EXP__c</errorDisplayField>
+    <errorMessage>This Field is required for Verification Type is &apos;Written Verification&apos;.</errorMessage>
+</ValidationRule>

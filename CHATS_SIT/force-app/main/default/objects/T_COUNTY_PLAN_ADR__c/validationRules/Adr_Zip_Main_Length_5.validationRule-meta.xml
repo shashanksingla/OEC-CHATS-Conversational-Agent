@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Adr_Zip_Main_Length_5</fullName>
+    <active>true</active>
+    <description>set Zip Address to length 5</description>
+    <errorConditionFormula>AND(NOT(ISBLANK(ADR_ZIP__c)), 
+OR(LEN(ADR_ZIP__c) &lt;&gt; 5, 
+NOT(ISNUMBER(ADR_ZIP__c)) 
+) 
+)</errorConditionFormula>
+    <errorDisplayField>ADR_ZIP__c</errorDisplayField>
+    <errorMessage>Zip Address should be 5 digit number</errorMessage>
+</ValidationRule>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IDN_ADDENDUM__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>Slot Contract Addendum ID</label>
+    <referenceTo>T_SLOT_CONTRACT_ADDENDUM__c</referenceTo>
+    <relationshipLabel>Correspondence Request</relationshipLabel>
+    <relationshipName>Correspondence_Request</relationshipName>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

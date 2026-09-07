@@ -1,0 +1,227 @@
+<aura:component implements="force:hasrecordId,force:hasSObjectName,flexipage:availableForAllPageTypes"
+                extends="c:abstractComponent" 
+                controller="subPaymentSearch" access="global">   
+    <!--<aura:attribute name="subPaymtDtl" type="batchsit_t_sub_pmt_detail__x"
+                    default="{'sobjectType':'batchsit_t_sub_pmt_detail__x'}"/>-->
+    <aura:attribute name="subPaymentDetailData" type="Map"/>
+    <aura:attribute name="childRecord" type="SObject"/>
+    <aura:attribute name="recordError" type="String"/>
+    <aura:attribute name="subPaymentId" type="String"/>
+    <aura:attribute name="isVacantSlotPayment" type="Boolean" default="false" />
+    <aura:handler name="init" value="{!this}" action="{!c.mapPicklistValues}"/>
+      
+    <!--<aura:if isTrue="{!v.sObjectName =='batchsit_t_sub_pmt_detail__x'}">
+        <force:recordData aura:id="forceSubPaymtRecordCmp"
+                          recordId="{!v.recordId}"
+                          fields="Id, amt_copay__c, amt_rate__c, amt_total__c, cde_level_care__c, cde_status_detail_pmt_sub__c,
+                                  cde_time_trdnl__c, cde_type_info_addntl__c, cde_type_unit_care__c, cde_unit_care_actual__c,
+                                  cde_unit_care_exptd__c, dte_care__c, idn_prog_fndg__c, idn_detail_pmt_sub__c,
+                                  idn_pmt_sub__c, ind_adjmt__c, nbr_seq_hist__c"
+                          mode="EDIT"
+                          targetFields="{!v.subPaymtDtl}"
+                          targetError="{!v.recordError}" />
+    </aura:if>-->
+    <div class="slds-p-around--none slds-panel__section">
+        <div class="slds-grid slds-grid slds-wrap slds-grid--pull-padded">
+            
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">ID</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <lightning:formattedText value="{!v.subPaymentDetailData.idn_detail_pmt_sub__c}" aura:id="copayAmt"/>                              
+                    </div>
+                </div>
+            </div> 
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <aura:if isTrue="{!!v.isVacantSlotPayment}">
+                    	<label class="slds-form-element__label">Sub Payment ID</label>
+                        <aura:set attribute="else">
+                            <label class="slds-form-element__label">Vacant Slot Contract Sub Payment ID</label>
+                        </aura:set>
+                    </aura:if>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <a class="textUnderline outputLookupLink slds-truncate forceOutputLookup" data-refid="recordId" data-recordid="{!v.subPaymentId}" data-special-link="true" href="{!'/one/one.app?source=aloha#/sObject/'+v.subPaymentId+'/view'}" target = "_self" rel="noreferrer" title="" data-aura-class="forceOutputLookup" >
+                            {!v.subPaymentDetailData.idn_pmt_sub__c}
+                        </a>
+                      <!--  <lightning:formattedText value="{!v.subPaymentDetailData.idn_pmt_sub__c}" aura:id="ratePaid"/>  -->                             
+                    </div>
+
+                </div>
+            </div>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Date</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <lightning:formattedText value="{!v.subPaymentDetailData.dte_care__c}" aura:id="totalAmt"/>                            
+                    </div>
+                </div>
+            </div>
+            <aura:if isTrue="{!!v.isVacantSlotPayment}">
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Authorized Hours</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <ui:outputText value="{!v.subPaymentDetailData.cde_unit_care_exptd__c}" aura:id="statusCode"/>                            
+                    </div>
+                </div>
+            </div>
+            </aura:if>            
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <aura:if isTrue="{!!v.isVacantSlotPayment}">
+                    	<label class="slds-form-element__label">Authorized Rate Type</label>
+                        <aura:set attribute="else">
+                            <label class="slds-form-element__label">Rate Type</label>
+                        </aura:set>
+                    </aura:if>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <lightning:formattedText value="{!v.subPaymentDetailData.cde_type_unit_care__c}" aura:id="county"/>                              
+                    </div>
+                </div>
+            </div> 
+            <aura:if isTrue="{!!v.isVacantSlotPayment}">
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Attendance</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <ui:outputText value="{!v.subPaymentDetailData.cde_unit_care_actual__c}" aura:id="cfirstName"/>                              
+                    </div>
+                </div>
+            </div>
+            </aura:if>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Additional Information</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <lightning:formattedText value="{!v.subPaymentDetailData.cde_type_info_addntl__c}" aura:id="clastName"/>                            
+                    </div>
+                </div>
+            </div>
+             <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Unit Paid</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <ui:outputText value="{!v.subPaymentDetailData.cde_time_trdnl__c}" aura:id="clastName"/>                            
+                    </div>
+                </div>
+            </div>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Funding Program</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <lightning:formattedText value="{!v.subPaymentDetailData.idn_prog_fndg__c}" aura:id="copayAmt"/>                              
+                    </div>
+                </div>
+            </div> 
+            <aura:if isTrue="{!!v.isVacantSlotPayment}">
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Rate Paid</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <ui:outputText value="{!v.subPaymentDetailData.amt_rate__c}" aura:id="ratePaid"/>                              
+                    </div>
+                </div>
+            </div>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Amount Paid</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <ui:outputText value="{!v.subPaymentDetailData.amt_total__c}" aura:id="statusCode"/>                            
+                    </div>
+                </div>
+            </div>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Registration Fee Paid</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <ui:outputText value="{! if(empty(v.subPaymentDetailData.amt_reg_paid__c), '0', v.subPaymentDetailData.amt_reg_paid__c)}" aura:id="ratePaid"/>                              
+                    </div>
+                </div>
+            </div>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Activity Fee Paid</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <ui:outputText value="{! if(empty(v.subPaymentDetailData.amt_act_paid__c), '0', v.subPaymentDetailData.amt_act_paid__c)}" aura:id="ratePaid"/>                              
+                    </div>
+                </div>
+            </div>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Parent Fee</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <ui:outputText value="{!v.subPaymentDetailData.amt_copay__c}" aura:id="totalAmt"/>                            
+                    </div>
+                </div>
+            </div>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Transportation Fee Paid</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <ui:outputText value="{! if(empty(v.subPaymentDetailData.amt_trans_paid__c), '0', v.subPaymentDetailData.amt_trans_paid__c)}" aura:id="ratePaid"/>                              
+                    </div>
+                </div>
+            </div>
+            </aura:if>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Slot Contract Amount Paid</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <ui:outputText value="{! if(empty(v.subPaymentDetailData.amt_slot_paid__c), '0', v.subPaymentDetailData.amt_slot_paid__c)}" aura:id="slotAmt"/>                            
+                    </div>
+                </div>
+            </div>
+            <aura:if isTrue="{!!v.isVacantSlotPayment}">
+                <div class="slds-p-horizontal--small slds-size--1-of-2">
+                    <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                        <label class="slds-form-element__label">0-36 Months Enrollment Payment</label>
+                        <div class="slds-form-element__control" style="min-height: 18px;">
+                            <ui:outputText value="{! if(empty(v.subPaymentDetailData.ind_0_36_months_enroll_pmt__c), 'N', v.subPaymentDetailData.ind_0_36_months_enroll_pmt__c)}" aura:id="pmtEnroll"/>                            
+                        </div>
+                    </div>
+                </div>
+            </aura:if>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Care Level</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <lightning:formattedText value="{!v.subPaymentDetailData.cde_level_care__c}" aura:id="county"/>                              
+                    </div>
+                </div>
+            </div> 
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Sub Payment Detail Status</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <lightning:formattedText value="{!v.subPaymentDetailData.cde_status_detail_pmt_sub__c}" aura:id="cfirstName"/>                              
+                    </div>
+                </div>
+            </div>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Existing Adjustment</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <lightning:formattedText value="{!v.subPaymentDetailData.ind_adjmt__c}" aura:id="cfirstName"/>                              
+                    </div>
+                </div>
+            </div>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Existing Claim Adjustment</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <lightning:formattedText value="{!v.subPaymentDetailData.ind_claim__c}" aura:id="ccadj"/>                              
+                    </div>
+                </div>
+            </div>
+            <div class="slds-p-horizontal--small slds-size--1-of-2">
+                <div class="slds-form-element slds-hint-parent slds-has-divider--bottom slds-p-around--x-small hasDiv">
+                    <label class="slds-form-element__label">Existing Recovery Adjustment</label>
+                    <div class="slds-form-element__control" style="min-height: 18px;">
+                        <lightning:formattedText value="{!v.subPaymentDetailData.ind_recovery__c}" aura:id="cradj"/>                              
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</aura:component>

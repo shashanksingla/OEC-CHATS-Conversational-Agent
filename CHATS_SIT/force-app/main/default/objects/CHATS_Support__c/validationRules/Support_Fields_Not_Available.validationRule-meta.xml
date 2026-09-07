@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Support_Fields_Not_Available</fullName>
+    <active>true</active>
+    <description>Disable Support fields when Access Request is selected as Support Type.</description>
+    <errorConditionFormula>AND( 
+ISPICKVAL(Support_Type__c, &quot;System Access&quot;), 
+(Client_Name__c&lt;&gt;&quot;&quot;),(Description_Steps_to_Reproduce__c&lt;&gt;&quot;&quot;),(Specific_Record_Number__c&lt;&gt;&quot;&quot;) 
+)</errorConditionFormula>
+    <errorDisplayField>Support_Type__c</errorDisplayField>
+    <errorMessage>System Access was selected. Specify the Access Request Type and complete the Staff Access Information section, or select the appropriate Support Type.</errorMessage>
+</ValidationRule>

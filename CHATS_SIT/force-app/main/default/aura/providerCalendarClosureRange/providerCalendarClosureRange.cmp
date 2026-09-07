@@ -1,0 +1,93 @@
+<aura:component controller="ProviderCalendarApxCtrl">
+    <aura:method name="openModal" action="{!c.handleModalButtonClick}"/>
+    <!--aura handler with waiting and donewaiting events
+    <aura:handler event="aura:waiting" action="{!c.showSpinner}"/>
+    <aura:handler event="aura:doneWaiting" action="{!c.hideSpinner}"/>-->
+    <!--component attributs -->
+    <aura:attribute name="parent" type="Aura.Component"/>
+    <aura:attribute name="nineDaysAgo" type="Date"/>
+    <aura:attribute name="today" type="Date"/>
+    <aura:attribute name="hasPastDate" type="Boolean" default="false"/>
+    <aura:attribute name="attendanceChecked" type="Boolean" default="false"/>
+    <aura:attribute name="spinner" type="boolean" default="FALSE"/>
+    <aura:attribute name="provClosure" type="Map" default="{}"/>
+    <aura:attribute name="provdName" type="String"/>
+    <aura:attribute name="provdId" type="String"/>
+    <aura:attribute name="provdSFId" type="String"/>
+    <aura:attribute name="countySFId" type="String"/>
+    <aura:attribute name="provClosList" type="object" />
+    <aura:attribute name="showcomp" type="Boolean" />
+    <aura:attribute name="showcomp2" type="Boolean" />
+    <aura:attribute name="countyHolidays" type="List" default="[]" />
+    <aura:attribute name="faStartDate" type="Date" />
+    <aura:attribute name="faEndDate" type="Date" />
+    <aura:attribute name="messageText" type="String" />
+    <c:confirmationModal aura:id="warningModal" 
+                         confirmMsg="{!v.messageText}"
+                         noLabel="Cancel"
+                         confirmModalNo="{!c.actionOnCancel}"
+                         showYesButton="false"
+                         title="ERROR!"/>
+    <aura:if isTrue="{!v.showcomp2}">
+        <div class="slds-backdrop " aura:id="backDrop"></div>
+        <div role="dialog" tabindex="-1" aura:id="provClosModal" aria-labelledby="header43" class="slds-modal ">
+            <c:confirmationModal aura:id="attendanceFoundWarningMsgModal" 
+                                 confirmMsg="{!v.messageText}"
+                                 modalWidth="50%"
+                                 confirmModalNo="{!c.actionOnNoAttendanceFound}"
+                                 confirmModalYes="{!c.actionOnYesAttendanceFound}"/>
+            <aura:if isTrue="{!v.spinner}">
+                <div aura:id="spinnerId" class="slds-spinner_container">
+                    <div class="slds-spinner--brand  slds-spinner slds-spinner--large slds-is-relative" role="alert">
+                        <span class="slds-assistive-text">Loading...</span>
+                        <div class="slds-spinner__dot-a"></div>
+                        <div class="slds-spinner__dot-b"></div>
+                    </div>
+                </div>
+            </aura:if>
+            <div class="slds-modal__container">
+                <div class="slds-modal__header">
+                    
+                    <lightning:buttonIcon iconName="utility:close" variant="bare-inverse" 
+                                          alternativeText="Close"
+                                          class="slds-modal__close"
+                                          size="large"
+                                          onclick="{!c.hideConfirmModal}"/>
+                    
+                    <h2 class="slds-text-heading--medium">Add Provider Closure Date Range</h2>
+                </div>
+                <div class="slds-modal__content slds-p-around--medium">
+                    <lightning:layout multipleRows="true" horizontalAlign="space">
+                        <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                            <lightning:input name="pid" label="Provider ID" value="{!v.provdId}" readonly="true" />
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                            <lightning:input label="Provider Name" value="{!v.provdName}" readonly="true"/>
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                            <lightning:input label="Provider Closure Begin Date" type="date" aura:id="fieldBegin"  dateStyle="short" required="true" value="{!v.provClosure.beginDate}"  />
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                            <lightning:input label="Provider Closure End Date" type="date" aura:id="fieldEnd" dateStyle="short" required="true" value="{!v.provClosure.endDate}" />
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                            <lightning:input name="comm" label="Comments" aura:id="field" value="{!v.provClosure.comment}" maxlength="30" />
+                        </lightning:layoutItem>
+                    </lightning:layout>
+                    <div class="slds-text-align_center">
+                        <lightning:button class="slds-m-around_small" label="Cancel" title="Cancel" onclick="{!c.handleCancelClick}"/>
+                        <lightning:button variant="brand" label="Save" title="Save" onclick="{!c.handleSaveClick}" />
+                    </div>
+                </div>           
+            </div>
+        </div>
+    </aura:if>
+</aura:component>

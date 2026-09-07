@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Req_HowVerified_DOB_If_VerifType_Writtn</fullName>
+    <active>true</active>
+    <description>How Verified DOB is required if Verification Type is written Applicable</description>
+    <errorConditionFormula>AND($Label.Batch_User_Id &lt;&gt; $User.Id , !(Is_Peak_Data__c || (ISCHANGED(Is_Peak_Data__c) &amp;&amp; !Is_Peak_Data__c)),  !(Is_CBMS_Data__c || (ISCHANGED(Is_CBMS_Data__c) &amp;&amp; !Is_CBMS_Data__c)), ISPICKVAL( IND_CDE_TYPE_VERIF_DOB__c , &apos;V&apos;),  ISPICKVAL( CDE_SOURCE_VRFYD_DOB__c , &apos;&apos;),NOT($Setup.ByPass_Validation_Setting__c.Is_Batch_Excluded__c), NOT(ISCHANGED(Bypass_On__c)))</errorConditionFormula>
+    <errorDisplayField>CDE_SOURCE_VRFYD_DOB__c</errorDisplayField>
+    <errorMessage>Required: How Verified is must for Verification Type DOB as &quot;Written Verification&quot;</errorMessage>
+</ValidationRule>

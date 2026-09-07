@@ -1,0 +1,326 @@
+<!--
+* @Component Name   : CorspdPrintQueue
+* @Developed By     : Deloitte LLC
+* @Description      : visualforce Page for County Rate Plan Controller
+* ***************************************************************************************************
+*                                       Modification Log
+* ***************************************************************************************************
+*   Name                |   Version     |       Date        |                   Discription
+* ***************************************************************************************************
+*       Azhar           |               |   2018/09/19      |   Added Question 5 in Parent Fees
+*
+*/
+-->
+<apex:page controller="countyRatePlanTemplateController" renderAs="PDF" showHeader="false" sidebar="false" standardStylesheets="false" applyBodyTag="false" applyHtmlTag="false">
+    <html>
+        <head>
+            <style type="text/css" media="print">
+                @page {
+                    @top-right {
+                      content: "Page "+counter(page)+" of "+counter(pages);
+                    }
+                }                   
+                
+                .insideTable {
+                border-collapse: collapse;
+                }
+                
+                .insideTable td {
+                border: solid 0.5px; 
+                }
+                
+                .insideTable tr:first-child td {
+                border-top: 0;
+                }
+                .insideTable tr td:first-child {
+                border-left: 0;
+                }
+                .insideTable tr td:last-child {
+                border-left: 0;
+                }
+                .insideTable tr:last-child td {
+                border-bottom: 0;
+                }
+                .insideTable tr td:last-child {
+                border-right: 0;
+                }                
+                
+                
+                table {
+                -fs-table-paginate: paginate;
+                }
+                
+                .largeTableData{
+                margin-top:10px;
+                }
+            </style>
+        </head>    
+        <apex:form >
+            <apex:pageBlock >
+                <apex:pageBlockSection >
+                    <html>
+                        <body style="font-size: 100%;">
+                            <b><center>Colorado Child Care Assistance Program</center></b><br/>
+                            <center> County Rate Plan - {!CountyRatePlan.IDN_COUNTY__r.Name}</center><br/>
+                            <center> Effective Begin Date : {!MONTH(CountyRatePlan.DTE_BEGIN_EFFV_RATE__c)}/{!DAY(CountyRatePlan.DTE_BEGIN_EFFV_RATE__c)}/{!YEAR(CountyRatePlan.DTE_BEGIN_EFFV_RATE__c)}</center><br/>
+                        </body>
+                    </html>
+                </apex:pageBlockSection>
+            </apex:pageBlock>
+            <apex:pageBlock >
+                <apex:pageBlockSection >
+                    <html>
+                        <body style= "font-size: 100%;font-weight:bold">
+                            <center> Payment</center>    
+                        </body>
+                        <tr align="left"><td style= "font-size: 100%;" align="Center">Parent Fees</td></tr>
+                        <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                            <tr class="dataRow" width="100%"> <td width="70%">1. What is the process for establishing a parent fee hardship for a Colorado Works/TANF Family?(Current county policy/procedure must be submitted to the State Department for review and approval)</td><td width="30%">{!CountyRatePlan.PAYMENT_Q1__c}</td></tr>
+                            <tr  class="dataRow" width="100%"> <td width="70%">If the first option is chosen, please specify the number of months</td><td width="30%">{!CountyRatePlan.PAYMENT_Q1_1__c} <BR/> Other: {!CountyRatePlan.PAYMENT_Q1_OTHER__C}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">2. Who makes the final determination for a parent fee hardship for a Colorado Works/TANF Family?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q3__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">3. How many months are allowed per occurrence for a parent fee hardship for a Colorado Works/TANF Family? (Maximum is 6 months)</td><td width="30%">{!CountyRatePlan.PAYMENT_Q4__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">4. What is your county's policy/procedure for establishing a parent fee hardship for a Low-Income family? (Current county policy/procedure must be submitted to the State Department for review and approval)</td><td width="30%">{!CountyRatePlan.PAYMENT_Q5__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">If the first option is chosen, please specify the number of months</td><td width="30%">{!CountyRatePlan.PAYMENT_Q5_1__c} <BR/> {!CountyRatePlan.PAYMENT_Q5_OTHER__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">5. Who makes the final determination for a parent fee hardship for a Low-Income Family?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q7__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">6. How many months are allowed per occurrence for a parent fee hardship for a Low-Income Family? (Maximum is 6 months)</td><td width="30%">{!CountyRatePlan.PAYMENT_Q8__c}</td></tr>
+                        </table> 
+                    </html>
+                    
+                    <html>
+                        <tr align="left"><td style= "font-size: 100%;" align="left">Other Fees.</td></tr>
+                        <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%">
+                            <tr class="dataRow" width="100%"> <td width="70%">7. Does your county pay for Activity fees?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q10__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">7.1 If yes, what is the maximum amount per child per year?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q10_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">8. Does your county pay for Registration fees?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q9__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">8.1. If yes, what is the maximum amount per child per year?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q9_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">9. Does your county pay for Transportation fees?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q11__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">9.1 If yes, what is the maximum amount per child per year?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q11_1__c}</td></tr>
+                            <tr class="dataRow" width="100%" style="{!if((CountyRatePlan.PAYMENT_Q11__c == 'Yes' || CountyRatePlan.PAYMENT_Q11__c == 'yes' || CountyRatePlan.PAYMENT_Q11__c == 'YES'),'', 'display:none')}"> <td width="70%">{!$Label.countyRatePlan_question_schoolAgeLevel}</td><td width="30%">{!CountyRatePlan.PAYMENT_Q11_2__c}</td></tr> <!-- Added by Rishav for CCCAP-2618 -->
+                            <tr class="dataRow" width="100%" style="{!if((CountyRatePlan.PAYMENT_Q11__c == 'Yes' || CountyRatePlan.PAYMENT_Q11__c == 'yes' || CountyRatePlan.PAYMENT_Q11__c == 'YES'),'', 'display:none')}"> <td width="70%">{!$Label.countyRatePlan_question_authLevel}</td><td width="30%">{!CountyRatePlan.PAYMENT_Q11_3__c}</td></tr> <!-- Added by Rishav for CCCAP-2618 -->
+                            <tr class="dataRow" width="100%"> <td width="70%">10. Does your county underwrite costs of fees charged to exempt family child care home providers to obtain fingerprint-based background checks?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q12__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">10.1 What fingerprint-based fees does your county underwrite?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q12_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">10.2 When are the fees that are underwritten by the county paid?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q12_2__c} <BR/> Other: {!CountyRatePlan.PAYMENT_Q12_2_OTHER__c}</td></tr>
+                        </table>
+                    </html>
+                    
+                    <html>
+                        <tr align="left"><td style= "font-size: 100%;" align="Center">Holidays, Absences, and Drop-In Days</td></tr>
+                        <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%">
+                            <apex:outputPanel rendered="{!if(JsActivated != true, true, false)}">
+                                <tr class="dataRow" width="100%"> <td width="70%">11. What is the maximum number of absences your county pays per month? (You must meet the following minimum combined absence and holiday requirements for each Tier per year - Tier 1: 6days, Tier 2: 10 days, Tier 3: 15 days, Tier 4: 15 days, Tier 5: 15 days)</td><td width="30%"> </td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{!if((JsActivated == true && IsDateAfter_1July2022 == false), true, false)}">
+                                <tr class="dataRow" width="100%"> <td width="70%">11. What is the maximum number of absences your county pays per month? (You must meet the following minimum absence requirements for each Tier per month - Tier 1: 2 days, Tier 2: 2 days, Tier 3: 3 days, Tier 4: 3 days, Tier 5: 3 days)</td><td width="30%"> </td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{!if((JsActivated == true && IsDateAfter_1July2022 == true), true, false)}">
+                                <tr class="dataRow" width="100%"> <td width="70%">11. What is the maximum number of absences your county pays per month? (You must meet the following minimum absence requirements for each Tier per month - Tier 1: 3 days, Tier 2: 3 days, Tier 3: 4 days, Tier 4: 4 days, Tier 5: 4 days)</td><td width="30%"> </td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"> <td width="70%">Tier 1: Days per month</td><td width="30%">{!CountyRatePlan.PAYMENT_Q13_a__c}</td></tr>   
+                            <tr class="dataRow" width="100%"> <td width="70%">Tier 2: Days per month</td><td width="30%">{!CountyRatePlan.PAYMENT_Q13_b__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Tier 3: Days per month</td><td width="30%">{!CountyRatePlan.PAYMENT_Q13_c__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Tier 4: Days per month</td><td width="30%">{!CountyRatePlan.PAYMENT_Q13_d__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Tier 5: Days per month</td><td width="30%">{!CountyRatePlan.PAYMENT_Q13_e__c}</td></tr>
+                            <apex:outputPanel rendered="{!if(JsActivated !=true , true ,false)}">
+                                <tr class="dataRow" width="100%"> <td width="70%">11.1 What holidays does your county pay for?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q13_1__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{!if(JsActivated ==true , true ,false)}">
+                                <tr class="dataRow" width="100%"> <td width="70%">11.1 If your county pays holidays, which holidays does your county pay for?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q13_1__c}</td></tr>
+                            </apex:outputPanel> 
+                            <tr class="dataRow" width="100%"> <td width="70%">12. Does your county pay for drop-in days</td><td width="30%">{!CountyRatePlan.PAYMENT_Q14__c}</td></tr>
+                            <apex:outputPanel rendered="{!((CountyRatePlan.PAYMENT_Q14__c == 'Yes' || CountyRatePlan.PAYMENT_Q14__c == 'yes' || CountyRatePlan.PAYMENT_Q14__c == 'YES' ))}">
+                            <tr class="dataRow" width="100%"> <td width="70%">12.1 If yes, what are the maximum number of drop-in days allowed per month? (unless managed at authorization level, maximum number of drop-in days will be available for use on all authorizations)</td><td width="30%">{!CountyRatePlan.PAYMENT_Q14_1__c}</td></tr>
+                           </apex:outputPanel>
+                          <apex:outputPanel rendered="{!((CountyRatePlan.PAYMENT_Q14__c == 'Yes' || CountyRatePlan.PAYMENT_Q14__c == 'yes' || CountyRatePlan.PAYMENT_Q14__c == 'YES' ) )}">
+                           <tr class="dataRow" width="100%"> <td width="70%">12.2 If yes, what type of providers does your county pay?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q14_2__c}</td></tr>
+                            </apex:outputPanel>
+                           <apex:outputPanel rendered="{!((CountyRatePlan.PAYMENT_Q14__c == 'Yes' || CountyRatePlan.PAYMENT_Q14__c == 'yes' || CountyRatePlan.PAYMENT_Q14__c == 'YES' ) && CountyRatePlan.PAYMENT_Q14_3__c != '')}">
+                            <tr class="dataRow" width="100%"> <td width="70%">12.3 Does your county want to manage drop in days at the authorization level? (when managed at authorization level, all authorizations will default to 0 drop-in days and can be edited individually by the case worker up to the monthly maximum identified in 12.1)</td><td width="30%">{!CountyRatePlan.PAYMENT_Q14_3__c}</td></tr>
+                            </apex:outputPanel> 
+                            <tr class="dataRow" width="100%"> <td width="70%">13. Does your county pay for hold slots?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q18__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">13.1 If yes, how many days per month?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q18_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">13.2 If yes, what type of providers does your county pay?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q18_2__c}</td></tr>
+                        </table>
+                    </html>
+                    
+                    <html>
+                        <tr align="left"><td style= "font-size: 100%;" align="Center">Rates and County Owned Facilities</td></tr>
+                        <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                            <tr class="dataRow" width="100%"> <td width="70%">14. Which types of additional rates does your county offer? (Additional rate types are to be used as defined by the State and may not be used for other purposes.)</td><td width="30%">{!CountyRatePlan.RATE_TYPE__c}</td></tr>
+                            <apex:outputPanel rendered="{! CONTAINS(CountyRatePlan.RATE_TYPE__c, 'Before School')}"> 
+                                <tr class="dataRow" width="100%"> <td width="70%">14.1 Please explain how your county determined the reimbursement rate for Before School care</td><td width="30%">{!CountyRatePlan.RT_Q2__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! CONTAINS(CountyRatePlan.RATE_TYPE__c, 'After School')}"> 
+                                <tr class="dataRow" width="100%"> <td width="70%">14.2 Please explain how your county determined the reimbursement rate for After School care</td><td width="30%">{!CountyRatePlan.RT_Q2_a__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! CONTAINS(CountyRatePlan.RATE_TYPE__c, 'B and A School')}"> 
+                                <tr class="dataRow" width="100%"> <td width="70%">14.3 Please explain how your county determined the reimbursement rate for Before and After School care</td><td width="30%">{!CountyRatePlan.RT_Q2_b__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! CONTAINS(CountyRatePlan.RATE_TYPE__c, 'Overnight')}"> 
+                                <tr class="dataRow" width="100%"> <td width="70%">14.4 Please explain how your county determined the reimbursement rate for Overnight care</td><td width="30%">{!CountyRatePlan.RT_Q2_3__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! CONTAINS(CountyRatePlan.RATE_TYPE__c, 'Weekend')}"> 
+                                <tr class="dataRow" width="100%"> <td width="70%">14.5 Please explain how your county determined the reimbursement rate for Weekend care</td><td width="30%">{!CountyRatePlan.RT_Q2_c__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! CONTAINS(CountyRatePlan.RATE_TYPE__c, 'Evening')}"> 
+                                <tr class="dataRow" width="100%"> <td width="70%">14.6 Please explain how your county determined the reimbursement rate for Evening care</td><td width="30%">{!CountyRatePlan.RT_Q2_d__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! CONTAINS(CountyRatePlan.RATE_TYPE__c, 'Disability')}"> 
+                                <tr class="dataRow" width="100%"> <td width="70%">14.7 Please explain how your county determined the reimbursement rate for Disability care</td><td width="30%">{!CountyRatePlan.RT_Q2_e__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! CONTAINS(CountyRatePlan.RATE_TYPE__c, 'Out-of-County')}"> 
+                                <tr class="dataRow" width="100%"> <td width="70%">14.8 Please explain how your county determined the reimbursement rate for Out of County care</td><td width="30%">{!CountyRatePlan.RT_Q2_f__c}</td></tr>
+                            </apex:outputPanel>
+                            
+                            <tr class="dataRow" width="100%"> <td width="70%">15. Please explain how your county determined the reimbursement rate for Qualified Exempt Providers</td><td width="30%">{!CountyRatePlan.RT_Q2_g__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">16 Does your county have a county owned facility?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q15_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">16.1 What is your county's policy for maintaining arms length with a county-owned facility?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q15__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">16.2 How does your county adjust existing Provider Rates when a Provider reports a change to their Private Pay Rates?</td><td width="30%">{!CountyRatePlan.PAYMENT_Q16__c}</td></tr>
+                        </table>
+                    </html>
+                </apex:pageBlockSection>
+            </apex:pageBlock>
+            
+            <apex:pageBlock >
+                <apex:pageBlockSection >
+                    <html>
+                        <body style= "font-size: 100%;font-weight:bold">
+                            <center>Slot Contracts</center>    
+                        </body>
+                        <tr align="left"><td style= "font-size: 100%;" align="left">Slot Contracts</td></tr>
+                        <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                            <tr class="dataRow" width="100%"> <td width="70%">1. Would you like to enable the Slot Contracts option? (Current county policy/procedure must be submitted to the State Department for review and approval)</td><td width="30%">{!CountyRatePlan.CFS_Q1__c}</td></tr>
+                            <apex:outputPanel rendered="{! (CountyRatePlan.CFS_Q1__c == 'YES' || CountyRatePlan.CFS_Q1__c == 'Yes')}"> 
+                                <tr class="dataRow" width="100%"> <td width="70%">1.1 If Yes, how many providers do you have Slot Contracts with?</td><td width="30%">{!CountyRatePlan.CFS_Q1_1__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! (CountyRatePlan.CFS_Q1__c == 'YES' || CountyRatePlan.CFS_Q1__c == 'Yes')}"> 
+                                <tr class="dataRow" width="100%"> <td width="70%">1.2 If Yes, what is the maximum number of slot contracts per provider?</td><td width="30%">{!CountyRatePlan.CFS_Q1_2__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! (CountyRatePlan.CFS_Q1__c == 'YES' || CountyRatePlan.CFS_Q1__c == 'Yes')}"> 
+                                <tr class="dataRow" width="100%"> <td width="70%">1.3 What are the County identified Target populations and Areas for Slot Contracts?</td><td width="30%">{!CountyRatePlan.CFS_Q1_3__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! (CountyRatePlan.CFS_Q1__c == 'YES' || CountyRatePlan.CFS_Q1__c == 'Yes')}"> 
+                                <tr class="dataRow" width="100%"> <td width="70%">Other county-identified target populations or areas (Enter other Target Population/Area):</td><td width="30%">{!CountyRatePlan.CFS_Q1_4__c}</td></tr>
+                            </apex:outputPanel>
+                        </table>    
+                    </html>
+                </apex:pageBlockSection>
+            </apex:pageBlock> 
+            
+            <div>
+                <apex:pageBlock >
+                    <body style= "font-size: 100%;font-weight:bold">
+                        <center> County Ceiling Rates: Provider Type (Exempt)</center>    
+                    </body>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <tr  class="headerRow" style="font-weight: bold">
+                            <td style= "font-size: 100%;" width="20%" align="Center"> Rate Type + Age Group</td>
+                            <td style= "font-size: 100%;" width="20%" align="Center"> Not Rated: PT</td>
+                            <td style= "font-size: 100%;" width="20%" align="Center"> Not Rated: FT</td>
+                            <td style= "font-size: 100%;" width="20%" align="Center"> Not Rated: FT/PT</td>
+                            <td style= "font-size: 100%;" width="20%" align="Center"> Not Rated: FT/FT</td>
+                        </tr>
+                        <apex:repeat value="{!CntyRateAmtList}" var="lst">
+                            <tr class="dataRow" width="100%"> 
+                                <td style= "font-size: 75%;" width="10%">{!lst}</td>
+                                <apex:repeat value="{!keys}" var="key">
+                                    <td align="Center" style= "font-size: 75%;" width="10%">{!Round(CntyRateAmtList[lst][key],2)}</td>
+                                </apex:repeat>
+                            </tr>
+                        </apex:repeat>
+                    </table> 
+                </apex:pageBlock>
+            </div>
+            <div class="largeTableData" style="page-break-before:always;">
+                <apex:pageBlock >
+                    <div style= "font-size: 100%;font-weight:bold;margin-bottom:10px;">
+                        <center> County Ceiling Rates: Provider Type (Home)</center>    
+                    </div>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <thead>
+                            <tr  class="headerRow" style="font-weight: bold">
+                                <th style= "font-size: 75%;" width="4%" align="Center"> Rate Type + Age Group</th>
+                                <th style= "font-size: 75%;" width="4%" align="Center"> Tier 1</th>
+                                <th style= "font-size: 75%;" width="4%" align="Center"> Tier 2</th>
+                                <th style= "font-size: 75%;" width="4%" align="Center"> Tier 3</th>
+                                <th style= "font-size: 75%;" width="4%" align="Center"> Tier 4</th>
+                                <th style= "font-size: 75%;" width="4%" align="Center"> Tier 5</th>
+                            </tr>
+                            <tr class="headerRow" style="font-weight: bold">
+                                <td></td>
+                                <td><table><tr><td style= "font-size: 60%;" width="4%" align="Center">Care Unit</td><td style= "font-size: 60%;" width="4%" align="Center">Amount</td></tr></table></td>
+                                <td><table><tr><td style= "font-size: 60%;" width="4%" align="Center">Care Unit</td><td style= "font-size: 60%;" width="4%" align="Center">Amount</td></tr></table></td>
+                                <td><table><tr><td style= "font-size: 60%;" width="4%" align="Center">Care Unit</td><td style= "font-size: 60%;" width="4%" align="Center">Amount</td></tr></table></td>
+                                <td><table><tr><td style= "font-size: 60%;" width="4%" align="Center">Care Unit</td><td style= "font-size: 60%;" width="4%" align="Center">Amount</td></tr></table></td>
+                                <td><table><tr><td style= "font-size: 60%;" width="4%" align="Center">Care Unit</td><td style= "font-size: 60%;" width="4%" align="Center">Amount</td></tr></table></td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <apex:repeat value="{!cntyRateAmtHome}" var="rateTypeAgeGroup">
+                                <tr class="dataRow" style="page-break-inside:avoid"> 
+                                    <td style= "font-size: 70%;" width="4%">{!rateTypeAgeGroup}</td>
+                                    <apex:repeat value="{!cntyRateAmtHome[rateTypeAgeGroup]}" var="tierValue">
+                                        <td style= "font-size: 70%;" width="10%">
+                                            <table class="insideTable list" width="100%" cellspacing="0" cellpadding="0" >
+                                                <apex:repeat value="{!cntyRateAmtHome[rateTypeAgeGroup][tierValue]}" var="careUnit">
+                                                    <tr>                                            
+                                                        <td align="Center" width="50%">{!careUnit}</td>
+                                                        <td align="Center" width="50%">{!ROUND(VALUE(cntyRateAmtHome[rateTypeAgeGroup][tierValue][careUnit]),2)}</td>
+                                                    </tr>
+                                                </apex:repeat>
+                                            </table>
+                                        </td>
+                                    </apex:repeat>
+                                </tr>
+                            </apex:repeat>
+                        </tbody>
+                    </table> 
+                </apex:pageBlock>
+            </div>
+            <div class="largeTableData" style="page-break-before:always;">
+                <apex:pageBlock >
+                    <div style= "font-size: 100%;font-weight:bold;margin-bottom:10px;">
+                        <center> County Ceiling Rates: Provider Type (Center)</center>    
+                    </div>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <thead>
+                            <tr  class="headerRow" style="font-weight: bold">
+                                <th style= "font-size: 75%;" width="4%" align="Center"> Rate Type + Age Group</th>
+                                <th style= "font-size: 75%;" width="4%" align="Center"> Tier 1</th>
+                                <th style= "font-size: 75%;" width="4%" align="Center"> Tier 2</th>
+                                <th style= "font-size: 75%;" width="4%" align="Center"> Tier 3</th>
+                                <th style= "font-size: 75%;" width="4%" align="Center"> Tier 4</th>
+                                <th style= "font-size: 75%;" width="4%" align="Center"> Tier 5</th>
+                            </tr>
+                            <tr class="headerRow" style="font-weight: bold">
+                                <td></td>
+                                <td><table><tr><td style= "font-size: 60%;" width="4%" align="Center">Care Unit</td><td style= "font-size: 60%;" width="4%" align="Center">Amount</td></tr></table></td>
+                                <td><table><tr><td style= "font-size: 60%;" width="4%" align="Center">Care Unit</td><td style= "font-size: 60%;" width="4%" align="Center">Amount</td></tr></table></td>
+                                <td><table><tr><td style= "font-size: 60%;" width="4%" align="Center">Care Unit</td><td style= "font-size: 60%;" width="4%" align="Center">Amount</td></tr></table></td>
+                                <td><table><tr><td style= "font-size: 60%;" width="4%" align="Center">Care Unit</td><td style= "font-size: 60%;" width="4%" align="Center">Amount</td></tr></table></td>
+                                <td><table><tr><td style= "font-size: 60%;" width="4%" align="Center">Care Unit</td><td style= "font-size: 60%;" width="4%" align="Center">Amount</td></tr></table></td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <apex:repeat value="{!cntyRateAmtCenter}" var="rateTypeAgeGroup">
+                                <tr class="dataRow" width="100%" style="page-break-inside:avoid"> 
+                                    <td style= "font-size: 70%;" width="4%">{!rateTypeAgeGroup}</td>
+                                    <apex:repeat value="{!cntyRateAmtCenter[rateTypeAgeGroup]}" var="tierValue">
+                                        <td style= "font-size: 70%;" width="10%" align="Center">
+                                            <table class="insideTable list" width="100%" cellspacing="0" cellpadding="0" >
+                                                <apex:repeat value="{!cntyRateAmtCenter[rateTypeAgeGroup][tierValue]}" var="careUnit">
+                                                    <tr>                                            
+                                                        <td align="Center" width="50%">{!careUnit}</td><td align="Center" width="50%">{!ROUND(VALUE(cntyRateAmtCenter[rateTypeAgeGroup][tierValue][careUnit]),2)}</td>
+                                                    </tr>
+                                                </apex:repeat>
+                                            </table>
+                                        </td>
+                                    </apex:repeat>
+                                </tr>
+                            </apex:repeat>
+                        </tbody>
+                    </table> 
+                </apex:pageBlock>
+            </div>
+        </apex:form>
+    </html>
+</apex:page>

@@ -1,0 +1,17 @@
+<template>
+    <template lwc:if={hasPageMessages}>
+        <div class={errorClass} role="alert">
+            <span class="slds-assistive-text">{messageType}</span>
+            <span class="slds-icon_container slds-icon-utility-ban slds-var-m-right_x-small"
+                title="Description of icon when needed">
+            </span>
+            <div class="slds-notify__content">
+                <ul>
+                    <template for:each={pageMessages} for:item="pageMessage">
+                        <li key={pageMessage.Id}>{pageMessage.message}</li>
+                    </template>
+                </ul>
+            </div>
+        </div>
+    </template>
+</template>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>CLM</fullName>
+        <default>false</default>
+        <label>Claim</label>
+    </customValue>
+    <customValue>
+        <fullName>PMT</fullName>
+        <default>false</default>
+        <label>Payment</label>
+    </customValue>
+    <customValue>
+        <fullName>CDF</fullName>
+        <default>false</default>
+        <label>Closed/Denied Fiscal Agreement</label>
+    </customValue>
+    <description>R00664</description>
+    <masterLabel>R00664</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

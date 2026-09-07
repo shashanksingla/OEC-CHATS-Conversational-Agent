@@ -1,0 +1,98 @@
+<aura:component extends="c:abstractSection">
+    
+    <aura:attribute name="countyPlanRec" type="T_COUNTY_PLAN__c" default="{'sobjectType':'T_COUNTY_PLAN__c'}"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:attribute name="countyId" type="String" />
+    <aura:attribute name="recordError" type="String" />
+    <aura:attribute name="isQ1OtherRequired" type="boolean" default="false"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.RBRP_Q3_2_1__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.RBRP_Q3_2_2__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.RBRP_Q3_2_3__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.RBRP_Q3_3__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.RBRP_Q1_new__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.RBRP_Q2_1__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.RBRP_Q1_2_new__c}" action="{!c.handleSetRequired}"/><!--CCCAP-14327-->
+
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <lightning:layout multipleRows="true">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>County Review Plan</B></h3>
+            <h1 class="slds-section__title">1. Inter-Reviewer Consistency</h1>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputMultiSelectCombobox label="Select the methods the county will use to ensure inter-reviewer consistency."
+                                        aura:id="input-field" value="{!v.countyPlanRec.RBRP_Q1_new__c}" object="T_COUNTY_Plan__c"
+                                        field="RBRP_Q1_new__c" required="true" />                                        
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-RBRP_Q1_new__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.isQ1OtherRequired}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:textarea name="input-name" label="If other, please specify." aura:id="input-field"
+                                    value="{!v.countyPlanRec.RBRP_Q1_other__c}" 
+                                    required="true" length="255"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-RBRP_Q1_other__c"/>
+            </lightning:layoutItem>
+        </aura:if>
+    </lightning:layout>
+
+    <lightning:layout multipleRows="true">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h1 class="slds-section__title">1.1 Case Review Logistics</h1>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">     
+            <c:inputPicklist label="Does the county have electronic or physical records?" 
+                                            aura:id="input-field"
+                                            value="{!v.countyPlanRec.RBRP_Q1_1_new__c}" 
+                                            object="T_COUNTY_PLAN__c" 
+                                            field="RBRP_Q1_1_new__c"
+                                            required="true"
+                                            showNone="true" 
+                             				inputPickListCustomWarningMsg="Complete this field."/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-RBRP_Q1_1_new__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">     
+            <c:inputPicklist label="Where does the record review occur?" 
+                                            aura:id="input-field"
+                                            value="{!v.countyPlanRec.RBRP_Q1_2_new__c}" 
+                                            object="T_COUNTY_PLAN__c" 
+                                            field="RBRP_Q1_2_new__c"
+                                            required="true"
+                                            showNone="true" 
+                             				inputPickListCustomWarningMsg="Complete this field."/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-RBRP_Q1_2_new__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.countyPlanRec.RBRP_Q1_2_new__c == 'Offsite'}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:textarea name="input-name" label="Describe how the county ensures that the physical records remain secure during transport to the offsite location before the are reviewed." aura:id="input-field"
+                                    value="{!v.countyPlanRec.RBRP_Q1_2_other__c}" 
+                                    required="true"
+                                    length="2000"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-RBRP_Q1_2_other__c"/>
+            </lightning:layoutItem>
+        </aura:if>
+    </lightning:layout>
+
+    <lightning:layout multipleRows="true">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h1 class="slds-section__title">2. Plan for Follow Up on Findings</h1>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">     
+            <lightning:input type="number" label="Describe the County’s plan to ensure that cases with errors are corrected: The County must create reports based on the data collected in the CCCAP County Review Performance Report and include statewide and county level performance indicators and top error trends. Indicate the number of business days in which the county will correct the errors."
+                                aura:id="input-field" name="input-name" 
+                                value="{!v.countyPlanRec.RBRP_Q2_1__c}"
+                                required="true"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-RBRP_Q2_1__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:textarea name="input-name" label="If findings result in the creation of new policies and procedures, describe the County’s plan to incorporate the changes, including training staff, evaluating the effectiveness of the changes, and ensuring that staff consistently apply the new policies and procedures." 
+                                aura:id="input-field" value="{!v.countyPlanRec.RBRP_Q2_2__c}"
+                                required="true"
+                                length="2000"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-RBRP_Q2_2__c"/>
+        </lightning:layoutItem>
+    </lightning:layout>
+</aura:component>

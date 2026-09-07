@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Record_ReadOnly_status_open_Finalised</fullName>
+    <active>true</active>
+    <description>Added &apos;EFACH&apos; exception for Project 337, JIRA CCCAP-4768</description>
+    <errorConditionFormula>(
+ ISPICKVAL(CDE_TYPE_STATUS__c, &apos;OPN&apos;) ||
+ ISPICKVAL(CDE_TYPE_STATUS__c, &apos;FIN&apos;)
+) &amp;&amp; (
+ ISCHANGED(Name) ||
+ ISCHANGED(ID_SERVICE__c) ||
+ ISCHANGED(CDE_TYPE_FACILITY__c) ||
+ ISCHANGED(CDE_COUNTY__c) ||
+ ISCHANGED(DTE_RCV_AGRMT_FISCAL__c) ||
+ ISCHANGED(CDE_COUNTY_OWNER__c)
+) &amp;&amp; (
+ IF(
+ NOT(ISPICKVAL(ID_SERVICE__r.CDE_TYPE_PROVR__c, &apos;EFACH&apos;)),
+ ISCHANGED(DTE_BEGIN_AGRMT__c), false
+ )
+)</errorConditionFormula>
+    <errorMessage>Only Owner is editable for Open/Finalized Fiscal Agreements</errorMessage>
+</ValidationRule>

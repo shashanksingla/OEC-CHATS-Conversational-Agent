@@ -1,0 +1,31 @@
+<aura:component extends="c:abstractSection">
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:attribute name="caseInfoRec" type="T_SBSD_CASE_INFO__c"/>
+    <aura:attribute name="casePhoneRec" type="T_SBSD_CASE_PHONE__c"
+                    default="{'sobjectType':'T_SBSD_CASE_PHONE__c'}"/>
+    
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    
+    <aura:attribute name="label" type="String"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+        <lightning:input type="tel" name="input-name" label="{!v.label}" 
+                         aura:id="input-field"
+                         value="{!v.casePhoneRec.NBR_PHONE__c}"
+                         />
+        <c:fieldLevelMessage aura:id="T_SBSD_CASE_PHONE__c-NBR_PHONE__c"/>
+    </lightning:layoutItem>
+    <aura:if isTrue="{!v.casePhoneRec.CDE_TYPE_PHONE__c=='WOR'}">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="tel" name="input-name" label="Message/Work Phone Number Ext."
+                             aura:id="input-field"
+                             value="{!v.casePhoneRec.NBR_PHONE_EXTN__c}"
+                             pattern="[0-9]{0,6}"
+                             messageWhenPatternMismatch="Please provide a valid Ext."
+                             />
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE_PHONE__c-NBR_PHONE_EXTN__c"/>
+        </lightning:layoutItem>
+    </aura:if>
+</aura:component>

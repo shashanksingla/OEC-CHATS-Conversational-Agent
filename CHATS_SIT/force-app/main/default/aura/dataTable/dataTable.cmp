@@ -1,0 +1,39 @@
+<aura:component extends="c:abstractComponent" controller="subPaymentSearch">
+    <aura:attribute name="dataList" type="List"/>
+    <aura:attribute name="columns" type="List"/>
+    
+    <div class="slds-p-horizontal_small slds-m-top--large">
+        <table class="slds-table slds-table_bordered slds-table_resizable-cols slds-table_fixed-layout slds-border_right slds-border_left" padding="around-medium">
+            <thead>
+                <tr class="slds-text-title_caps">
+                    <aura:iteration var="column" items="{!v.columns}">
+                        <th scope="col" class="slds-is-resizable slds-is-sortable" padding="around-medium">
+                            <div class="slds-truncate" title="{!column.label}">{!column.label}</div>
+                        </th>
+                    </aura:iteration>
+                </tr>
+            </thead>
+            <tbody>
+                <aura:iteration var="dataItem" items="{!v.dataList}" indexVar="i">
+                    <tr>
+                       <td><a href="" onclick="{!c.openRecordDetail}" data-item="{!dataItem.subPaymentId}">View</a></td>
+                        <td>{!dataItem.subPaymentId}</td>
+                        <td>{!dataItem.subPymtStatus}</td>
+                        <td>{!dataItem.paymentName}</td>
+                        <td>{!dataItem.authorizationId}</td>
+                        <td>{!dataItem.caseId}</td>
+                        <td>{!dataItem.periodBeginDate}</td>
+                        <td>{!dataItem.periodEndDate}</td>
+                        <td>{!dataItem.payDate}</td>
+                        <td>{!dataItem.countyName}</td>
+                        <td>{!dataItem.firstName}</td>
+                        <td>{!dataItem.lastName}</td>
+                        <td>{!dataItem.subPymtAmount}</td>
+                        <td>{!dataItem.subPymtCopayAmt}</td>
+                        <td>{!dataItem.subPymtAmount}</td>
+                    </tr>
+                </aura:iteration>
+            </tbody>
+        </table>
+    </div>
+</aura:component>

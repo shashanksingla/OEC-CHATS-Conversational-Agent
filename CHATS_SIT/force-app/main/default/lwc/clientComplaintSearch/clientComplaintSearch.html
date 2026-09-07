@@ -1,0 +1,261 @@
+<template>
+    <!-- Spinner overlay -->
+    <template lwc:if={showSpinner}>
+        <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+    </template>
+
+    <lightning-card icon-name="standard:case">
+        <div slot="title">
+            <h1 class="slds-page-header__title slds-truncate" title="Client Complaint Search">Client Complaint Search</h1>
+        </div>
+        <div slot="actions">
+            <lightning-button
+                variant="brand"
+                label="New Client Complaint"
+                onclick={handleNewClientComplaint}>
+            </lightning-button>
+        </div>
+
+        <div class="slds-card__body slds-card__body_inner">
+
+            <!-- ═══ FILTER PANEL ═══ -->
+            <div class="filter-panel">
+                <div class="slds-text-align_right slds-text-body_small slds-text-color_weak slds-m-bottom_x-small">
+                    * = Required Information
+                </div>
+
+                <!-- Row 1: County | Complaint Status -->
+                <div class="filter-row">
+                    <div class="filter-col">
+                        <c-multiselect-combobox data-id="input-field"
+                            label="County"
+                            already-has-values
+                            options={countyOptions}
+                            value={countyValue}
+                            multi-select
+                            required
+                            unique-key="county"
+                            behavior-type="multiselectWithSearch"
+                            onselect={handlePicklistChange}>
+                        </c-multiselect-combobox>
+                        <template lwc:if={countyError}>
+                            <c-field-level-message_lwc message={countyError}></c-field-level-message_lwc>
+                        </template>
+                    </div>
+                    <div class="filter-col">
+                        <c-multiselect-combobox
+                            label="Complaint Status"
+                            object="Field_Utility__c"
+                            field="R00900__c"
+                            value={statusValue}
+                            multi-select
+                            unique-key="status"
+                            behavior-type="multiselectWithSearch"
+                            onselect={handlePicklistChange}>
+                        </c-multiselect-combobox>
+                    </div>
+                </div>
+
+                <!-- Row 2: Provider ID | Case ID -->
+                <div class="filter-row">
+                    <div class="filter-col">
+                        <c-custom-lookup_lwc
+                            label="Provider ID"
+                            unique-key="providerId"
+                            object-api-name="T_CHATS_PROVR_STATUS__c"
+                            placeholder=""
+                            selected-record-id={providerId}
+                            onvalueselected={handleLookupValue}>
+                        </c-custom-lookup_lwc>
+                    </div>
+                    <div class="filter-col">
+                        <c-custom-lookup_lwc
+                            label="Case ID"
+                            unique-key="caseId"
+                            object-api-name="T_SBSD_CASE__c"
+                            placeholder=""
+                            selected-record-id={caseId}
+                            onvalueselected={handleLookupValue}>
+                        </c-custom-lookup_lwc>
+                    </div>
+                </div>
+
+                <!-- Row 3: Complaint Recipient Type | Complaint Type -->
+                <div class="filter-row">
+                    <div class="filter-col">
+                        <c-multiselect-combobox
+                            label="Complaint Recipient Type"
+                            object="Field_Utility__c"
+                            field="Complaint_Recipient_Type__c"
+                            value={recipientTypeValue}
+                            unique-key="recipientType"
+                            behavior-type="picklist"
+                            show-none
+                            onselect={handlePicklistChange}>
+                        </c-multiselect-combobox>
+                    </div>
+                    <div class="filter-col">
+                        <c-multiselect-combobox
+                            label="Complaint Type"
+                            object="Field_Utility__c"
+                            field="R00899__c"
+                            value={complaintTypeValue}
+                            multi-select
+                            unique-key="complaintType"
+                            behavior-type="multiselectWithSearch"
+                            onselect={handlePicklistChange}>
+                        </c-multiselect-combobox>
+                    </div>
+                </div>
+
+                <!-- Row 4: Method of Contact | Assignee -->
+                <div class="filter-row">
+                    <div class="filter-col">
+                        <c-multiselect-combobox
+                            label="Method of Contact"
+                            object="Client_Complaint__c"
+                            field="Method_of_Contact__c"
+                            value={methodOfContactValue}
+                            multi-select
+                            unique-key="methodOfContact"
+                            behavior-type="multiselectWithSearch"
+                            onselect={handlePicklistChange}>
+                        </c-multiselect-combobox>
+                    </div>
+                    <div class="filter-col">
+                        <c-custom-lookup_lwc
+                            label="Assignee"
+                            unique-key="assigneeId"
+                            object-api-name="User"
+                            placeholder=""
+                            selected-record-id={assigneeId}
+                            onvalueselected={handleLookupValue}>
+                        </c-custom-lookup_lwc>
+                    </div>
+                </div>
+
+                <!-- Row 5: Created By User -->
+                <div class="filter-row">
+                    <div class="filter-col">
+                        <c-custom-lookup_lwc
+                            label="Created By User"
+                            unique-key="createdById"
+                            object-api-name="User"
+                            placeholder=""
+                            selected-record-id={createdById}
+                            onvalueselected={handleLookupValue}>
+                        </c-custom-lookup_lwc>
+                    </div>
+                    <div class="filter-col"></div>
+                </div>
+
+                <!-- Row 6: Initial Date of Complaint Begin | End -->
+                <div class="filter-row">
+                    <div class="filter-col">
+                        <lightning-input
+                            type="date"
+                            label="Initial Date of Complaint Begin Date"
+                            data-field="initialDateBegin"
+                            value={initialDateBegin}
+                            onchange={handleDateChange}>
+                        </lightning-input>
+                        <template lwc:if={initialDateBeginError}>
+                            <c-field-level-message_lwc message={initialDateBeginError}></c-field-level-message_lwc>
+                        </template>
+                    </div>
+                    <div class="filter-col">
+                        <lightning-input
+                            type="date"
+                            label="Initial Date of Complaint End Date"
+                            data-field="initialDateEnd"
+                            value={initialDateEnd}
+                            onchange={handleDateChange}>
+                        </lightning-input>
+                        <template lwc:if={initialDateEndError}>
+                            <c-field-level-message_lwc message={initialDateEndError}></c-field-level-message_lwc>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Row 7: Initial County Response Begin | End -->
+                <div class="filter-row">
+                    <div class="filter-col">
+                        <lightning-input
+                            type="date"
+                            label="Initial County Response Begin Date"
+                            data-field="countyResponseBegin"
+                            value={countyResponseBegin}
+                            onchange={handleDateChange}>
+                        </lightning-input>
+                        <template lwc:if={countyResponseBeginError}>
+                            <c-field-level-message_lwc message={countyResponseBeginError}></c-field-level-message_lwc>
+                        </template>
+                    </div>
+                    <div class="filter-col">
+                        <lightning-input
+                            type="date"
+                            label="Initial County Response End Date"
+                            data-field="countyResponseEnd"
+                            value={countyResponseEnd}
+                            onchange={handleDateChange}>
+                        </lightning-input>
+                        <template lwc:if={countyResponseEndError}>
+                            <c-field-level-message_lwc message={countyResponseEndError}></c-field-level-message_lwc>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="search-action-row">
+                    <lightning-button variant="brand" label="Search" onclick={handleSearch}></lightning-button>
+                </div>
+            </div>
+
+            <!-- ═══ RESULTS SECTION ═══ -->
+            <template lwc:if={showResults}>
+                <div class="slds-p-around_medium">
+                    <div class="slds-section slds-is-open slds-m-bottom_small">
+                        <h3 class="slds-section__title slds-theme_shade results-heading">
+                            <span class="slds-p-horizontal_small">Client Complaint Results</span>
+                        </h3>
+                    </div>
+                    <lightning-datatable
+                        key-field="id"
+                        data={recordsToDisplay}
+                        columns={columns}
+                        sorted-by={sortedBy}
+                        sorted-direction={sortedDirection}
+                        onsort={handleSort}
+                        hide-checkbox-column>
+                    </lightning-datatable>
+                    <template lwc:if={showPagination}>
+                        <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-top_small">
+                            <lightning-button
+                                label="Previous"
+                                icon-name="utility:chevronleft"
+                                disabled={isPreviousPageDisabled}
+                                onclick={handlePrevious}>
+                            </lightning-button>
+                            <span class="slds-text-body_small">{paginationLabel}</span>
+                            <lightning-button
+                                label="Next"
+                                icon-name="utility:chevronright"
+                                icon-position="right"
+                                disabled={isNextPageDisabled}
+                                onclick={handleNext}>
+                            </lightning-button>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+        </div>
+    </lightning-card>
+
+    <!-- New Client Complaint Modal -->
+    <template lwc:if={showNewComplaint}>
+        <c-new-client-complaint_lwc
+            oncancel={handleCloseNewComplaint}
+            oncomplaintsaved={handleComplaintSaved}>
+        </c-new-client-complaint_lwc>
+    </template>
+</template>

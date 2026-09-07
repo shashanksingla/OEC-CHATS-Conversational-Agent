@@ -1,0 +1,122 @@
+<aura:component controller="APXPeakApplicationToCaseController" extends="c:abstractComponent">
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="caseIdToRedirect" type="String"/>
+    <aura:attribute name="appCaseId" type="String"/>
+    <aura:attribute name="appProcessQueueRec" type="T_APPLN_PRCS_QUEUE__c"/>
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="recordError" type="String" />
+    <aura:attribute name="sidmodSelection" type="Boolean"/> <!-- added for CCCAP-10315-->
+    <aura:attribute name="lstApplicationIndividuals" type="List"/>
+    <aura:attribute name="lstSelectedApplicationIndividuals" type="List"/>
+    <aura:attribute name="lstCHATSMatchedIndividuals" type="List"/>
+    <aura:attribute name="lstSIDMODMatchedIndividuals" type="List"/>
+    <aura:attribute name="individualFromSIDMOD" type="T_APPLN_INDIV__c" default="{'sobjectType':'T_APPLN_INDIV__c'}"/>
+    
+    <aura:attribute name="applicationIndividualForClearance" type="T_APPLN_INDIV__c"/>
+    <aura:attribute name="stateID" type="String"/>
+    <aura:attribute name="selectedCaseID" type="String"/>
+    
+    <aura:attribute name="showPrevious" type="Boolean" default="true"/>
+    <aura:attribute name="showNext" type="Boolean" default="true"/>
+    
+    <aura:attribute name="anyCaseSelected" type="Boolean" default="false"/>
+    <aura:attribute name="anyIndividualSelected" type="Boolean" default="false"/>
+    <aura:attribute name="mapCaseIdCaseStatus" type="Map"/>
+    <aura:attribute name="lstCaseIndividual" type="List"/>
+    <aura:attribute name="customButtonLabel" type="String" default="Run Clearance"/>
+    <aura:attribute name="showCustomButton" type="Boolean" default="false"/>
+    <aura:attribute name="mapIndivSequenceToRelationship" type="Map"/>
+    <aura:attribute name="hasPrimaryCaretaker" type="Boolean" default="false"/>
+    <aura:handler event="c:peakAppUpdateParentComponentAttribute" action="{!c.doUpdateComponentAttribute}"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.currentTabNumber}" action="{!c.doUpdateShowCustomButton}"/>
+    <aura:attribute name="showNextPeakFlow" type="Boolean" default="true"/>
+    <aura:attribute name="countOfSIDMODMatchesAbove96Percent" type="integer" default="0"/>
+    
+    <lightning:card iconName="standard:event">
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <p class="slds-text-title--caps slds-line-height--reset">Process Application</p>
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate">
+                                {!v.currentTabNumber==1?'':v.currentTabNumber==2?'Application Individual Selection':v.currentTabNumber==3?'Application Individual Clearance':v.currentTabNumber==4?'Clear Individual':'Case Selection'}
+                            </h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        <aura:set attribute="actions">
+            <c:navigationComponent totalTabs="5" 
+                                   currentTabNumber="{!v.currentTabNumber}"
+                                   onNext="{!c.doNext}"
+                                   onFinish="{!c.doFinish}"
+                                   onPrevious="{!c.doPrevious}"
+                                   onClickCustomButton="{!c.doClickCustomButton}"
+                                   customButtonLabel="{!v.customButtonLabel}"
+                                   showCustomButton="{!v.showCustomButton}"
+                                   showPrevious="{!v.showPrevious}"
+                                   showNext="{!v.showNext}"
+                                   showCancel="false"
+                                   showNextPeakFlow="{!v.showNextPeakFlow}"
+                                   />
+        </aura:set>
+        <div class="slds-card__body slds-card__body_inner">
+            <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+            <aura:if isTrue="{!v.currentTabNumber==1}">
+                <c:IndividualSearch isNotCalledFromPeak="false" currentTabNumber="{!v.currentTabNumber}" onNext="{!c.doNext}" recordId="{!v.recordId}"/>
+            </aura:if> 
+            <aura:if isTrue="{!v.currentTabNumber==2}">
+                <c:peakApplicationIndividualSelection lstApplicationIndividuals="{!v.lstApplicationIndividuals}"
+                                                      lstSelectedApplicationIndividuals="{!v.lstSelectedApplicationIndividuals}"
+                                                      mapIndivSequenceToRelationship="{!v.mapIndivSequenceToRelationship}"/>
+            </aura:if>
+            <aura:if isTrue="{!v.currentTabNumber==3}">
+                <c:peakApplicationIndividualClearance lstSelectedApplicationIndividuals="{!v.lstSelectedApplicationIndividuals}"
+                                                      applicationIndividualForClearance="{!v.applicationIndividualForClearance}"
+                                                      mapIndivSequenceToRelationship="{!v.mapIndivSequenceToRelationship}"/>
+            </aura:if>
+            <aura:if isTrue="{!v.currentTabNumber==4}">
+                <c:individualClearance lstCHATSMatchedIndividuals="{!v.lstCHATSMatchedIndividuals}"
+                                       lstSIDMODMatchedIndividuals="{!v.lstSIDMODMatchedIndividuals}"
+                                       individual="{!v.applicationIndividualForClearance}"
+                                       mapIndivSequenceToRelationship="{!v.mapIndivSequenceToRelationship}"/>
+                
+                <!-- <c:peakApplicationClearIndividual applicationIndividualForClearance="{!v.applicationIndividualForClearance}"
+                                                  lstCHATSMatchedIndividuals="{!v.lstCHATSMatchedIndividuals}"
+                                                  lstSIDMODMatchedIndividuals="{!v.lstSIDMODMatchedIndividuals}"/>-->
+            </aura:if>
+            <aura:if isTrue="{!v.currentTabNumber==5}">
+                <c:peakCaseSelection lstCaseIndividual="{!v.lstCaseIndividual}"
+                                     mapCaseIdCaseStatus="{!v.mapCaseIdCaseStatus}"/>
+            </aura:if>
+        </div>
+        <section role="dialog" class="slds-modal" aura:id="NewCaseSection">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close">
+                        <span class="slds-assistive-text">Close</span>
+                    </button>
+                    <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">WARNING</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                    The case is being created without a head of household. Please mark the appropriate individual as primary caretaker on the case.              
+                </div>
+                
+                <footer class="slds-modal__footer">
+                    <lightning:button label="OK" variant="neutral" onclick="{!c.hideConfirmModal}"/>
+                </footer>
+            </div>
+        </section>    
+        <div class="" aura:id="backdropNewCase"></div>
+        
+        <c:confirmationModal aura:id="warningOnMultipleStateIDsAbove96" 
+                         confirmMsg="There are multiple state IDs for this individual. Please choose the most accurate option then contact OIT to merge the IDs"
+                         confirmModalYes="{!c.doHideWarningPopup}" 
+                         showNoButton="false"
+                         yesLabel="Ok"
+                         title="WARNING!"/> 
+    </lightning:card>
+</aura:component>

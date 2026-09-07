@@ -1,0 +1,48 @@
+<aura:component extends="c:abstractSection">
+<aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:attribute name="countyPlanRec" type="T_COUNTY_PLAN__c"
+                    default="{'sobjectType':'T_COUNTY_PLAN__c'}"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:attribute name="countyId" type="String" />
+    <aura:attribute name="isNew" type="boolean" />
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:attribute name="recordError" type="String" />
+    <aura:attribute name="countyRec" type="T_COUNTY__c"
+                    default="{'sobjectType':'T_COUNTY__c'}"/>
+    <aura:if isTrue="{!!empty(v.countyPlanRec.CDE_COUNTY__c)}">
+    <force:recordData aura:id="forceRecordCmp"
+                      recordId="{!v.countyPlanRec.CDE_COUNTY__c}"
+                      fields="Id,Name"
+                      targetFields="{!v.countyRec}"
+                      mode="VIEW"
+                      targetError="{!v.recordError}" />
+    </aura:if>
+   <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>County Plan Information</B></h3>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:input type="text" name="input-name" label="County Name"
+                             value="{!v.countyRec.Name}" disabled="true" />
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputDate aura:id="input-field" label="Effective Begin Date"
+                             value="{!v.countyPlanRec.DTE_BEGIN_EFFEV__c}" required="true" />
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-DTE_BEGIN_EFFEV__c"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+        <lightning:layoutItem flexibility="auto" size="6">
+            <c:inputPicklist label="County Plan Template" aura:id="input-field"
+                                 value="{!v.countyPlanRec.CDE_COUNTY_PLAN_TEMPLT__c}"
+                                 object="T_COUNTY_PLAN__c"
+                                 field="CDE_COUNTY_PLAN_TEMPLT__c"
+                                 disabled="{!v.countyPlanRec.CDE_STATUS__c=='NRV'}"
+                             	 showNone="false"
+                             	 required="true"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CDE_COUNTY_PLAN_TEMPLT__c"/>
+         </lightning:layoutItem>
+            
+        </lightning:layoutItem>
+    </lightning:layout>
+</aura:component>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IND_LVG_SUBSTANDARD__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Living in substandard housing such as car, park, etc.</description>
+    <label>Living in substandard housing, like car?</label>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

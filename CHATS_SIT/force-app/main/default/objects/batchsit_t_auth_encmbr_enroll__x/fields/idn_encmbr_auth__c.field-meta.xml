@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_encmbr_auth__c</fullName>
+    <description>idn_encmbr_auth</description>
+    <externalDeveloperName>idn_encmbr_auth</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Identifier Auth Encumbrance</label>
+    <length>50</length>
+    <referenceTo>batchsit_t_auth_encmbr__x</referenceTo>
+    <relationshipLabel>Authorization Encumbrance Enrollment</relationshipLabel>
+    <relationshipName>batchsit_t_auth_encmbr_enroll</relationshipName>
+    <type>ExternalLookup</type>
+</CustomField>

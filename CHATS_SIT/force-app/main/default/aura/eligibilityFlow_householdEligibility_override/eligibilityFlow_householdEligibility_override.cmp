@@ -1,0 +1,62 @@
+<aura:component extends="c:genericUtilities">
+    <aura:attribute name="caseRec" type="T_SBSD_CASE__c"/>
+    <aura:attribute name="caseEligibility" type="batchsit_t_fcompsn_eligty__x"/>
+    <aura:attribute name="caseEligibilityRun" type="batchsit_t_eligty_run__x"/>
+    <aura:attribute name="caseEligibilityDetails" type="batchsit_t_fcompsn_eligty_detail__x"/>
+    <aura:attribute name="householdIneligibilityFailure" type="batchsit_t_fcompsn_failr__x[]"/>
+    <aura:attribute name="cde_status_eligty_family" type="String"/>
+    <aura:attribute name="cde_reason_ovrd" type="String"/>
+    <aura:attribute name="txt_cmt_ovrd" type="String"/>
+    <aura:attribute name="value" type="String"/>
+    <aura:attribute name="pageMessages" type="List"/>
+    <aura:attribute name="indivEligIdToWrapper" type="Map"/>
+
+
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <lightning:overlayLibrary aura:id="overlayLib"/>
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <c:pageMessages pageMessages="{!v.pageMessages}" messageType="error"/>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="Case" value="{!v.caseRec.Name}"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputPicklist label="Eligibility Status" 
+                             aura:id="input-field"
+                             value="{!v.caseEligibilityDetails.cde_status_eligty_family__c}"
+                             object="Field_Utility__c"
+                             field="R00376__c"
+                             required="true"
+                             showSpinnerComponent="false"
+                             showNone="true"
+                             />
+            <c:fieldLevelMessage aura:id="batchsit_t_fcompsn_eligty_detail__x-cde_status_eligty_family__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="Begin Date" value="{!v.caseEligibilityDetails.dte_begin_effv__c}" type="UIDATE"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="End Date" value="{!v.caseEligibilityDetails.dte_end_effv__c}" type="UIDATE"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputPicklist label="Override Reason" 
+                             aura:id="input-field"
+                             value="{!v.caseEligibility.cde_reason_ovrd__c}"
+                             object="Field_Utility__c"
+                             field="R00375__c"
+                             showSpinnerComponent="false"
+                             />
+            <c:fieldLevelMessage aura:id="batchsit_t_fcompsn_eligty__x-cde_reason_ovrd__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:textarea name="input-name" label="Override Comments" value="{!v.caseEligibility.txt_cmt_ovrd__c}"/>            
+            <c:fieldLevelMessage aura:id="batchsit_t_fcompsn_eligty__x-txt_cmt_ovrd__c"/>
+        </lightning:layoutItem>
+        <div class="slds-grid slds-grid_align-end" >
+            <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                <lightning:button label="Cancel" onclick="{!c.closeModal}" variant="brand"/>    
+                <lightning:button label="Save" onclick="{!c.doFinish}" variant="brand"/>    
+            </lightning:layoutItem>
+        </div>
+    </lightning:layout>	
+    
+</aura:component>

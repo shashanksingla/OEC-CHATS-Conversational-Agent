@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Paymnt_Type_Not_deletable</fullName>
+    <active>true</active>
+    <description>Once the Record is created, Payment Type cannot be changed</description>
+    <errorConditionFormula>AND( NOT( ISNEW() ) ,
+    ISCHANGED( CDE_TYPE_PMT_ADJMT__c )
+)</errorConditionFormula>
+    <errorDisplayField>CDE_TYPE_PMT_ADJMT__c</errorDisplayField>
+    <errorMessage>Once the Record is created, Payment Type cannot be changed</errorMessage>
+</ValidationRule>

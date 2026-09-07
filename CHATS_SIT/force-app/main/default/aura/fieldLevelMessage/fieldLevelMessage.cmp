@@ -1,0 +1,4 @@
+<aura:component >
+    <aura:attribute name="message" type="String"/>
+	<div class="slds-text-color_error slds-form-element__help">{!v.message}</div>
+</aura:component>

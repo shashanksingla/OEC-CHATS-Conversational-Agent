@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IDN_USER_CHANGE_LAST__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>lastmodifiedbyid</description>
+    <externalDeveloperName>lastmodifiedbyid</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Last Modified By</label>
+    <referenceTo>User</referenceTo>
+    <relationshipName>sfrosit_t_sbsd_case_phone_hist1</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

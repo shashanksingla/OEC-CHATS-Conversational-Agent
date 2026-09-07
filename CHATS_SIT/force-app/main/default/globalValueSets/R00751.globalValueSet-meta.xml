@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>1</fullName>
+        <default>false</default>
+        <label>Regular</label>
+    </customValue>
+    <customValue>
+        <fullName>19</fullName>
+        <default>false</default>
+        <label>After School</label>
+    </customValue>
+    <customValue>
+        <fullName>20</fullName>
+        <default>false</default>
+        <label>After School Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>21</fullName>
+        <default>false</default>
+        <label>After School Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>22</fullName>
+        <default>false</default>
+        <label>After School Tier 3</label>
+    </customValue>
+    <customValue>
+        <fullName>23</fullName>
+        <default>false</default>
+        <label>After School Tier 4</label>
+    </customValue>
+    <customValue>
+        <fullName>24</fullName>
+        <default>false</default>
+        <label>After School Tier 5</label>
+    </customValue>
+    <customValue>
+        <fullName>49</fullName>
+        <default>false</default>
+        <label>Alternate</label>
+    </customValue>
+    <customValue>
+        <fullName>50</fullName>
+        <default>false</default>
+        <label>Alternate Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>51</fullName>
+        <default>false</default>
+        <label>Alternate Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>52</fullName>
+        <default>false</default>
+        <label>Alternate Tier 3</label>
+    </customValue>
+    <customValue>
+        <fullName>53</fullName>
+        <default>false</default>
+        <label>Alternate Tier 4</label>
+    </customValue>
+    <customValue>
+        <fullName>67</fullName>
+        <default>false</default>
+        <label>At-Risk</label>
+    </customValue>
+    <customValue>
+        <fullName>25</fullName>
+        <default>false</default>
+        <label>B and A School</label>
+    </customValue>
+    <customValue>
+        <fullName>26</fullName>
+        <default>false</default>
+        <label>B and A School Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>27</fullName>
+        <default>false</default>
+        <label>B and A School Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>28</fullName>
+        <default>false</default>
+        <label>B and A School Tier 3</label>
+    </customValue>
+    <customValue>
+        <fullName>29</fullName>
+        <default>false</default>
+        <label>B and A School Tier 4</label>
+    </customValue>
+    <customValue>
+        <fullName>30</fullName>
+        <default>false</default>
+        <label>B and A School Tier 5</label>
+    </customValue>
+    <customValue>
+        <fullName>13</fullName>
+        <default>false</default>
+        <label>Before School</label>
+    </customValue>
+    <customValue>
+        <fullName>14</fullName>
+        <default>false</default>
+        <label>Before School Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>15</fullName>
+        <default>false</default>
+        <label>Before School Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>16</fullName>
+        <default>false</default>
+        <label>Before School Tier 3</label>
+    </customValue>
+    <customValue>
+        <fullName>17</fullName>
+        <default>false</default>
+        <label>Before School Tier 4</label>
+    </customValue>
+    <customValue>
+        <fullName>18</fullName>
+        <default>false</default>
+        <label>Before School Tier 5</label>
+    </customValue>
+    <customValue>
+        <fullName>100</fullName>
+        <default>false</default>
+        <label>Care Not Offered</label>
+    </customValue>
+    <customValue>
+        <fullName>55</fullName>
+        <default>false</default>
+        <label>Disability</label>
+    </customValue>
+    <customValue>
+        <fullName>61</fullName>
+        <default>false</default>
+        <label>Disability Alternative</label>
+    </customValue>
+    <customValue>
+        <fullName>62</fullName>
+        <default>false</default>
+        <label>Disability Alternative Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>63</fullName>
+        <default>false</default>
+        <label>Disability Alternative Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>64</fullName>
+        <default>false</default>
+        <label>Disability Alternative Tier 3</label>
+    </customValue>
+    <customValue>
+        <fullName>56</fullName>
+        <default>false</default>
+        <label>Disability Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>57</fullName>
+        <default>false</default>
+        <label>Disability Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>58</fullName>
+        <default>false</default>
+        <label>Disability Tier 3</label>
+    </customValue>
+    <customValue>
+        <fullName>59</fullName>
+        <default>false</default>
+        <label>Disability Tier 4</label>
+    </customValue>
+    <customValue>
+        <fullName>60</fullName>
+        <default>false</default>
+        <label>Disability Tier 5</label>
+    </customValue>
+    <customValue>
+        <fullName>43</fullName>
+        <default>false</default>
+        <label>Evening</label>
+    </customValue>
+    <customValue>
+        <fullName>44</fullName>
+        <default>false</default>
+        <label>Evening Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>45</fullName>
+        <default>false</default>
+        <label>Evening Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>46</fullName>
+        <default>false</default>
+        <label>Evening Tier 3</label>
+    </customValue>
+    <customValue>
+        <fullName>47</fullName>
+        <default>false</default>
+        <label>Evening Tier 4</label>
+    </customValue>
+    <customValue>
+        <fullName>48</fullName>
+        <default>false</default>
+        <label>Evening Tier 5</label>
+    </customValue>
+    <customValue>
+        <fullName>85</fullName>
+        <default>false</default>
+        <label>Experience FCCH</label>
+    </customValue>
+    <customValue>
+        <fullName>86</fullName>
+        <default>false</default>
+        <label>Experience FCCH Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>88</fullName>
+        <default>false</default>
+        <label>Experience FCCH Tier 3</label>
+    </customValue>
+    <customValue>
+        <fullName>91</fullName>
+        <default>false</default>
+        <label>Out-of-County</label>
+    </customValue>
+    <customValue>
+        <fullName>92</fullName>
+        <default>false</default>
+        <label>Out-of-County Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>93</fullName>
+        <default>false</default>
+        <label>Out-of-County Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>31</fullName>
+        <default>false</default>
+        <label>Overnight</label>
+    </customValue>
+    <customValue>
+        <fullName>32</fullName>
+        <default>false</default>
+        <label>Overnight Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>33</fullName>
+        <default>false</default>
+        <label>Overnight Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>2</fullName>
+        <default>false</default>
+        <label>Regular Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>3</fullName>
+        <default>false</default>
+        <label>Regular Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>4</fullName>
+        <default>false</default>
+        <label>Regular Tier 3</label>
+    </customValue>
+    <customValue>
+        <fullName>5</fullName>
+        <default>false</default>
+        <label>Regular Tier 4</label>
+    </customValue>
+    <customValue>
+        <fullName>6</fullName>
+        <default>false</default>
+        <label>Regular Tier 5</label>
+    </customValue>
+    <customValue>
+        <fullName>8</fullName>
+        <default>false</default>
+        <label>School Age Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>9</fullName>
+        <default>false</default>
+        <label>School Age Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>10</fullName>
+        <default>false</default>
+        <label>School Age Tier 3</label>
+    </customValue>
+    <customValue>
+        <fullName>73</fullName>
+        <default>false</default>
+        <label>Sick Care</label>
+    </customValue>
+    <customValue>
+        <fullName>74</fullName>
+        <default>false</default>
+        <label>Sick Care Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>75</fullName>
+        <default>false</default>
+        <label>Sick Care Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>37</fullName>
+        <default>false</default>
+        <label>Weekend</label>
+    </customValue>
+    <customValue>
+        <fullName>38</fullName>
+        <default>false</default>
+        <label>Weekend Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>39</fullName>
+        <default>false</default>
+        <label>Weekend Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>40</fullName>
+        <default>false</default>
+        <label>Weekend Tier 3</label>
+    </customValue>
+    <customValue>
+        <fullName>41</fullName>
+        <default>false</default>
+        <label>Weekend Tier 4</label>
+    </customValue>
+    <customValue>
+        <fullName>42</fullName>
+        <default>false</default>
+        <label>Weekend Tier 5</label>
+    </customValue>
+    <customValue>
+        <fullName>79</fullName>
+        <default>false</default>
+        <label>Wraparound</label>
+    </customValue>
+    <customValue>
+        <fullName>80</fullName>
+        <default>false</default>
+        <label>Wraparound Tier 1</label>
+    </customValue>
+    <customValue>
+        <fullName>81</fullName>
+        <default>false</default>
+        <label>Wraparound Tier 2</label>
+    </customValue>
+    <customValue>
+        <fullName>82</fullName>
+        <default>false</default>
+        <label>Wraparound Tier 3</label>
+    </customValue>
+    <customValue>
+        <fullName>83</fullName>
+        <default>false</default>
+        <label>Wraparound Tier 4</label>
+    </customValue>
+    <customValue>
+        <fullName>84</fullName>
+        <default>false</default>
+        <label>Wraparound Tier 5</label>
+    </customValue>
+    <customValue>
+        <fullName>7</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>School Age</label>
+    </customValue>
+    <description>R00751</description>
+    <masterLabel>R00751</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

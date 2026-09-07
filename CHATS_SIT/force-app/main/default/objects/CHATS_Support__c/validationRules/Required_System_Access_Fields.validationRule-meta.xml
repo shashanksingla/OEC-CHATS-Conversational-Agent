@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Required_System_Access_Fields</fullName>
+    <active>true</active>
+    <description>Requires completion of all necessary fields on the system access page layout.</description>
+    <errorConditionFormula>AND( 
+ISPICKVAL(Support_Type__c, &quot;Access Request&quot;), 
+OR( 
+ISBLANK(Email_Address__c), 
+ISBLANK(Last_Name__c), 
+ISBLANK(First_name__c), 
+ISBLANK(CHATS_Supervisor__c ), 
+ISBLANK(Phone_Number__c), 
+ISBLANK(Start_Deactivation_Change_Date__c), 
+ISBLANK(TEXT(Is_this_staff_member_replacing_another__c)), 
+ISBLANK(TEXT(Access_Level_Requested__c) 
+) 
+))</errorConditionFormula>
+    <errorMessage>For Access Request, Please ensure the following fields have been completed: Start Date; First and Last Name; Email; Access Level; Supervisor; Phone #; Is this staff member replacing another.</errorMessage>
+</ValidationRule>

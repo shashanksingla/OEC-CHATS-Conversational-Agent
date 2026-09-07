@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>INTERCEPT_PROCESSED_KEY__c</fullName>
+    <description>Unique key for the intercept that was processed, assigned by MIR</description>
+    <encryptionScheme>None</encryptionScheme>
+    <externalId>false</externalId>
+    <inlineHelpText>Unique key for the intercept that was processed, assigned by MIR</inlineHelpText>
+    <label>Intercept Processed Key</label>
+    <length>10</length>
+    <required>false</required>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

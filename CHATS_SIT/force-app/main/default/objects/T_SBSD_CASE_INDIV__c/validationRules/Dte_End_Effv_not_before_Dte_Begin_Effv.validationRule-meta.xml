@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Dte_End_Effv_not_before_Dte_Begin_Effv</fullName>
+    <active>true</active>
+    <description>DTE_END_EFFV__c  cannot be before DTE_BEGIN_EFFV__c</description>
+    <errorConditionFormula>NOT(IDN_CLIENT__r.Is_Peak_Data__c) &amp;&amp; NOT(IDN_CLIENT__r.Is_CBMS_Data__c) &amp;&amp; DTE_END_EFFV__c &lt;  DTE_BEGIN_EFFV__c</errorConditionFormula>
+    <errorDisplayField>DTE_END_EFFV__c</errorDisplayField>
+    <errorMessage>Effective End Date cannot be less than Date Person Entered Home</errorMessage>
+</ValidationRule>

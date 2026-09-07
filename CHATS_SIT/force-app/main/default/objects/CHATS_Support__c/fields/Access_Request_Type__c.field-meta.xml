@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Access_Request_Type__c</fullName>
+    <inlineHelpText>NOTE: New Access or Changing Access requests may require training completion prior to access being given.</inlineHelpText>
+    <label>Access Request Type</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <controllingField>Support_Type__c</controllingField>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>New Worker Access Request</fullName>
+                <default>false</default>
+                <label>New Worker Access Request</label>
+            </value>
+            <value>
+                <fullName>Change Profile/Access</fullName>
+                <default>false</default>
+                <label>Change Profile/Access</label>
+            </value>
+            <value>
+                <fullName>Deactivate Access</fullName>
+                <default>false</default>
+                <label>Deactivate Access</label>
+            </value>
+            <value>
+                <fullName>Learn Trac/Pilot Environment Access Request</fullName>
+                <default>false</default>
+                <label>Learn Trac/Pilot Environment Access Request</label>
+            </value>
+            <value>
+                <fullName>Read-Only Access Request</fullName>
+                <default>false</default>
+                <isActive>false</isActive>
+                <label>Read-Only Access Request</label>
+            </value>
+        </valueSetDefinition>
+        <valueSettings>
+            <controllingFieldValue>System Access</controllingFieldValue>
+            <valueName>New Worker Access Request</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>System Access</controllingFieldValue>
+            <valueName>Change Profile/Access</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>System Access</controllingFieldValue>
+            <valueName>Deactivate Access</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>System Access</controllingFieldValue>
+            <valueName>Learn Trac/Pilot Environment Access Request</valueName>
+        </valueSettings>
+    </valueSet>
+</CustomField>

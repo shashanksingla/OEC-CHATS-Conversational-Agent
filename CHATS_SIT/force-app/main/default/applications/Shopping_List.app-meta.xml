@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <defaultLandingTab>Item__c</defaultLandingTab>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <isNavTabPersistenceDisabled>false</isNavTabPersistenceDisabled>
+    <isOmniPinnedViewEnabled>false</isOmniPinnedViewEnabled>
+    <label>Sample App: Shopping List</label>
+    <tabs>standard-Chatter</tabs>
+    <tabs>Item__c</tabs>
+    <tabs>Getting_Started</tabs>
+    <tabs>T_CBMS_ADDNL_INFO__c</tabs>
+    <tabs>T_SBSD_CASE__c</tabs>
+    <tabs>T_CW_ADDNL_INFO__c</tabs>
+    <tabs>T_CHILD_SUP__c</tabs>
+    <tabs>T_INDIV_DDTN__c</tabs>
+    <tabs>T_APPLN_CASE__c</tabs>
+    <tabs>T_INDIV_REL__c</tabs>
+    <tabs>T_INDIV_VERIF__c</tabs>
+    <tabs>T_SBSD_CASE_HOMELESS__c</tabs>
+    <tabs>T_SBSD_CASE_STATUS_MODE__c</tabs>
+    <tabs>T_SBSD_CASE_ASSET__c</tabs>
+    <tabs>T_SBSD_CASE_INFO__c</tabs>
+    <tabs>T_FISCAL_SCH__c</tabs>
+    <tabs>T_CCCAP_CONTACT__c</tabs>
+    <tabs>T_PROVR_PREF__c</tabs>
+</CustomApplication>

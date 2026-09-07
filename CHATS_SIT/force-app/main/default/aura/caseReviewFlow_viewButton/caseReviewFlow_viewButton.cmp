@@ -1,0 +1,12 @@
+<!--  
+Author      :	Rishav Maji
+Description :	Component for 'Submit to Reviewee' button in Case Review details screen
+Requirement	:	Project 425, JIRA CCCAP-4771
+-->
+<aura:component Controller="caseReviewApexController" extends="c:abstractSection" implements="flexipage:availableForRecordHome,force:hasRecordId" access="global" >
+    <div style="background-color: white; border-radius: 5px;" class="slds-align_absolute-center">
+        <div style="margin: 20px">
+            <lightning:button label="View Case Review" variant="brand" onclick="{!c.openCaseReviewVFPage}"/>
+        </div>
+    </div>
+</aura:component>

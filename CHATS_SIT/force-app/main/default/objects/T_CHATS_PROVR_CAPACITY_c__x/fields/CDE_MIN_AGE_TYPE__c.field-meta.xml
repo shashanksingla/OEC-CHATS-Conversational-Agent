@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CDE_MIN_AGE_TYPE__c</fullName>
+    <externalDeveloperName>OEC_YoungestAgeType__c</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Youngest Age Type</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Days</fullName>
+                <default>false</default>
+                <label>Days</label>
+            </value>
+            <value>
+                <fullName>Weeks</fullName>
+                <default>false</default>
+                <label>Weeks</label>
+            </value>
+            <value>
+                <fullName>Months</fullName>
+                <default>false</default>
+                <label>Months</label>
+            </value>
+            <value>
+                <fullName>Years</fullName>
+                <default>false</default>
+                <label>Years</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

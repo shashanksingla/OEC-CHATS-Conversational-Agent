@@ -1,0 +1,106 @@
+<template>
+    <!-- Loading Spinner - mirrors Aura LoadingSpinnerComp with fixed overlay -->
+    <lightning-spinner lwc:if={showSpinner} alternative-text="Loading..."></lightning-spinner>
+
+    <!-- Main Card: rendered only after init data is loaded -->
+    <template lwc:if={initDataLoaded}>
+        <lightning-card icon-name="standard:event">
+
+            <!-- Card Title -->
+            <div slot="title">
+                <div class="slds-grid">
+                    <div class="slds-col slds-has-flexi-truncate">
+                        <div class="slds-media slds-no-space slds-grow">
+                            <div class="slds-media__body">
+                                <p class="slds-text-title--caps slds-line-height--reset">{cardTitle}</p>
+                                <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate"
+                                    title="Adjustment">Adjustment</h1>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Actions: Navigation Buttons -->
+            <div slot="actions">
+                <c-navigation-component_lwc
+                    total-tabs="1"
+                    current-tab-number={currentTabNumber}
+                    finish-label="Save"
+                    show-cancel
+                    onfinish={handleFinish}
+                    oncancel={handleCancel}>
+                </c-navigation-component_lwc>
+            </div>
+
+            <!-- Page Messages -->
+            <template lwc:if={hasPageMessages}>
+                <div class="slds-m-around_medium">
+                    <c-page-messages_lwc
+                        page-messages={pageMessages}
+                        message-type={messageType}>
+                    </c-page-messages_lwc>
+                </div>
+            </template>
+
+            <!-- Tab 1: Dynamic Form -->
+            <template lwc:if={isCurrentTab}>
+                <lightning-layout multiple-rows="true" horizontal-align="space">
+
+                    <template for:each={fieldDefinition} for:item="eachField">
+
+                        <!-- Section Header (pre-section name) -->
+                        <template lwc:if={eachField.preSectionName}>
+                            <template lwc:if={eachField.sectionBreakerPoint}>
+                                <lightning-layout-item
+                                    key={eachField.sectionBreakKey}
+                                    flexibility="auto"
+                                    size="6"
+                                    padding="around-small">
+                                </lightning-layout-item>
+                            </template>
+                            <lightning-layout-item
+                                key={eachField.sectionHeaderKey}
+                                flexibility="auto"
+                                size="12"
+                                padding="around-small">
+                                <h3 class="slds-section__title">{eachField.preSectionName}</h3>
+                            </lightning-layout-item>
+                        </template>
+
+                        <!-- Field Item -->
+                        <lightning-layout-item
+                            key={eachField.fieldAPIName}
+                            flexibility="auto"
+                            size="6"
+                            padding="around-small">
+                            <c-dynamic-form-generator_lwc
+                                data-field-api={eachField.fieldAPIName}
+                                field-label={eachField.fieldLabel}
+                                field-type={eachField.dataType}
+                                field-a-p-i-name={eachField.fieldAPIName}
+                                object-name={eachField.objectName}
+                                s-ob={adjustment}
+                                required={eachField.required}
+                                parent-object-name={eachField.referenecedObjectName}
+                                field-utility-picklist-field-name={eachField.fieldUtilityPicklistFieldName}
+                                read-only={eachField.readOnly}
+                                onsobupdate={handleSObjectUpdate}>
+                            </c-dynamic-form-generator_lwc>
+                            <c-field-level-message_lwc
+                                error-key={eachField.errorKey}
+                                message={eachField.errorMessage}>
+                            </c-field-level-message_lwc>
+                        </lightning-layout-item>
+
+                    </template>
+
+                    <!-- Trailing spacer to balance the last row -->
+                    <lightning-layout-item flexibility="auto" size="6" padding="around-small">
+                    </lightning-layout-item>
+                </lightning-layout>
+            </template>
+
+        </lightning-card>
+    </template>
+</template>

@@ -1,0 +1,219 @@
+<aura:component controller="AuthorizationFlowApxCtrl" extends="c:abstractComponent">
+    
+    <aura:attribute name="childStateOptions" type="List" />
+    <aura:attribute name="rateTypeOptions" type="List" />
+    <aura:attribute name="recordId" type="String" /> <!--CaseID-->
+    <aura:attribute name="sObjectName" type="String" />
+    <aura:attribute name="authId" type="String" default=""/> <!--authID-->
+    <aura:attribute name="recordError" type="List" />
+    <aura:attribute name="recordError1" type="String" />
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="isCountyRateSCQ" type="Boolean" default="false" />
+    <aura:attribute name="slotContractOptions" type="List"/>
+    <aura:attribute name="originalSCId" type="String" />
+    <aura:attribute name="isCreate" type="Boolean" default="true"/>
+    <aura:attribute name="authProviderRec" type="T_CHATS_PROVR_STATUS__c" default="{'sobjectType':'T_CHATS_PROVR_STATUS__c'}"/>
+    <aura:attribute name="authRec" type="T_AUTH__c" default="{'sobjectType':'T_AUTH__c','Authorization_Status__c':'2'}"/>
+    <aura:attribute name="SCAssociationRec" type="T_SLOT_CONTRACT__c" default="{'sobjectType':'T_SLOT_CONTRACT__c','IDN_AUTH__c':'','DTE_BEGIN_SLOT__c':'','DTE_END_SLOT__c':'','CDE_CARE_LEVEL__c':'','SLOT_CONTRACT_DESCRIPTION__c':''}"/>
+    <aura:attribute name="authRecClone" type="T_AUTH__c" default="{'sobjectType':'T_AUTH__c','DTE_BEGIN_EFFV_AUTH__c':'','Contract_for_Slots_indicator__c':false,'Protective_Services_Indicator__c':false,'Do_we_need_to_allow_drop_in_days_for__c':false}"/>
+    <aura:attribute name="authRecUpdated" type="T_AUTH__c" default="{'sobjectType':'T_AUTH__c'}"/>
+    <aura:attribute name="caseRec" type="T_SBSD_CASE__c" default="{'sobjectType':'T_SBSD_CASE__c'}"/>
+    <aura:attribute name="hoursPerWeekDay" type="batchsit_t_auth_encmbr__x[]" />
+    <aura:attribute name="careDateToAuthEncmbr" type="Map" />
+    <aura:attribute name="hoursPerWeekDayChanged" type="Boolean" default="false" />
+    <aura:attribute name="isInvalidProvider" type="Boolean" default="false" />
+    <aura:attribute name="isAuthCreate" type="Boolean" default="false" />
+    <aura:attribute name="authTerminated" type="Boolean" default="false" />
+    <aura:attribute name="countySFId" type="String" />
+    <aura:attribute name="showWarningForCounty" type="Boolean" default="false" />
+    <aura:attribute name="showWarningChildCareLevel" type="Boolean" default="false" />
+    <aura:attribute name="careLevelMessage" type="String" />
+    <aura:attribute name="replaceMessage" type="String" />
+    <aura:attribute name="cancelMessage" type="String" default="Any changes made to Slot Contract association will not be saved." />
+    <aura:attribute name="showCancelButton" type="Boolean" default="true" />
+    <aura:attribute name="message" type="String" />
+    <aura:attribute name="countyMessage" type="String" />
+    <aura:attribute name="eligibleChildEndDate" type="Date" />
+    <aura:attribute name="providerIdVal" type="String" />
+    <aura:attribute name="provIdValtwo" type="String" />
+    <aura:attribute name="originalBeginDate" type="String" />
+    <aura:attribute name="originalProviderId" type="String" />
+    <aura:attribute name="originalClientId" type="String" />
+    <aura:attribute name="isEncumbrnceCreated" type="Boolean" default="false" />
+    <aura:attribute name="isCreateCorrp" type="Boolean" default="false" />
+    <aura:attribute name="isReadOnly" type="Boolean" default="false" />
+    <aura:attribute name="isChildWefareCare" type="Boolean" default="false" />
+    <aura:attribute name="isChildDisable" type="Boolean" default="false" />
+    <aura:attribute name="authDropInDays" type="Integer" default="0" />
+    <aura:attribute name="isDropInDaysIndicator" type="Boolean" default="false" />
+    <aura:attribute name="numberOfDaysDrop" type="Integer" default="0" />
+    <aura:attribute name="isProtectiveServiceIndicator" type="Boolean" default="false" />
+    <aura:attribute name="isShowContractToIndicator" type="Boolean" default="false" />
+    <aura:attribute name="authStatusRecord" type="batchsit_t_auth_status__x" default="{'sobjectType':'batchsit_t_auth_status__x',
+                                                                                      'dte_end_effv__c':'',
+                                                                                      'dte_begin_effv__c':'',
+                                                                                      'cde_status_auth__c':'',
+                                                                                      'cde_reason_change_auth__c':'',
+                                                                                      'idn_auth__c':'',
+                                                                                      'createdbyid__c':'',
+                                                                                      'createddate__c':''}"/>
+    <aura:attribute name="enterRecurrence" type="Boolean" default="false" />
+    <aura:attribute name="scheduleRecurr" type="Auth_Schedule_Recurrence__c[]" />
+    <aura:attribute name="authEndDate" type="Date" />
+    <aura:attribute name="isModifiedAfterChange" type="Boolean" default="false"/>
+    <aura:attribute name="scheduleRecurrObj" type="Auth_Schedule_Recurrence__c" default="{'sobjectType':'Auth_Schedule_Recurrence__c','Recur_Type__c':'','RecurDay__c':'','DTE_Begin_Date__c':'','DTE_End_Date__c':'','Sun__c':'',
+                                                                                         'Mon__c':'',
+                                                                                         'Tue__c':'',
+                                                                                         'Wed__c':'',
+                                                                                         'Thur__c':'',
+                                                                                         'Fri__c':'',
+                                                                                         'Sat__c':'',
+                                                                                         'WeekDays__c':'',
+                                                                                         'DaysOfMonth__c':''}" />
+    <aura:attribute name="showWarningBelowSchoolAge" type="Boolean" default="false" /> <!-- Added by Rishav for CCCAP-6983 -->
+    <aura:attribute name="warningMessageBelowSchoolAge" type="String" /> <!-- Added by Rishav for CCCAP-6983 -->
+    
+    <aura:set attribute="pageMessages" value="{!v.recordError}" />  
+    <aura:set attribute="messageType" value="{!v.message}" />
+    <!-- CCCAP-8970-->
+         <aura:attribute name="xLogAuthStatus" type="Exception_Log__c" default="{'sobjectType':'Exception_Log__c',
+                                                                                      'Class__c':'authorizationFlowHelper',
+                                                                                      'Method__c':'createAuthStatusRecord',
+                                                                                      'Exception_Message__c':'calling auth status creation service after encumbrance',
+                                                                                      'Exception_Type__c':'Success',
+                                                                                      'Request__c':'',
+                                                                                      'Response__c':'',
+                                                                                      'Log_Type__c':''}"
+                   />
+   <!-- CCCAP-8970 END-->
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.currentTabNumber}" action="{!c.doShowHideCancel}"/>
+    <aura:handler name="change" value="{!v.hoursPerWeekDay}" action="{!c.hoursPerWeekDayChange}"/>
+    <aura:handler name="change" value="{!v.careDateToAuthEncmbr}" action="{!c.printdata}"/>
+    <aura:handler event="c:RecurrenceEvent" action="{!c.doValidateRecurrence}"/>
+    
+    <aura:if isTrue="{!v.sObjectName=='T_SBSD_CASE__c'}">
+        <force:recordData aura:id="forceRecordCmp"
+                          recordId="{!v.recordId}"
+                          fields="DTE_REDET_CASE__c, CDE_COUNTY__c, Id"
+                          mode="VIEW"
+                          targetFields="{!v.caseRec}"
+                          targetError="{!v.recordError1}" />
+        <aura:if isTrue="{!!empty(v.authRec.IDN_PROVR__c)}">
+            <force:recordData aura:id="authUpRecId"
+                                  recordId="{!v.authRec.Id}"
+                                  fields="Id,Name,IDN_EXTNL__c,CreatedById,Number_of_Drop_in_Days__c"
+                                  mode="VIEW"
+                                  targetFields="{!v.authRecUpdated}"
+                                  targetError="{!v.recordError1}" />
+        </aura:if>
+    </aura:if>
+    <aura:if isTrue="{!v.sObjectName=='T_AUTH__c'}">
+        <!-- Added 'CDE_TRANS_FEE__c,IDN_PROVR__r.CDE_TYPE_PROVR__c,IDN_CASE__c,IDN_CASE__r.CDE_COUNTY__c' fields by Rishav for CCCAP-2618 -->
+        <force:recordData aura:id="forceRecordCmp"
+                          recordId="{!v.recordId}"
+                          fields="Id, DTE_BEGIN_EFFV_AUTH__c, IDN_PROVR__c, CDE_REL_PROVR__c,CDE_PRO_REL_CHLD__c,CDE_PROV_DIFF_RESI__c,Contract_for_Slots_indicator__c,Protective_Services_Indicator__c,
+                                  CDE_IMM__c, CDE_TYPE_VERIF__c, CDE_SOURCE_VRFYD_IMMU__c,IDN_CLIENT__c,CDE_COUNTY__c,Number_of_Drop_in_Days__c,
+                                  CDE_TRANS_FEE__c,IDN_PROVR__r.CDE_TYPE_PROVR__c,IDN_CASE__c,IDN_CASE__r.CDE_COUNTY__c,DTE_END_EFFV_AUTH__c,DTE_BEGIN_SLOT__c,IDN_SLOT_CONTRACT__c,
+                                  AMT_ACTV_AUTH__c, AMT_RGSTR_AUTH__c, AMT_TRANSP_AUTH__c,IDN_CLIENT__r.NAM_FIRST__c,IDN_CLIENT__r.NAM_LAST__c,IDN_CLIENT__r.IDN_STATE__c"
+                          mode="{!v.isReadOnly ? 'VIEW':'EDIT'}"
+                          targetFields="{!v.authRec}"
+                          targetError="{!v.recordError1}" />
+        <aura:if isTrue="{!!empty(v.authRec.IDN_PROVR__c)}">
+            <force:recordData aura:id="providerRecId"
+                                  recordId="{!v.authRec.IDN_PROVR__c}"
+                                  fields="Id,Name,NAM_FACILITY__c,CDE_TYPE_PROVR__c"
+                                  mode="VIEW"
+                                  targetFields="{!v.authProviderRec}"
+                                  targetError="{!v.recordError1}" />
+        </aura:if>
+        
+        
+    </aura:if>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <lightning:card iconName="standard:event">
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <p class="slds-text-title--caps slds-line-height--reset">
+                                <lightning:formattedText value="{!v.sObjectName =='T_AUTH__c'?'EDIT':'CREATE NEW'}" />
+                            </p>
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate"
+                                title="Authorization">Authorization</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        <aura:set attribute="actions">
+            <c:navigationComponent totalTabs="2" 
+                                   currentTabNumber="{!v.currentTabNumber}"
+                                   onNext="{!c.doNext}"
+                                   onFinish="{!c.doFinish}"
+                                   onPrevious="{!c.doPrevious}"
+                                   onCancel="{!c.doCancel}"
+                                   showCancel="{!v.showCancelButton}"
+                                   finishLabel="Finish"/>
+        </aura:set>
+        <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+        <aura:if isTrue="{!v.currentTabNumber==1}">
+             <aura:if isTrue="{!!empty(v.authRec.Id || v.caseRec.Id)}">
+                 <c:authorizationInfoPg1 aura:id="authorizationInfoPg1"
+                                         SCAssociationRec="{!v.SCAssociationRec}"
+                                         isCountyRateSCQ="{!v.isCountyRateSCQ}"
+                                         slotContractOptions ="{!v.slotContractOptions}"
+                                         authRec="{!v.authRec}"
+                                         caseRec="{!v.caseRec}"
+                                         authProviderRec="{!v.authProviderRec}"
+                                         childStateOptions="{!v.childStateOptions}"
+                                         hoursPerWeekDay="{!v.hoursPerWeekDay}"
+                                         isCreate="{!v.isCreate}"
+                                         providerIdVal="{!v.providerIdVal}"
+                                         rateTypeOptions="{!v.rateTypeOptions}"
+                                         isInvalidProvider="{!v.isInvalidProvider}"
+                                         fieldValidationErrors="{!v.fieldValidationErrors}" 
+                                         isCurrentPageValid="{!v.isCurrentPageValid}"
+                                         isReadOnly="{!v.isReadOnly}"
+                                         isChildWefareCare ="{!v.isChildWefareCare}"
+                                         isChildDisable ="{!v.isChildDisable}" 
+                                         authDropInDays ="{!v.authDropInDays}"
+                                         authRecClone ="{!v.authRecClone}"
+                                         isDropInDaysIndicator ="{!v.isDropInDaysIndicator}"
+                                         numberOfDaysDrop ="{!v.numberOfDaysDrop}"
+                                         isProtectiveServiceIndicator ="{!v.isProtectiveServiceIndicator}"
+                                         isShowContractToIndicator ="{!v.isShowContractToIndicator}"
+                                         scheduleRecurrObj="{!v.scheduleRecurrObj}" scheduleRecurr="{!v.scheduleRecurr}" enterRecurrence="{!v.enterRecurrence}"
+                                         authEndDate="{!v.authEndDate}"
+                                         isEncumbrnceCreated="{!v.isEncumbrnceCreated}"
+                                         isModifiedAfterChange="{!v.isModifiedAfterChange}"/>
+                 
+                 <c:confirmationModal aura:id="confirmationModalOnCountyCheck_1" confirmMsg="{!v.countyMessage}"
+                                      confirmModalYes="{!c.confirmYes}" confirmModalNo="{!c.confirmNo}"/>
+                 <c:confirmationModal aura:id="confirmationModalOnCareLevel" confirmMsg="{!v.careLevelMessage}"
+                                      confirmModalYes="{!c.confirmYes1}" confirmModalNo="{!c.confirmNo1}"/>
+                 <c:confirmationModal aura:id="confirmationModalOnReplaceofscAssRec" confirmMsg="{!v.replaceMessage}"
+                                      confirmModalYes="{!c.confirmYes2}" confirmModalNo="{!c.confirmNo2}"/>
+                 <c:confirmationModal aura:id="confirmationModalBelowSchoolAge" confirmMsg="{!v.warningMessageBelowSchoolAge}"
+                                      confirmModalYes="{!c.confirmYes3}" confirmModalNo="{!c.confirmNo3}"/>
+                 <c:confirmationModal aura:id="confirmationModalOnCancel" confirmMsg="{!v.cancelMessage}"
+                                      confirmModalYes="{!c.confirmCancel}" confirmModalNo="{!c.confirmCancelNo}"/> 
+            </aura:if>
+        </aura:if>
+        <aura:if isTrue="{!v.currentTabNumber==2}">
+            <c:authorizationSchedPg2 aura:id="authorizationSchedPg2"
+                                     careDateToAuthEncmbr="{!v.careDateToAuthEncmbr}" 
+                                     rateTypeOptions="{#v.rateTypeOptions}"
+                                     isEncumbrnceCreated="{!v.isEncumbrnceCreated}"  
+                                     authTerminated="{!v.authTerminated}" 
+                                     isReadOnly="{!v.isReadOnly}"
+                                     provIdValtwo="{!v.provIdValtwo}"
+                                     countySFId="{!v.countySFId}"/>
+            <c:confirmationModal aura:id="confirmationModalUnsavedChanges" 
+                                 confirmMsg="There are unsaved changes to the schedule, Would you like to continue?"
+                                 confirmModalYes="{!c.actionOnYesUnsavedChanges}"/>
+        </aura:if>
+    </lightning:card>
+</aura:component>

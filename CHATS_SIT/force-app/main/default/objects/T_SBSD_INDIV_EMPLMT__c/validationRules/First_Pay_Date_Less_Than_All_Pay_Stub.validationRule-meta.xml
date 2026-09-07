@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>First_Pay_Date_Less_Than_All_Pay_Stub</fullName>
+    <active>true</active>
+    <description>CHAT-338: First Pay Date must be less or equal to all &quot;Pay Date&quot; on all related &quot;Employment Pay Stub&quot;.</description>
+    <errorConditionFormula>NOT(IDN_CLIENT__r.Is_Peak_Data__c) &amp;&amp; NOT(IDN_CLIENT__r.Is_CBMS_Data__c) &amp;&amp; DTE_PAY_FIRST__c  &gt;  Least_Pay_Stub_Date__c</errorConditionFormula>
+    <errorDisplayField>DTE_PAY_FIRST__c</errorDisplayField>
+    <errorMessage>First Pay Date must be less or equal to all &quot;Pay Date&quot; on all related &quot;Employment Pay Stub&quot;.</errorMessage>
+</ValidationRule>

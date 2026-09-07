@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>RE219</label>
+    <protected>false</protected>
+    <values>
+        <field>County_Label__c</field>
+        <value xsi:type="xsd:string">County</value>
+    </values>
+    <values>
+        <field>Date_Required__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Description__c</field>
+        <value xsi:type="xsd:string">This report displays the individual county-level case review accuracy rate by county name and sample month(s).</value>
+    </values>
+    <values>
+        <field>EndDateRequired__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>End_Date_Label__c</field>
+        <value xsi:type="xsd:string">Sample End Month/Year</value>
+    </values>
+    <values>
+        <field>FutureBeginDate__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>FutureEndDate__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>Hide_County__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>Hide_End_Date__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>Is_Active__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Report_Name__c</field>
+        <value xsi:type="xsd:string">RE219 - Individual County-Level Case Review Accuracy Rates</value>
+    </values>
+    <values>
+        <field>Report_Type__c</field>
+        <value xsi:type="xsd:string">4</value>
+    </values>
+    <values>
+        <field>Request_Type__c</field>
+        <value xsi:type="xsd:string">MAN</value>
+    </values>
+    <values>
+        <field>Start_Date_Label__c</field>
+        <value xsi:type="xsd:string">Sample Begin Month/Year</value>
+    </values>
+    <values>
+        <field>isCountyAutoAssigned__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>isDateDefaulted__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>isDateRange__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>isMonthYearFilter__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>isMonthYear__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>isOneYearReport__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>isProviderDependentLkUp__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>oneMonthDiffCheck__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+</CustomMetadata>

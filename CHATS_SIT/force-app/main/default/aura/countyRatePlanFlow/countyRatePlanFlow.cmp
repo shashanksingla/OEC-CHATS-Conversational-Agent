@@ -1,0 +1,163 @@
+<aura:component extends="c:abstractComponent" controller="CountyRatePlanFlowController">
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="countyId" type="String" />
+    <aura:attribute name="recordId" type="String" />
+    <aura:attribute name="isNew" type="Boolean" default="false" />
+    <aura:attribute name="recordError" type="String" />
+    <aura:attribute name="msgOnDiffOwnerCounty" type="String" default="The county of the county rate plan does not match your assigned county(ies)."/>
+    <aura:attribute name="msgOnHolidayDiff" type="String" />
+    <aura:attribute name="countyDiff" type="Boolean" />
+    <aura:attribute name="originalTemplate" type="String" />
+    <aura:attribute name="jsActivated" type="boolean" default="false"/>
+    <aura:attribute name="crpHolidays" type="String"/>
+    <aura:attribute name="showFeedback" type="Boolean" default="false"/>
+    <aura:attribute name="showSpinner" type="Boolean" default="false" description="Flag to show/hide spinner."/>
+    <aura:attribute name="countyRatePlanRec" type="T_COUNTY_RATE__c"
+                    default="{'sobjectType':'T_COUNTY_RATE__c',
+                             'IND_RATE_PLAN_TEMPLT__c':'false',
+                             'CDE_STATUS__c':'PEN',
+                             'CDE_RATE_PLAN_TEMPLT__c':'1',
+                             'PAYMENT_Q14_3__c':'',
+                             'DTE_BEGIN_EFFV_RATE__c':null}"/>
+    <aura:attribute name="countyRatePlanRecDraft" type="T_COUNTY_RATE__c"
+                    default="{'sobjectType':'T_COUNTY_RATE__c',
+                             'IND_RATE_PLAN_TEMPLT__c':'false',
+                             'CDE_STATUS__c':'PEN',
+                             'PAYMENT_Q14_3__c':'',
+                             'CDE_RATE_PLAN_TEMPLT__c':'1',
+                             'DTE_BEGIN_EFFV_RATE__c':null}"/>
+    <aura:attribute name="countyRec" type="T_COUNTY__c"
+                    default="{'sobjectType':'T_COUNTY__c'}"/>
+    <aura:attribute name="templateRateType" type="String"/>
+    <aura:attribute name="isFeedbackVisible" type="boolean" default="false"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.currentTabNumber}" action="{!c.doChangeCurrentTab}"/>
+    
+    <aura:if isTrue="{!v.showFeedback}">
+        <c:cP_CRP_Feedback recordId="{!v.recordId}" loadpopup="true" userFlow="view" oncloseModal="{!c.toggleFeedback}"></c:cP_CRP_Feedback>
+    </aura:if>
+    <aura:if isTrue="{!!empty(v.countyRec.CDE_COUNTY__c)}">
+        <force:recordData aura:id="forceRecordCmp"
+                          recordId="{!v.countyRatePlanRec.CDE_COUNTY__c}"
+                          fields="{name,ID}"
+                          mode="EDIT"
+                          targetFields="{!v.countyRec}"
+                          targetError="{!v.recordError}" />
+    </aura:if>
+    <lightning:card iconName="standard:event">
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <p class="slds-text-title--caps slds-line-height--reset">
+                                <lightning:formattedText value="{!!v.isNew ?'EDIT':'CREATE NEW'}"/>
+                            </p>
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="CountyRatePlan">County Rate Plan</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        <aura:set attribute="actions">
+            <c:navigationComponent totalTabs="3" 
+                                   currentTabNumber="{!v.currentTabNumber}"
+                                   onNext="{!c.doNext}"
+                                   onFinish="{!c.doFinish}"
+                                   onPrevious="{!c.doPrevious}"
+                                   showCancel="{!v.currentTabNumber==1}"
+                                   finishLabel="Next"
+                                   showCustomButton="{!v.currentTabNumber!=1}"
+                                   customButtonLabel="Save As Draft"
+                                   onClickCustomButton="{!c.saveAsDraft}"
+                                   customButtonLabel2="Revisions Needed"
+                                   showCustomButton2="{!(v.isFeedbackVisible &amp;&amp; v.currentTabNumber!=1)}"
+                                   onClickCustomButton2="{!c.toggleFeedback}"
+                                   onCancel="{!c.confirmCancel}"/>
+        </aura:set>
+        <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+        <c:confirmationModal aura:id="warningModalOnHolidayDiff" 
+                             confirmMsg="{!v.msgOnHolidayDiff}"
+                             noLabel="Cancel"
+                             yesLabel="Next"
+                             confirmModalYes="{!c.confirmHolidayWarning}" 
+                             confirmModalNo="{!c.closeHolidayWarningModal}"
+                             title="WARNING!"/>
+        <c:confirmationModal aura:id="warningModalOnDiffOwnerCounty" 
+                             confirmMsg="{!v.msgOnDiffOwnerCounty}"
+                             noLabel="Cancel"
+                             confirmModalNo="{!c.confirmCancel}"
+                             confirmModalClose="{!c.confirmCancel}" 
+                             showYesButton="false"
+                             title="ERROR!"/>
+        <aura:if isTrue="{!!empty(v.countyRatePlanRec.IDN_COUNTY__c)}">
+            <aura:if isTrue="{!v.currentTabNumber==1}">
+                <c:countyRatePlanFlowScreen1_CountyRatePlanInfo aura:id="countyRatePlanFlowScreen1_CountyRatePlanInfo" 
+                                                                countyRatePlanRec="{!v.countyRatePlanRec}"
+                                                                fieldValidationErrors="{!v.fieldValidationErrors}" 
+                                                                isCurrentPageValid="{!v.isCurrentPageValid}"
+                                                                countyId="{!v.countyId}" 
+                                                                isNew="{!v.isNew}"
+                                                           		pageMessages="{!v.pageMessages}" 
+                                                                messageType="{!v.messageType}"/>
+            </aura:if>
+            <aura:if isTrue="{!v.currentTabNumber==2}">
+                <c:countyRatePlanFlowScreen2_Payment aura:id="countyRatePlanFlowScreen2_Payment" 
+                                                     countyRatePlanRec="{!v.countyRatePlanRec}"
+                                                     fieldValidationErrors="{!v.fieldValidationErrors}" 
+                                                     isCurrentPageValid="{!v.isCurrentPageValid}"
+                                                     countyId="{!v.countyId}" 
+                                                     isNew="{!v.isNew}"
+                                                     pageMessages="{!v.pageMessages}"
+                                                     messageType="{!v.messageType}"
+                                                     jsActivated ="{!v.jsActivated}"/>
+            </aura:if>
+            <aura:if isTrue="{!v.currentTabNumber==3}">
+                <c:countyRatePlanFlowScreen3_ROO aura:id="countyRatePlanFlowScreen3_ROO" countyRatePlanRec="{!v.countyRatePlanRec}"
+                                                 fieldValidationErrors="{!v.fieldValidationErrors}" 
+                                                 isCurrentPageValid="{!v.isCurrentPageValid}"
+                                                 countyId="{!v.countyId}" 
+                                                 isNew="{!v.isNew}"
+                                                 pageMessages="{!v.pageMessages}" 
+                                                 messageType="{!v.messageType}"/>
+            </aura:if>
+            <!--
+            <aura:if isTrue="{!v.currentTabNumber==4}">
+                <c:countyRatePlanFlowScreen4_CFS aura:id="countyRatePlanFlowScreen4_CFS" countyRatePlanRec="{!v.countyRatePlanRec}"
+                                                 fieldValidationErrors="{!v.fieldValidationErrors}" 
+                                                 isCurrentPageValid="{!v.isCurrentPageValid}"
+                                                 countyId="{!v.countyId}" 
+                                                 isNew="{!v.isNew}"
+                                                 pageMessages="{!v.pageMessages}" 
+                                                 messageType="{!v.messageType}"/>
+            </aura:if>
+            <aura:if isTrue="{!v.currentTabNumber==5}">
+                <c:countyRatePlanFlowScreen5_RT aura:id="countyRatePlanFlowScreen5_RT" countyRatePlanRec="{!v.countyRatePlanRec}"
+                                                fieldValidationErrors="{!v.fieldValidationErrors}" 
+                                                isCurrentPageValid="{!v.isCurrentPageValid}"
+                                                countyId="{!v.countyId}" 
+                                                isNew="{!v.isNew}"
+                                                pageMessages="{!v.pageMessages}" 
+                                                messageType="{!v.messageType}"/>
+            </aura:if>
+			-->
+        </aura:if>
+        <div class="slds-grid slds-grid_align-end" >
+        	<c:navigationComponent totalTabs="3" 
+                                   currentTabNumber="{!v.currentTabNumber}"
+                                   onNext="{!c.doNext}"
+                                   onFinish="{!c.doFinish}"
+                                   onPrevious="{!c.doPrevious}"
+                                   showCancel="{!v.currentTabNumber==1}"
+                                   finishLabel="Next"
+                                   showCustomButton="{!v.currentTabNumber!=1}"
+                                   customButtonLabel="Save As Draft"
+                                   onClickCustomButton="{!c.saveAsDraft}"
+                                   customButtonLabel2="Revisions Needed"
+                                   showCustomButton2="{!(v.isFeedbackVisible &amp;&amp; v.currentTabNumber!=1)}"
+                                   onClickCustomButton2="{!c.toggleFeedback}"
+                                   onCancel="{!c.confirmCancel}"/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        </div>
+    </lightning:card>
+    
+</aura:component>

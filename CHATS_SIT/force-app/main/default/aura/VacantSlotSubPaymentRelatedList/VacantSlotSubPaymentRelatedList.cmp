@@ -1,0 +1,138 @@
+<aura:component implements="flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId" controller="subPmtRelLstController">
+    <aura:attribute name="recordId" type="String" />
+    <aura:attribute name="showTable" type="Boolean" default="true"/>
+    <aura:attribute name="recCount" type="Integer" default="0"/>
+    <aura:attribute name="subPmtRecLst" type="batchsit_t_sub_pmt__x[]"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="showMore" type="Boolean"/>
+    <aura:attribute name="isNavigateToCmp" type="Boolean" default="false"/>
+    <article class="slds-card slds-card_boundary forceRelatedListCardDesktop" data-aura-class="forceRelatedListCardDesktop">
+        <div class="slds-card__header slds-grid">
+            <header class="slds-media slds-media--center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <div class="extraSmall forceEntityIcon" style="background-color: #e9af67" data-aura-class="forceEntityIcon">
+                        <span class="uiImage" data-aura-class="uiImage">
+                            <img src="/img/icon/t4v35/custom/custom16_120.png" class="icon " alt="batchsit$t_sub_pmt" title="batchsit$t_sub_pmt" />
+                        </span>
+                    </div>
+                </div>
+                <div class="slds-media__body">
+                    <h2 id="header">
+                        <span class="slds-card__header-link baseCard__header-title-container">
+                            <span class="slds-text-heading--small slds-truncate slds-m-right--xx-small" title="Sub Payments">
+                                <a class="header-link" onclick="{!c.navigateToChilComponent}" >Vacant Slot Contract Sub Payment</a>
+                            </span>
+                            <span class="slds-text-heading--small slds-shrink-none slds-m-right--xx-small" title="{!v.recCount}"> ({!v.recCount})</span>
+                        </span>
+                    </h2>
+                </div>
+            </header>
+            <div class="slds-no-flex">
+                <div class="actionsContainer"></div>
+            </div>
+        </div>
+        <div class="slds-card__body">
+            <div class="">
+                <div class="previewMode MEDIUM forceRelatedListPreview" data-aura-class="forceRelatedListPreview">
+                    <div class="">
+                        <div class="useHeaderBarFix forceBaseListView forceRelatedListPreviewGrid" data-aura-class="forceBaseListView forceRelatedListPreviewGrid">
+                            <div class="spinnerWrapper hideSpinner hideEl forceComponentSpinner" data-aura-class="forceComponentSpinner">
+                                <div class="indicator  hideEl forceInlineSpinner" aria-hidden="true" role="alert" data-aura-class="forceInlineSpinner">
+                                </div>
+                            </div>
+                            <aura:if isTrue="{!v.showTable}">
+                                <div class="listViewContent">
+                                    <div class="scrollable uiScroller scroller-wrapper scroll-bidirectional native" tabindex="-1" data-aura-class="uiScroller">
+                                        <div class="scroller actionBarPlugin fixedHeaderPlugin">
+                                            <table class="forceRecordLayout slds-table slds-no-row-hover slds-table_cell-buffer uiVirtualDataGrid--default uiVirtualDataGrid" data-aura-class="uiVirtualDataGrid--default uiVirtualDataGrid">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="initialSortAsc rowMaxWidthOverride " scope="col" title="ID">
+                                                            ID
+                                                            <span class="assistiveText"></span>
+                                                        </th>
+                                                        <th class="rowMaxWidthOverride " scope="col" title="Slot Contract ID">
+                                                            Slot Contract ID
+                                                            <span class="assistiveText"></span>
+                                                        </th>
+                                                        <th class="rowMaxWidthOverride " scope="col" title="Care Level">
+                                                            Care Level
+                                                            <span class="assistiveText"></span>
+                                                        </th>
+                                                        <th class="rowMaxWidthOverride " scope="col" title="Rate Type">
+                                                            Rate Type
+                                                            <span class="assistiveText"></span>
+                                                        </th>
+                                                        <th class="rowMaxWidthOverride " scope="col" title="Unit Type">
+                                                            Unit Type
+                                                            <span class="assistiveText"></span>
+                                                        </th>
+                                                        <th class="rowMaxWidthOverride " scope="col" title="Vacant Slot Contract Amount">
+                                                            Vacant Slot Contract Amount
+                                                            <span class="assistiveText"></span>
+                                                        </th>
+                                                        <!-- End: CCCAP-2556 -->
+                                                    </tr>
+                                                </thead>
+                                                <tfoot></tfoot>
+                                                <tbody>
+                                                    <aura:iteration items="{!v.subPmtRecLst}" var="item">
+                                                        <tr>
+                                                            <th class="rowMaxWidthOverride " scope="row">
+                                                                <div class="outputLookupContainer forceOutputLookupWithPreview" data-aura-class="forceOutputLookupWithPreview">
+                                                                    <a class="textUnderline outputLookupLink slds-truncate forceOutputLookup" data-refid="recordId" data-recordid="{!item.Id}" data-special-link="true" href="{!'/one/one.app?source=aloha#/sObject/'+item.Id+'/view'}" target="_self" rel="noreferrer" title="" data-aura-class="forceOutputLookup">
+                                                                        {!item.idn_pmt_sub__c}
+                                                                    </a>
+                                                                </div>
+                                                            </th>
+                                                            <td class="rowMaxWidthOverride ">
+                                                                <div class="outputLookupContainer forceOutputLookupWithPreview" data-aura-class="forceOutputLookupWithPreview">
+                                                                    <a class="textUnderline outputLookupLink slds-truncate forceOutputLookup" data-refid="recordId" data-recordid="{!item.idn_slot_contract__c}" data-special-link="true" href="{!'/one/one.app?source=aloha#/sObject/'+item.idn_slot_contract__c+'/view'}" target="_blank" rel="noreferrer" title="" data-aura-class="forceOutputLookup">
+                                                                        {!item.idn_slot_contract__r.Name}
+                                                                    </a>
+                                                                </div>
+                                                            </td>
+                                                            <td class="rowMaxWidthOverride ">
+                                                                <span class="uiOutputNumber" data-aura-class="uiOutputNumber">
+                                                                    {!item.idn_slot_contract__r.CDE_CARE_LEVEL__c}
+                                                                </span>
+                                                            </td>
+                                                            <td class="rowMaxWidthOverride ">
+                                                                <span class="uiOutputNumber" data-aura-class="uiOutputNumber">
+                                                                    {!item.idn_slot_contract__r.CDE_RATE_TYPE__c}
+                                                                </span>
+                                                            </td>
+                                                            <td class="rowMaxWidthOverride ">
+                                                                <span class="uiOutputNumber" data-aura-class="uiOutputNumber">
+                                                                    {!item.idn_slot_contract__r.CDE_CARE_UNIT__c}
+                                                                </span>
+                                                            </td>
+                                                            <td class="rowMaxWidthOverride ">
+                                                                <span class="uiOutputNumber" data-aura-class="uiOutputNumber">
+                                                                    {!item.amt_slot_pmt_sub__c}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    </aura:iteration>
+                                                </tbody>
+                                            </table>
+                                            <!--render facet: 1860:0-->
+                                        </div>
+                                    </div>
+                                </div>
+                            </aura:if>
+                            <div class="emptyContent hidden">
+                                <div class="emptyContentInner">
+                                    
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <aura:if isTrue="{!and((v.recCount) gt 0, v.showMore)}">
+            <footer class="slds-card__footer"><a onclick="{!c.navigateToChilComponent}" >View All <span class="slds-assistive-text">entity type</span></a></footer>
+        </aura:if>
+    </article>
+</aura:component>

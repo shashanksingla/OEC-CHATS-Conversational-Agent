@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>1</fullName>
+        <default>false</default>
+        <label>Case is no longer eligible</label>
+    </customValue>
+    <customValue>
+        <fullName>2</fullName>
+        <default>false</default>
+        <label>Provider has changed</label>
+    </customValue>
+    <customValue>
+        <fullName>3</fullName>
+        <default>false</default>
+        <label>Temporary break in the need for services</label>
+    </customValue>
+    <customValue>
+        <fullName>4</fullName>
+        <default>false</default>
+        <label>Provider has terminated the placement</label>
+    </customValue>
+    <customValue>
+        <fullName>6</fullName>
+        <default>false</default>
+        <label>Child is no longer eligible</label>
+    </customValue>
+    <customValue>
+        <fullName>7</fullName>
+        <default>false</default>
+        <label>Child is no longer on the case</label>
+    </customValue>
+    <customValue>
+        <fullName>10</fullName>
+        <default>false</default>
+        <label>Qualified Exempt Child Care Provider is no longer eligible to provide child care due to Must Take Action. (Maintain next day closure)</label>
+    </customValue>
+    <customValue>
+        <fullName>11</fullName>
+        <default>false</default>
+        <label>New person added to providers household that needs to be fingerprinted within fifteen (15) days.</label>
+    </customValue>
+    <customValue>
+        <fullName>13</fullName>
+        <default>false</default>
+        <label>Redetermination of eligibility form not returned</label>
+    </customValue>
+    <customValue>
+        <fullName>14</fullName>
+        <default>false</default>
+        <label>Providers fiscal agreement has closed</label>
+    </customValue>
+    <customValue>
+        <fullName>15</fullName>
+        <default>false</default>
+        <label>Fiscal agreement does not have appropriate rates for child</label>
+    </customValue>
+    <customValue>
+        <fullName>20</fullName>
+        <default>false</default>
+        <label>Child has turned 19 years old and has exceeded the age limit for the program.</label>
+    </customValue>
+    <customValue>
+        <fullName>25</fullName>
+        <default>false</default>
+        <label>No need for care</label>
+    </customValue>
+    <customValue>
+        <fullName>26</fullName>
+        <default>false</default>
+        <label>Voluntary withdrawal</label>
+    </customValue>
+    <customValue>
+        <fullName>27</fullName>
+        <default>false</default>
+        <label>Opened In Error</label>
+    </customValue>
+    <customValue>
+        <fullName>28</fullName>
+        <default>false</default>
+        <label>Child has 22 or more unexplained absences</label>
+    </customValue>
+    <customValue>
+        <fullName>31</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Case has pending verifications</label>
+    </customValue>
+    <customValue>
+        <fullName>30</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Conversion</label>
+    </customValue>
+    <customValue>
+        <fullName>24</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Ineligible</label>
+    </customValue>
+    <customValue>
+        <fullName>23</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Enrolled through other Funding Program</label>
+    </customValue>
+    <customValue>
+        <fullName>22</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Authorized</label>
+    </customValue>
+    <customValue>
+        <fullName>21</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Waitlisted (Insufficient Funds)</label>
+    </customValue>
+    <customValue>
+        <fullName>19</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Warning! License is pending</label>
+    </customValue>
+    <customValue>
+        <fullName>18</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Service closed or no appropriate service exists</label>
+    </customValue>
+    <customValue>
+        <fullName>17</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>No provider record found in Trails</label>
+    </customValue>
+    <customValue>
+        <fullName>16</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Invalid provider type</label>
+    </customValue>
+    <customValue>
+        <fullName>12</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Authorization rates are higher than the fiscal agreement rates</label>
+    </customValue>
+    <customValue>
+        <fullName>9</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Fingerprint card rejected for member of providers household</label>
+    </customValue>
+    <customValue>
+        <fullName>8</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Short Term Drop In</label>
+    </customValue>
+    <customValue>
+        <fullName>5</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Child is older than the age limit</label>
+    </customValue>
+    <description>R00687</description>
+    <masterLabel>R00687</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

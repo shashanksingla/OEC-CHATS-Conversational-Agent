@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CDE_EDIT_REASON__c</fullName>
+    <description>Project 353 | JIRA CCCAP-6051</description>
+    <label>Reason for Edit</label>
+    <required>false</required>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetName>R00855</valueSetName>
+    </valueSet>
+</CustomField>

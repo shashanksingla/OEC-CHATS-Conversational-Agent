@@ -1,0 +1,61 @@
+<template>
+    <template if:true={showSpinner}>
+        <lightning-spinner variant="brand" size="large"></lightning-spinner>
+    </template>
+    <div>
+        <lightning-layout multiple-rows="true" vertical-align="space">
+            <lightning-layout-item flexibility="auto" padding="around-small" size="4">
+                <lightning-combobox name="month" label="Month:" value={selectedMonth}
+                    options={months} onchange={handleMonthChange} required>
+                </lightning-combobox>
+            </lightning-layout-item>
+            
+            <lightning-layout-item flexibility="auto" padding="around-small" size="2">
+                <lightning-input type="number" name="year" label="Year:" value={selectedYear}
+                    min="2000" max="3000" step="1" onchange={handleYearChange} required>
+                </lightning-input>
+            </lightning-layout-item>
+            
+            <lightning-layout-item flexibility="auto" padding="around-small" size="4" class="slds-align-bottom">
+                <lightning-button variant="brand" label="View" onclick={viewCalendar}></lightning-button>
+                <lightning-button variant="brand" label="Save Changes to Schedule" class="slds-m-left_x-small"
+                    onclick={validateAndSaveChanges} disabled={isReadOnly}>
+                </lightning-button>
+            </lightning-layout-item>
+            
+            <template if:true={hasWeeksInMonth}>
+                <lightning-layout-item flexibility="auto" padding="around-small" size="12" class="slds-align_absolute-center">
+                </lightning-layout-item>
+                
+                <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+                    <div class="slds-p-around_x-small">
+                        <div>
+                            <div class="calendarHeaderCells">Monday</div>
+                            <div class="calendarHeaderCells">Tuesday</div>
+                            <div class="calendarHeaderCells">Wednesday</div>
+                            <div class="calendarHeaderCells">Thursday</div>
+                            <div class="calendarHeaderCells">Friday</div>
+                            <div class="calendarHeaderCells">Saturday</div>
+                            <div class="calendarHeaderCells">Sunday</div>
+                            <div style="clear: both;"></div>
+                        </div>
+                        
+                        <template for:each={weeksInAMonth} for:item="week">
+                            <div key={week.id}>
+                                <template for:each={week.DaysInAWeek} for:item="day">
+                                    <div key={day.id}>
+                                        <c-auth-encmbr-edit-lwc map={mapDateToRecordId} day={day}
+                                            prov-clos-dte-options={provClosDteOptions} rate-type-options={rateTypeOptions}
+                                            auth-terminated={authTerminated} is-read-only={isReadOnly}
+                                            oncreateencumbranceevent={handleCreateEncumbranceEvent}>
+                                        </c-auth-encmbr-edit-lwc>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </lightning-layout-item>
+            </template>
+        </lightning-layout>
+    </div>
+</template>

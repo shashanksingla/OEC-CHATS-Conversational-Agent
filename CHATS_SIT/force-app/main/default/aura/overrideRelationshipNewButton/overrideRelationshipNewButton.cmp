@@ -1,0 +1,54 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,lightning:actionOverride,flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickAction" extends="c:abstractComponent" controller="NewRelationshipController">
+    <aura:attribute name="newRelationshipObj" type="T_INDIV_REL__c" default="{'sobjectType':'T_INDIV_REL__c',
+                                                                             'CDE_SOURCE_VRFYD_REL__c':'',
+                                                                             'CDE_TYPE_REL_INDIV__c':'',
+                                                                             'CDE_TYPE_VERIF__c':'',
+                                                                             'IDN_CLIENT__c':'',
+                                                                             'IDN_CLIENT_RELTD__c':'',
+                                                                             'DTE_BEGIN_EFFV__c':'',
+                                                                             'DTE_END_EFFV__c':'',
+                                                                             'Name':''}"/>
+    <aura:attribute name="relationshipObj" type="T_INDIV_REL__c" />
+    <aura:set attribute="pageMessages" value="{!v.recordError}" /> 
+    <aura:attribute name="sObjectName" type="String"/>
+    <aura:set attribute="messageType" value="{!v.message}" />
+    <aura:attribute name="recordError" type="List" />
+    <aura:attribute name="options" type="List" default="[]"/>
+    <aura:attribute name="message" type="String" />
+    <aura:attribute name="recordId" type="String" />
+    <aura:attribute name="isPrimaryCheck" type="Boolean" default="false"/>
+    <aura:attribute name="initDataLoaded" type="Boolean" default="false"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+    <c:LoadingSpinnerComp spinner="{!v.showSpinner}"/>
+    <lightning:overlayLibrary aura:id='overlayLib'/>
+    
+    <aura:if isTrue="{!v.initDataLoaded==true}">
+        <lightning:card iconName="standard:event">
+            <aura:set attribute="title">
+                <div class="slds-grid">
+                    <div class="slds-col slds-has-flexi-truncate">
+                        <div class="slds-media slds-no-space slds-grow">                        
+                            <div class="slds-media__body">
+                                <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="New Relationship">New Relationship</h1>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aura:set>
+            <aura:set attribute="actions">
+                <div class="slds-text-align--right slds-m-top_small">
+                    <c:navigationComponent onFinish="{!c.doFinish}"
+                                           onCancel="{!c.doCancel}"
+                                           finishLabel="Save"
+                                           showNext="false"
+                                           showFinish="true"/>
+                </div>
+            </aura:set>
+            <c:relationshipPg1 aura:id="newRelRecord" recordId="{!v.recordId}"
+                               newRelationshipObj="{!v.newRelationshipObj}"
+                               isCurrentPageValid="{!v.isCurrentPageValid}"
+                               fieldValidationErrors="{!v.fieldValidationErrors}"/> 
+        </lightning:card>
+    </aura:if>
+</aura:component>

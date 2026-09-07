@@ -1,0 +1,127 @@
+<aura:component extends="c:abstractSection">
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:attribute name="countyRatePlanRec" type="T_COUNTY_RATE__c"
+                    default="{'sobjectType':'T_COUNTY_RATE__c'}"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:attribute name="countyId" type="String" />
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:attribute name="recordError" type="String" />
+    <aura:attribute name="isNew" type="Boolean" default="true" />
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Contract for Slots</B></h3>
+            <h1 class="slds-section__title">Please complete the following questions related to your county's policies surrounding contract for slots.</h1>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputRadioGroupForPicklist label="1. Does your county have a program for Contract for Slots payment options?" aura:id="input-field"
+                                          value="{!v.countyRatePlanRec.CFS_Q1__c}"
+                                          object="T_COUNTY_RATE__c"
+                                          field="CFS_Q1__c" required="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q1__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <aura:if isTrue="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}">
+                <lightning:textarea name="input-name" label="1.1 If yes, what is the process for monitoring the effectiveness of the contract?"
+                                    value="{!v.countyRatePlanRec.CFS_Q1_1__c}" 
+                                    required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}" aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q1_1__c"/>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+         <aura:if isTrue="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}">
+            <c:inputMultiSelectPicklist label="2. What are your target populations?" aura:id="input-field"
+                                        value="{!v.countyRatePlanRec.CFS_Q2__c}"
+                                        object="T_COUNTY_RATE__c"
+                                        field="CFS_Q2__c" required="false"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q2__c"/>
+          </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <aura:if isTrue="{!empty(v.countyRatePlanRec.CFS_Q2__c)  &amp;&amp; v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}">
+                <lightning:input type="text" name="input-name" label="Other" aura:id="input-field"
+                                 value="{!v.countyRatePlanRec.CFS_Q2_OTHER__c}" 
+                                 required="{!empty(v.countyRatePlanRec.CFS_Q2__c)  &amp;&amp; v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q2_OTHER__c"/>
+            </aura:if>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}">
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:textarea name="input-name" label="2.1 How does your county identify Contract for Slot target populations and target areas?"
+                                    value="{!v.countyRatePlanRec.CFS_Q2_1__c}" required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}" aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q2_1__c"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:input type='number' name="input-name" label="3. How long do you allow a slot contract? (In Months, Maximum is 12 months)"
+                                 value="{!v.countyRatePlanRec.CFS_Q3__c}" 
+                                 maxlength="2" 
+                                 max="12" 
+                                 required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}"
+                                 min="0"
+                                 aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q3__c"/>           
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:textarea name="input-name" label="3.1 How does your county determine the length of the slot contract?"
+                                    value="{!v.countyRatePlanRec.CFS_Q3_1__c}" required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}" aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q3_1__c"/>           
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:textarea name="input-name" label="4. How does your county identify the need for the slot contract at a specific licensed child care provider?"
+                                    value="{!v.countyRatePlanRec.CFS_Q4__c}" required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}" aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q4__c"/>           
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:textarea name="input-name" label="5. How does your county ensure a fair and equitable review and selection process when selecting a licensed child care provider?"
+                                    value="{!v.countyRatePlanRec.CFS_Q5__c}" required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}" aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q5__c"/>           
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="number" name="input-name" label="6. How many slots do you allow with a licensed child care provider?" aura:id="input-field"
+                                 value="{!v.countyRatePlanRec.CFS_Q6__c}" 
+                                 required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}"
+                                 min="0"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q6__c"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:textarea name="input-name" label="6.1 How does the county determine the number of contracted slots with a licensed child care provider?"
+                                    value="{!v.countyRatePlanRec.CFS_Q6_1__c}" required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}" aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q6_1__c"/>           
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:textarea name="input-name" label="7. How does your county ensure that less-than-arm’s length transactions are prohibited?"
+                                    value="{!v.countyRatePlanRec.CFS_Q7__c}" required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}" aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q7__c"/>           
+            </lightning:layoutItem>
+        </aura:if>
+    </lightning:layout>
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <aura:if isTrue="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}">
+            	<h3 class="slds-section__title"><B>How does your county continuously monitor the success of a slot contract during the contract period?</B></h3>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <aura:if isTrue="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}">
+                <lightning:textarea name="input-name" label="8. How do you measure the success for each slot contract?"
+                                    value="{!v.countyRatePlanRec.CFS_Q8__c}" required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}" aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q8__c"/> 
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <aura:if isTrue="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}">
+                <lightning:textarea name="input-name" label="8.1 How frequently do you measure the success for each slot contract?"
+                                    value="{!v.countyRatePlanRec.CFS_Q8_1__c}" required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}" aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q8_1__c"/>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+            <lightning:layoutItem flexibility="auto" size="6">
+                <aura:if isTrue="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}">
+                    <lightning:textarea name="input-name" label="8.2 What is the measure for renegotiating slot contracts which do not meet your success criteria?"
+                                        value="{!v.countyRatePlanRec.CFS_Q8_2__c}" required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'?true:false}" aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q8_2__c"/>
+                </aura:if>
+            </lightning:layoutItem>
+        </lightning:layoutItem>
+    </lightning:layout>
+</aura:component>

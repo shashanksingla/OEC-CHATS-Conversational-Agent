@@ -1,0 +1,6 @@
+<aura:event type="APPLICATION" description="Event template" >
+    <aura:attribute name="adjustmentDetailObj" type="T_ADJMT_DETAIL__c" />
+    <aura:attribute name="adjustmentDetailTemp" type="T_ADJMT_DETAIL__c" />
+    <aura:attribute name="key" type="String" />
+    <aura:attribute name="isARTFee" type="Boolean"  default = "false"/>
+</aura:event>

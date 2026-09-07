@@ -1,0 +1,226 @@
+<template>
+    <article class="slds-card slds-card_boundary forceRelatedListCardDesktop">
+        <div class="slds-card__header slds-grid">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <div class="extraSmall forceEntityIcon" style="background-color: #e9af67">
+                        <span class="uiImage">
+                            <img src="/img/icon/t4v35/custom/custom16_120.png" class="icon" alt="Authorization Encumbrance" title="Authorization Encumbrance" />
+                        </span>
+                    </div>
+                </div>
+                <div class="slds-media__body">
+                    <h2 id="header">
+                        <span class="slds-card__header-link baseCard__header-title-container">
+                            <span class="slds-text-heading_small slds-truncate slds-m-right_xx-small" title="Authorization Encumbrance">
+                                <template lwc:if={showHeaderLink}>
+                                    <a class="header-link" onclick={handleHeaderClick}>{relatedListHeader}</a>
+                                </template>
+                                <template lwc:else>
+                                    {relatedListHeader}
+                                </template>
+                            </span>
+                            <span class="slds-text-heading_small slds-shrink-none slds-m-right_xx-small" title={recCount}> ({recCount})</span>
+                        </span>
+                    </h2>
+                </div>
+            </header>
+            <div class="slds-no-flex">
+                <div class="actionsContainer"></div>
+            </div>
+        </div>
+        
+        <template lwc:if={isLoading}>
+            <lightning-spinner variant="brand" size="small"></lightning-spinner>
+        </template>
+        
+        <div class="slds-card__body">
+            <div class="previewMode MEDIUM forceRelatedListPreview">
+                <div class="useHeaderBarFix forceBaseListView forceRelatedListPreviewGrid">
+                    <template lwc:if={showTable}>
+                        <div class="listViewContent">
+                            <div class="scrollable uiScroller scroller-wrapper scroll-bidirectional native" tabindex="-1">
+                                <div class="scroller actionBarPlugin fixedHeaderPlugin">
+                                    <table class="forceRecordLayout slds-table slds-table_fixed-layout slds-no-row-hover slds-table_cell-buffer uiVirtualDataGrid">
+                                        <thead>
+                                            <tr>
+                                                <th class="initialSortAsc" scope="col" title="EXTERNAL ID" data-id="ExternalId" onclick={sortColumn}>
+                                                    EXTERNAL ID
+                                                    <span class="assistiveText"></span>
+                                                    <template lwc:if={showSortIcons}>
+                                                        <template lwc:if={isExternalIdSortAsc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowup" alternative-text="ASC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                        <template lwc:if={isExternalIdSortDesc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowdown" alternative-text="DESC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                    </template>
+                                                </th>
+                                                <th class="initialSortAsc" scope="col" title="DATE OF CARE" data-id="dateOfCare" onclick={sortColumn}>
+                                                    DATE OF CARE
+                                                    <span class="assistiveText"></span>
+                                                    <template lwc:if={showSortIcons}>
+                                                        <template lwc:if={isDateOfCareSortAsc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowup" alternative-text="ASC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                        <template lwc:if={isDateOfCareSortDesc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowdown" alternative-text="DESC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                    </template>
+                                                </th>
+                                                <th class="initialSortAsc" scope="col" title="ENCUMBRANCE STATUS" data-id="status" onclick={sortColumn}>
+                                                    ENCUMBRANCE STATUS
+                                                    <span class="assistiveText"></span>
+                                                    <template lwc:if={showSortIcons}>
+                                                        <template lwc:if={isStatusSortAsc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowup" alternative-text="ASC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                        <template lwc:if={isStatusSortDesc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowdown" alternative-text="DESC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                    </template>
+                                                </th>
+                                                <th class="initialSortAsc" scope="col" title="AUTHORIZED HOURS" data-id="authorizedHours" onclick={sortColumn}>
+                                                    AUTHORIZED HOURS
+                                                    <span class="assistiveText"></span>
+                                                    <template lwc:if={showSortIcons}>
+                                                        <template lwc:if={isAuthorizedHoursSortAsc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowup" alternative-text="ASC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                        <template lwc:if={isAuthorizedHoursSortDesc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowdown" alternative-text="DESC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                    </template>
+                                                </th>
+                                                <th class="initialSortAsc" scope="col" title="ACTUAL ATTENDED HOURS" data-id="actualAttendedHours" onclick={sortColumn}>
+                                                    ACTUAL ATTENDED HOURS
+                                                    <span class="assistiveText"></span>
+                                                    <template lwc:if={showSortIcons}>
+                                                        <template lwc:if={isActualAttendedHoursSortAsc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowup" alternative-text="ASC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                        <template lwc:if={isActualAttendedHoursSortDesc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowdown" alternative-text="DESC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                    </template>
+                                                </th>
+                                                <th class="initialSortAsc" scope="col" title="RATE TYPE" data-id="rateType" onclick={sortColumn}>
+                                                    RATE TYPE
+                                                    <span class="assistiveText"></span>
+                                                    <template lwc:if={showSortIcons}>
+                                                        <template lwc:if={isRateTypeSortAsc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowup" alternative-text="ASC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                        <template lwc:if={isRateTypeSortDesc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowdown" alternative-text="DESC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                    </template>
+                                                </th>
+                                                <th class="initialSortAsc" scope="col" title="ATTENDED" data-id="attendedFlag" onclick={sortColumn}>
+                                                    ATTENDED
+                                                    <span class="assistiveText"></span>
+                                                    <template lwc:if={showSortIcons}>
+                                                        <template lwc:if={isAttendedSortAsc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowup" alternative-text="ASC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                        <template lwc:if={isAttendedSortDesc}>
+                                                            &nbsp;<lightning-icon icon-name="utility:arrowdown" alternative-text="DESC" size="xx-small"></lightning-icon>
+                                                        </template>
+                                                    </template>
+                                                </th>
+                                                <template lwc:if={show0to36MonthsColumn}>
+                                                    <th class="initialSortAsc" scope="col" title="0-36 MONTHS" data-id="ind0to36months" onclick={sortColumn}>
+                                                        0-36 MONTHS
+                                                        <span class="assistiveText"></span>
+                                                        <template lwc:if={showSortIcons}>
+                                                            <template lwc:if={is0to36MonthsSortAsc}>
+                                                                &nbsp;<lightning-icon icon-name="utility:arrowup" alternative-text="ASC" size="xx-small"></lightning-icon>
+                                                            </template>
+                                                            <template lwc:if={is0to36MonthsSortDesc}>
+                                                                &nbsp;<lightning-icon icon-name="utility:arrowdown" alternative-text="DESC" size="xx-small"></lightning-icon>
+                                                            </template>
+                                                        </template>
+                                                    </th>
+                                                </template>
+                                            </tr>
+                                        </thead>
+                                        <tfoot></tfoot>
+                                        <tbody>
+                                            <template for:each={displayRecords} for:item="record" for:index="i">
+                                                <tr key={record.ExternalId}>
+                                                    <td>
+                                                        <template lwc:if={showHeaderLink}>
+                                                            <div class="outputLookupContainer forceOutputLookupWithPreview">
+                                                                <a class="textUnderline outputLookupLink slds-truncate forceOutputLookup" 
+                                                                   onclick={navigateToDetail} 
+                                                                   data-id={record.ExternalId}>
+                                                                    {record.ExternalId}
+                                                                </a>
+                                                            </div>
+                                                        </template>
+                                                        <template lwc:else>
+                                                            <span class="uiOutputText">
+                                                                {record.ExternalId}
+                                                            </span>
+                                                        </template>
+                                                    </td>
+                                                    <td>
+                                                        <span>
+                                                            <lightning-formatted-date-time value={record.dateOfCare} year="numeric" month="2-digit" day="2-digit" time-zone="UTC"></lightning-formatted-date-time>
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="uiOutputText">
+                                                            {record.status}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="uiOutputText">
+                                                            {record.authorizedHours}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="uiOutputText">
+                                                            {record.actualAttendedHours}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="uiOutputText">
+                                                            {record.rateType}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span>
+                                                            <lightning-input type="checkbox" checked={record.attendedFlag} disabled readonly></lightning-input>
+                                                        </span>
+                                                    </td>
+                                                    <template lwc:if={show0to36MonthsColumn}>
+                                                        <td>
+                                                            <span>
+                                                                <lightning-input type="checkbox" checked={record.ind0to36months} disabled readonly></lightning-input>
+                                                            </span>
+                                                        </td>
+                                                    </template>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <div class="emptyContent hidden">
+                        <div class="emptyContentInner">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <template lwc:if={showViewAllFooter}>
+            <footer class="slds-card__footer">
+                <a onclick={handleViewAllClick}>View All <span class="slds-assistive-text">entity type</span></a>
+            </footer>
+        </template>
+    </article>
+</template>

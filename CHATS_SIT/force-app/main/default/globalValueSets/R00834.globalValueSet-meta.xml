@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>CB</fullName>
+        <default>false</default>
+        <label>CBMS</label>
+    </customValue>
+    <customValue>
+        <fullName>PK</fullName>
+        <default>true</default>
+        <label>PEAK</label>
+    </customValue>
+    <customValue>
+        <fullName>PA</fullName>
+        <default>false</default>
+        <label>Paper</label>
+    </customValue>
+    <description>R00834</description>
+    <masterLabel>R00834</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

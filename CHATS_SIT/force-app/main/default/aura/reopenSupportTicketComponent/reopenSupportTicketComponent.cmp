@@ -1,0 +1,71 @@
+<aura:component controller="updateSupportTicketController" implements="force:lightningQuickActionWithoutHeader,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:appHostable" 
+                access="GLOBAL">    
+    <aura:attribute name="recordId" type="Id" />
+    <aura:attribute name="recordError" type="String" />
+    <aura:attribute name="param" type="CHATS_Support__c" />
+    <aura:attribute name="supportRecord" type="CHATS_Support__c" />
+    <aura:attribute name="isOpen" type="boolean" default="true" />
+    <aura:attribute name="toggleSpinner" type="boolean" default="true"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="canAccessReopenButtonComponentFlag" type="boolean" default="true"/>
+    <force:recordData aura:id="recordEditor"
+                      fields="Id,Name,Reopen_Reason__c,Status__c,Root_Cause__c,Ticket_Closure_Date__c,Date_Elevated__c,Reopened_By_User__c,Elevated_to__c"
+                      recordId="{!v.recordId}"
+                      targetError="{!v.recordError}"
+                      targetRecord="{!v.supportRecord}"
+                      targetFields ="{!v.param}"
+                      mode="EDIT" />
+    <aura:if isTrue="{!v.toggleSpinner}">
+        <lightning:spinner variant="brand" size="large"/>
+        <aura:set attribute="else">
+            <aura:if isTrue="{!v.canAccessReopenButtonComponentFlag==true}">
+                <!-- LOADING GIF -->
+                <!-- / LOADING GIF -->
+                <aura:if isTrue="{!v.isOpen}">
+                    <div class="slds-backdrop slds-backdrop--open"></div>        
+                    <div role="dialog" tabindex="-1" aria-labelledby="header43" class="slds-modal slds-fade-in-open ">
+                        <div class="slds-modal__container">
+                            <div class="slds-modal__header">
+                                <button class="slds-button slds-modal__close slds-button--icon-inverse" title="Close" onclick="{!c.closeModel}">
+                                    X
+                                    <span class="slds-assistive-text">Close</span>
+                                </button>
+                                <h2 id="manualscreen" class="slds-text-heading--medium">Reopen Support Ticket</h2>
+                            </div>
+                            <div class="slds-modal__content slds-p-around--medium">
+                                <br/><br/>
+                                <!-- <lightning:input type="String" label="Reopen Reason" name="reopenReason" value="{!v.param.Reopen_Reason__c}" required="true"/> -->
+                                <lightning:textarea name="reopenReason" label="Reopen Reason" value="{!v.param.Reopen_Reason__c}" required="true" maxlength="255"/>
+                                <br/><br/>
+                            </div>
+                            <div class="slds-modal__footer">
+                                <lightning:button variant="brand" name="Save" label="Save" onclick="{!c.updReopenSupportTicket}" class="slds-button slds-button--neutral" />
+                                <lightning:button variant="brand" name="Cancel" label="Cancel" onclick="{!c.closeModel}" class="slds-button slds-button--neutral" />
+                            </div>
+                        </div>
+                    </div>
+                </aura:if>
+                <aura:set attribute="else">
+                    <div class="slds-backdrop slds-backdrop--open"></div>        
+                    <div role="dialog" tabindex="-1" aria-labelledby="header43" class="slds-modal slds-fade-in-open ">
+                        <div class="slds-modal__container">
+                            <div class="slds-modal__header">
+                                <button class="slds-button slds-modal__close slds-button--icon-inverse" title="Close" onclick="{!c.doCancel}">
+                                    X
+                                    <span class="slds-assistive-text">Close</span>
+                                </button>
+                                <h2 id="manualscreen" class="slds-text-heading--medium">Insufficient Access</h2>
+                            </div>
+                            <div class="slds-modal__content slds-p-around--medium">
+                                You don't have access to this screen. Ask your administrator for help or to request access.
+                            </div>
+                            <div class="slds-modal__footer">
+                                <lightning:button variant="brand" name="Cancel" label="Back" onclick="{!c.doCancel}" class="slds-button slds-button--neutral" />
+                            </div>
+                        </div>
+                    </div>
+                </aura:set>
+            </aura:if>
+        </aura:set>
+    </aura:if>
+</aura:component>

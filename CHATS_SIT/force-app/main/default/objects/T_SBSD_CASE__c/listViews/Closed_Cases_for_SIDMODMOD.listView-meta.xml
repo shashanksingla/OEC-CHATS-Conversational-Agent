@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Closed_Cases_for_SIDMODMOD</fullName>
+    <columns>NAME</columns>
+    <columns>Program_Type__c</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>DTE_REDET_CASE__c</columns>
+    <columns>CDE_LANG_CORR__c</columns>
+    <columns>CDE_COUNTY__c</columns>
+    <columns>CNT_SIZE_FAMILY__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>CLOSED_CASES_STATUS__c</field>
+        <operation>greaterOrEqual</operation>
+        <value>1</value>
+    </filters>
+    <filters>
+        <field>OPEN_CASE_STATUS__c</field>
+        <operation>lessOrEqual</operation>
+        <value>1</value>
+    </filters>
+    <filters>
+        <field>DTE_REDET_CASE__c</field>
+        <operation>lessThan</operation>
+        <value>1/1/2025</value>
+    </filters>
+    <filters>
+        <field>CDE_COUNTY__c</field>
+        <operation>equals</operation>
+        <value>DEnver</value>
+    </filters>
+    <label>Closed Cases for SIDMODMOD</label>
+</ListView>

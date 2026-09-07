@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Awaiting_User</fullName>
+    <columns>CREATED_DATE</columns>
+    <columns>NAME</columns>
+    <columns>Support_Team_Assignee__c</columns>
+    <columns>Status__c</columns>
+    <columns>Awaiting_User__c</columns>
+    <columns>LAST_UPDATE</columns>
+    <columns>Resolution__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Status__c</field>
+        <operation>equals</operation>
+        <value>Awaiting User</value>
+    </filters>
+    <filters>
+        <field>Status__c</field>
+        <operation>notEqual</operation>
+        <value>Fixed/Completed,Change Approved,Change Denied,Change Implemented</value>
+    </filters>
+    <label>Awaiting User</label>
+</ListView>

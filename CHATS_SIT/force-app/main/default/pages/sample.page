@@ -1,0 +1,28 @@
+<apex:page showHeader="false"
+           sidebar="false"
+           standardStylesheets="false"
+           applyHtmlTag="false"
+           applyBodyTag="false"
+           docType="html-5.0">
+    
+    <html>
+        <head>
+            <meta charset="UTF-8" />
+            <title>Dynatrace RUM Test</title>
+            
+            <script
+            type="text/javascript"
+            src="https://js-cdn.dynatrace.com/jstag/19343e753a3/bf36956yzs/ed2962ae1e02e494_complete.js"
+            crossorigin="anonymous">
+                </script>
+        </head>
+        
+        <body>
+            <main>
+                <h1>Dynatrace Visualforce Test</h1>
+                <p>Open browser DevTools to verify the Dynatrace script and beacon requests.</p>
+            </main>
+        </body>
+    </html>
+    
+</apex:page>

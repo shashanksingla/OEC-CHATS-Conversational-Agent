@@ -1,0 +1,59 @@
+<aura:component extends="c:abstractComponent" controller="AuthEncumbRelatedListController" implements="lightning:actionOverride,flexipage:availableForRecordHome,force:hasRecordId" access="global">
+    <aura:attribute name="selectedMonth" type="String"/>
+    <aura:attribute name="selectedYear" type="String"/>
+    <aura:attribute name="years" type="String[]" default="['2015', '2016', '2017', '2018', '2019', '2020']" />
+    <aura:attribute name="months" type="List" />
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <lightning:card iconName="standard:event">
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <p class="slds-text-title--caps slds-line-height--reset">
+                                <lightning:formattedText value="View" />
+                            </p>
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate"
+                                title="Authorization">Authorization Encumbrance History</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        <aura:set attribute="actions">
+            <lightning:button variant="neutral" label="Cancel" onclick="{! c.doCancel }" />
+        </aura:set>
+        <div>
+            <lightning:layout multipleRows="true" verticalAlign="space">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="4">
+                    <lightning:select name="month" label="Month:" 
+                                      aura:id="viewCalendarInput"
+                                      value="{!v.selectedMonth}"
+                                      required="true">
+                        <aura:iteration items="{!v.months}" var="item">
+                            <option label="{!item.label}" value="{!item.value}"
+                                    selected="{!item.selected}"/>
+                        </aura:iteration>
+                    </lightning:select>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="2">
+                    <lightning:input aura:id="viewCalendarInput"
+                                     required="true" type="number" name="Sunday" step="1"
+                                     min="2000" max="3000"
+                                     value="{!v.selectedYear}" label="Year:" />
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="4" class="slds-align-bottom">
+                    <lightning:button variant="brand" label="View" onclick="{! c.viewEncumbrances }" />
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                    <c:authEncumbranceRelatedList aura:id="authEncumbranceRelatedList"
+                                                  isMonthYrBasedSearch="true" 
+                                                  showMore="false"
+                                                  recordId="{!v.recordId}"
+                                                  relatedListHeader="Authorization Encumbrance"
+                                                  />
+                </lightning:layoutItem>
+            </lightning:layout>        
+        </div>
+    </lightning:card>
+</aura:component>

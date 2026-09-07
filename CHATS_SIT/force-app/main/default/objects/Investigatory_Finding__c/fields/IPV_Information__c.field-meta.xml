@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IPV_Information__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>IPV Information</label>
+    <referenceTo>IPV_Information__c</referenceTo>
+    <relationshipLabel>Investigatory Findings</relationshipLabel>
+    <relationshipName>Investigatory_Findings</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

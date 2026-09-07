@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Evening</label>
+    <protected>false</protected>
+    <values>
+        <field>Description__c</field>
+        <value xsi:type="xsd:string">A daily rate used when the majority (more than 50%) of care provided on a given weeknight(Monday through Friday) is between 6:31 pm to 5:59 am. Does not include overnight care; typically has a slight differential increase in pay than the Regular Rate Type; may also be used for evening care Mon-Sun.</value>
+    </values>
+    <values>
+        <field>Rate_Type_Code__c</field>
+        <value xsi:type="xsd:string">43</value>
+    </values>
+</CustomMetadata>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CDE_REASON_END_ADDENDUM__c</fullName>
+    <label>Reason for Closure</label>
+    <required>false</required>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>County Policy Violation</fullName>
+                <default>false</default>
+                <label>County Policy Violation</label>
+            </value>
+            <value>
+                <fullName>Deceased</fullName>
+                <default>false</default>
+                <label>Deceased</label>
+            </value>
+            <value>
+                <fullName>No longer a slot contract</fullName>
+                <default>false</default>
+                <label>No longer a slot contract</label>
+            </value>
+            <value>
+                <fullName>No Longer Demonstrated Need For a Slot Contract</fullName>
+                <default>false</default>
+                <label>No Longer Demonstrated Need For a Slot Contract</label>
+            </value>
+            <value>
+                <fullName>Non-Use</fullName>
+                <default>false</default>
+                <label>Non-Use</label>
+            </value>
+            <value>
+                <fullName>Provider Request</fullName>
+                <default>false</default>
+                <label>Provider Request</label>
+            </value>
+            <value>
+                <fullName>License Expired/Closed</fullName>
+                <default>false</default>
+                <label>License Expired/Closed</label>
+            </value>
+            <value>
+                <fullName>License Number Changed</fullName>
+                <default>false</default>
+                <label>License Number Changed</label>
+            </value>
+            <value>
+                <fullName>Failed to maintain a minimum of a QRIS Level 2 rating</fullName>
+                <default>false</default>
+                <label>Failed to maintain a minimum of a QRIS Level 2 rating</label>
+            </value>
+            <value>
+                <fullName>New Fiscal Agreement has been put in place</fullName>
+                <default>false</default>
+                <label>New Fiscal Agreement has been put in place</label>
+            </value>
+            <value>
+                <fullName>Slot Contract Term has expired (or Number of Allowable Months has expired)</fullName>
+                <default>false</default>
+                <label>Slot Contract Term has expired (or Number of Allowable Months has expired)</label>
+            </value>
+            <value>
+                <fullName>Attendance expectations were unmet</fullName>
+                <default>false</default>
+                <label>Attendance expectations were unmet</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

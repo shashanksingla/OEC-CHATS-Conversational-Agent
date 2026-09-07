@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>TIP</fullName>
+        <default>false</default>
+        <label>Third IPV-Permanently Disqualified for Child Care</label>
+    </customValue>
+    <customValue>
+        <fullName>FR1</fullName>
+        <default>false</default>
+        <label>First Fraud - Disqualified from Child Care for 12 Months</label>
+    </customValue>
+    <customValue>
+        <fullName>FR2</fullName>
+        <default>false</default>
+        <label>Second Fraud - Disqualified from Child Care for 24 Months</label>
+    </customValue>
+    <customValue>
+        <fullName>FR3</fullName>
+        <default>false</default>
+        <label>Third Fraud - Permanently Disqualified for Child Care</label>
+    </customValue>
+    <customValue>
+        <fullName>FIP</fullName>
+        <default>false</default>
+        <label>First IPV- Disqualified from Child Care for 12 Months</label>
+    </customValue>
+    <customValue>
+        <fullName>SIP</fullName>
+        <default>false</default>
+        <label>Second IPV- Disqualified from Child Care for 24 Months</label>
+    </customValue>
+    <description>R00668</description>
+    <masterLabel>R00668</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Larimer Lead Workers / Supervisors</name>
+    <queueMembers>
+        <users>
+            <user>phippsbr@co.larimer.co.us.chats</user>
+            <user>amatge@co.larimer.co.us.chats</user>
+            <user>halsteks@co.larimer.co.us.chats</user>
+            <user>aldretmf@co.larimer.co.us.chats</user>
+            <user>howexxrr@co.larimer.co.us.chats</user>
+        </users>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>Case_Review__c</sobjectType>
+    </queueSobject>
+    <queueSobject>
+        <sobjectType>Task</sobjectType>
+    </queueSobject>
+</Queue>

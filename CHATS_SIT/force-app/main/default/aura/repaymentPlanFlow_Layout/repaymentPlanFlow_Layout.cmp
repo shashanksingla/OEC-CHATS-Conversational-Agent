@@ -1,0 +1,83 @@
+<!--
+Author      :	Rishav Maji
+Description :	Component contains Repayment Plan flow layout and fields
+JIRA Id     :	CCCAP-5785
+-->
+<aura:component extends="c:abstractSection" Controller="repaymentPlanFlowApexController" implements="force:appHostable,lightning:actionOverride,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickAction" access="global" >
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    
+    <aura:set attribute="pageMessages" value="{!v.recordError}"/>
+    <aura:set attribute="messageType" value="{!v.message}"/>
+    
+    <aura:attribute name="message" type="String"/>
+    <aura:attribute name="recordError" type="List"/>
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="parentObjId" type="String"/>
+    <aura:attribute name="parentObjName" type="String"/>
+    <aura:attribute name="sObjName" type="String"/>
+    <aura:attribute name="repaymentPlanObj" type="T_PMT_PLAN__c" default="{'sobjectType':'T_PMT_PLAN__c',
+                                                                          'IND_ACTIVE__c':'',
+                                                                          'AMT_PLAN_PMT__c':'',
+                                                                          'CDE_COUNTY__c':''}"/>
+    <aura:attribute name="assignedCounties" type="List" default="[]"/>
+    <aura:attribute name="selectedLookUpRecord" type="sObject" default="{}"/>
+
+    <aura:if isTrue="{!v.sObjName == 'T_PMT_PLAN__c'}">
+        <force:recordData aura:id="forceRecordCmp"
+                          recordId="{!v.recordId}"
+                          layoutType="FULL"
+                          fields="Name,IND_ACTIVE__c,AMT_PLAN_PMT__c,IDN_PROVR__c,CDE_COUNTY__c"
+                          targetFields="{!v.repaymentPlanObj}"
+                          mode="EDIT"
+                          targetError="{!v.recordError}"/>
+    </aura:if>
+    
+    <aura:if isTrue="{!v.sObjName == 'T_PMT_PLAN__c'}">
+        <header class="slds-modal__header" style="padding-top: 0px;">
+            <span class="slds-modal__title slds-hyphenate" style="font-size: 1.25rem;">Edit {!v.repaymentPlanObj.Name}</span>
+        </header>
+    </aura:if>
+    
+    <lightning:layout multipleRows="true">
+        
+        <lightning:layoutItem size="6" padding="around-small">
+            <p>Payment Plan Active?</p>
+            <div Style="font-size: 0.1rem;">&nbsp;</div>
+            <ui:inputCheckbox aura:id="input-field" value="{!v.repaymentPlanObj.IND_ACTIVE__c}"/> 
+            <c:fieldLevelMessage aura:id="T_PMT_PLAN__c-IND_ACTIVE__c"/>
+        </lightning:layoutItem>
+               
+        <lightning:layoutItem size="6" padding="around-small">
+            <c:inputPicklist label="County" aura:id="input-field"
+                             value="{!v.repaymentPlanObj.CDE_COUNTY__c}"
+                             object="T_PMT_PLAN__c"
+                             showNone="true"
+                             field="CDE_COUNTY__c"
+                             alreadyHasValues="true"
+                             required="true"
+                             options="{!v.assignedCounties}"
+                             disabled="{!v.sObjName == 'T_PMT_PLAN__c'}"/>
+            <c:fieldLevelMessage aura:id="T_PMT_PLAN__c-CDE_COUNTY__c"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem size="6" padding="around-small">
+            <c:inputLookup label="Provider" aura:id="input-field"
+                           value="{!v.repaymentPlanObj.IDN_PROVR__c}"
+                           valueLabel="{!v.parentObjName}"
+                           object="T_CHATS_PROVR_STATUS__c"
+                           searchField="Name"
+                           limit="20"
+                           required="true"
+                           disabled="{!v.sObjName == 'T_PMT_PLAN__c'}"/>
+            <c:fieldLevelMessage aura:id="T_PMT_PLAN__c-IDN_PROVR__c"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem size="6" padding="around-small">
+            <lightning:input aura:id="input-field" required="true" type="number" label="Payment Plan Amount" value="{!v.repaymentPlanObj.AMT_PLAN_PMT__c}"/>
+            <c:fieldLevelMessage aura:id="T_PMT_PLAN__c-AMT_PLAN_PMT__c"/>
+        </lightning:layoutItem>
+        
+    </lightning:layout>
+</aura:component>

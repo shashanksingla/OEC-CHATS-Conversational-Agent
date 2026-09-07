@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Adams Lead Workers / Supervisors</name>
+    <queueMembers>
+        <users>
+            <user>acheney@adcogov.org.chats</user>
+            <user>echamp@adcogov.org.chats</user>
+            <user>fsalazar@adcogov.org.chats</user>
+            <user>jgnelson@adcogov.org.chats</user>
+            <user>lauracardenas@elpasoco.com.chats</user>
+            <user>pgarcia2@adcogov.org.chats</user>
+            <user>tgallegos3@adcogov.org.chats</user>
+            <user>vrodriguez-camacho@adcogov.org.chats</user>
+            <user>yacosta@adcogov.org.chats</user>
+            <user>yluevanogarcia@adcogov.org.chats</user>
+        </users>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>Case_Review__c</sobjectType>
+    </queueSobject>
+    <queueSobject>
+        <sobjectType>Task</sobjectType>
+    </queueSobject>
+</Queue>

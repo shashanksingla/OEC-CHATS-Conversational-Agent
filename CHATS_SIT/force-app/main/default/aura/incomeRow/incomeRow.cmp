@@ -1,0 +1,66 @@
+<aura:component extends="c:abstractSection">
+    <aura:attribute name="incomeRow" type="Object"/>
+    <aura:attribute name="isFrequencyHourly" type="Boolean" default="false"/>
+    <aura:attribute name="empNumberOptions" type="List" default="[]"/>
+    <aura:method name="validateMe" action="{!c.validateRow}"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <tr>
+        <td>
+            <c:inputPicklist value="{!v.incomeRow.CDE_SOURCE_INCOME__c}"
+                             object="T_INDIV_OTHER_INCOME__c"
+                             field="CDE_SOURCE_INCOME__c"
+                             hideLabel="true"/>
+        </td>
+        <td> <!-- Added for CCCAP-3236 & CCCAP-3709 by Rishav -->
+            <div class="hideLabel">
+                <c:inputPicklist aura:id="input-field" hideLabel="true" value="{!v.incomeRow.empNumber}" needFocus="true"
+                                 alreadyHasValues="true" options="{!v.empNumberOptions}"
+                                 required="{!or(v.incomeRow.CDE_SOURCE_INCOME__c=='E', v.incomeRow.CDE_SOURCE_INCOME__c=='S')}" />
+            </div>
+        </td>
+        <td>
+            <div class="hideLabel">
+                <lightning:input aura:id="input-field" 
+                                 type="number" 
+                                 name="number" 
+                                 label="" 
+                                 value="{!v.incomeRow.amount}" 
+                                 min="1" 
+                                 messageWhenRangeUnderflow="Amount must be greater than 0"
+                                 messageWhenValueMissing="Please provide Amount"
+                                 required="{!or(!empty(v.incomeRow.CDE_SOURCE_INCOME__c),!empty(v.incomeRow.CDE_FREQ_PAY_ESTMD__c))}"
+                                 formatter="currency"
+                                 step="any"
+                                 />
+            </div>
+        </td>
+        <td>
+            <c:inputPicklist aura:id="input-field"
+                             value="{!v.incomeRow.CDE_FREQ_PAY_ESTMD__c}"
+                             object="T_EMPLMT_INCOME__c"
+                             field="CDE_FREQ_PAY_ESTMD__c"
+                             required="{!or(!empty(v.incomeRow.CDE_SOURCE_INCOME__c),!empty(v.incomeRow.amount))}"
+                             showNone="true"
+                             hideLabel="true"
+                             needFocus="true"
+                             />
+        </td>
+        <td>
+            <!-- Updated required logic for CCCAP-3236 & CCCAP-3709 by Rishav -->
+            <!-- required="{!v.incomeRow.CDE_FREQ_PAY_ESTMD__c=='HLY'?true:false}" messageWhenValueMissing="Required for Hourly frequency" -->
+            <lightning:input aura:id="input-field" 
+                             class="hideLabel" 
+                             type="number" 
+                             name="input-name" 
+                             label=""
+                             value="{!v.incomeRow.hoursPerWeek}"
+                             required="{!or(or(v.incomeRow.CDE_SOURCE_INCOME__c=='E', v.incomeRow.CDE_SOURCE_INCOME__c=='S'), v.incomeRow.CDE_FREQ_PAY_ESTMD__c=='HLY')}" messageWhenValueMissing="Please enter hours per week"
+                             step="any"
+                             onblur="{!c.roundOffHours}"
+                             />
+        </td>
+        <td>
+            <ui:outputText value="{!v.incomeRow.fedMinWageMet}"/>
+        </td>
+    </tr>
+</aura:component>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>dte_care__c</fullName>
+    <description>dte_care</description>
+    <externalDeveloperName>dte_care</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Date of Care</label>
+    <required>false</required>
+    <type>Date</type>
+</CustomField>

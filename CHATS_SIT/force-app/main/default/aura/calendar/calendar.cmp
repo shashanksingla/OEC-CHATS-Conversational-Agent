@@ -1,0 +1,124 @@
+<aura:component extends="c:abstractComponent" controller="AuthorizationFlowApxCtrl" implements="flexipage:availableForAllPageTypes" >
+    <aura:attribute name="years" type="String[]" default="['2015', '2016', '2017', '2018', '2019', '2020']" />
+    <aura:attribute name="isEncumbrnceCreated" type="Boolean"  />
+    <aura:attribute name="months" type="List" />
+    <aura:attribute name="weeksInAMonth" type="Object" />
+    <aura:attribute name="mapDateToRecordId" type="Map" />
+    <aura:attribute name="provIdValtwo" type="String" />
+    <aura:attribute name="countySFId" type="String" />
+    <aura:attribute name="selectedMonth" type="String"/>
+    <aura:attribute name="selectedYear" type="String"/>
+    <aura:attribute name="rateTypeOptions" type="List" />
+    <aura:attribute name="provClosDteOptions" type="Object"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="authTerminated" type="Boolean" default="false" />
+    <aura:attribute name="mapDateToEncumbranceUpdate" type="Map" default="{}"/>
+    <aura:attribute name="lstEncumbranceToBeUpdated" type="List" />
+    <aura:attribute name="isReadOnly" type="Boolean" default="false" />
+    <aura:method name="handleUnsavedChanges" action="{!c.handleUnsavedChanges}" access="PUBLIC"/>
+    <aura:handler event="c:createEncumbranceEvent" action="{!c.updateMapDateToEncumbrance}"/>
+    
+    <div>
+        <lightning:layout multipleRows="true" verticalAlign="space">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="4">
+                
+                <!--<label class="slds-form-element__label" for="month">Month</label>-->
+                <!--months picklist-->
+                <lightning:select name="month" label="Month:" 
+                                  aura:id="viewCalendarInput"
+                                  value="{!v.selectedMonth}"
+                                  required="true">
+                    <aura:iteration items="{!v.months}" var="item">
+                        <option label="{!item.label}" value="{!item.value}"
+                                selected="{!item.selected}"/>
+                    </aura:iteration>
+                </lightning:select>
+                <!--<ui:inputSelect aura:id="month" class="slds-input" >
+                    <ui:inputSelectOption text="0" label="January" />
+                    <ui:inputSelectOption text="1" label="February" />
+                    <ui:inputSelectOption text="2" label="March" />
+                    <ui:inputSelectOption text="3" label="April" />
+                    <ui:inputSelectOption text="4" label="May" />
+                    <ui:inputSelectOption text="5" label="June" />
+                    <ui:inputSelectOption text="6" label="July" />
+                    <ui:inputSelectOption text="7" label="August" />
+                    <ui:inputSelectOption text="8" label="September" />
+                    <ui:inputSelectOption text="9" label="October" />
+                    <ui:inputSelectOption text="10" label="November" />
+                    <ui:inputSelectOption text="11" label="December" />
+                </ui:inputSelect>-->
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="2">
+                <lightning:input aura:id="viewCalendarInput"
+                                 required="true" type="number" name="Sunday" step="1"
+                                 min="2000" max="3000"
+                                 value="{!v.selectedYear}" label="Year:" />
+                <!--years picklist-->
+                <!--<ui:inputSelect aura:id="year" class="slds-input">
+                            <aura:iteration items="{!v.years}" var="year" >
+                                <ui:inputSelectOption text="{!year}" label="{!year}" />
+                            </aura:iteration>
+                        </ui:inputSelect>-->
+                <!--view button-->
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="4" class="slds-align-bottom">
+                <lightning:button variant="brand" label="View" onclick="{! c.viewCalendar }" />
+                <lightning:button variant="brand" label="Save Changes to Schedule" onclick="{!c.updateAuthEncmbrCalendarCell}" disabled="{!v.isReadOnly}"/>
+                <!--<ui:button label="View" press="{!c.viewCalendar}" />-->
+            </lightning:layoutItem>
+            <aura:if isTrue="{!!empty(v.weeksInAMonth)}"> 
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="12" class="slds-align_absolute-center">
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                    <!--main calendar-->
+                    <div class="slds-p-around_x-small">
+                        <div>
+                            <div class="calendarHeaderCells">
+                                Monday
+                            </div>
+                            <div class="calendarHeaderCells">
+                                Tuesday
+                            </div>
+                            <div class="calendarHeaderCells">
+                                Wednesday
+                            </div>
+                            <div class="calendarHeaderCells">
+                                Thursday
+                            </div>
+                            <div class="calendarHeaderCells">
+                                Friday
+                            </div>
+                            <div class="calendarHeaderCells">
+                                Saturday
+                            </div>
+                            <div class="calendarHeaderCells">
+                                Sunday
+                            </div>
+                            <div style="clear: both;" />
+                        </div>
+                        <aura:iteration items="{!v.weeksInAMonth}" var="week" >
+                            <div>
+                                <aura:iteration items="{!week.DaysInAWeek}" var="day" >
+                                    <!--<c:day day="{!day}" />-->
+                                    <div>
+                                        <!--<aura:if isTrue="{!!empty(day)}">-->
+                                             <c:authEncmbrEdit aura:id="authEncmbrEditCell"
+                                                               map="{!v.mapDateToRecordId}" day="{!day}"
+                                                               provClosDteOptions="{!v.provClosDteOptions}" 
+                                                               rateTypeOptions="{!v.rateTypeOptions}"  
+    														   authTerminated="{!v.authTerminated}"
+                                                               isReadOnly="{!v.isReadOnly}"
+                                                               />
+                                        				      
+                                      <!--  </aura:if>-->
+                                    </div>
+                                </aura:iteration>
+                            </div>
+                        </aura:iteration>
+                    </div>
+                </lightning:layoutItem>
+            </aura:if>
+        </lightning:layout>        
+    </div>
+    <!--/component-->
+</aura:component>

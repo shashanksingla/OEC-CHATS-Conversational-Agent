@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CR702_Checklist__c</fullName>
+    <label>CR702 Checklist</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>MultiselectPicklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetName>Checklist_CR702</valueSetName>
+    </valueSet>
+    <visibleLines>5</visibleLines>
+</CustomField>

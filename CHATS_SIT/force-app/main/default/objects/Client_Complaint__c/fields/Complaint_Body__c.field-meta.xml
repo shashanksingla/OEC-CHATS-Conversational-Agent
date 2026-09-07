@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Complaint_Body__c</fullName>
+    <encryptionScheme>None</encryptionScheme>
+    <inlineHelpText>&quot;Complaint” means a verbal or written expression of dissatisfaction by an applicant, adult caretaker, teen parent, or child care provider to a county or the Department that is: (1) significant, meaning not yet resolved and severe enough that resources should be contributed to resolve it immediately, and (2) controllable, meaning the county had the ability to alter the negative event preceding the complaint, but failed to take the necessary steps to prevent it.</inlineHelpText>
+    <label>Complaint Body</label>
+    <length>5000</length>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

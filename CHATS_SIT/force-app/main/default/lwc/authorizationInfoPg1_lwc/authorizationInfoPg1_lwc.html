@@ -1,0 +1,360 @@
+<template>
+    <lightning-layout multiple-rows="true" horizontal-align="space">
+        <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">General Information</h3>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <template if:true={isCreateMode}>
+                <c-multiselect-combobox name="childState" label="Child Name/State ID" value={authRec.IDN_CLIENT__c} 
+                    placeholder="Choose one..." options={childStateOptions} onselect={handlePicklistChange} 
+                    behavior-type="picklist" object="T_AUTH__c" field="IDN_CLIENT__c" show-none already-has-values
+                    required data-field="IDN_CLIENT__c" data-id="input-field"></c-multiselect-combobox>
+            </template>
+            <template if:false={isCreateMode}>
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label">Child Name/State ID</label>
+                    <div class="slds-form-element__control">
+                        <span class="slds-form-element__static">{childNameStateDisplay}</span>
+                    </div>
+                </div>
+            </template>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <template if:true={isCreateMode}>
+                <lightning-layout multiple-rows="true" horizontal-align="space">
+                    <lightning-layout-item flexibility="auto" size="6" class="slds-is-relative">
+                        <lightning-input type="date" label="Authorization Begin Date" value={authRec.DTE_BEGIN_EFFV_AUTH__c} data-id="input-field"
+                            onchange={handleInputChange} required data-field="DTE_BEGIN_EFFV_AUTH__c">
+                        </lightning-input>
+                    </lightning-layout-item>
+                    <lightning-layout-item flexibility="auto" size="6">
+                        <lightning-helptext content="Begin Date has to be the first of a month and greater than the current system date (can't be equal). 
+                        Authorization Begin Date cannot be greater than the Case Redetermination Date on the case. 
+                        Authorization Begin Date cannot be earlier than the child's eligibility begin date. 
+                        Cannot create record if another record exists for the same case, child and provider and begin and end dates overlap."></lightning-helptext>
+                    </lightning-layout-item>
+                </lightning-layout>
+            </template>
+            <template if:false={isCreateMode}>
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label">Authorization Begin Date</label>
+                    <div class="slds-form-element__control">
+                        <lightning-formatted-date-time value={authRec.DTE_BEGIN_EFFV_AUTH__c} year="numeric" month="2-digit" day="2-digit" time-zone="UTC"></lightning-formatted-date-time>
+                    </div>
+                </div>
+            </template>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Provider Information</h3>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <template if:true={isCreateMode}>
+                <div class="slds-form-element">
+                    <div class="slds-form-element__control">
+                        <c-custom-lookup_lwc label="Provider ID" object-api-name="T_CHATS_PROVR_STATUS__c" search-field="Name" required data-id="input-field"
+                            onvalueselected={handleProviderIdChange} value={providerIdVal} aria-label="Provider ID" selected-record-id={providerIdVal}></c-custom-lookup_lwc>
+                    </div>
+                </div>
+            </template>
+            <template if:false={isCreateMode}>
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label">Provider ID</label>
+                    <div class="slds-form-element__control">
+                        <span class="slds-form-element__static">{authProviderRec.Name}</span>
+                    </div>
+                </div>
+            </template>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <div class="slds-form-element">
+                <label class="slds-form-element__label"><abbr class="slds-required" title="required">*</abbr> Provider Name</label>
+                <div class="slds-form-element__control">
+                    <span class="slds-form-element__static">
+                        <template if:true={isCreateMode}>{providerRec.NAM_FACILITY__c}</template>
+                        <template if:false={isCreateMode}>{authProviderRec.NAM_FACILITY__c}</template>
+                    </span>
+                </div>
+            </div>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <c-multiselect-combobox label="Provider Location/Relative Status" value={authRec.CDE_REL_PROVR__c} placeholder="Choose One..." 
+                behavior-type="picklist" object="T_AUTH__c" field="CDE_REL_PROVR__c" data-id="input-field" show-none
+                onselect={handlePicklistChange} required={providerLocationRequired} disabled={isReadOnly} data-field="CDE_REL_PROVR__c">
+            </c-multiselect-combobox>
+        </lightning-layout-item>
+        <template if:true={isProvRel}>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <c-multiselect-combobox label="Provider Relationship to Child in Care" value={authRec.CDE_PRO_REL_CHLD__c} 
+                    placeholder="Choose One..." onselect={handlePicklistChange} required={providerRelationshipRequired} 
+                    behavior-type="picklist" object="T_AUTH__c" field="CDE_PRO_REL_CHLD__c" show-none
+                    disabled={isReadOnly} data-field="CDE_PRO_REL_CHLD__c" data-id="input-field"></c-multiselect-combobox>
+            </lightning-layout-item>
+             <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <c-multiselect-combobox label="Provider lives in different residence?" value={authRec.CDE_PROV_DIFF_RESI__c} 
+                    placeholder="Choose One..." onselect={handlePicklistChange} required={providerResidenceRequired} 
+                    behavior-type="picklist" object="T_AUTH__c" field="CDE_PROV_DIFF_RESI__c" show-none
+                    disabled={isReadOnly} data-field="CDE_PROV_DIFF_RESI__c" data-id="input-field"></c-multiselect-combobox>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+        </template>
+        <template if:false={isProvRel}>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+        </template>
+        <template if:true={showSlotContractSection}>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+                <h3 class="slds-section__title">Slot Contract Information</h3>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <c-multiselect-combobox label="Slot Contract ID" value={authRec.IDN_SLOT_CONTRACT__c} placeholder="Choose One..." 
+                    options={slotContractOptions} data-id="input-field" data-field="IDN_SLOT_CONTRACT__c"
+                    behavior-type="picklist" object="T_AUTH__c" field="IDN_SLOT_CONTRACT__c" show-none already-has-values
+                    onselect={handlePicklistChange} disabled={isReadOnly}></c-multiselect-combobox>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label">Slot Contract Description</label>
+                    <div class="slds-form-element__control">
+                        <span class="slds-form-element__static">{sCAssociationRec.SLOT_CONTRACT_DESCRIPTION__c}</span>
+                    </div>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <lightning-input type="date" label="Authorization Slot Begin Date" value={authRec.DTE_BEGIN_SLOT__c} 
+                    onchange={handleInputChange} required={mandatory} disabled={isReadOnly} data-id="input-field"
+                    data-field="DTE_BEGIN_SLOT__c"></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label">Slot Contract Begin Date</label>
+                    <div class="slds-form-element__control">
+                        <c-output-field_lwc value={sCAssociationRec.DTE_BEGIN_SLOT__c} hide-label type="UIDATE" ></c-output-field_lwc>
+                    </div>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label">Slot Contract End Date</label>
+                    <div class="slds-form-element__control">
+                        <c-output-field_lwc value={sCAssociationRec.DTE_END_SLOT__c} hide-label type="UIDATE" ></c-output-field_lwc>
+                    </div>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label">Care Level</label>
+                    <div class="slds-form-element__control">
+                        <span class="slds-form-element__static">{sCAssociationRec.CDE_CARE_LEVEL__c}</span>
+                    </div>
+                </div>
+            </lightning-layout-item>
+        </template>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Immunization Information</h3>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <c-multiselect-combobox label="Age Appropriate Immunization" value={authRec.CDE_IMM__c} placeholder="Choose One..." 
+                behavior-type="picklist" object="T_AUTH__c" field="CDE_IMM__c" data-id="input-field" show-none
+                onselect={handlePicklistChange} disabled={isReadOnly} data-field="CDE_IMM__c"></c-multiselect-combobox>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <c-multiselect-combobox label="Verified" value={authRec.CDE_TYPE_VERIF__c} placeholder="Choose One..." 
+                behavior-type="picklist" object="T_AUTH__c" field="CDE_TYPE_VERIF__c" data-id="input-field" show-none
+                onselect={handlePicklistChange} disabled={isReadOnly} data-field="CDE_TYPE_VERIF__c"></c-multiselect-combobox>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <c-multiselect-combobox label="How Verified" value={authRec.CDE_SOURCE_VRFYD_IMMU__c} placeholder="Choose One..." 
+                behavior-type="picklist" object="T_AUTH__c" field="CDE_SOURCE_VRFYD_IMMU__c" data-id="input-field" show-none
+                onselect={handlePicklistChange} disabled={isReadOnly} data-field="CDE_SOURCE_VRFYD_IMMU__c"></c-multiselect-combobox>
+        </lightning-layout-item>
+        <template if:true={showProtectiveServices}>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <lightning-input type="checkbox" label="Protective Services Indicator" checked={authRec.Protective_Services_Indicator__c} 
+                    onchange={handleInputChange} disabled={isReadOnly} data-field="Protective_Services_Indicator__c"></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+        </template>
+        <template if:true={showDropInDays}>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+                <h3 class="slds-section__title">Drop In Days</h3>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <lightning-input type="number" label="Number of Drop-in Days allowed per month for the authorization" 
+                    value={authDropInDays} onchange={handleInputChange} min="0" max={dropInDaysMax} step="1" data-id="input-field"
+                    required={isReqDropInDays} message-when-range-overflow="The value cannot exceed the County Plan's Drop-in Days." 
+                    data-field="Number_of_Drop_in_Days__c" disabled={isReadOnly} ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+        </template>
+        <template if:true={showTransportationFee}>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+                <h3 class="slds-section__title">Transportation Fee Restriction</h3>
+                <c-multiselect-combobox label={transFeeQuestionLabel} value={authRec.CDE_TRANS_FEE__c} data-id="input-field"
+                    onselect={handleInputChange} required={showTransportationFee} disabled={isReadOnly} behavior-type="radioGroup"
+                    data-field="CDE_TRANS_FEE__c" object="T_AUTH__c" field="CDE_TRANS_FEE__c"></c-multiselect-combobox>
+            </lightning-layout-item>
+        </template>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">ART Fees</h3>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <lightning-input type="number" label="Activity" value={authRec.AMT_ACTV_AUTH__c} onchange={handleInputChange} 
+                min="0" disabled={isReadOnly} data-field="AMT_ACTV_AUTH__c"></lightning-input>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <lightning-input type="number" label="Registration" value={authRec.AMT_RGSTR_AUTH__c} onchange={handleInputChange} 
+                min="0" disabled={isReadOnly} data-field="AMT_RGSTR_AUTH__c"></lightning-input>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <lightning-input type="number" label="Transportation" value={authRec.AMT_TRANSP_AUTH__c} onchange={handleInputChange} 
+                min="0" disabled={isReadOnly} data-field="AMT_TRANSP_AUTH__c"></lightning-input>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+
+        <!-- added for CCCAP-15329 -->
+        <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">UPK Information</h3>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <template if:false={isReadOnly}>
+                <c-multiselect-combobox label="Is this Child Dually Enrolled in UPK?"
+                    value={authRec.CDE_CHILD_ENROLLED_IN_UPK__c}
+                    data-id="input-field"
+                    onselect={handlePicklistChange}
+                    required={isUPKRequired}
+                    disabled={isUPKEnrollmentDisabled}
+                    behavior-type="picklist"
+                    object="T_AUTH__c" field="CDE_CHILD_ENROLLED_IN_UPK__c"
+                    data-field="CDE_CHILD_ENROLLED_IN_UPK__c"
+                    options={upkEnrollmentPicklistOptions}>
+                </c-multiselect-combobox>
+            </template>
+            <template if:true={isReadOnly}>
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label">Is this Child Dually Enrolled in UPK?</label>
+                    <div class="slds-form-element__control">
+                        <span class="slds-form-element__static">{authRec.CDE_CHILD_ENROLLED_IN_UPK__c}</span>
+                    </div>
+                </div>
+            </template>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <div class="slds-form-element">
+                <label class="slds-form-element__label">UPK Start Date</label>
+                <div class="slds-form-element__control">
+                    <span class="slds-form-element__static">
+                        <template if:true={authRec.UPK_Start_date__c}>
+                            <lightning-formatted-date-time value={authRec.UPK_Start_date__c} year="numeric" month="2-digit" day="2-digit" time-zone="UTC"></lightning-formatted-date-time>
+                        </template>
+                    </span>
+                </div>
+            </div>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <div class="slds-form-element">
+                <label class="slds-form-element__label">UPK Awarded Hours</label>
+                <div class="slds-form-element__control">
+                    <span class="slds-form-element__static">{authRec.UPK_Awarded_Hours__c}</span>
+                </div>
+            </div>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <template if:false={isReadOnly}>
+                <c-multiselect-combobox label="Is UPK Stacked?" 
+                    value={authRec.Is_UPK_Stacked__c} 
+                    data-id="input-field" required={isUPKRequired}
+                    onselect={handlePicklistChange} 
+                    disabled={isUPKStackedDisabled} 
+                    behavior-type="picklist"
+                    object="T_AUTH__c" field="Is_UPK_Stacked__c"
+                    data-field="Is_UPK_Stacked__c" 
+                    options={isUPKStackedOptions}>
+                </c-multiselect-combobox>
+            </template>
+            <template if:true={isReadOnly}>
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label">Is UPK Stacked?</label>
+                    <div class="slds-form-element__control">
+                        <span class="slds-form-element__static">{authRec.Is_UPK_Stacked__c}</span>
+                    </div>
+                </div>
+            </template>
+        </lightning-layout-item>
+
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+            <lightning-button label="Schedule" variant="brand" onclick={doSchedule}></lightning-button>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+
+        <template if:true={enterRecurrence}>
+            <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+                <c-schedule-encumbrance_lwc schedule-recurr-obj={scheduleRecurrObj} record-id={authRecId} 
+                    schedule-recurr={scheduleRecurr} enter-recurrence={enterRecurrence} auth-begin-date={authBeginDate} 
+                    auth-end-date={authEndDate} is-create={isCreate} is-encumbrnce-created={isEncumbrnceCreated} 
+                    is-auth-updated-in-create-flow={isAuthUpdatedInCreateFlow} is-auth-flow-first-time={isAuthFlowFirstTime} 
+                    is-modified-after-change={isModifiedAfterChange} is-read-only={isReadOnly} onsendrecurrence={handleSendRecurrence}>
+                </c-schedule-encumbrance_lwc>
+            </lightning-layout-item>
+        </template>
+
+        <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Standard Schedule</h3>
+        </lightning-layout-item>
+        <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+            <table class="slds-table slds-table_bordered slds-table--fixed-layout">
+                <thead>
+                    <tr class="slds-text-title_caps">
+                        <th scope="col"><div class="slds-truncate"></div></th>
+                        <th scope="col"><div class="slds-truncate" title="Monday">Monday</div></th>
+                        <th scope="col"><div class="slds-truncate" title="Tuesday">Tuesday</div></th>
+                        <th scope="col"><div class="slds-truncate" title="Wednesday">Wednesday</div></th>
+                        <th scope="col"><div class="slds-truncate" title="Thursday">Thursday</div></th>
+                        <th scope="col"><div class="slds-truncate" title="Friday">Friday</div></th>
+                        <th scope="col"><div class="slds-truncate" title="Saturday">Saturday</div></th>
+                        <th scope="col"><div class="slds-truncate" title="Sunday">Sunday</div></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">Hours</th>
+                        <td><lightning-input type="number" value={mondayHours} onchange={handleHoursChange} data-day="1" min="0" max="24" 
+                                step="1" required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-input></td>
+                        <td><lightning-input type="number" value={tuesdayHours} onchange={handleHoursChange} data-day="2" min="0" max="24" 
+                                step="1" required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-input></td>
+                        <td><lightning-input type="number" value={wednesdayHours} onchange={handleHoursChange} data-day="3" min="0" max="24" 
+                                step="1" required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-input></td>
+                        <td><lightning-input type="number" value={thursdayHours} onchange={handleHoursChange} data-day="4" min="0" max="24" 
+                                step="1" required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-input></td>
+                        <td><lightning-input type="number" value={fridayHours} onchange={handleHoursChange} data-day="5" min="0" max="24" 
+                                step="1" required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-input></td>
+                        <td><lightning-input type="number" value={saturdayHours} onchange={handleHoursChange} data-day="6" min="0" max="24" 
+                                step="1" required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-input></td>
+                        <td><lightning-input type="number" value={sundayHours} onchange={handleHoursChange} data-day="0" min="0" max="24" 
+                                step="1" required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-input></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Rate Types</th>
+                        <td><lightning-select value={mondayRateType} options={rateTypeOptions} onchange={handleRateTypeChange} data-day="1" 
+                                required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-select></td>
+                        <td><lightning-select value={tuesdayRateType} options={rateTypeOptions} onchange={handleRateTypeChange} data-day="2" 
+                                required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-select></td>
+                        <td><lightning-select value={wednesdayRateType} options={rateTypeOptions} onchange={handleRateTypeChange} data-day="3" 
+                                required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-select></td>
+                        <td><lightning-select value={thursdayRateType} options={rateTypeOptions} onchange={handleRateTypeChange} data-day="4" 
+                                required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-select></td>
+                        <td><lightning-select value={fridayRateType} options={rateTypeOptions} onchange={handleRateTypeChange} data-day="5" 
+                                required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-select></td>
+                        <td><lightning-select value={saturdayRateType} options={rateTypeOptions} onchange={handleRateTypeChange} data-day="6" 
+                                required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-select></td>
+                        <td><lightning-select value={sundayRateType} options={rateTypeOptions} onchange={handleRateTypeChange} data-day="0" 
+                                required={isCreateMode} disabled={isReadOnly} variant="label-hidden"></lightning-select></td>
+                    </tr>
+                </tbody>
+            </table>
+        </lightning-layout-item>
+    </lightning-layout>
+</template>

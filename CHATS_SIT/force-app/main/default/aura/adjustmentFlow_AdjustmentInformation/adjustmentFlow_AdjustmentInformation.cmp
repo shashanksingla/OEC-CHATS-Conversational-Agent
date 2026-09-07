@@ -1,0 +1,164 @@
+<aura:component extends="c:abstractSection">
+    <aura:attribute name="adjustment" type="T_ADJMT__c" default="{'sObjectType' : 'T_ADJMT__c',
+                                                                 'CDE_AGNST_ADJMT__c':'',
+                                                                 'IDN_PROVR__c':'',
+                                                                 'IDN_CASE__c':'',
+                                                                 'Recovery_Initiative__c':''}"/>
+    <aura:attribute name="address" type="T_ADJMT_ADDR__c"/>
+    <aura:attribute name="responsibleParties" type="List"/>
+    <aura:attribute name="responsiblePartiesAddressList" type="List"/>
+    <aura:attribute name="isEditableAddress" type="Boolean" default="false"/>
+    <aura:attribute name="respPartyMap" type="map"/>
+    <aura:attribute name="responsiblePartiesAddressListClone" type="List"/>
+    <aura:attribute name="selectedResponsibleParties" type="List"/>
+    <aura:attribute name="adjustmentReasonOptions" type="List"/>
+    <aura:attribute name="IPVRecordId" type="String"/>
+    <aura:attribute name="IPVRecordReq" type="Boolean" default="false"/>
+    <aura:attribute name="recordError" type="List" />
+    <aura:attribute name="IPVRecord" type="IPV_Information__c" default="{'sobjectType':'IPV_Information__c'}"/>
+    <aura:attribute name="selectedLookUpRecord" type="sObject" default="{}"/>
+    <aura:attribute name="responsiblePartyObj" type="T_ADJMT_RESPBL_PARTY__c" default="{'sobjectType':'IPV_Information__c',
+                                                                                       'IDN_ADJMT__c':'',
+                                                                                       'IDN_CASE__c':'',
+                                                                                       'IDN_CLIENT__c':'',
+                                                                                       'IPV_Info__c':'',
+                                                                                       'IDN_PROVR__c':'',
+                                                                                       'Responsible_Party_Name__c':'',
+                                                                                       'Selected__c':''
+                                                                                       }"/>
+    <aura:attribute name="responsiblePartyList" type="List"/>
+    <aura:attribute name="pageMode" type="String" default="view"/>
+    <aura:set attribute="pageMessages" value="{!v.recordError}" />
+    <aura:set attribute="messageType" value="{!v.message}" />
+    <aura:handler event="c:createRespParty" action="{!c.handleAddRespParties}"/>
+    <aura:handler name="change" value="{!v.adjustment.CDE_TYPE_CLSFN__c}" action="{!c.validateClassificationType}"/>
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <c:outputField label="Reimbursable" value="{!v.adjustment.IND_REIMBSL_PMT__c}"/>
+        </lightning:layoutItem>
+        
+        <aura:if isTrue="{!v.adjustment.CDE_TYPE_ADJMT__c=='Recovery'}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <aura:if isTrue="{!v.adjustment &amp;&amp; v.pageMode=='view'}">
+                    <c:outputField label="Classification Type" value="{!v.adjustment.CDE_TYPE_CLSFN__c}"/>
+                    <aura:set attribute="else">
+                        <c:inputPicklist label="Classification Type" 
+                                         aura:id="input-field"
+                                         value="{!v.adjustment.CDE_TYPE_CLSFN__c}"
+                                         object="T_ADJMT__c"
+                                         field="CDE_TYPE_CLSFN__c"
+                                         required="true"
+                                         showNone="true"
+                                         matchWithLabel="true"/>
+                    </aura:set>
+                </aura:if>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <aura:if isTrue="{!v.adjustment &amp;&amp; v.pageMode=='view'}">
+                    <c:outputField label="Court Ordered Adjustment" value="{!v.adjustment.IND_ORD_COURT_ADJMT__c}"/>
+                    <aura:set attribute="else">
+                        <c:inputPicklist label="Court Ordered Adjustment" 
+                                         aura:id="input-field"
+                                         value="{!v.adjustment.IND_ORD_COURT_ADJMT__c}"
+                                         object="T_ADJMT__c"
+                                         field="IND_ORD_COURT_ADJMT__c"
+                                         required="true"
+                                         showNone="true"
+                                         matchWithLabel="true"/>
+                    </aura:set>
+                </aura:if>
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.adjustment.CDE_TYPE_ADJMT__c=='Recovery' &amp;&amp; !empty(v.adjustment.IDN_CASE__c)}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <aura:if isTrue="{!v.adjustment &amp;&amp; v.pageMode=='view'}">
+                        <c:outputField label="Recovery Initiative" value="{!v.adjustment.Recovery_Initiative__c}"/>
+                        <aura:set attribute="else">
+                            <c:inputPicklist label="Recovery Initiative" 
+                                             aura:id="input-field"
+                                             value="{!v.adjustment.Recovery_Initiative__c}"
+                                             object="T_ADJMT__c"
+                                             field="Recovery_Initiative__c"
+                                             required="{!v.adjustment.CDE_TYPE_CLSFN__c == '1'}"
+                                             showNone="true"
+                                             matchWithLabel="true"/>
+                        </aura:set>
+                    </aura:if>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6"/>
+            </aura:if>
+        </aura:if>
+
+        <aura:if isTrue="{!v.adjustmentReasonOptions.length!=1}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                <h3 class="slds-section__title">Adjustment Reason</h3>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <aura:if isTrue="{!v.adjustment &amp;&amp; v.pageMode=='view'}">
+                    <c:outputField label="Adjustment Reason" value="{!v.adjustment.CDE_REASON__c}"/>
+                    <aura:set attribute="else">
+                        <c:inputMultiSelectCombobox aura:id="input-field"
+                                                    label="Adjustment Reason"
+                                                    required="{!v.adjustmentReasonOptions.length!=1?true:false}"
+                                                    value="{!v.adjustment.CDE_REASON__c}"
+                                                    options="{!v.adjustmentReasonOptions}"
+                                                    doLabelMatch="true"
+                                                    alreadyHasValues="true"/>
+                    </aura:set>
+                </aura:if>
+            </lightning:layoutItem>
+            <!-- Added below field by Rishav for CCCAP-6051 -->
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <aura:if isTrue="{!v.adjustment.CDE_TYPE_ADJMT__c=='Recovery'}">
+                    <aura:if isTrue="{!v.adjustment &amp;&amp; v.pageMode=='view'}">
+                        <c:outputField label="Reason for Edit" value="{!v.adjustment.CDE_EDIT_REASON__c}"/>
+                        <aura:set attribute="else">
+                            <c:inputPicklist aura:id="input-field" label="Reason for Edit" showNone="true" matchWithLabel="true"
+                                             value="{!v.adjustment.CDE_EDIT_REASON__c}" object="T_ADJMT__c"
+                                             field="CDE_EDIT_REASON__c" onChange="{!c.validateClassificationType}"
+                                             required="{!v.adjustment.CDE_STATUS_ADJMT__c=='Calculation Complete'?true:false}"/>
+                        </aura:set>
+                    </aura:if>
+                </aura:if>
+            </lightning:layoutItem>
+        </aura:if>
+
+        <aura:if isTrue="{!v.adjustment.CDE_TYPE_ADJMT__c=='Recovery' &amp;&amp; !empty(v.adjustment.IDN_CASE__c)}">
+            <c:adjustmentResponsibleParty isCurrentPageValid="{!v.isCurrentPageValid}" 
+                                          aura:id="adjustmentResponsibleParty"
+                                          selectedResponsibleParties="{!v.selectedResponsibleParties}"
+                                          responsibleParties="{!v.responsibleParties}"
+                                          adjustment="{!v.adjustment}"
+                                          responsiblePartyList="{!v.responsiblePartyList}"
+                                          respPartyMap="{!v.respPartyMap}"
+                                          pageMode="{!v.pageMode}"/>
+        </aura:if>
+        
+        <aura:if isTrue="{!v.adjustment.CDE_TYPE_ADJMT__c=='Recovery' &amp;&amp; !empty(v.adjustment.IDN_CASE__c)}">
+            <aura:iteration items="{!v.responsiblePartiesAddressList}" var="addressObj">
+                <c:adjustmentAddressRespParty isCurrentPageValid="{!v.isCurrentPageValid}" 
+                                              aura:id="adjustmentAddressRespParty"
+                                              adjustment="{!v.adjustment}"
+                                              address="{!addressObj}"
+                                              isEditableAddress="{!v.isEditableAddress}"
+                                              pageMode="{!v.pageMode}"/>
+            </aura:iteration>
+            <aura:set attribute="else">
+                <c:adjustmentAddress isCurrentPageValid="{!v.isCurrentPageValid}" 
+                                     aura:id="adjustmentAddress"
+                                     adjustment="{!v.adjustment}"
+                                     address="{!v.address}"
+                                     provEditableAddress= "{!(v.adjustment.CDE_STATUS_ADJMT__c=='Calculation Complete')}"
+                                     pageMode="{!v.pageMode}"/>
+            </aura:set>
+        </aura:if>
+        
+        <!-- Added below Modal by Rishav for CCCAP-6051 -->
+        <aura:if isTrue="{!v.adjustment.CDE_TYPE_ADJMT__c=='Recovery'}">
+            <c:confirmationModal aura:id="classificationTypeModal" confirmMsg="{!$Label.c.adjustment_error_otherRecoveries}"
+                                 confirmModalYes="{!c.confirmOK}" showNoButton="false" yesLabel="Ok"/>
+        </aura:if>
+    </lightning:layout>
+</aura:component>

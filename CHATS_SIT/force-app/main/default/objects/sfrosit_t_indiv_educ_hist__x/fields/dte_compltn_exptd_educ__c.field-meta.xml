@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>dte_compltn_exptd_educ__c</fullName>
+    <description>dte_compltn_exptd_educ</description>
+    <externalDeveloperName>dte_compltn_exptd_educ</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Expected Education Completion Date</label>
+    <required>false</required>
+    <type>Date</type>
+</CustomField>

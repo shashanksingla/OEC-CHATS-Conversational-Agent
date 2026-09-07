@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <content>repaymentPlanFlow</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <content>repaymentPlanFlow</content>
+        <formFactor>Small</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <comment>Action override created by Lightning App Builder during activation.</comment>
+        <content>Payment_Plan_Record_Page</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>Flexipage</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Information on the arrangements made by a provider or case to repay a debt owed to the county/state</description>
+    <enableActivities>true</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <!--<enableChangeDataCapture>false</enableChangeDataCapture>-->
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>true</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>AMT_PLAN_PMT_PCT_MIN__c</fullName>
+        <description>Minimum Deduction Amount</description>
+        <externalId>false</externalId>
+        <label>Minimum Deduction Amount</label>
+        <precision>11</precision>
+        <required>false</required>
+        <scale>2</scale>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>AMT_PLAN_PMT__c</fullName>
+        <description>Payment Plan Amount</description>
+        <externalId>false</externalId>
+        <label>Payment Plan Amount</label>
+        <precision>11</precision>
+        <required>false</required>
+        <scale>2</scale>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>CDE_FREQ__c</fullName>
+        <description>Frequency</description>
+        <externalId>false</externalId>
+        <label>Frequency</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00748</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>External ID</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <fields>
+        <fullName>IDN_PROVR__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <externalId>false</externalId>
+        <label>Provider</label>
+        <referenceTo>T_CHATS_PROVR_STATUS__c</referenceTo>
+        <relationshipLabel>Repayment Plans</relationshipLabel>
+        <relationshipName>Payment_Plans</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IND_ACTIVE__c</fullName>
+        <defaultValue>true</defaultValue>
+        <description>Payment Plan Active?</description>
+        <externalId>false</externalId>
+        <label>Payment Plan Active?</label>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>NBR_PCTG__c</fullName>
+        <description>Percentage</description>
+        <externalId>false</externalId>
+        <label>Percentage</label>
+        <precision>5</precision>
+        <required>false</required>
+        <scale>0</scale>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>CDE_COUNTY__c</fullName>
+        <externalId>false</externalId>
+        <label>County</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00005</valueSetName>
+        </valueSet>
+    </fields>
+    <label>Repayment Plan</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All1</fullName>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>Payment Plan ID</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Repayment Plans</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ReadWrite</sharingModel>
+    <!--Commented as part of CCCAP-10798-->
+    <!--validationRules>
+        <fullName>AllfieldsenteredError</fullName>
+        <active>false</active>
+        <description>Error when all the fields have been entered when creating new record</description>
+        <errorConditionFormula>OR(AND(ISNEW(),
+OR(ISNULL( NBR_PCTG__c ),NBR_PCTG__c&lt;=0),  
+ISNULL( AMT_PLAN_PMT__c ), 
+ISNULL(  AMT_PLAN_PMT_PCT_MIN__c)
+),
+AND(ISNEW(),
+OR(NOT(ISNULL( NBR_PCTG__c )),NBR_PCTG__c&lt;=0),  
+NOT(ISNULL( AMT_PLAN_PMT__c ))), 
+And(
+ISNEW(),
+NBR_PCTG__c&lt;=0
+))</errorConditionFormula>
+        <errorMessage>Either of Payment plan amount or Percentage must be entered. Percentage must be greater than 0.</errorMessage>
+    </validationRules-->
+     <!--validationRules>
+        <fullName>Min_Ded_Amt_if_Percentage_NotBlank</fullName>
+        <active>false</active>
+        <description>Minimum Deduction Amount must be entered when Percentage field is not null.
+Minimum Deduction Amount must be greater than Zero.</description>
+        <errorConditionFormula>OR(AMT_PLAN_PMT_PCT_MIN__c &lt;= 0,
+ AND(NOT( ISBLANK( NBR_PCTG__c ) ),
+     ISBLANK(AMT_PLAN_PMT_PCT_MIN__c)
+ ) 
+)</errorConditionFormula>
+        <errorDisplayField>AMT_PLAN_PMT_PCT_MIN__c</errorDisplayField>
+        <errorMessage>Minimum Deduction Amount must be entered when the Percentage value is populated. 
+Minimum Deduction Amount must be greater than Zero.</errorMessage>
+    </validationRules-->
+    <validationRules>
+        <fullName>Paymnt_Plan_Amt_cannot_Change</fullName>
+        <active>true</active>
+        <description>Once Record is Created, Payment Plan Amount cannot be changed.
+Payment Plan Amount must be greater than Zero.</description>
+        <errorConditionFormula>OR( 
+    AND( NOT( ISNEW() ) ,
+        ISCHANGED( AMT_PLAN_PMT__c )
+    ),
+    AMT_PLAN_PMT__c &lt;= 0
+)</errorConditionFormula>
+        <errorDisplayField>AMT_PLAN_PMT__c</errorDisplayField>
+        <errorMessage>Once Record is Created, Payment Plan Amount cannot be changed.
+Payment Plan Amount must be greater than Zero.</errorMessage>
+    </validationRules>
+    <!--Commented as part of CCCAP-10798-->
+   <!--validationRules>
+        <fullName>Percentage_Not_deletable</fullName>
+        <active>false</active>
+        <description>once the record is created , Percentage cannot be changed
+Either of Amount of Percentage must be entered
+Percentage cannot be less than Zero</description>
+        <errorConditionFormula>OR(
+    AND( NOT( ISNEW() ) ,
+        ISCHANGED( NBR_PCTG__c )
+    ),
+    AND(
+NOT( ISNEW() ) ,
+        ISBLANK( AMT_PLAN_PMT__c ),
+        ISBLANK( NBR_PCTG__c ) 
+    ),
+    AND(
+NOT( ISNEW() ) ,
+        NOT( ISBLANK( NBR_PCTG__c )),
+        NBR_PCTG__c &lt;= 0) ,
+    AND(Not(Isnew()),Not(ISBLANK( AMT_PLAN_PMT__c )),
+        NOT(ISBLANK( NBR_PCTG__c ) ))
+)</errorConditionFormula>
+        <errorDisplayField>NBR_PCTG__c</errorDisplayField>
+        <errorMessage>once the record is created , Percentage cannot be changed.
+Either of Amount or Percentage must be entered.
+Percentage cannot be less than Zero.</errorMessage>
+    </validationRules-->
+    <validationRules>
+        <fullName>Provider_is_Readonly</fullName>
+        <active>true</active>
+        <description>Provider is read only once the record is created. CHAT-529</description>
+        <errorConditionFormula>ISCHANGED(IDN_PROVR__c)</errorConditionFormula>
+        <errorMessage>Provider is read only once the record is created</errorMessage>
+    </validationRules>
+    <!--Commented as part of CCCAP-10798-->
+    <!--validationRules>
+        <fullName>NBR_PCTG_If_AMT_PLAN_PMT_PCT_Not_Blank</fullName>
+        <active>false</active>
+        <errorConditionFormula>AND(NOT(ISBLANK(  AMT_PLAN_PMT_PCT_MIN__c )), ISBLANK( NBR_PCTG__c ))</errorConditionFormula>
+        <errorDisplayField>NBR_PCTG__c</errorDisplayField>
+        <errorMessage>Percentage must be entered if Minimum Deduction Amount has been entered.</errorMessage>
+    </validationRules-->
+    <visibility>Public</visibility>
+</CustomObject>

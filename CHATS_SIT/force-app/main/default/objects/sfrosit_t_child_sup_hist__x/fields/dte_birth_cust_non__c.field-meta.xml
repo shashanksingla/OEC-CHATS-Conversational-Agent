@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>dte_birth_cust_non__c</fullName>
+    <description>dte_birth_cust_non</description>
+    <externalDeveloperName>dte_birth_cust_non</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Brith Date</label>
+    <required>false</required>
+    <type>Date</type>
+</CustomField>

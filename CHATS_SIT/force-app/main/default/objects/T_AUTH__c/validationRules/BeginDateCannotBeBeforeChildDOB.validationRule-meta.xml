@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>BeginDateCannotBeBeforeChildDOB</fullName>
+    <active>true</active>
+    <description>Authorization Begin Date cannot be before the Child Eligibility Begin date</description>
+    <errorConditionFormula>AND(ISNEW(),DTE_BEGIN_EFFV_AUTH__c  &lt;  IDN_CLIENT__r.DTE_DOB__c)</errorConditionFormula>
+    <errorDisplayField>DTE_BEGIN_EFFV_AUTH__c</errorDisplayField>
+    <errorMessage>Authorization Begin Date cannot be before the Child&apos;s Date of Birth</errorMessage>
+</ValidationRule>

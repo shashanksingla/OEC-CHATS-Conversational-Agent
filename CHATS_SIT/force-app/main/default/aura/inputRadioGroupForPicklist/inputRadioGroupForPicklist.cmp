@@ -1,0 +1,68 @@
+<aura:component controller="APXInputPicklistCtrl">
+    
+    <aura:attribute name="options" type="List"/>
+    <aura:attribute name="value" type="String"/>
+    <aura:attribute name="label" type="String" default="Radio Group label"/>
+    <aura:attribute name="object" type="String" default="T_SBSD_CASE__c"/>
+    <aura:attribute name="field" type="String" default="IND_WIC__c"/>
+    <aura:attribute name="required" type="Boolean" default="false"/>
+    <aura:attribute name="disabled" type="Boolean" default="false"/>
+    <aura:attribute name="conditionallyRenderedComponent" type="Aura.Component[]"/>
+    <aura:attribute name="spinner" type="Boolean" default="false" description="Boolean attribute to show/hide spinner"/>
+    <aura:attribute name="validity" type="Object"/>
+    <aura:attribute name="onChange" type="Aura.Action" default="{!c.doNothing}"/> 
+    <aura:attribute name="showConditionallyRenderedComponent" type="Boolean" default="true"/>
+    <aura:attribute name="showSpinnerComponent" type="Boolean" default="true" description="Boolean attribute to show/hide spinner component"/>
+    <aura:attribute name="isfullSize" type="Boolean" default="false"/>
+    <aura:attribute name="helpText" type="String"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:method name="showHelpMessageIfInvalid" action="{!c.highlightError}" access="PUBLIC"/>
+    <aura:registerEvent name="eventOnChange" type="c:dynamicPicklistEvent"/>
+    
+    <aura:if isTrue="{!v.showSpinnerComponent}">
+        <c:LoadingSpinnerComp spinner="{!v.spinner}"/>
+    </aura:if>
+    
+    <aura:if isTrue="{!v.showConditionallyRenderedComponent}">
+        <div aura:id="temp-box" class="border slds-grid">
+            <div class="{!v.isfullSize?'slds-is-relative slds-size_1-of-1 slds-grid slds-col':'slds-is-relative slds-size_1-of-2'}">
+                <lightning:radioGroup aura:id="radioGroup"
+                                      name="{!v.field+'_radioButtonGroup'}"
+                                      label="{!v.label}"
+                                      value="{!v.value}"
+                                      options="{!v.options }"
+                                      onchange="{!c.handleChange }"
+                                      required="{!v.required}"
+                                      disabled="{!v.disabled}"
+                                      class="labelCSS"/>	
+                <c:fieldLevelMessage aura:id="radioGroupError"/>
+                <aura:if isTrue="{!v.helpText}">
+                    <lightning:helptext content="{!v.helpText}"></lightning:helptext>
+                </aura:if>
+            </div>
+            <div class="slds-size_1-of-2">
+                {!v.conditionallyRenderedComponent}
+            </div>
+        </div>
+        
+        <aura:set attribute="else">
+            <div aura:id="temp-box" class="border slds-grid slds-col">
+                <lightning:radioGroup aura:id="radioGroup"
+                                      name="{!v.field+'_radioButtonGroup'}"
+                                      label="{!v.label}"
+                                      value="{!v.value}"
+                                      options="{!v.options }"
+                                      onchange="{!c.handleChange }"
+                                      required="{!v.required}"
+                                      disabled="{!v.disabled}"
+                                      class="labelCSS"/>	
+                <c:fieldLevelMessage aura:id="radioGroupError"/>
+                <aura:if isTrue="{!v.helpText}">
+                    <lightning:helptext content="{!v.helpText}"></lightning:helptext>
+                </aura:if>
+            </div>
+        </aura:set>
+    </aura:if>
+    
+</aura:component>

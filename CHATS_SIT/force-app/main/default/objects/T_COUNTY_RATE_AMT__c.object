@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>County Rate Amount</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableChangeDataCapture>false</enableChangeDataCapture>
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>true</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>CDE_AGE_GROUP__c</fullName>
+        <description>Age Group</description>
+        <externalId>false</externalId>
+        <label>Age Group</label>
+        <required>true</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00710</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_PROVR_TYPE__c</fullName>
+        <externalId>false</externalId>
+        <label>Provider Type</label>
+        <required>true</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>RT_FAC_TYPE</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_RATE_TEMPLT__c</fullName>
+        <description>County Rate Template</description>
+        <externalId>false</externalId>
+        <label>County Rate Template</label>
+        <required>true</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>RT_COUNTY_RATE_PLAN_TEMPLT</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_RATE_TYPE__c</fullName>
+        <description>Rate Type</description>
+        <externalId>false</externalId>
+        <label>Rate Type</label>
+        <required>true</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00751</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_TIER__c</fullName>
+        <description>Tier</description>
+        <externalId>false</externalId>
+        <label>Tier</label>
+        <required>true</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>RT_PROVR_TIER</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_UNIT__c</fullName>
+        <description>Care Unit</description>
+        <externalId>false</externalId>
+        <label>Care Unit</label>
+        <required>true</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00715</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IDN_COUNTY_RATE__c</fullName>
+        <description>County Rate Plan</description>
+        <externalId>false</externalId>
+        <label>County Rate Plan</label>
+        <referenceTo>T_COUNTY_RATE__c</referenceTo>
+        <relationshipLabel>County Rate</relationshipLabel>
+        <relationshipName>County_Rate</relationshipName>
+        <relationshipOrder>0</relationshipOrder>
+        <reparentableMasterDetail>false</reparentableMasterDetail>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>MasterDetail</type>
+        <writeRequiresMasterRead>false</writeRequiresMasterRead>
+    </fields>
+    <fields>
+        <fullName>IND_RATE_TEMPLT__c</fullName>
+        <defaultValue>false</defaultValue>
+        <description>County Rate Template Indicator</description>
+        <externalId>false</externalId>
+        <label>County Rate Template Indicator</label>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>NBR_AMOUNT__c</fullName>
+        <description>Amount</description>
+        <externalId>false</externalId>
+        <label>Amount</label>
+        <precision>6</precision>
+        <required>true</required>
+        <scale>2</scale>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Currency</type>
+    </fields>
+    <label>County Rate</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <columns>CDE_AGE_GROUP__c</columns>
+        <columns>NBR_AMOUNT__c</columns>
+        <columns>CDE_UNIT__c</columns>
+        <columns>IDN_COUNTY_RATE__c</columns>
+        <columns>CDE_PROVR_TYPE__c</columns>
+        <columns>CDE_RATE_TYPE__c</columns>
+        <columns>CDE_TIER__c</columns>
+        <filterScope>Everything</filterScope>
+        <filters>
+            <field>IDN_COUNTY_RATE__c</field>
+            <operation>equals</operation>
+            <value>CR-0000000608</value>
+        </filters>
+        <label>All</label>
+    </listViews>
+    <nameField>
+        <label>Name</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>County Rate</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ControlledByParent</sharingModel>
+    <validationRules>
+        <fullName>Amount_cannot_be_greater_than_500</fullName>
+        <active>true</active>
+        <description>Amount cannot be greater than 500</description>
+        <errorConditionFormula>NBR_AMOUNT__c &gt;500 &amp;&amp;  TEXT(CDE_UNIT__c) = &apos;3&apos;</errorConditionFormula>
+        <errorDisplayField>NBR_AMOUNT__c</errorDisplayField>
+        <errorMessage>Amount cannot be greater than 500</errorMessage>
+    </validationRules>
+    <visibility>Public</visibility>
+</CustomObject>

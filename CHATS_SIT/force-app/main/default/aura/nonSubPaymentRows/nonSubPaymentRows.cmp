@@ -1,0 +1,39 @@
+<aura:component >
+	<aura:attribute name="servicePeriodObj" type="T_SERV_PERIOD__c"/>
+    <aura:attribute name="nonSubPaymentObj" type="SObject"/>
+    <aura:attribute name="authorizationObj" type="T_AUTH__c"/>
+    <aura:attribute name="paymentObj" type="T_PAYMT__c"/>
+    <aura:attribute name="selectedNonSubPayment" type="T_AUTH__c"/>
+    <tr>
+        <td>
+            <lightning:input name="subPayment" type="radio" value="{!v.authorizationObj.Id}" onchange="{!c.getSelectedAuth}"/>
+        </td>
+        <td>
+            <lightning:formattedText value="{!v.authorizationObj.IDN_CASE__r.Name}"/>
+        </td>
+        <td>
+            <lightning:formattedText value="{!v.authorizationObj.Name}"/>
+        </td>
+        <td>
+            <lightning:formattedText value="{!v.authorizationObj.DTE_BEGIN_EFFV_AUTH__c}"/>
+        </td>
+        <td>
+            <lightning:formattedText value="{!v.authorizationObj.DTE_END_EFFV_AUTH__c}"/>
+        </td>
+        <td>
+            <lightning:formattedText value="{!v.authorizationObj.NAM_FIRST__c}"/>
+        </td>
+        <td>
+            <lightning:formattedText value="{!v.authorizationObj.NAM_LAST__c}"/>
+        </td>
+        <td>
+            <lightning:formattedText value="{!v.authorizationObj.IDN_PROVR__r.Name}"/>
+        </td>
+        <!-- Updated as part of bug fix - 2933-->
+        <td>
+            <lightning:formattedText value="{!v.authorizationObj.IDN_PROVR__r.NAM_FACILITY__c}"/>
+        </td>
+        
+       
+    </tr>
+</aura:component>

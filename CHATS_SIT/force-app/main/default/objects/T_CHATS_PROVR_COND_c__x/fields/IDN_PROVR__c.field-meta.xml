@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IDN_PROVR__c</fullName>
+    <externalDeveloperName>OEC_ProgramName__c</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Provider ID</label>
+    <length>20</length>
+    <referenceTargetField>T_CHATS_PROVR_STATUS__c.Program_Name__c</referenceTargetField>
+    <referenceTo>T_CHATS_PROVR_STATUS__c</referenceTo>
+    <relationshipLabel>Provider Conditions (Provider ID)</relationshipLabel>
+    <relationshipName>Provider_Conditions</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

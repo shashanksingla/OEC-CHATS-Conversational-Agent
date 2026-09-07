@@ -1,0 +1,68 @@
+<aura:component extends="c:abstractSection" controller="AdjustmentFlowApxCtrl">
+    <aura:attribute name="adjustment" type="T_ADJMT__c"/>
+    <aura:attribute name="responsiblePartyObj" type="T_ADJMT_RESPBL_PARTY__c" default="{'sobjectType':'IPV_Information__c',
+                                                                                       'IDN_ADJMT__c':'',
+                                                                                       'IDN_CASE__c':'',
+                                                                                       'IDN_CLIENT__c':'',
+                                                                                       'IPV_Info__c':'',
+                                                                                       'IDN_PROVR__c':'',
+                                                                                       'Responsible_Party_Name__c':'',
+                                                                                       'Selected__c':''
+                                                                                       }"/>
+    <aura:attribute name="responsiblePartyList" type="List"/>
+    <aura:attribute name="respPartyMap" type="map"/>
+    <aura:attribute name="respParty" type="object"/>
+    <aura:attribute name="responsibleParties" type="List"/>
+    <aura:attribute name="selectedResponsibleParties" type="List"/>
+    <aura:attribute name="IPVRecordId" type="String"/>
+    <aura:attribute name="IPVRecordReq" type="Boolean" default="false"/>
+    <aura:attribute name="selectedRec" type="Boolean" default="false"/>
+    <aura:attribute name="IPVRecord" type="IPV_Information__c" default="{'sobjectType':'IPV_Information__c'}"/>
+    <aura:attribute name="selectedLookUpRecord" type="sObject" default="{}"/>
+    <aura:attribute name="pageMode" type="String" default="view"/>
+    
+    <aura:registerEvent name="appEvent" type="c:createRespParty"/>
+    <aura:handler name="change" value="{!v.responsiblePartyObj.IPV_Info__c}" action="{!c.fireEvent}"/>
+    <aura:handler name="change" value="{!v.adjustment.CDE_TYPE_CLSFN__c}" action="{!c.fireEvent}"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    
+    <aura:if isTrue="{!v.adjustment &amp;&amp; v.pageMode=='view'}">
+        <aura:if isTrue="{!v.responsiblePartyObj.Selected__c}">
+            <tr>
+                <td scope="col">
+                    <div title="respPartyName">{!v.responsiblePartyObj.Responsible_Party_Name__c}</div>
+                </td>
+                <td scope="col">
+                    {!v.responsiblePartyObj.IPV_Info__r.Name}
+                </td>
+                <td scope="col">
+                </td>
+            </tr>
+        </aura:if>
+        <aura:set attribute="else">
+            <tr>
+                <td scope="col">
+                    <ui:inputCheckbox aura:id="selectedResponsibleParties"  value="{!v.responsiblePartyObj.Selected__c}" change="{!c.fireEvent}" />
+                </td>
+                <td scope="col">
+                    <div title="respPartyName">{!v.responsiblePartyObj.Responsible_Party_Name__c}</div>
+                </td>
+                <td scope="col">
+                    <c:customLookup aura:id="input-field"
+                                    value="{!v.responsiblePartyObj.IPV_Info__c}"
+                                    objectAPIName="IPV_Information__c"
+                                    label="IPV Record ID" 
+                                    selectedRecord="{!v.selectedLookUpRecord}"
+                                    showRecentRecords="true"
+                                    required="{!and(v.IPVRecordReq, v.adjustment.CDE_TYPE_CLSFN__c == '1')}" 
+                                    isDisabled="{!v.adjustment.pageMode =='view'}"
+                                    />
+                    <c:fieldLevelMessage aura:id="IPVRecordId"/>
+                </td>
+                <td scope="col">
+                </td>
+            </tr>
+        </aura:set>
+    </aura:if>
+</aura:component>

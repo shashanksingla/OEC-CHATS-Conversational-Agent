@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <comment>Action override created by Lightning App Builder during activation.</comment>
+        <content>TANF_EF_Details_Record_Page</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>Flexipage</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Information about TANF and EF cases captured through CHATS application</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+  <!--  <enableChangeDataCapture>false</enableChangeDataCapture>-->
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>AMT_TANF_INCOME_HH_GROSS__c</fullName>
+        <description>Gross Household income without TANF</description>
+        <externalId>false</externalId>
+        <label>Household income without TANF</label>
+        <precision>11</precision>
+        <required>false</required>
+        <scale>2</scale>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>CDE_CAT_ACTIV__c</fullName>
+        <description>Activity</description>
+        <externalId>false</externalId>
+        <label>Activity</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00797</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_FREQ_INCOME__c</fullName>
+        <externalId>false</externalId>
+        <label>Income Frequency</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00341</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_PROG__c</fullName>
+        <description>Program</description>
+        <externalId>false</externalId>
+        <label>Program</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00373</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>DTE_BEGIN_EFFEV__c</fullName>
+        <externalId>false</externalId>
+        <label>Effective Begin Date</label>
+        <required>true</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_END_EFFEV__c</fullName>
+        <externalId>false</externalId>
+        <label>Effective End Date</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>IDN_CASE_CHATS__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <externalId>false</externalId>
+        <label>Case ID</label>
+        <referenceTo>T_SBSD_CASE__c</referenceTo>
+        <relationshipLabel>TANF Details</relationshipLabel>
+        <relationshipName>CBMS_Additional_Information</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_CASE_INTFC__c</fullName>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>CBMS Case Number</label>
+        <length>10</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>Identifier External</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <fields>
+        <fullName>NME_CO_WORKER__c</fullName>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>CO Works Worker</label>
+        <length>100</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <label>TANF Details</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All1</fullName>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>TANF Details ID</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>TANF Details</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ReadWrite</sharingModel>
+    <validationRules> 
+        <fullName>AMT_TANF_INCOME_HH_GROSS_NOT_BLANK</fullName>
+        <active>true</active>
+        <description>Gross Household income without TANF cannot be less than 0.</description>
+        <errorConditionFormula>AMT_TANF_INCOME_HH_GROSS__c &lt; 0</errorConditionFormula>
+        <errorDisplayField>AMT_TANF_INCOME_HH_GROSS__c</errorDisplayField>
+        <errorMessage>Gross Household income without TANF cannot be less than 0.</errorMessage>
+    </validationRules>
+    <!--Commented as part of CCCAP-10798-->
+     <!--validationRules>
+        <fullName>Effective_End_Date_GreaterThn_Begin_Date</fullName>
+        <active>false</active>
+        <description>Effective End Date must be equal to or greater than the Effective Begin Date.</description>
+        <errorConditionFormula>DTE_END_EFFEV__c &lt; DTE_BEGIN_EFFEV__c</errorConditionFormula>
+        <errorMessage>Effective End Date must be equal to or greater than the Effective Begin Date.</errorMessage>
+    </validationRules-->
+    <validationRules>
+        <fullName>Closed_Case_Validation</fullName>
+    <active>true</active>
+    <description>Closed Case Validation</description>
+    <errorConditionFormula>IF(IDN_CASE_CHATS__r.CLOSED_CASES_STATUS__c &gt;0, true, false)</errorConditionFormula>
+    <errorMessage>Cannot update when the case is in Closed Status.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Income_Frequency_Required_Validation</fullName>
+        <active>true</active>
+        <description>Income Frequency is required if Gross Household income without TANF field is not empty</description>
+        <errorConditionFormula>NOT(ISBLANK(AMT_TANF_INCOME_HH_GROSS__c)) &amp;&amp; ISBLANK(TEXT(CDE_FREQ_INCOME__c))</errorConditionFormula>
+        <errorMessage>Income Frequency is required if Gross Household income without TANF field is not empty</errorMessage>
+    </validationRules>
+    <visibility>Public</visibility>
+</CustomObject>

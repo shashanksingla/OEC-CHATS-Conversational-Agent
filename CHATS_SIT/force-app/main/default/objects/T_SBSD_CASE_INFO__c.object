@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+ <actionOverrides>
+        <actionName>Edit</actionName>
+        <content>caseInfoFlow</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <comment>Action override created by Lightning App Builder during activation.</comment>
+        <content>Case_Information_Record_Page</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>Flexipage</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Method of contact like email</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+     <!--<enableChangeDataCapture>false</enableChangeDataCapture>-->
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>true</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>CDE_TYPE_INFO_CASE__c</fullName>
+        <description>Case Information Type</description>
+        <externalId>false</externalId>
+        <label>Case Information Type</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00833</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IDN_CASE__c</fullName>
+        <deleteConstraint>Restrict</deleteConstraint>
+        <description>Case ID</description>
+        <externalId>false</externalId>
+        <label>Case ID</label>
+        <referenceTo>T_SBSD_CASE__c</referenceTo>
+        <relationshipLabel>Case Information</relationshipLabel>
+        <relationshipName>T_SBSD_CASE13</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>ID External</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <fields>
+        <fullName>TXT_VALUE_INFO_CASE__c</fullName>
+        <description>Case Information</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Case Information</label>
+        <length>100</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <label>Case Information</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All1</fullName>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+  	<nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>Case Information ID</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Case Information</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ReadWrite</sharingModel>
+    <validationRules>
+        <fullName>Require_Case_info_email_if_type_is_EM</fullName>
+        <active>true</active>
+        <description>Please provide valid email address if Case Information Type is Email</description>
+    <errorConditionFormula>AND(NOT( IDN_CASE__r.Is_Peak_Data__c ), NOT( IDN_CASE__r.Is_CBMS_Data__c ), NOT(REGEX(TXT_VALUE_INFO_CASE__c ,&apos;([a-zA-Z0-9_\\-\\.\\+\\!\\#\\$\\%\\&amp;\\*\\/\\=\\?\\^\\~\\`\\{\\|\\}\\,]+)@((\\[a-z]{1,3}\\.[a-z]{1,3}\\.[a-z]{1,3}\\.)|(([a-zA-Z0-9\\-]+\\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})&apos;)),NOT(ISBLANK(TXT_VALUE_INFO_CASE__c )),ISPICKVAL(CDE_TYPE_INFO_CASE__c,&apos;EM&apos;))</errorConditionFormula>
+        <errorDisplayField>TXT_VALUE_INFO_CASE__c</errorDisplayField>
+        <errorMessage>Please provide valid email address if Case Information Type is Email</errorMessage>
+    </validationRules>
+    <visibility>Public</visibility>
+</CustomObject>

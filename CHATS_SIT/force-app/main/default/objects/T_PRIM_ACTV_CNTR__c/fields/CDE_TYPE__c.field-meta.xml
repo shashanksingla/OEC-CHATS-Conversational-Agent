@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CDE_TYPE__c</fullName>
+    <externalId>false</externalId>
+    <formula>CASE( IDN_PRIM_ACTV__r.CDE_TYPE_ACTV__c, &quot;GED&quot;, &quot;GED/ESL/ABE&quot;, &quot;JS&quot;, &quot;Job Search&quot;, &quot;POS&quot;,&quot;Post-Secondary Education / Job Skills&quot;, &quot;SUD&quot;,&quot;Substance Use Disorder&quot;,&quot;&quot;)</formula>
+    <label>Counter Type</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

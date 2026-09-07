@@ -1,0 +1,54 @@
+<aura:component >
+    <aura:attribute name="applicationIndividual" type="T_APPLN_INDIV__c"/>
+    <aura:attribute name="lstSelectedApplicationIndividuals" type="List"/>
+    <aura:attribute name="mapIndivSequenceToRelationship" type="Map"/>
+    <aura:attribute name="relationshipType" type="String"/>    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="isCBMSFlow" type="Boolean" default="false"/>
+    <aura:attribute name="mapIndivToRelationship" type="Map"/>
+    <tr>
+        <td>
+            <div class="slds-truncate" title="action">
+                <lightning:input type="checkbox" name="radioOption" aura:id="checkbox" onchange="{!c.onCheckboxSelection}"/>
+            </div>
+        </td>
+        <td>
+            <div class="slds-truncate" title="Last Name">{!v.applicationIndividual.NAM_LAST__c}</div>
+        </td>
+        <td>
+            <div class="slds-truncate" title="First Name">{!v.applicationIndividual.NAM_FIRST__c}</div>
+        </td>
+        <td>
+            <div class="slds-truncate" title="MI">{!v.applicationIndividual.NAM_MI__c}</div>
+        </td>
+        <td>
+            <div class="slds-truncate" title="DOB"><c:outputField hideLabel="true" value="{!v.applicationIndividual.DTE_DOB__c}" type="UIDATE"/></div>
+        </td>
+        <td>
+            <div class="slds-truncate" title="SSN">{!v.applicationIndividual.NBR_SSN__c}</div>
+        </td>
+        <td>
+            <div class="slds-truncate" title="Gender">{!v.applicationIndividual.CDE_GENDER__c=='M'?'Male':v.applicationIndividual.CDE_GENDER__c=='F'?'Female':v.applicationIndividual.CDE_GENDER__c=='U'||v.applicationIndividual.CDE_GENDER__c=='X'?'Unknown':v.applicationIndividual.CDE_GENDER__c}</div>
+        </td>
+        <td>
+            <div class="slds-truncate" title="State ID">{!v.applicationIndividual.IDN_STATE__c}</div>
+        </td>
+        <td>
+            <div class="slds-truncate" title="Primary Caretaker">{!v.applicationIndividual.IND_CRTKR_PRIM__c}</div>
+        </td>
+        <td>
+            <div class="slds-truncate" title="Relationship">
+                <aura:if isTrue="{!!empty(v.relationshipType)}">
+                    <c:inputPicklist hideLabel="true"
+                                     value="{!v.relationshipType}"
+                                     object="T_INDIV_REL__c"
+                                     field="CDE_TYPE_REL_INDIV__c"
+                                     type="ReadOnly"
+                                     />
+                </aura:if>
+            </div>
+        </td>
+        
+    </tr>
+	
+</aura:component>

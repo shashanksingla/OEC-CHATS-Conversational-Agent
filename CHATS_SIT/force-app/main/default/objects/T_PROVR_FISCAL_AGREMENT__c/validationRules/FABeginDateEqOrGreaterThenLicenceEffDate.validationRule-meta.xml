@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>FABeginDateEqOrGreaterThenLicenceEffDate</fullName>
+    <active>true</active>
+    <description>Fiscal Agreement Begin Date must be greater than or equal to the License Effective Date</description>
+    <errorConditionFormula>OR(AND(ISNEW(), NOT($Setup.ByPass_Validation_Setting__c.Is_Batch_Excluded__c), ISBLANK( TEXT(CDE_REASON_END_AGRMT__c ) ), DTE_BEGIN_AGRMT__c &lt; ID_SERVICE__r.DTE_BEGIN_EFFV__c ), AND(NOT(ISNEW()), NOT($Setup.ByPass_Validation_Setting__c.Is_Batch_Excluded__c), ISBLANK( TEXT(CDE_REASON_END_AGRMT__c ) ), DTE_BEGIN_AGRMT__c &lt; ID_SERVICE__r.DTE_BEGIN_EFFV__c, NOT( ISCHANGED( OwnerId ) ) ))</errorConditionFormula>
+    <errorDisplayField>DTE_BEGIN_AGRMT__c</errorDisplayField>
+    <errorMessage>Fiscal Agreement Begin Date must be greater than or equal to the License Effective Date</errorMessage>
+</ValidationRule>

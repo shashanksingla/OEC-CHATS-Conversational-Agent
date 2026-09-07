@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Dte_Begin_Effv_cannot_be_lt_DOB_INDV</fullName>
+    <active>true</active>
+    <description>CHAT-1204: Can&apos;t be before DTE_DOB on T_SBSD_INDIV</description>
+    <errorConditionFormula>AND(NOT(IDN_CLIENT__r.Is_Peak_Data__c), NOT(IDN_CLIENT__r.Is_CBMS_Data__c),NOT(ISBLANK( IDN_CLIENT__c  )),
+     NOT(ISBLANK(IDN_CLIENT__r.DTE_DOB__c )),
+     DTE_BEGIN_EFFV__c &lt;  IDN_CLIENT__r.DTE_DOB__c 
+)</errorConditionFormula>
+    <errorDisplayField>DTE_BEGIN_EFFV__c</errorDisplayField>
+    <errorMessage>Effective Begin Date cannot be less than DOB of Individual</errorMessage>
+</ValidationRule>

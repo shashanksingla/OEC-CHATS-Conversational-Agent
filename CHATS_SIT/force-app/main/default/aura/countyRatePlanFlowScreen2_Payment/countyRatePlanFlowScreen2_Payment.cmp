@@ -1,0 +1,938 @@
+<aura:component extends="c:abstractSection">
+    
+    <aura:attribute name="countyRatePlanRec" type="T_COUNTY_RATE__c" default="{'sobjectType':'T_COUNTY_RATE__c','PAYMENT_Q13_a__c':'0'}"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:attribute name="jsActivated" type="boolean" default="false"/>
+    <aura:attribute name="countyId" type="String" />
+    <aura:attribute name="recordError" type="String" />
+    <aura:attribute name="isNew" type="boolean" />
+    <aura:attribute name="isPAYMENT_Q17_OtherRequired" type="boolean" default="false"/>
+    <aura:attribute name="isRT_Q2ReadOnly" type="boolean" default="true"/>
+    <aura:attribute name="isRT_Q2_aReadOnly" type="boolean" default="true"/>
+    <aura:attribute name="isRT_Q2_bReadOnly" type="boolean" default="true"/>
+    <aura:attribute name="isRT_Q2_3ReadOnly" type="boolean" default="true"/>
+    <aura:attribute name="isRT_Q2_cReadOnly" type="boolean" default="true"/>
+    <aura:attribute name="isRT_Q2_dReadOnly" type="boolean" default="true"/>
+    <aura:attribute name="isRT_Q2_eReadOnly" type="boolean" default="true"/>
+    <aura:attribute name="isRT_Q2_fReadOnly" type="boolean" default="true"/>
+    <aura:attribute name="isRT_Q2_gReadOnly" type="boolean" default="true"/>
+    <aura:attribute name="disabilityIncluded" type="boolean" default="false"/>
+    <aura:attribute name="isPAYMENT_Q18_OtherRequired" type="boolean" default="false"/>    
+    <aura:attribute name="isDateAfter_1July2022" type="boolean" default="false"/> <!-- Added by Rishav for CCCAP-5944 -->
+    <aura:attribute name="incorrectPercent" type="String" default="The amount entered is outside of the allowed percentage. Please select Other if county wants to enter rates outside of this range"/>
+    <aura:attribute name="isDateAfter_Mar2025" type="boolean" default="false"/> <!-- Added by Raina for CCCAP-12253 -->
+    <aura:attribute name="otherDropIn" type="boolean" default="false"/>
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    
+    <aura:handler name="eventOnChange" event="c:dynamicPicklistEvent" action="{!c.handleChange}"/>
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q17_4__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q18_3__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q11__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q13_2__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q14__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q14_3__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q15_1__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q18__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.RT_Q8_1__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.RT_Q8_2__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.RT_Q8_3__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.RT_Q8_4__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.RT_Q8_5__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.RT_Q8_6__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.RT_Q8_7__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.RT_Q8_8__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q14_4_2__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q17_3__c}" action="{!c.handleSetReadOnly}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.RATE_TYPE__c}" action="{!c.handleRateTypeChange}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q13_a__c}" action="{!c.handleCheckHolidayAnswers}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q13_b__c}" action="{!c.handleCheckHolidayAnswers}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q13_c__c}" action="{!c.handleCheckHolidayAnswers}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q13_d__c}" action="{!c.handleCheckHolidayAnswers}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q13_e__c}" action="{!c.handleCheckHolidayAnswers}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.PAYMENT_Q14_4_1__c}" action="{!c.handleDropinRequestChange}"/> 
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    
+    <lightning:layout multipleRows="true">
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Other Fees</B></h3>
+            <h1 class="slds-section__title">Please complete the following questions related to other fees.</h1>
+        </lightning:layoutItem>        
+        
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputRadioGroupForPicklist label="1. Does your county pay for Activity fees?" aura:id="input-field"
+                                          value="{!v.countyRatePlanRec.PAYMENT_Q10__c}"
+                                          object="T_COUNTY_RATE__c"
+                                          field="PAYMENT_Q10__c" required="true" isfullSize="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q10__c"/>           
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="number" name="input-name" label="1.1 If yes, what is the maximum amount per child per year?" aura:id="input-field"
+                             value="{!v.countyRatePlanRec.PAYMENT_Q10_1__c}" 
+                             required="{!v.countyRatePlanRec.PAYMENT_Q10__c == 'Y'?true:false}"
+                             min="0"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q10_1__c"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputRadioGroupForPicklist label="2. Does your county pay for Registration fees?" aura:id="input-field"
+                                          value="{!v.countyRatePlanRec.PAYMENT_Q9__c}"
+                                          object="T_COUNTY_RATE__c"
+                                          field="PAYMENT_Q9__c" required="true" isfullSize="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q9__c"/>           
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="number" name="input-name" label="2.1. If yes, what is the maximum amount per child per year?" aura:id="input-field"
+                             value="{!v.countyRatePlanRec.PAYMENT_Q9_1__c}" 
+                             required="{!v.countyRatePlanRec.PAYMENT_Q9__c == 'Y'?true:false}"
+                             min="0"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q9_1__c"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputRadioGroupForPicklist label="3. Does your county pay for Transportation fees?" aura:id="input-field"
+                                          value="{!v.countyRatePlanRec.PAYMENT_Q11__c}"
+                                          object="T_COUNTY_RATE__c"
+                                          field="PAYMENT_Q11__c" required="true" isfullSize="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q11__c"/>           
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="number" name="input-name" label="3.1 If yes, what is the maximum amount per child per year?" aura:id="input-field"
+                             value="{!v.countyRatePlanRec.PAYMENT_Q11_1__c}" 
+                             required="{!v.countyRatePlanRec.PAYMENT_Q11__c == 'Y'?true:false}"
+                             min="0"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q11_1__c"/>
+        </lightning:layoutItem>
+        
+        <!-- Start: Added by Rishav for CCCAP-2618 -->
+        <aura:if isTrue="{!v.countyRatePlanRec.PAYMENT_Q11__c == 'Y'}">
+            
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <c:inputPicklist label="{!$Label.c.countyRatePlan_question_schoolAgeLevel}" aura:id="input-field"
+                                 value="{!v.countyRatePlanRec.PAYMENT_Q11_2__c}"
+                                 object="T_COUNTY_RATE__c"
+                                 field="PAYMENT_Q11_2__c"
+                                 required="true"
+                                 showNone="true"
+                                 showSpinnerComponent="false"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q11_2__c"/>
+            </lightning:layoutItem>
+        
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <c:inputRadioGroupForPicklist label="{!$Label.c.countyRatePlan_question_authLevel}"
+                                              aura:id="input-field"
+                                              value="{!v.countyRatePlanRec.PAYMENT_Q11_3__c}"
+                                              object="T_COUNTY_RATE__c"
+                                              field="PAYMENT_Q11_3__c" 
+                                              required="true"
+                                              showConditionallyRenderedComponent="false"
+                                              showSpinnerComponent="false" isfullSize="true"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q11_3__c"/>
+            </lightning:layoutItem>
+            
+        </aura:if>
+        <!-- End: CCCAP-2618 -->
+        
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputRadioGroupForPicklist label="4. Does your county underwrite costs of fees charged to exempt family child care home providers to obtain fingerprint-based background checks?" aura:id="input-field"
+                                          value="{!v.countyRatePlanRec.PAYMENT_Q12__c}"
+                                          object="T_COUNTY_RATE__c"
+                                          field="PAYMENT_Q12__c" required="true" isfullSize="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q12__c"/>           
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputMultiSelectCombobox label="4.1 What fingerprint-based fees does your county underwrite?" aura:id="input-field"
+                                        value="{!v.countyRatePlanRec.PAYMENT_Q12_1__c}"
+                                        object="T_COUNTY_RATE__c"
+                                        field="PAYMENT_Q12_1__c"
+                                        required="{!v.countyRatePlanRec.PAYMENT_Q12__c=='Y'?true:false}"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q12_1__c"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputMultiSelectCombobox label="4.2 When are the fees that are underwritten by the county paid?" aura:id="input-field"
+                                        value="{!v.countyRatePlanRec.PAYMENT_Q12_2__c}"
+                                        object="T_COUNTY_RATE__c"
+                                        field="PAYMENT_Q12_2__c"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q12_2__c"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="If other, please specify" aura:id="input-field"
+                             value="{!v.countyRatePlanRec.PAYMENT_Q12_2_OTHER__c}" 
+                             required="{!empty(v.countyRatePlanRec.PAYMENT_Q12_2__c) &amp;&amp; v.countyRatePlanRec.PAYMENT_Q12__c=='Y'?true:false}"
+                             max="6"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q12_2_OTHER__c"/>
+        </lightning:layoutItem> 
+        
+    </lightning:layout>
+    
+    <lightning:layout multipleRows="true">
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <aura:if isTrue="{!v.isDateAfter_Mar2025}">
+                <h3 class="slds-section__title"><B>Holidays and Absences</B></h3>
+                <h1 class="slds-section__title">Please complete the following questions related to your county's policies on holidays and absences.</h1>
+                <aura:set attribute="else">
+                    <h3 class="slds-section__title"><B>Holidays, Absences, and Drop-In Days</B></h3>
+                    <aura:if isTrue="{!v.jsActivated}">
+                        <h1 class="slds-section__title">Please complete the following questions related to your county's policies on holidays, absences, and drop-in days.</h1>
+                        <aura:set attribute="else">
+                            <h1 class="slds-section__title">Please complete the following questions related to your county's policies on holidays, absences, and drop-in days.</h1>
+                        </aura:set>
+                </aura:if>
+                </aura:set>     
+            </aura:if>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <aura:if isTrue="{!v.jsActivated}">
+                <aura:set attribute="else">
+                    <h3 class="slds-section__title">5. What is the maximum number of absences your county pays per month? (You must meet the following minimum combined absence and holiday requirements for each Tier per year - Tier 1: 6days, Tier 2: 10 days, Tier 3: 15 days, Tier 4: 15 days, Tier 5: 15 days)</h3>
+                </aura:set>
+                <aura:if isTrue="{!v.isDateAfter_1July2022}"> <!-- Added 'isDateAfter_1July2022' logic by Rishav for CCCAP-5944 -->
+                    <h3 class="slds-section__title">5. What is your county policy on the maximum number of absences your county pays per month?  (You must meet the following minimum absence requirements for each Tier per month - Tier 1: 3 days, Tier 2: 3 days, Tier 3: 4 days, Tier 4: 4 days, Tier 5: 4 days)</h3>
+                    <aura:set attribute="else">
+                        <h3 class="slds-section__title">5. What is the maximum number of absences your county pays per month? (You must meet the following minimum absence requirements for each Tier per month - Tier 1: 2 days, Tier 2: 2 days, Tier 3: 3 days, Tier 4: 3 days, Tier 5: 3 days)</h3>
+                    </aura:set>
+                </aura:if>
+            </aura:if>
+        </lightning:layoutItem>
+        
+        <aura:if isTrue="{!v.jsActivated}">
+            
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="number" name="input-name" label="Tier 1: Days per month" aura:id="input-field"
+                                 value="{!v.countyRatePlanRec.PAYMENT_Q13_a__c}"
+                                 max="31"
+                                 required="true"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_a__c"/>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="number" name="input-name" label="Tier 2: Days per month" aura:id="input-field"
+                                 value="{!v.countyRatePlanRec.PAYMENT_Q13_b__c}"
+                                 max="31"
+                                 required="true"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_b__c"/>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="number" name="input-name" label="Tier 3: Days per month" aura:id="input-field"
+                                 value="{!v.countyRatePlanRec.PAYMENT_Q13_c__c}"
+                                 max="31"
+                                 required="true"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_c__c"/>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="number" name="input-name" label="Tier 4: Days per month" aura:id="input-field"
+                                 value="{!v.countyRatePlanRec.PAYMENT_Q13_d__c}"
+                                 max="31"
+                                 required="true"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_d__c"/>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="number" name="input-name" label="Tier 5: Days per month" aura:id="input-field"
+                                 value="{!v.countyRatePlanRec.PAYMENT_Q13_e__c}"
+                                 max="31"
+                                 required="true"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_e__c"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputRadioGroupForPicklist label="5.1 Does your county policy allow for paid holidays?" aura:id="input-field"
+                                              value="{!v.countyRatePlanRec.PAYMENT_Q13_2__c}"
+                                              object="T_COUNTY_RATE__c"
+                                              field="PAYMENT_Q13_2__c" required="true" isfullSize="true"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_2__c"/>
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.countyRatePlanRec.PAYMENT_Q13_2__c == 'Y'}">
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <c:inputMultiSelectCombobox label="5.2 If your county pays holidays, which holidays does your county pay for?" aura:id="input-field"
+                                                value="{!v.countyRatePlanRec.PAYMENT_Q13_1__c}"
+                                                object="T_COUNTY_RATE__c"
+                                                field="PAYMENT_Q13_1__c"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_1__c"/>
+                </lightning:layoutItem>
+            </aura:if>
+            <aura:set attribute="else">
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input type="number" name="input-name" label="Tier 1: Days per month" aura:id="input-field"
+                                     value="{!v.countyRatePlanRec.PAYMENT_Q13_a__c}"
+                                     min="0" 
+                                     required="true"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_a__c"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input type="number" name="input-name" label="Tier 2: Days per month" aura:id="input-field"
+                                     value="{!v.countyRatePlanRec.PAYMENT_Q13_b__c}"
+                                     min="0" 
+                                     required="true"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_b__c"/>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input type="number" name="input-name" label="Tier 3: Days per month" aura:id="input-field"
+                                     value="{!v.countyRatePlanRec.PAYMENT_Q13_c__c}"
+                                     min="0" 
+                                     required="true"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_c__c"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input type="number" name="input-name" label="Tier 4: Days per month" aura:id="input-field"
+                                     value="{!v.countyRatePlanRec.PAYMENT_Q13_d__c}"
+                                     min="0" 
+                                     required="true"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_d__c"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input type="number" name="input-name" label="Tier 5: Days per month" aura:id="input-field"
+                                     value="{!v.countyRatePlanRec.PAYMENT_Q13_e__c}"
+                                     min="0" 
+                                     required="true"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_e__c"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <c:inputPicklist label="5.1 Does your county policy allow for paid holidays?" aura:id="input-field"
+                                     value="{!v.countyRatePlanRec.PAYMENT_Q13_2__c}"
+                                     object="T_COUNTY_RATE__c"
+                                     field="PAYMENT_Q13_2__c"
+                                     showNone="true"
+                                     required="true"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_2__c"/>
+                </lightning:layoutItem>
+                <aura:if isTrue="{!v.countyRatePlanRec.PAYMENT_Q13_2__c == 'Y'}">
+                    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                        <c:inputMultiSelectCombobox label="5.2 If your county pays holidays, which holidays does your county pay for?" aura:id="input-field"
+                                                    value="{!v.countyRatePlanRec.PAYMENT_Q13_1__c}"
+                                                    object="T_COUNTY_RATE__c"
+                                                    field="PAYMENT_Q13_1__c"/>
+                        <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_1__c"/>
+                    </lightning:layoutItem>
+                </aura:if>
+            </aura:set>
+        </aura:if>
+        
+        <!--
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="Other" aura:id="input-field"
+                             value="{!v.countyRatePlanRec.PAYMENT_Q13_OTHER__c}"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q13_OTHER__c"/>
+        </lightning:layoutItem>-->
+        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+            <aura:if isTrue="{!v.isDateAfter_Mar2025}">
+            <h3 class="slds-section__title"><B>Drop-In Days: County Policy</B></h3>
+                <h1 class="slds-section__title">Please complete the following questions related to your county's policies on drop-in days.</h1>
+        </aura:if>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputRadioGroupForPicklist label="6. Does your county pay for drop-in days" aura:id="input-field"
+                                          value="{!v.countyRatePlanRec.PAYMENT_Q14__c}"
+                                          object="T_COUNTY_RATE__c"
+                                          field="PAYMENT_Q14__c" required="true" isfullSize="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q14__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.countyRatePlanRec.PAYMENT_Q14__c =='Y'}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="number" name="input-name" label="6.1 If yes, what are the maximum number of drop-in days allowed per month? (unless managed at authorization level, maximum number of drop-in days will be available for use on all authorizations)" aura:id="input-field"
+                                 value="{!v.countyRatePlanRec.PAYMENT_Q14_1__c}"
+                                 required="{!v.countyRatePlanRec.PAYMENT_Q14__c =='Y' ?true:false}"
+                                 min="0" max="31" messageWhenRangeOverflow="The number is too high. Please enter a value that is less than or equal to 31 days."/>   
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q14_1__c"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">            
+                <c:inputRadioGroupForPicklist label="6.2 If yes, what type of providers does your county pay?" aura:id="input-field"
+                                              value="{!v.countyRatePlanRec.PAYMENT_Q14_2__c}" 
+                                              object="T_COUNTY_RATE__c"
+                                              field="PAYMENT_Q14_2__c" required="{!v.countyRatePlanRec.PAYMENT_Q14__c =='Y' ?true:false}"
+                                              isfullSize="true"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q14_2__c"/>
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.isDateAfter_Mar2025}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">            
+                    <c:inputMultiSelectCombobox label="6.3 How are drop-in days requested?" aura:id="input-field"
+                                    object="T_COUNTY_RATE__c"
+                                    field="PAYMENT_Q14_4_1__c"
+                                    showNone="false"
+                                    value="{!v.countyRatePlanRec.PAYMENT_Q14_4_1__c}"
+                                    onChange="{!c.handleDropinRequestChange}"
+                                    required="{!v.countyRatePlanRec.PAYMENT_Q14__c =='Y' ?true:false}" ></c:inputMultiSelectCombobox>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q14_4_1__c"/>
+                </lightning:layoutItem>
+                
+                <aura:if isTrue="{!v.otherDropIn}">
+                    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input type="text" name="input-name" label="Please explain what other methods you use to request drop-in-days" aura:id="input-field"
+                                        value="{!v.countyRatePlanRec.PAYMENT_Q14_4_4__c}" 
+                                        required="{!v.otherDropIn}"/>    
+                        <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q14_4_4__c"/>
+                    </lightning:layoutItem>               
+                </aura:if>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">            
+                    <c:inputRadioGroupForPicklist label="Does the county require that a drop in day be requested within a certain timeframe?" aura:id="input-field"
+                                    value="{!v.countyRatePlanRec.PAYMENT_Q14_4_2__c}"
+                                    object="T_COUNTY_RATE__c"
+                                    field="PAYMENT_Q14_4_2__c"
+                                    required="{!v.countyRatePlanRec.PAYMENT_Q14__c =='Y' ?true:false}"
+                                    />    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q14_4_2__c"/>
+                </lightning:layoutItem>
+                <aura:if isTrue="{!v.countyRatePlanRec.PAYMENT_Q14_4_2__c =='Y'}">
+                    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">            
+                        <lightning:textarea name="input-name" label="If yes, what is the required timeframe?" aura:id="input-field"
+                                        value="{!v.countyRatePlanRec.PAYMENT_Q14_4_3__c}"
+                                        required="{!v.countyRatePlanRec.PAYMENT_Q14_4_2__c =='Y' ?true:false}"
+                                        />    
+                        <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q14_4_3__c"/>
+                    </lightning:layoutItem>
+                </aura:if>
+                <aura:set attribute="else">
+                    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">            
+                        <lightning:input type="text" name="input-name" label="6.3 Briefly describe your county's policy on Drop In Days." aura:id="input-field"
+                                        value="{!v.countyRatePlanRec.PAYMENT_Q14_4__c}"
+                                        required="{!v.countyRatePlanRec.PAYMENT_Q14__c =='Y' ?true:false}"
+                                        />    
+                        <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q14_4__c"/>
+                    </lightning:layoutItem>
+                </aura:set>
+            </aura:if>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="12">            
+                <c:inputRadioGroupForPicklist label="6.4 Does your county want to manage drop in days at the authorization level? (when managed at authorization level, all authorizations will default to 0 drop-in days and can be edited individually by the case worker up to the monthly maximum identified in 6.1)?" aura:id="input-field"
+                                              value="{!v.countyRatePlanRec.PAYMENT_Q14_3__c}"
+                                              object="T_COUNTY_RATE__c"
+                                              field="PAYMENT_Q14_3__c" required="{!v.countyRatePlanRec.PAYMENT_Q14__c =='Y' ?true:false}"
+                                              isfullSize="true"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q14_3__c"/> 
+                
+            </lightning:layoutItem>
+        </aura:if>
+        <aura:if isTrue="{!and(v.countyRatePlanRec.PAYMENT_Q14_3__c =='Y',v.countyRatePlanRec.PAYMENT_Q14__c =='Y')}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="12">                    
+                <lightning:input type="text" name="input-name" label="6.5 If drop in days are managed at the authorization level, how is it determined when drop in days are allowed?" aura:id="input-field"
+                                 value="{!v.countyRatePlanRec.PAYMENT_Q14_5__c}"
+                                 required="{!v.countyRatePlanRec.PAYMENT_Q14__c =='Y' ?true:false}"
+                                 />    
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q14_5__c"/>
+            </lightning:layoutItem>
+        </aura:if>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputRadioGroupForPicklist label="7. Does your county pay for hold slots?" aura:id="input-field"
+                                          value="{!v.countyRatePlanRec.PAYMENT_Q18__c}" 
+                                          object="T_COUNTY_RATE__c"
+                                          field="PAYMENT_Q18__c" required="true" isfullSize="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q18__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.countyRatePlanRec.PAYMENT_Q18__c =='Y'}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="number" name="input-name" label="7.1 If yes, how many days per month?" aura:id="input-field"
+                                 value="{!v.countyRatePlanRec.PAYMENT_Q18_1__c}"
+                                 required="{!v.countyRatePlanRec.PAYMENT_Q18__c =='Y' ?true:false}"
+                                 min="0"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q18_1__c"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <c:inputRadioGroupForPicklist label="7.2 If yes, what type of providers does your county pay?" aura:id="input-field"
+                                              value="{!v.countyRatePlanRec.PAYMENT_Q18_2__c}" 
+                                              object="T_COUNTY_RATE__c"
+                                              field="PAYMENT_Q18_2__c" required="{!v.countyRatePlanRec.PAYMENT_Q18__c =='Y' ?true:false}"
+                                              isfullSize="true"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q18_2__c"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputMultiSelectCombobox label="7.3 When are hold slots utilized for unattended, authorized care?" aura:id="input-field"
+                                            value="{!v.countyRatePlanRec.PAYMENT_Q18_3__c}"
+                                            object="T_COUNTY_RATE__c"
+                                            field="PAYMENT_Q18_3__c" required="{!v.countyRatePlanRec.PAYMENT_Q18__c =='Y' ?true:false}"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q18_3__c"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <aura:if isTrue="{!v.isPAYMENT_Q18_OtherRequired}">
+                    <lightning:input type="text" name="input-name" label="Please list other allowed use of Hold Slots" aura:id="input-field"
+                                     value="{!v.countyRatePlanRec.PAYMENT_Q18_OTHER__c}"
+                                     required="{!v.isPAYMENT_Q18_OtherRequired}"
+                                     />    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q18_OTHER__c"/>
+                </aura:if>
+            </lightning:layoutItem>            
+        </aura:if>
+    </lightning:layout>
+    
+    <lightning:layout multipleRows="true">        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Rates and County Owned Facilities</B></h3>
+            <h1 class="slds-section__title">Please complete the following questions related to rates and county-owned facilities.</h1>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <c:inputMultiSelectCombobox label="8. In addition to the State-Established Regular Rate, which types of alternative rates does your county offer?" aura:id="input-field"
+                                        value="{!v.countyRatePlanRec.RATE_TYPE__c}"
+                                        object="T_COUNTY_RATE__c"
+                                        field="RATE_TYPE__c"
+                                        showNone="false"
+                                        required="true"
+                                        mustValues="['1']"
+                                        hiddenValues="['100']"
+                                        onChange="{!c.handleRateTypeChange}"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RATE_TYPE__c"/>
+        </lightning:layoutItem>
+        
+        <aura:if isTrue="{!!v.isRT_Q2ReadOnly}">
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputPicklist label="8.1 Please explain how your county determined the reimbursement rate for Before School Care." aura:id="input-field"
+                                value="{!v.countyRatePlanRec.RT_Q8_1__c}"
+                                object="T_COUNTY_RATE__c"
+                                field="RT_Q8_1__c"
+                                showNone="true"
+                                required="{!!v.isRT_Q2ReadOnly}"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_1__c"/>
+                <lightning:helptext content="When Percent of the State-Established Regular Rate for each age band is selected, the system will auto populate rates using the percentage entered. Other Method, not to include a percentage of the State-Established Regular Rate for each age band, the county will manually enter rate fields for each age band."/>
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_1__c =='1'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:input type="number" label="Please enter the percentage of the State-Established Regular Rate for Before School rates."
+                                        min="1" max="55" messageWhenRangeOverflow="{!v.incorrectPercent}" messageWhenRangeUnderflow="{!v.incorrectPercent}"
+                                        value="{!v.countyRatePlanRec.RT_Q8_1P__c}" required="{!v.countyRatePlanRec.RT_Q8_1__c =='1' ?true:false}"
+                                        fieldLevelHelp="Allowed percentage from 1% to 55% of Full Time School Age Level 1 State-Established rate. Please select Other if county chooses to enter rates outside of this range."
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_1P__c"/>                
+                </lightning:layoutItem>
+            </aura:if>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_1__c =='2'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:textarea name="input-name" label="Explain the method your county used to determine the Before School rates."
+                                        value="{!v.countyRatePlanRec.RT_Q2__c}" required="{!v.countyRatePlanRec.RT_Q8_1__c =='2' ?true:false}"
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q2__c"/>                
+                </lightning:layoutItem>
+            </aura:if>   
+        </aura:if>
+        <aura:if isTrue="{!!v.isRT_Q2_aReadOnly}"  >
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputPicklist label="8.2 Please explain how your county determined the reimbursement rate for After School Care." aura:id="input-field"
+                                value="{!v.countyRatePlanRec.RT_Q8_2__c}"
+                                object="T_COUNTY_RATE__c"
+                                field="RT_Q8_2__c"
+                                showNone="true"
+                                required="{!!v.isRT_Q2ReadOnly}"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_2__c"/>
+                <lightning:helptext content="When Percent of the State-Established Regular Rate for each age band is selected, the system will auto populate rates using the percentage entered. Other Method, not to include a percentage of the State-Established Regular Rate for each age band, the county will manually enter rate fields for each age band."/>
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_2__c =='1'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:input type="number" label="Please enter the percentage of the State-Established Regular Rate for After School rates."
+                                        min="1" max="55" messageWhenRangeOverflow="{!v.incorrectPercent}" messageWhenRangeUnderflow="{!v.incorrectPercent}"
+                                        value="{!v.countyRatePlanRec.RT_Q8_2P__c}" required="{!v.countyRatePlanRec.RT_Q8_2__c =='1' ?true:false}"
+                                        fieldLevelHelp="Allowed percentage from 1% to 55% of Full Time School Age Level 1 State-Established rate. Please select Other if county chooses to enter rates outside of this range."
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_2P__c"/>                
+                </lightning:layoutItem>
+            </aura:if>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_2__c =='2'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:textarea name="input-name" label="Explain the method your county used to determine the After School rates. (Rates will need to be entered by the county into the rate fields for each age band.)"
+                                        value="{!v.countyRatePlanRec.RT_Q2_a__c}" required="{!v.countyRatePlanRec.RT_Q8_2__c =='2' ?true:false}"
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q2_a__c"/>                
+                </lightning:layoutItem>
+            </aura:if>  
+        </aura:if>
+        <aura:if isTrue="{!!v.isRT_Q2_bReadOnly}">
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputPicklist label="8.3 Please explain how your county determined the reimbursement rate for Before and After School Care." aura:id="input-field"
+                                value="{!v.countyRatePlanRec.RT_Q8_3__c}"
+                                object="T_COUNTY_RATE__c"
+                                field="RT_Q8_3__c"
+                                showNone="true"
+                                required="{!!v.isRT_Q2ReadOnly}"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_3__c"/>
+                <lightning:helptext content="When Percent of the State-Established Regular Rate for each age band is selected, the system will auto populate rates using the percentage entered. Other Method, not to include a percentage of the State-Established Regular Rate for each age band, the county will manually enter rate fields for each age band."/>
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_3__c =='1'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:input type="number" label="Please enter the percentage of the State-Established Regular Rate for Before and After School rates."
+                                        min="55" max="100" messageWhenRangeOverflow="{!v.incorrectPercent}" messageWhenRangeUnderflow="{!v.incorrectPercent}"
+                                        value="{!v.countyRatePlanRec.RT_Q8_3P__c}" required="{!v.countyRatePlanRec.RT_Q8_3__c =='1' ?true:false}"
+                                        fieldLevelHelp="Allowed percentage from 55% to 100% of Full Time School Age Level 1 State-Established rate. Please select Other if county chooses to enter rates outside of this range."
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_3P__c"/>                
+                </lightning:layoutItem>
+            </aura:if>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_3__c =='2'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:textarea name="input-name" label="Explain the method your county used to determine the Before and After School rates. (Rates will need to be entered by the county into the rate fields for each age band.)"
+                                        value="{!v.countyRatePlanRec.RT_Q2_b__c}" required="{!v.countyRatePlanRec.RT_Q8_3__c =='2' ?true:false}"
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q2_b__c"/>                
+                </lightning:layoutItem>
+            </aura:if>
+        </aura:if>
+        <aura:if isTrue="{!!v.isRT_Q2_3ReadOnly}"  >
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputPicklist label="8.4 Please explain how your county determined the reimbursement rate for Overnight Care." aura:id="input-field"
+                                value="{!v.countyRatePlanRec.RT_Q8_4__c}"
+                                object="T_COUNTY_RATE__c"
+                                field="RT_Q8_4__c"
+                                showNone="true"
+                                required="{!!v.isRT_Q2ReadOnly}"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_4__c"/>
+                <lightning:helptext content="When Percent of the State-Established Regular Rate for each age band is selected, the system will auto populate rates using the percentage entered. Other Method, not to include a percentage of the State-Established Regular Rate for each age band, the county will manually enter rate fields for each age band."/>
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_4__c =='1'}">
+                <aura:if isTrue="{!v.isDateAfter_Mar2025}">
+                    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                        <lightning:input type="number" label="Please enter the percentage of the State-Established Regular Rate for Overnight."
+                                            min="100" max="200" messageWhenRangeOverflow="{!v.incorrectPercent}" messageWhenRangeUnderflow="{!v.incorrectPercent}"
+                                            value="{!v.countyRatePlanRec.RT_Q8_4P__c}" required="{!v.countyRatePlanRec.RT_Q8_4__c =='1' ?true:false}"
+                                            fieldLevelHelp="Allowed percentage from 100% to 200% of Full Time School Age Level 1 State-Established rate. Please select Other if county chooses to enter rates outside of this range."
+                                            aura:id="input-field"/>
+                        <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_4P__c"/>                
+                    </lightning:layoutItem>
+                    <aura:set attribute="else">
+                        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                        <lightning:input type="number" label="Please enter the percentage of the State-Established Regular Rate for Overnight."
+                                            min="101" max="200" messageWhenRangeOverflow="{!v.incorrectPercent}" messageWhenRangeUnderflow="{!v.incorrectPercent}"
+                                            value="{!v.countyRatePlanRec.RT_Q8_4P__c}" required="{!v.countyRatePlanRec.RT_Q8_4__c =='1' ?true:false}"
+                                            fieldLevelHelp="Allowed percentage from 101% to 200% of Full Time School Age Level 1 State-Established rate. Please select Other if county chooses to enter rates outside of this range."
+                                            aura:id="input-field"/>
+                        <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_4P__c"/>                
+                    </lightning:layoutItem>
+                    </aura:set>
+                </aura:if>
+            </aura:if>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_4__c =='2'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:textarea name="input-name" label="Explain the method your county used to determine the Overnight rates. (Rates will need to be entered by the county into the rate fields for each age band.)"
+                                        value="{!v.countyRatePlanRec.RT_Q2_3__c}" required="{!v.countyRatePlanRec.RT_Q8_4__c =='2' ?true:false}"
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q2_3__c"/>                
+                </lightning:layoutItem>
+            </aura:if>   
+        </aura:if>
+        <aura:if isTrue="{!!v.isRT_Q2_cReadOnly}"  >
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputPicklist label="8.5 Please explain how your county determined the reimbursement rate for Weekend Care." aura:id="input-field"
+                                value="{!v.countyRatePlanRec.RT_Q8_5__c}"
+                                object="T_COUNTY_RATE__c"
+                                field="RT_Q8_5__c"
+                                showNone="true"
+                                required="{!!v.isRT_Q2ReadOnly}"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_5__c"/>
+                <lightning:helptext content="When Percent of the State-Established Regular Rate for each age band is selected, the system will auto populate rates using the percentage entered. Other Method, not to include a percentage of the State-Established Regular Rate for each age band, the county will manually enter rate fields for each age band."/>
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_5__c =='1'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:input type="number" label="Please enter the percentage of the State-Established Regular Rate for Weekend care."
+                                        min="101" max="200" messageWhenRangeOverflow="{!v.incorrectPercent}" messageWhenRangeUnderflow="{!v.incorrectPercent}"
+                                        value="{!v.countyRatePlanRec.RT_Q8_5P__c}" required="{!v.countyRatePlanRec.RT_Q8_5__c =='1' ?true:false}"
+                                        fieldLevelHelp="Allowed percentage from 101% to 200% of Full Time School Age Level 1 State-Established rate. Please select Other if county chooses to enter rates outside of this range."
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_5P__c"/>                
+                </lightning:layoutItem>
+            </aura:if>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_5__c =='2'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:textarea name="input-name" label="Explain the method your county used to determine the Weekend rates. (Rates will need to be entered by the county into the rate fields for each age band.)"
+                                        value="{!v.countyRatePlanRec.RT_Q2_c__c}" required="{!v.countyRatePlanRec.RT_Q8_5__c =='2' ?true:false}"
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q2_c__c"/>                
+                </lightning:layoutItem>  
+            </aura:if>  
+        </aura:if>
+        <aura:if isTrue="{!!v.isRT_Q2_dReadOnly}"  >
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputPicklist label="8.6 Please explain how your county determined the reimbursement rate for Evening Care." aura:id="input-field"
+                                value="{!v.countyRatePlanRec.RT_Q8_6__c}"
+                                object="T_COUNTY_RATE__c"
+                                field="RT_Q8_6__c"
+                                showNone="true"
+                                required="{!!v.isRT_Q2ReadOnly}"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_6__c"/>
+                <lightning:helptext content="When Percent of the State-Established Regular Rate for each age band is selected, the system will auto populate rates using the percentage entered. Other Method, not to include a percentage of the State-Established Regular Rate for each age band, the county will manually enter rate fields for each age band."/>
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_6__c =='1'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:input type="number" label="Please enter the percentage of the State-Established Regular Rate for Evening rates."
+                                        min="101" max="200" messageWhenRangeOverflow="{!v.incorrectPercent}" messageWhenRangeUnderflow="{!v.incorrectPercent}"
+                                        value="{!v.countyRatePlanRec.RT_Q8_6P__c}" required="{!v.countyRatePlanRec.RT_Q8_6__c =='1' ?true:false}"
+                                        fieldLevelHelp="Allowed percentage from 101% to 200% of Full Time School Age Level 1 State-Established rate. Please select Other if county chooses to enter rates outside of this range."
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_6P__c"/>                
+                </lightning:layoutItem>
+            </aura:if>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_6__c =='2'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:textarea name="input-name" label="Explain the method your county used to determine the Evening rates."
+                                        value="{!v.countyRatePlanRec.RT_Q2_d__c}" required="{!v.countyRatePlanRec.RT_Q8_6__c =='2' ?true:false}"
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q2_d__c"/>
+                </lightning:layoutItem>
+            </aura:if>
+        </aura:if>
+        <aura:if isTrue="{!!v.isRT_Q2_eReadOnly}"  >
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputPicklist label="8.7 Please explain how your county determined the reimbursement rate for Disability Care." aura:id="input-field"
+                                value="{!v.countyRatePlanRec.RT_Q8_7__c}"
+                                object="T_COUNTY_RATE__c"
+                                field="RT_Q8_7__c"
+                                showNone="true"
+                                required="{!!v.isRT_Q2ReadOnly}"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_7__c"/>
+                <lightning:helptext content="When Percent of the State-Established Regular Rate for each age band is selected, the system will auto populate rates using the percentage entered. Other Method, not to include a percentage of the State-Established Regular Rate for each age band, the county will manually enter rate fields for each age band."/>
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_7__c =='1'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:input type="number" label="Please enter the percentage of the State-Established Regular Rate for Disability."
+                                        min="125" max="200" messageWhenRangeOverflow="{!v.incorrectPercent}" messageWhenRangeUnderflow="{!v.incorrectPercent}"
+                                        value="{!v.countyRatePlanRec.RT_Q8_7P__c}" required="{!v.countyRatePlanRec.RT_Q8_7__c =='1' ?true:false}"
+                                        fieldLevelHelp="Allowed percentage from 125% to 200% of Full Time School Age Level 1 State-Established rate. Please select Other if county chooses to enter rates outside of this range."
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_7P__c"/>                
+                </lightning:layoutItem>
+            </aura:if>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_7__c =='2'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:textarea name="input-name" label="Explain the method your county used to determine the Disability rates."
+                                        value="{!v.countyRatePlanRec.RT_Q2_e__c}" required="{!v.countyRatePlanRec.RT_Q8_7__c =='2' ?true:false}"
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q2_e__c"/>                
+                </lightning:layoutItem>
+            </aura:if>
+        </aura:if>
+        <aura:if isTrue="{!v.disabilityIncluded}">
+            <aura:if isTrue="{!v.isDateAfter_Mar2025}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">             
+                    <lightning:textarea name="input-name" label="List the title of the role responsible for approving the use of disability in your county"
+                                        value="{!v.countyRatePlanRec.RT_Q1__c}" required="{!v.disabilityIncluded}"
+                                        aura:id="input-field"/>     
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q1__c"/>     
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">             
+                    <lightning:textarea name="input-name" label="How does the county ensure that the provider can meet the child's additional care needs to be approved to be paid the disability rate? 
+                                        The county must accept: 
+                                        ● Child Eligibility: individual health care plan (IHCP), individual
+                                        education plan (IEP), physician’s/professional’s statement,
+                                        child welfare, or individualized family service plan (IFSP)
+                                        ● Provider Eligibility: provider-created individualized care plan
+                                        (ICP) for children with additional care needs based upon the
+                                        Individual Education Plan (IEP), or Individual Health Care Plan
+                                        (IHCP)"
+                                        value="{!v.countyRatePlanRec.RT_Q1_1__c}" required="{!v.disabilityIncluded}"
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q1_1__c"/>     
+                </lightning:layoutItem>
+                <aura:set attribute="else">
+                    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">             
+                        <lightning:textarea name="input-name" label="Please indicate how your county determines if a provider will be reimbursed for this additional care rate."
+                                            value="{!v.countyRatePlanRec.RT_Q1__c}" required="{!v.disabilityIncluded}"
+                                            aura:id="input-field"/>     
+                        <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q1__c"/>     
+                    </lightning:layoutItem>
+                </aura:set>
+            </aura:if>
+        </aura:if>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <br></br>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!!v.isRT_Q2_fReadOnly}"  >
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputPicklist label="8.8 Please explain how your county determined the reimbursement rate for Out of County Care." aura:id="input-field"
+                                value="{!v.countyRatePlanRec.RT_Q8_8__c}"
+                                object="T_COUNTY_RATE__c"
+                                field="RT_Q8_8__c"
+                                showNone="true"
+                                required="{!!v.isRT_Q2ReadOnly}"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_8__c"/>
+                <lightning:helptext content="When Percent of the State-Established Regular Rate for each age band is selected, the system will auto populate rates using the percentage entered. Other Method, not to include a percentage of the State-Established Regular Rate for each age band, the county will manually enter rate fields for each age band."/>
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_8__c =='1'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:input type="number" label="Please enter the percentage of the State-Established Regular Rate for Out of County care."
+                                        min="101" max="200" messageWhenRangeOverflow="{!v.incorrectPercent}" messageWhenRangeUnderflow="{!v.incorrectPercent}"
+                                        value="{!v.countyRatePlanRec.RT_Q8_8P__c}" required="{!v.countyRatePlanRec.RT_Q8_8__c =='1' ?true:false}"
+                                        fieldLevelHelp="Allowed percentage from 101% to 200% of Full Time School Age Level 1 State-Established rate.  Please select Other if county chooses to enter rates outside of this range."
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q8_8P__c"/>                
+                </lightning:layoutItem>
+            </aura:if>
+            <aura:if isTrue="{!v.countyRatePlanRec.RT_Q8_8__c =='2'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:textarea name="input-name" label="Explain the method your county used to determine the Out of County rates."
+                                        value="{!v.countyRatePlanRec.RT_Q2_f__c}" required="{!v.countyRatePlanRec.RT_Q8_8__c =='2' ?true:false}"
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q2_f__c"/>                
+                </lightning:layoutItem>
+            </aura:if>
+        </aura:if>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.isDateAfter_Mar2025}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:textarea name="input-name" label="9. Understanding that Qualified Exempt Provider Rates should not
+                                        exceed 75% of tier 1 licensed home provider rates for corresponding
+                                        age bands, please explain how your county determined the
+                                        reimbursement rate for Qualified Exempt Providers. If the rate is based
+                                        on the Regular, please explain how the county calculated the rates for
+                                        Qualified Exempt Providers.
+                                        ● (ex: _________ County will be maintaining rates from
+                                        xx-xx-xxxx and will ensure that the rate is not higher than 75% of
+                                        the quality Tier 1 rate for licensed home providers at the
+                                        youngest age band OR
+                                        ● ___________County determined the Qualified Exempt Rate by
+                                        ______ to ensure that the rate is not higher than 75% of the
+                                        quality Tier 1 rate for licensed home providers at the youngest
+                                        age band and that it will not deter Qualified Exempt providers
+                                        from becoming licensed."
+                                        value="{!v.countyRatePlanRec.RT_Q2_g__c}" required="true"
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q2_g__c"/>    
+            </lightning:layoutItem>
+            <aura:set attribute="else">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:textarea name="input-name" label="9. Please explain how your county determined the reimbursement rate for Qualified Exempt Providers"
+                                    value="{!v.countyRatePlanRec.RT_Q2_g__c}" required="true"
+                                    aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-RT_Q2_g__c"/>
+                </lightning:layoutItem>
+                <lightning:helptext content="When Percent of the State-Established Regular Rate for each age band is selected, the system will auto populate rates using the percentage entered. Other Method, not to include a percentage of the State-Established Regular Rate for each age band, the county will manually enter rate fields for each age band."/>
+            </aura:set>
+        </aura:if>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputRadioGroupForPicklist label="10. Does your county have a county owned facility?" aura:id="input-field"
+                                          value="{!v.countyRatePlanRec.PAYMENT_Q15_1__c}" 
+                                          object="T_COUNTY_RATE__c"
+                                          field="PAYMENT_Q15_1__c" required="true" isfullSize="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q15_1__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.countyRatePlanRec.PAYMENT_Q15_1__c =='Y'}">
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:textarea name="input-name" label="10.1 What is your county's policy for maintaining arms length with a county-owned facility?"
+                                    value="{!v.countyRatePlanRec.PAYMENT_Q15__c}" required="{!v.countyRatePlanRec.PAYMENT_Q15_1__c =='Y' ?true:false}"
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q15__c"/>       
+            </lightning:layoutItem>
+        </aura:if>
+        <aura:if isTrue="{!v.isDateAfter_Mar2025}">
+            <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                <c:inputMultiSelectCombobox label="11. Understanding that CHATS functionality allows a new rate schedule to be entered in CHATS as of the first of a future month, how does your county adjust existing Provider Rates when a Provider reports a change to their Private Pay Rates?" aura:id="input-field"
+                                            value="{!v.countyRatePlanRec.PAYMENT_Q16__c}"
+                                            object="T_COUNTY_RATE__c"
+                                            field="PAYMENT_Q16__c"
+                                            required="true"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q16__c"/>
+            </lightning:layoutItem>
+            <aura:set attribute="else">
+                <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                    <c:inputMultiSelectCombobox label="11. How does your county adjust existing Provider Rates when a Provider reports a change to their Private Pay Rates?" aura:id="input-field"
+                                                value="{!v.countyRatePlanRec.PAYMENT_Q16__c}"
+                                                object="T_COUNTY_RATE__c"
+                                                field="PAYMENT_Q16__c"
+                                                required="true"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q16__c"/>
+                </lightning:layoutItem>
+            </aura:set>
+        </aura:if>
+
+    </lightning:layout>
+    <lightning:layout multipleRows="true">        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <aura:if isTrue="{!v.isDateAfter_Mar2025}">
+                <h3 class="slds-section__title"><B>Attendance Tracking System Policy: Non-cooperation of the Attendance Tracking System (ATS) for Providers</B></h3>
+                <aura:set attribute="else">
+                    <h3 class="slds-section__title"><B>Attendance Tracking System</B></h3>
+                </aura:set>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <aura:if isTrue="{!v.isDateAfter_Mar2025}">
+                <c:inputMultiSelectCombobox label="12. Whats ATS information/ resources are provided to CCCAP Providers?" aura:id="input-field"
+                                value="{!v.countyRatePlanRec.PAYMENT_Q17_1_1__c}"
+                                object="T_COUNTY_RATE__c"
+                                field="PAYMENT_Q17_1_1__c"
+                                required="true"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q17_1_1__c"/>
+                <aura:set attribute="else">
+                    <lightning:textarea name="input-name" label="12. Briefly describe your county policy regarding non-cooperation of the Attendance Tracking System (ATS) for providers?"
+                                value="{!v.countyRatePlanRec.PAYMENT_Q17_1__c}" required="true"
+                                aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q17_1__c"/> 
+                </aura:set>
+            </aura:if>                        
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <aura:if isTrue="{!v.isDateAfter_Mar2025}">
+                    <c:inputMultiSelectCombobox label="12.1 What actions does your county take to support providers prior to determining that non-cooperation of ATS (refusal to use ATS at all) has occurred?" aura:id="input-field"
+                                        value="{!v.countyRatePlanRec.PAYMENT_Q17_2__c}"
+                                        object="T_COUNTY_RATE__c"
+                                        field="PAYMENT_Q17_2__c"
+                                        required="true"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q17_2__c"/>
+                <aura:set attribute="else">
+                    <c:inputMultiSelectCombobox label="12.1 What actions does your county take to support providers prior to determining non-cooperation of ATS has occurred?" aura:id="input-field"
+                                        value="{!v.countyRatePlanRec.PAYMENT_Q17_2__c}"
+                                        object="T_COUNTY_RATE__c"
+                                        field="PAYMENT_Q17_2__c"
+                                        required="true"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q17_2__c"/>
+                </aura:set>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputPicklist label="12.2 Does your county close Fiscal Agreements with providers when it has been determined that non-cooperation of ATS has occurred?" aura:id="input-field"
+                             value="{!v.countyRatePlanRec.PAYMENT_Q17_3__c}"
+                             object="T_COUNTY_RATE__c"
+                             field="PAYMENT_Q17_3__c"
+                             showNone="true"
+                             required="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q17_3__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.isDateAfter_Mar2025}">
+            <aura:if isTrue="{!v.countyRatePlanRec.PAYMENT_Q17_3__c =='N'}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">                
+                    <lightning:textarea name="input-name" label="If no, what action is taken if provider non-cooperation (refusal to use ATS at all) continues?"
+                                        value="{!v.countyRatePlanRec.PAYMENT_Q17_3_1__c}" required="{!v.countyRatePlanRec.PAYMENT_Q17_3__c =='N' ?true:false}"
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q17_3_1__c"/>                
+                </lightning:layoutItem>
+            </aura:if>
+        </aura:if>
+        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputMultiSelectCombobox label="12.3 How does your county issue provider correspondences?" aura:id="input-field"
+                                        value="{!v.countyRatePlanRec.PAYMENT_Q17_4__c}"
+                                        object="T_COUNTY_RATE__c"
+                                        field="PAYMENT_Q17_4__c"
+                                        required="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q17_4__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.isPAYMENT_Q17_OtherRequired}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="text" name="input-name" label="Please describe Other provider correspondence issuance methods used" aura:id="input-field"
+                                 value="{!v.countyRatePlanRec.PAYMENT_Q17_OTHER__c}" 
+                                 required="{!v.isPAYMENT_Q17_OtherRequired}"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-PAYMENT_Q17_OTHER__c"/>
+            </lightning:layoutItem>
+        </aura:if>
+    </lightning:layout>    
+</aura:component>

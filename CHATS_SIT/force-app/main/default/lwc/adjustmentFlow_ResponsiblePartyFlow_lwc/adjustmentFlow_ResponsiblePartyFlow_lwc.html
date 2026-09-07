@@ -1,0 +1,64 @@
+<template>
+    <template if:true={showSpinner}>
+        <div class="slds-spinner_container">
+            <lightning-spinner alternative-text="Loading, please wait" size="medium" variant="brand">
+            </lightning-spinner>
+        </div>
+    </template>
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         VIEW MODE  (pageMode === 'view' && Selected__c === true)
+         Shows responsible party name and IPV record name as read-only text
+    ════════════════════════════════════════════════════════════════════════ -->
+    <template lwc:if={isViewMode}>
+        <template lwc:if={responsiblePartyObj.Selected__c}>
+            <tr role="row">
+                <!-- Responsible Party Name (read-only) -->
+                <td style="width:10%" class="row-cell name-cell" role="gridcell" aria-label="Responsible Party Name">
+                    <span>{responsiblePartyObj.Responsible_Party_Name__c}</span>
+                </td>
+
+                <!-- IPV Record Name (read-only) -->
+                <td style="width:40%" class="row-cell ipv-cell" role="gridcell" aria-label="IPV Record Name">
+                    <span>{IPVName}</span>
+                </td>
+
+                <!-- Empty cell to match parent view-mode thead's 3rd column -->
+                <td class="row-cell" role="gridcell" aria-label="No action"></td>
+            </tr>
+        </template>
+    </template>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         EDIT MODE  (pageMode !== 'view')
+         Checkbox for selection, responsible party name (read-only text),
+         IPV Record ID lookup (shown only when Selected__c === true),
+         and field-level validation message for IPV
+    ════════════════════════════════════════════════════════════════════════ -->
+    <template lwc:else>
+        <tr role="row">
+            <!-- Checkbox cell -->
+            <td style="width:10%" class="row-cell checkbox-cell" role="gridcell">
+                <lightning-input type="checkbox" label="Select" variant="label-hidden"
+                    checked={responsiblePartyObj.Selected__c} data-id="input-field"
+                    aria-label="Select {responsiblePartyObj.Responsible_Party_Name__c}" onchange={handleCheckboxChange}>
+                </lightning-input>
+            </td>
+
+            <!-- Responsible Party Name (display-only) -->
+            <td style="width:40%" class="row-cell name-cell" role="gridcell" aria-label="Responsible Party Name">
+                <span>{responsiblePartyObj.Responsible_Party_Name__c}</span>
+            </td>
+
+            <!-- IPV Record ID Lookup cell -->
+            <td class="row-cell ipv-cell" role="gridcell">
+                <!-- Show IPV lookup only when row is selected -->
+                <c-custom-lookup_lwc label="IPV Record ID" object-api-name="IPV_Information__c" search-field="Name"
+                    data-id="ipvRecordId" aria-label="IPV Record ID" aria-describedby="ipv-field-error"
+                    required={ipvRequired} custom-error-message={ipvErrorMessage} selected-record-id={IPVRecordId}
+                    unique-key={responsiblePartyObj.Id} onvalueselected={handleIPVLookupChange}>
+                </c-custom-lookup_lwc>
+            </td>
+        </tr>
+    </template>
+
+</template>

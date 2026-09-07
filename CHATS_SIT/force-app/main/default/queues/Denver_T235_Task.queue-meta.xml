@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Denver T235 Task</name>
+    <queueMembers>
+        <users>
+            <user>angela.marant@denvergov.org.chats</user>
+            <user>leticia.cabrera@denvergov.org.chats</user>
+            <user>maria.palacios@denvergov.org.chats</user>
+            <user>stephanie.rodriguez@denvergov.org.chats</user>
+        </users>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>Task</sobjectType>
+    </queueSobject>
+</Queue>

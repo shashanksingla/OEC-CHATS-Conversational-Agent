@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Access_Request_Title_Info_Justification__c</fullName>
+    <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+    <inlineHelpText>If requesting Read Only or Universal access, enter user&apos;s county position title, their job functions as related to CCCAP, detail general reason/need for access, frequency they&apos;d log in, how current process is hindered without this person receiving access.</inlineHelpText>
+    <label>Access Request Justification</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>TextArea</type>
+</CustomField>

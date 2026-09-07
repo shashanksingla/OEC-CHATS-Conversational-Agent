@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_fiscal_rat_fee__c</fullName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>RAT Fees External Id</label>
+    <length>50</length>
+    <referenceTargetField>T_FISCAL_RAT_FEES__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_FISCAL_RAT_FEES__c</referenceTo>
+    <relationshipLabel>batchsit$t_sub_pmt_detail</relationshipLabel>
+    <relationshipName>batchsit_t_sub_pmt_detail</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

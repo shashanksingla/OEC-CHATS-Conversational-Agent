@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_cw_addnl_info__c</fullName>
+    <description>idn_cw_addnl_info</description>
+    <externalDeveloperName>idn_cw_addnl_info</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>CW Additional Information ID</label>
+    <length>50</length>
+    <referenceTargetField>T_CW_ADDNL_INFO__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_CW_ADDNL_INFO__c</referenceTo>
+    <relationshipLabel>CW Details Legacy History</relationshipLabel>
+    <relationshipName>sfrosit_t_cw_addnl_info_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>Y</fullName>
+        <default>false</default>
+        <label>Yes</label>
+    </customValue>
+    <customValue>
+        <fullName>N</fullName>
+        <default>true</default>
+        <label>No</label>
+    </customValue>
+    <description>RT_YES_NO</description>
+    <masterLabel>RT_YES_NO</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

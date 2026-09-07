@@ -1,0 +1,231 @@
+<aura:component implements="flexipage:availableForRecordHome,force:hasRecordId,force:hasSObjectName,force:lightningQuickAction,lightning:actionOverride" 
+                access="global" 
+                controller="ACSES_InformationCallout"> 
+    
+    <!-- ATTRIBUTES -->
+    <aura:attribute type="Boolean" name="sortAsc" />
+    <aura:attribute type="String" name="sortField" />
+    <aura:attribute name="toggleSpinner" type="boolean" default="false"/> 
+    <aura:attribute name="resultFlag" type="boolean" default="false"/>
+    <aura:attribute name="incomeFlag" type="boolean" default="false"/>
+    <aura:attribute name="trxAmt" type="List"/>
+    <aura:attribute name="supportType" type="String"/>
+    <aura:attribute name="endDate" type="Date"/>
+    <aura:attribute name="parentNameStateId" type="List"/>
+    <aura:attribute name="parentStateId" type="String"/>
+    <aura:attribute name="caseId" type="String"/>
+    <aura:attribute name="custodialParent" type="Object"/>
+    <aura:attribute name="cpColumns" type="List"/>
+    <aura:attribute name="nonCustodialParent" type="Object"/>
+    <aura:attribute name="ncpColumns" type="List"/>
+    <aura:attribute name="incomeInfo" type="Object"/>
+    <aura:attribute name="incomeColumns" type="List"/>
+    <aura:attribute name="expenseInfo" type="Object"/>
+    <aura:attribute name="expenseColumns" type="List"/>
+    <aura:attribute name="childInfo" type="Object"/>
+    <aura:attribute name="childColumns" type="List"/>
+    <aura:attribute name="message" type="String" />
+    <aura:attribute name="recordError" type="List" />
+    <!-- / ATTRIBUTES -->
+    
+    <!-- HANDLER -->
+    <aura:handler name="init" value="{!this}" action="{!c.getParentStateId}"/>
+    <!-- / HANDLER -->
+    
+    <!-- HEADER -->
+    <lightning:layout class="slds-page-header slds-page-header--object-home">
+        <lightning:layoutItem >
+            <lightning:icon iconName="custom:custom84" alternativeText="ACSES Header" size="medium"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem padding="horizontal-small">
+            <div class="page-section page-header">
+                <h2 class="slds-page-header__title">ACSES Income/Expense Information</h2>
+                <h1 class="slds-text-title--caps">Enter the search criteria below to search for Child Support data from ACSES. Results will display for the past 12 months from the ending date entered.</h1>
+            </div>
+        </lightning:layoutItem>
+    </lightning:layout>
+    <!-- / HEADER -->
+    
+    <!-- LOADING GIF -->
+    <aura:if isTrue="{!v.toggleSpinner}">
+        <lightning:spinner variant="brand" size="large"/>
+    </aura:if>   
+    <!-- / LOADING GIF -->
+    
+    <!-- ERROR HANDELING -->
+    <c:pageMessages pageMessages="{!v.recordError}" messageType="{!v.message}"/>
+    <!-- / ERROR HANDELING -->
+    
+    <!-- SEARCH SECTION -->
+    <lightning:layout horizontalAlign="space" multipleRows="true" class="slds-border_top acses-search-background">
+        <lightning:layoutItem flexibility="auto" padding="around-small">
+            <lightning:select name="searchType" aura:id="searchForm" label="Income/Expense" value="{!v.supportType}" required="true">
+                <option value="">--None--</option>
+                <option value="Income">Income</option>
+                <option value="Expense">Expense</option>
+            </lightning:select>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small">
+            <lightning:select name="parentStateId" label="Parent Name" aura:id="searchForm" value="{!v.parentStateId}" required="true">
+                <option text="--None--" value="" />
+                <aura:iteration items="{!v.parentNameStateId}" var="item">
+                    <option text="{!item.label}" value="{!item.value}" selected="{!item.selected}"/>
+                </aura:iteration>
+            </lightning:select>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small">
+            <c:inputDate aura:id="input-field"
+                         label="End Date" 
+                         value="{!v.endDate}"/> 
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small">
+            <lightning:button label="Cancel"
+                              class="slds-m-top--medium"
+                              variant="neutral"
+                              onclick="{!c.redirect}"/>
+            <lightning:button label="View Result" 
+                              class="slds-m-top--medium"
+                              variant="brand"
+                              onclick="{!c.ACSESCallout}"/>
+        </lightning:layoutItem>
+    </lightning:layout>
+    <!-- / SEARCH SECTION -->
+    
+    <!-- RESULT SECTION -->
+    <aura:if isTrue="{!v.resultFlag}">
+        <lightning:layout verticalAlign="stretch" multipleRows="true" class="slds-border_top">
+            <!-- MONTH AVERAGE-->
+            <lightning:layoutItem flexibility="auto" padding="around-small" class="slds-size_12-of-12 acses-background">
+                <p class="slds-text-title_caps heading-style">Month Average</p>
+                <aura:if isTrue="{!(v.trxAmt != null)}">
+                    <div class="slds-grid slds-p-top_small">
+                        <div class="slds-size_3-of-12">
+                            90 Day Average : <ui:outputCurrency value="{!v.trxAmt[0]/((0 + 1) * 3)}"/>
+                        </div>
+                        <div class="slds-size_3-of-12">
+                            180 Day Average : <ui:outputCurrency value="{!v.trxAmt[1]/((1 + 1) * 3)}"/>
+                        </div>
+                        <div class="slds-size_3-of-12">
+                            270 Day Average : <ui:outputCurrency value="{!v.trxAmt[2]/((2 + 1) * 3)}"/>
+                        </div>
+                        <div class="slds-size_3-of-12">
+                            365 Average : <ui:outputCurrency value="{!v.trxAmt[3]/((3 + 1) * 3)}"/>
+                        </div>
+                    </div>
+                    <aura:set attribute="else">
+                        <p class="slds-text-align_center slds-text-color_error">
+                            <lightning:icon iconName="utility:error" size="small" alternativeText="No record found"/>
+                            Can not calculate month average as data is not available!
+                        </p>
+                    </aura:set>
+                </aura:if>
+            </lightning:layoutItem>
+            <!-- / MONTH AVERAGE-->
+            
+            <!-- CUSTODIAL PARENT DETAILS  -->
+            <aura:if isTrue="{!v.incomeFlag}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" class="slds-size_12-of-12 slds-border_top slds-m-bottom_medium acses-background">
+                    <p class="slds-text-title_caps heading-style">Custodial Parent Details	</p>
+                    <aura:if isTrue="{!and(v.custodialParent != null, v.custodialParent.length > 0)}">
+                        <lightning:datatable data="{! v.custodialParent }" 
+                                             columns="{! v.cpColumns }" 
+                                             keyField="id" 
+                                             class="slds-m-top_small"
+                                             hideCheckboxColumn="true"/>
+                        <aura:set attribute="else">
+                            <p class="slds-text-align_center slds-text-color_error">
+                                <lightning:icon iconName="utility:error" size="small" alternativeText="No record found"/>
+                                There is no record found for Custodial Parent!
+                            </p>
+                        </aura:set>
+                    </aura:if>
+                    
+                </lightning:layoutItem>
+            </aura:if>
+            <!-- / CUSTODIAL PARENT DETAILS  -->
+            
+            <!-- NON CUSTODIAL PARENT DETAILS  -->
+            <lightning:layoutItem flexibility="auto" padding="around-small" class="slds-size_12-of-12 slds-border_top slds-m-bottom_medium acses-background">
+                <p class="slds-text-title_caps heading-style">Non - Custodial Parent Details	</p>
+                <aura:if isTrue="{!and(v.nonCustodialParent != null, v.nonCustodialParent.length > 0)}">
+                    <lightning:datatable data="{! v.nonCustodialParent }" 
+                                         columns="{! v.ncpColumns }" 
+                                         keyField="id" 
+                                         class="slds-m-top_small"
+                                         hideCheckboxColumn="true"/>
+                    <aura:set attribute="else">
+                        <p class="slds-text-align_center slds-text-color_error">
+                            <lightning:icon iconName="utility:error" size="small" alternativeText="No record found"/>
+                            There is no record found for Non Custodial Parent!
+                        </p>
+                    </aura:set>
+                </aura:if>
+            </lightning:layoutItem>
+            <!-- / NON CUSTODIAL PARENT DETAILS  -->
+            
+            
+            <!-- CHILD INFORMATION -->
+            <!--<aura:if isTrue="{!v.incomeFlag}">-->
+                <lightning:layoutItem flexibility="auto" padding="around-small" class="slds-size_12-of-12 slds-border_top slds-m-bottom_medium acses-background">
+                    <p class="slds-text-title_caps heading-style">Child Information</p>
+                    <aura:if isTrue="{!and(v.childInfo != null, v.childInfo.length > 0)}">
+                        <lightning:datatable data="{! v.childInfo }" 
+                                             columns="{! v.childColumns }" 
+                                             keyField="id" 
+                                             class="slds-m-top_small"
+                                             hideCheckboxColumn="true"/>
+                        <aura:set attribute="else">
+                            <p class="slds-text-align_center slds-text-color_error">
+                                <lightning:icon iconName="utility:error" size="small" alternativeText="No record found"/>
+                                There is no record found for Child!
+                            </p>
+                        </aura:set>
+                    </aura:if>
+                </lightning:layoutItem>
+            <!--</aura:if>-->
+            <!-- / CHILD INFORMATION -->
+            
+            <aura:if isTrue="{!v.incomeFlag}">
+                <!-- INCOME INFORMATION -->
+                <lightning:layoutItem flexibility="auto" padding="around-small" class="slds-size_12-of-12 slds-border_top slds-m-bottom_medium acses-background">
+                    <p class="slds-text-title_caps heading-style">Income Information - Disbursement Details</p>
+                    <aura:if isTrue="{!and(v.incomeInfo != null, v.incomeInfo.length > 0)}">
+                        <lightning:datatable data="{! v.incomeInfo }" 
+                                             columns="{! v.incomeColumns }" 
+                                             keyField="id" 
+                                             class="slds-m-top_small"
+                                             hideCheckboxColumn="true"/>
+                        <aura:set attribute="else">
+                            <p class="slds-text-align_center slds-text-color_error">
+                                <lightning:icon iconName="utility:error" size="small" alternativeText="No record found"/>
+                                There is no income information available for requested parent with given end date!
+                            </p>
+                        </aura:set>
+                    </aura:if>
+                </lightning:layoutItem>
+                <!-- / INCOME INFORMATION -->
+                <aura:set attribute="else">
+                    <!-- EXPENSE INFORMATION -->
+                    <lightning:layoutItem flexibility="auto" padding="around-small" class="slds-size_12-of-12 slds-border_top slds-m-bottom_medium acses-background">
+                        <p class="slds-text-title_caps heading-style">Expense Information - Disbursement Details</p>
+                        <aura:if isTrue="{!and(v.expenseInfo != null, v.expenseInfo.length > 0)}">
+                            <lightning:datatable data="{! v.expenseInfo }" 
+                                                 columns="{! v.expenseColumns }" 
+                                                 keyField="id" 
+                                                 class="slds-m-top_small"
+                                                 hideCheckboxColumn="true"/>
+                            <aura:set attribute="else">
+                                <p class="slds-text-align_center slds-text-color_error">
+                                    <lightning:icon iconName="utility:error" size="small" alternativeText="No record found"/>
+                                    There is no expense information available for requested parent with given end date!
+                                </p>
+                            </aura:set>
+                        </aura:if>
+                    </lightning:layoutItem>
+                    <!-- / EXPENSE INFORMATION -->
+                </aura:set>
+            </aura:if> 
+        </lightning:layout>
+    </aura:if>
+    <!-- / RESULT SECTION -->
+</aura:component>

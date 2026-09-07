@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <content>employmentPayStubFlow</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <comment>Action override created by Lightning App Builder during activation.</comment>
+        <content>Employment_Pay_Stub_Record_Page</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>Flexipage</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Information about employment income including individual receiving the income, amount and frequency</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+  <!--  <enableChangeDataCapture>false</enableChangeDataCapture>-->
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>AMT_INCOME_GROSS__c</fullName>
+        <description>Gross Amount before taxes and deductions</description>
+        <externalId>false</externalId>
+        <label>Gross Amount before taxes and deductions</label>
+        <precision>11</precision>
+        <required>false</required>
+        <scale>2</scale>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>    
+    <fields>
+        <fullName>AMT_TIPS_AVG__c</fullName>
+        <description>Tips/Commisions/Bonuses</description>
+        <externalId>false</externalId>
+        <label>Tips/Commisions/Bonuses</label>
+        <precision>11</precision>
+        <required>false</required>
+        <scale>2</scale>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>CDE_FREQ_PAY__c</fullName>
+        <description>Frequency</description>
+        <externalId>false</externalId>
+        <label>Frequency</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00325</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_SOURCE_VRFYD_PAY__c</fullName>
+        <externalId>false</externalId>
+        <label>How Verified</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00846</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_TYPE_VERIF__c</fullName>
+        <description>Verified</description>
+        <externalId>false</externalId>
+        <label>Verified</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00367</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CNT_WORKED_HOURS_STUB_PAY__c</fullName>
+        <description>Hours Worked and Care Needed</description>
+        <externalId>false</externalId>
+        <label>Hours Worked and Care Needed</label>
+        <precision>8</precision>
+        <required>false</required>
+        <scale>2</scale>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Calculated_Weekly_Hours_Worked__c</fullName>
+        <externalId>false</externalId>
+        <formula>CASE( TEXT(CDE_FREQ_PAY__c) , 
+&apos;WKY&apos;,  CNT_WORKED_HOURS_STUB_PAY__c , 
+&apos;E2M&apos;, (CNT_WORKED_HOURS_STUB_PAY__c/2)/4.33, 
+&apos;2PM&apos;, (CNT_WORKED_HOURS_STUB_PAY__c*2)/4.33,
+&apos;E2W&apos;, CNT_WORKED_HOURS_STUB_PAY__c/2, 
+&apos;MON&apos;, CNT_WORKED_HOURS_STUB_PAY__c/4.33, 
+&apos;QRT&apos;, (CNT_WORKED_HOURS_STUB_PAY__c/3)/4.33, 
+&apos;2PY&apos;, (CNT_WORKED_HOURS_STUB_PAY__c/6)/4.33, 
+&apos;1PY&apos;, (CNT_WORKED_HOURS_STUB_PAY__c/12)/4.33, 
+&apos;ONE&apos;, (CNT_WORKED_HOURS_STUB_PAY__c/12)/4.33, 
+0 
+)</formula>
+        <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+        <label>Calculated Weekly Hours Worked</label>
+        <precision>18</precision>
+        <required>false</required>
+        <scale>2</scale>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Calculated_Yearly_Income__c</fullName>
+        <description>Formula referenced from: https://drive.google.com/file/d/0BzExP1u9ErsgREF3YnQ5Tm12blU/view</description>
+        <externalId>false</externalId>
+        <formula>CASE( TEXT(CDE_FREQ_PAY__c) , 
+&apos;2PM&apos;, (AMT_INCOME_GROSS__c +  AMT_TIPS_AVG__c )*2*12,
+&apos;E2M&apos;, (AMT_INCOME_GROSS__c +  AMT_TIPS_AVG__c )*6,
+&apos;WKY&apos;,  (AMT_INCOME_GROSS__c +  AMT_TIPS_AVG__c )*4.33*12,
+&apos;E2W&apos;,  ((AMT_INCOME_GROSS__c +  AMT_TIPS_AVG__c)/2)*4.33*12,
+&apos;MON&apos;,  (AMT_INCOME_GROSS__c +  AMT_TIPS_AVG__c )*12,
+&apos;QRT&apos;,  ((AMT_INCOME_GROSS__c +  AMT_TIPS_AVG__c )/3)*12,
+&apos;2PY&apos;,  (AMT_INCOME_GROSS__c +  AMT_TIPS_AVG__c )*2,
+&apos;1PY&apos;,  (AMT_INCOME_GROSS__c +  AMT_TIPS_AVG__c ),
+&apos;ONE&apos;,  (AMT_INCOME_GROSS__c +  AMT_TIPS_AVG__c ),
+0
+)</formula>
+        <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+        <label>Calculated Yearly Income</label>
+        <precision>18</precision>
+        <required>false</required>
+        <scale>2</scale>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>DTE_PAY__c</fullName>
+        <description>Pay Date</description>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Pay Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EMPLMT_INCOME__c</fullName>
+        <externalId>false</externalId>
+        <label>Employment Income ID</label>
+        <referenceTo>T_EMPLMT_INCOME__c</referenceTo>
+        <relationshipLabel>Employment Pay Stub</relationshipLabel>
+        <relationshipName>Employment_Pay_Stub</relationshipName>
+        <relationshipOrder>0</relationshipOrder>
+        <reparentableMasterDetail>false</reparentableMasterDetail>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>MasterDetail</type>
+        <writeRequiresMasterRead>false</writeRequiresMasterRead>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>External ID</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <fields>
+        <fullName>bypassValidations__c</fullName>
+        <encryptionScheme>None</encryptionScheme>
+        <description>To be able to update status from backend. CCCAP-15586</description>
+        <externalId>false</externalId>
+        <label>bypassValidation</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>DateTime</type>
+    </fields>
+    <fields>
+        <fullName>CDE_STATUS__c</fullName>
+        <description>JIRA CHAT-2779 and 2778
+2. added new columns T_EMPLMT_PAY_STUB.CDE_STATUS and T_EMPLMT_INCOME.CDE_STATUS</description>
+        <externalId>false</externalId>
+        <label>Status</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00848</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Number_Of_Worth_Days_Per_Frequency__c</fullName>
+        <description>Logic on sufficient paystubs on employment income record needs to be changed to match legacy: check if there are enough paystubs for 30 days (if paystubs are in weeks(5)/twice per month(2)/every 2 weeks(3)) or a month (if paystubs are in months/yearly/one-time/etc. only need 1)</description>
+        <externalId>false</externalId>
+        <formula>IF(TEXT(CDE_STATUS__c)=&apos;ACT&apos;,CASE( TEXT(CDE_FREQ_PAY__c) , &apos;WKY&apos;, 7.5, &apos;E2W&apos;, 15,&apos;2PM&apos;, 15, 30),0)</formula>
+        <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+        <label>Number Of Worth Days Per Frequency</label>
+        <precision>18</precision>
+        <required>false</required>
+        <scale>0</scale>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <label>Employment Pay Stub</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All1</fullName>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+   <nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>Pay Stub ID</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Employment Pay Stub</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ControlledByParent</sharingModel>
+    <validationRules>
+        <fullName>Gross_Amount_Greater_Than_0</fullName>
+        <active>true</active>
+        <description>Gross Amount before taxes and deductions cannot be less than 0.</description>
+        <errorConditionFormula>AMT_INCOME_GROSS__c &lt; 0</errorConditionFormula>
+        <errorDisplayField>AMT_INCOME_GROSS__c</errorDisplayField>
+        <errorMessage>Gross Amount before taxes and deductions cannot be less than 0.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Hours_worked_and_Care_needed_Validation</fullName>
+        <active>true</active>
+        <description>Hours Worked and Care Needed cannot be less than 0.</description>
+        <errorConditionFormula>CNT_WORKED_HOURS_STUB_PAY__c &lt; 0</errorConditionFormula>
+        <errorDisplayField>CNT_WORKED_HOURS_STUB_PAY__c</errorDisplayField>
+        <errorMessage>Hours Worked and Care Needed cannot be less than 0.</errorMessage>
+    </validationRules>
+    <!--Commented as part of CCCAP-10798-->
+    <!--validationRules>
+        <fullName>How_Verified_Employment_RecordType</fullName>
+        <active>false</active>
+        <errorConditionFormula>AND(OR(ISNEW(),ISCHANGED(CDE_SOURCE_VRFYD_PAY__c)),IDN_EMPLMT_INCOME__r.IDN_EMPLMT_INDIV__r.RecordType.DeveloperName  = &apos;Employment&apos;, OR( ISPICKVAL(CDE_SOURCE_VRFYD_PAY__c , &apos;CCH&apos;),ISPICKVAL(CDE_SOURCE_VRFYD_PAY__c , &apos;LGR&apos;), ISPICKVAL(CDE_SOURCE_VRFYD_PAY__c , &apos;OTH&apos;),ISPICKVAL(CDE_SOURCE_VRFYD_PAY__c , &apos;PST&apos;)))</errorConditionFormula>
+        <errorMessage>Please select one of these Employment letter, Paystubs, Verbal, Work Number website in How Verified</errorMessage>
+    </validationRules-->
+    <!--Making modification as part of CCCAP-15586 Issue 2-->
+    <validationRules>
+        <fullName>How_Verified_Required</fullName>
+        <active>true</active>
+        <description>How verified is required if Verified is Written Verification</description>
+        <errorConditionFormula>ISPICKVAL(CDE_TYPE_VERIF__c,&apos;V&apos;) &amp;&amp; ISPICKVAL(CDE_SOURCE_VRFYD_PAY__c,&apos;&apos;) &amp;&amp; NOT(ISCHANGED(bypassValidations__c))</errorConditionFormula>
+        <errorDisplayField>CDE_SOURCE_VRFYD_PAY__c</errorDisplayField>
+        <errorMessage>Required if Verified is &apos;Written Verification&apos;</errorMessage>
+    </validationRules>
+    <!--Commented as part of CCCAP-10798-->
+    <!--validationRules>
+        <fullName>How_Verified_Self_Employment_RecordType</fullName>
+        <active>false</active>
+        <errorConditionFormula>AND(OR(ISNEW(),ISCHANGED(CDE_SOURCE_VRFYD_PAY__c)),
+IDN_EMPLMT_INCOME__r.IDN_EMPLMT_INDIV__r.RecordType.DeveloperName  = &apos;Self_Employment&apos;,OR(ISPICKVAL(CDE_SOURCE_VRFYD_PAY__c , &apos;ELT&apos;),ISPICKVAL(CDE_SOURCE_VRFYD_PAY__c , &apos;STB&apos;), ISPICKVAL(CDE_SOURCE_VRFYD_PAY__c , &apos;VER&apos;),ISPICKVAL(CDE_SOURCE_VRFYD_PAY__c , &apos;WNW&apos;)) )</errorConditionFormula>
+        <errorMessage>Please select one of these Cancelled checks, Ledger, Other, Paystub in How Verified</errorMessage>
+    </validationRules-->
+    <validationRules>
+        <fullName>Pay_Date_CannotBe_b4_Inc_Effv_Date</fullName>
+        <active>true</active>
+        <description>Pay Date Cannot be before Income Effective Date and Employment Begin Date</description>
+        <errorConditionFormula>OR(
+AND( 
+     NOT( ISBLANK( DTE_PAY__c ) ),
+     NOT( ISBLANK( IDN_EMPLMT_INCOME__c  ) ),
+     NOT( ISBLANK( IDN_EMPLMT_INCOME__r.DTE_BEGIN_EFFV__c ) ),
+     
+     NOT( ISBLANK( 
+ IDN_EMPLMT_INCOME__r.IDN_EMPLMT_INDIV__r.DTE_BEGIN_EFFV__c)),
+
+     DTE_PAY__c &lt;  IDN_EMPLMT_INCOME__r.DTE_BEGIN_EFFV__c 
+),
+AND(
+     NOT( ISBLANK( DTE_PAY__c ) ),
+     NOT( ISBLANK( IDN_EMPLMT_INCOME__c  ) ),
+     NOT( ISBLANK( IDN_EMPLMT_INCOME__r.IDN_EMPLMT_INDIV__c) ),
+     NOT( ISBLANK( 
+ IDN_EMPLMT_INCOME__r.IDN_EMPLMT_INDIV__r.DTE_BEGIN_EFFV__c)),
+     DTE_PAY__c &lt; IDN_EMPLMT_INCOME__r.IDN_EMPLMT_INDIV__r.DTE_BEGIN_EFFV__c  
+     
+))</errorConditionFormula>
+        <errorDisplayField>DTE_PAY__c</errorDisplayField>
+        <errorMessage>Pay Date Cannot be before Income Effective Date and Employment Begin Date</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Tips_Commisions_Bonuses_Greater_Than_0</fullName>
+        <active>true</active>
+        <description>Tips/Commisions/Bonuses cannot be less than 0.</description>
+        <errorConditionFormula>AMT_TIPS_AVG__c &lt; 0</errorConditionFormula>
+        <errorDisplayField>AMT_TIPS_AVG__c</errorDisplayField>
+        <errorMessage>Tips/Commisions/Bonuses cannot be less than 0.</errorMessage>
+    </validationRules>
+    <visibility>Public</visibility>
+</CustomObject>

@@ -1,0 +1,257 @@
+<aura:component extends="c:abstractComponent"  controller="AuthEncumbRelatedListController" implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId" access="global" >
+    <aura:attribute name="componentAttributes" type="String"/>
+    <aura:attribute name="componentAttributesValues" type="String"/>
+    <aura:attribute name="componentAttributesTypes" type="String"/>
+    <aura:attribute name="parentObjIdentifier" type="String"/>
+    <aura:attribute name="fieldTypes" type="List" />
+    <aura:attribute name="fieldApiNames" type="String[]" default="ExternalId,dateOfCare,status,actualAttendedHours,rateType,attendedFlag,ind0to36months,authorizedHours"/>
+    <aura:attribute name="pickListTypeFields" type="String" default=""/>
+    <aura:attribute name="recCount" type="Integer" default="0"/>
+    <aura:attribute name="relatedListHeader" type="String" default=""/>
+    <aura:attribute name="childApiName" type="String" default=""/>
+    <aura:attribute name="showTable" type="Boolean" default="true"/>
+    <aura:attribute name="listRecordsToDisplay" type="List" default=""/>
+    <aura:attribute name="orderByField" type="String" default=" "/>
+    <aura:attribute name="recordsLimit" type="String" default="365"/>
+    <aura:attribute name="sortAscDsc" type="String" default="ASC"/>
+    <aura:attribute type="Boolean" name="sortAsc" />
+    <aura:attribute name="isNavigateToCmp" type="Boolean" default="false"/>
+    <aura:attribute name="showMore" type="Boolean"/>
+    <!--added for auth archiving project CCCAP-7494 -->
+    <aura:attribute name="isMonthYrBasedSearch" type="Boolean" default="false"/>
+    <aura:method name="getAuthEncumb" action="{!c.getRequestedData}"  access="public"
+                 description="Fetching auth encumbrance for selected month and year"> 
+        <aura:attribute name="selectedMonth" type="String"/>
+        <aura:attribute name="selectedYear" type="String"/>
+    </aura:method>
+
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <article class="slds-card slds-card_boundary forceRelatedListCardDesktop" data-aura-class="forceRelatedListCardDesktop">
+        <div class="slds-card__header slds-grid">
+            <header class="slds-media slds-media--center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <div class="extraSmall forceEntityIcon" style="background-color: #e9af67" data-aura-class="forceEntityIcon">
+                        <span class="uiImage" data-aura-class="uiImage">
+                            <img src="/img/icon/t4v35/custom/custom16_120.png" class="icon " alt="batchsit$t_sub_pmt" title="batchsit$t_sub_pmt" />
+                        </span>
+                    </div>
+                </div>
+                <div class="slds-media__body">
+                    <h2 id="header">
+                        <span class="slds-card__header-link baseCard__header-title-container">
+                            <span class="slds-text-heading--small slds-truncate slds-m-right--xx-small" title="Sub Payments">
+                                <aura:if isTrue="{!!v.isMonthYrBasedSearch}">
+                                     <a class="header-link" onclick="{!c.navigateToChilComponent}" >{!v.relatedListHeader}</a>
+                                     <aura:set attribute="else"> 
+                                         {!v.relatedListHeader}
+                                     </aura:set>
+                                </aura:if>
+                            </span>
+                            <span class="slds-text-heading--small slds-shrink-none slds-m-right--xx-small" title="{!v.recCount}"> ({!v.recCount})</span>
+                        </span>
+                    </h2>
+                </div>
+            </header>
+            <div class="slds-no-flex">
+                <div class="actionsContainer"></div>
+            </div>
+        </div>
+        <lightning:spinner variant="brand" size="small" aura:id="mySpinner"/>
+        <div class="slds-card__body">
+            <div class="">
+                <div class="previewMode MEDIUM forceRelatedListPreview" data-aura-class="forceRelatedListPreview">
+                    <div class="">
+                        <div class="useHeaderBarFix forceBaseListView forceRelatedListPreviewGrid" data-aura-class="forceBaseListView forceRelatedListPreviewGrid">
+                            <div class="spinnerWrapper hideSpinner hideEl forceComponentSpinner" data-aura-class="forceComponentSpinner">
+                                <div class="indicator  hideEl forceInlineSpinner" aria-hidden="true" role="alert" data-aura-class="forceInlineSpinner">
+                                </div>
+                            </div>
+                            <aura:if isTrue="{!v.showTable}">
+                                <div class="listViewContent">
+                                    <div class="scrollable uiScroller scroller-wrapper scroll-bidirectional native" tabindex="-1" style="" data-aura-class="uiScroller">
+                                        <div class="scroller actionBarPlugin fixedHeaderPlugin">
+                                            <table class="forceRecordLayout slds-table slds-table_fixed-layout slds-no-row-hover slds-table_cell-buffer uiVirtualDataGrid--default uiVirtualDataGrid" data-aura-class="uiVirtualDataGrid--default uiVirtualDataGrid">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="initialSortAsc " scope="col" style="" title="EXTERNAL ID" id="{!v.fieldApiNames[0]}" onclick="{!c.sortColumn}">
+                                                            EXTERNAL ID
+                                                            <span class="assistiveText"></span>
+                                                            <aura:if isTrue="{!!v.showMore}">
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'ASC', v.fieldApiNames[0] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                                                </aura:if>
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'DESC', v.fieldApiNames[0] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                                                </aura:if>
+                                                            </aura:if>
+                                                        </th>
+                                                        <th class="initialSortAsc " scope="col" style="" title=" DATE OF CARE" id="{!v.fieldApiNames[1]}" onclick="{!c.sortColumn}">
+                                                            DATE OF CARE
+                                                            <span class="assistiveText"></span>
+                                                            <aura:if isTrue="{!!v.showMore}">
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'ASC', v.fieldApiNames[1] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                                                </aura:if>
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'DESC', v.fieldApiNames[1] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                                                </aura:if>
+                                                            </aura:if>
+                                                        </th>
+                                                        <th class="initialSortAsc " scope="col" style="" title="ENCUMBRANCE STATUS" id="{!v.fieldApiNames[2]}" onclick="{!c.sortColumn}">
+                                                            ENCUMBRANCE STATUS
+                                                            <span class="assistiveText"></span>
+                                                            <aura:if isTrue="{!!v.showMore}">
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'ASC', v.fieldApiNames[2] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                                                </aura:if>
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'DESC', v.fieldApiNames[2] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                                                </aura:if>
+                                                            </aura:if>
+                                                        </th>
+                                                        <th class="initialSortAsc " scope="col" style="" title="ACTUAL ATTENDED HOURS" id="{!v.fieldApiNames[7]}" onclick="{!c.sortColumn}">
+                                                            AUTHORIZED HOURS
+                                                            <span class="assistiveText"></span>
+                                                            <aura:if isTrue="{!!v.showMore}">
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'ASC', v.fieldApiNames[7] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                                                </aura:if>
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'DESC', v.fieldApiNames[7] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                                                </aura:if>
+                                                            </aura:if>
+                                                        </th>
+                                                        <th class="initialSortAsc " scope="col" style="" title="ACTUAL ATTENDED HOURS" id="{!v.fieldApiNames[3]}" onclick="{!c.sortColumn}">
+                                                            ACTUAL ATTENDED HOURS
+                                                            <span class="assistiveText"></span>
+                                                            <aura:if isTrue="{!!v.showMore}">
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'ASC', v.fieldApiNames[3] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                                                </aura:if>
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'DESC', v.fieldApiNames[3] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                                                </aura:if>
+                                                            </aura:if>
+                                                        </th>
+                                                        <th class="initialSortAsc " scope="col" style="" title="RATE TYPE" id="{!v.fieldApiNames[4]}" onclick="{!c.sortColumn}">
+                                                            RATE TYPE
+                                                            <span class="assistiveText"></span>
+                                                            <aura:if isTrue="{!!v.showMore}">
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'ASC', v.fieldApiNames[4] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                                                </aura:if>
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'DESC', v.fieldApiNames[4] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                                                </aura:if>
+                                                            </aura:if>
+                                                        </th>
+                                                        <th class="initialSortAsc " scope="col" style="" title="ATTENDED" id="{!v.fieldApiNames[5]}" onclick="{!c.sortColumn}">
+                                                            ATTENDED
+                                                            <span class="assistiveText"></span>
+                                                            <aura:if isTrue="{!!v.showMore}">
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'ASC', v.fieldApiNames[5] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                                                </aura:if>
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'DESC', v.fieldApiNames[5] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                                                </aura:if>
+                                                            </aura:if>
+                                                        </th>
+                                                        <aura:if isTrue="{!!v.isMonthYrBasedSearch}">
+                                                            <th class="initialSortAsc " scope="col" style="" title="0-36 MONTHS" id="{!v.fieldApiNames[6]}" onclick="{!c.sortColumn}">
+                                                            0-36 MONTHS
+                                                            <span class="assistiveText"></span>
+                                                            <aura:if isTrue="{!!v.showMore}">
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'ASC', v.fieldApiNames[6] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                                                </aura:if>
+                                                                <aura:if isTrue="{! and(v.sortAscDsc == 'DESC', v.fieldApiNames[6] == v.orderByField) }">
+                                                                    &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                                                </aura:if>
+                                                            </aura:if>
+                                                        </th>
+                                                        </aura:if>
+                                                    </tr>
+                                                </thead>
+                                                <tfoot></tfoot>
+                                                <tbody>
+                                                    <aura:iteration items="{!v.listRecordsToDisplay}" var="record" indexVar="i">
+                                                        <aura:if isTrue="{!or(and((i) lt 5 , v.showMore), !v.showMore )}">
+                                                            <tr>
+                                                                <td>
+                                                                    <aura:if isTrue="{!!v.isMonthYrBasedSearch}">
+                                                                        <div class="outputLookupContainer forceOutputLookupWithPreview" data-aura-class="forceOutputLookupWithPreview" >
+                                                                        <a class="textUnderline outputLookupLink slds-truncate forceOutputLookup" onclick="{!c.navigateToDetail}" id="{!record.ExternalId}">
+                                                                            {!record.ExternalId}
+                                                                        </a>
+                                                                    </div>
+                                                                        <aura:set attribute="else"> 
+                                                                           <span class="uiOutputText" data-aura-class="uiOutputText">
+                                                                        {!record.ExternalId}
+                                                                    </span> 
+                                                                        </aura:set>
+                                                                    </aura:if>
+                                                                </td>
+                                                                <td>
+                                                                    <span >
+                                                                        <ui:outputDate value="{!record.dateOfCare}" format="MM/dd/yyyy"/>
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="uiOutputText" data-aura-class="uiOutputText">
+                                                                        {!record.status}
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="uiOutputText" data-aura-class="uiOutputText">
+                                                                        {!record.authorizedHours} 
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="uiOutputText" data-aura-class="uiOutputText">
+                                                                        {!record.actualAttendedHours} 
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="uiOutputText" data-aura-class="uiOutputText">
+                                                                        {!record.rateType}
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <span>
+                                                                        <ui:outputCheckbox value="{!record.attendedFlag}"/>  
+                                                                    </span>
+                                                                </td>
+                                                                <aura:if isTrue="{!!v.isMonthYrBasedSearch}">
+                                                                <td>
+                                                                    <span>
+                                                                        <ui:outputCheckbox value="{!record.ind0to36months}"/>  
+                                                                    </span>
+                                                                </td>
+                                                                </aura:if>
+                                                            </tr>
+                                                        </aura:if>
+                                                    </aura:iteration>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </aura:if>
+                            <div class="emptyContent hidden">
+                                <div class="emptyContentInner">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <aura:if isTrue="{!!v.isMonthYrBasedSearch}">
+            <aura:if isTrue="{!and((v.recCount) gt 0, v.showMore)}">
+                <footer class="slds-card__footer"><a onclick="{!c.navigateToChilComponent}" >View All <span class="slds-assistive-text">entity type</span></a></footer>
+            </aura:if>
+            
+        </aura:if>
+    </article>
+</aura:component>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Begin_Date_Cannot_Be_Updated</fullName>
+    <active>true</active>
+    <description>Begin Date Cannot be Updated Once the record has been created</description>
+    <errorConditionFormula>ISCHANGED(DTE_BEGIN_EFFV_AUTH__c)</errorConditionFormula>
+    <errorDisplayField>DTE_BEGIN_EFFV_AUTH__c</errorDisplayField>
+    <errorMessage>Authorization Begin Date Cannot be updated Once the Record has been created</errorMessage>
+</ValidationRule>

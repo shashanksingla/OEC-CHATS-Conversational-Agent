@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>AC</fullName>
+        <default>false</default>
+        <label>American Indian Card with KIC code</label>
+    </customValue>
+    <customValue>
+        <fullName>AL</fullName>
+        <default>false</default>
+        <label>Asylum letter from INS or immigration judge</label>
+    </customValue>
+    <customValue>
+        <fullName>CC</fullName>
+        <default>false</default>
+        <label>Certificate of Citizenship</label>
+    </customValue>
+    <customValue>
+        <fullName>CN</fullName>
+        <default>false</default>
+        <label>Certificate of Naturalization</label>
+    </customValue>
+    <customValue>
+        <fullName>CW</fullName>
+        <default>false</default>
+        <label>Child Welfare Case</label>
+    </customValue>
+    <customValue>
+        <fullName>ES</fullName>
+        <default>false</default>
+        <label>Early school records with DOB</label>
+    </customValue>
+    <customValue>
+        <fullName>OS</fullName>
+        <default>false</default>
+        <label>US Consular Office Statement</label>
+    </customValue>
+    <customValue>
+        <fullName>RR</fullName>
+        <default>false</default>
+        <label>US or Territory Religious Record</label>
+    </customValue>
+    <customValue>
+        <fullName>TA</fullName>
+        <default>false</default>
+        <label>US or Territory Adoption Papers</label>
+    </customValue>
+    <customValue>
+        <fullName>TB</fullName>
+        <default>false</default>
+        <label>US or Territory Birth Certificate</label>
+    </customValue>
+    <customValue>
+        <fullName>UP</fullName>
+        <default>false</default>
+        <label>United States passport</label>
+    </customValue>
+    <customValue>
+        <fullName>US</fullName>
+        <default>false</default>
+        <label>Report of birth abroad of a U.S. citizen</label>
+    </customValue>
+    <customValue>
+        <fullName>WO</fullName>
+        <default>false</default>
+        <label>Deportation Withheld Order</label>
+    </customValue>
+    <customValue>
+        <fullName>ND</fullName>
+        <default>false</default>
+        <label>Self Declaration</label>
+    </customValue>
+    <customValue>
+        <fullName>VBA</fullName>
+        <default>false</default>
+        <label>Verified By Another Public Assistance Program</label>
+    </customValue>
+    <customValue>
+        <fullName>IA</fullName>
+        <default>false</default>
+        <label>Bureau of Indian Affairs ID</label>
+    </customValue>
+    <customValue>
+        <fullName>IFN</fullName>
+        <default>false</default>
+        <label>INS Form (I-94, I-551, I-571, I-688B, I-766)</label>
+    </customValue>
+    <customValue>
+        <fullName>TF</fullName>
+        <default>false</default>
+        <label>Colorado Works Referral</label>
+    </customValue>
+    <customValue>
+        <fullName>SA</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>SAVE</label>
+    </customValue>
+    <customValue>
+        <fullName>RT</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>INS Form I-571 (Refugee Travel Doc)</label>
+    </customValue>
+    <customValue>
+        <fullName>OT</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Other</label>
+    </customValue>
+    <customValue>
+        <fullName>NF</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>INS Form I-766</label>
+    </customValue>
+    <customValue>
+        <fullName>MF</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Medicaid file</label>
+    </customValue>
+    <customValue>
+        <fullName>II</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>INS Form I-94</label>
+    </customValue>
+    <customValue>
+        <fullName>IF</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>INS Form I-551</label>
+    </customValue>
+    <customValue>
+        <fullName>IB</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>INS Form I-688B</label>
+    </customValue>
+    <customValue>
+        <fullName>FS</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Food Stamp file</label>
+    </customValue>
+    <customValue>
+        <fullName>FP</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>I-551 stamp in foreign passport</label>
+    </customValue>
+    <customValue>
+        <fullName>CDL</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Colorado Driver&apos;s License or ID</label>
+    </customValue>
+    <customValue>
+        <fullName>CB</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Certificate of birth (FS-545) or (DS-1350)</label>
+    </customValue>
+    <description>R00708</description>
+    <masterLabel>R00708</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

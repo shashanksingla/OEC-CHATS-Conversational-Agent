@@ -1,0 +1,21 @@
+<template>
+    <div class="slds-theme_default slds-p-around_xx-large">
+        <div class="slds-text-heading_large slds-text-align_center slds-m-bottom_xx-large" aria-label="Tableau Dashboard" role="heading">Tableau Dashboard</div>
+        <!--  -->
+        <div class="slds-grid slds-wrap slds-p-top_xx-large slds-p-bottom_xx-large" style="--slds-c-button-sizing-border: 0.75rem; --slds-c-button-radius-border: 100px;">
+            <template for:each={buttons} for:item="button">
+                <lightning-button
+                    key={button.label} 
+                    variant="brand"
+                    label={button.label} 
+                    title={button.label}
+                    data-url={button.url}
+                    onclick={handleButtonClick}
+                    aria-label={button.label}
+                    class="slds-m-around_small slds-col slds-text-align_center">
+                </lightning-button>
+            </template>
+            <!--  -->
+        </div>
+    </div>
+</template>

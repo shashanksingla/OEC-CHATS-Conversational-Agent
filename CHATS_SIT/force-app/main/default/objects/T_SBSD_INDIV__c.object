@@ -1,0 +1,854 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Follow</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <content>OverrideStandarNewButton</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <comment>Action override created by Lightning App Builder during activation.</comment>
+        <content>Individual_Record_Page</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>Flexipage</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>Individual_Compact</compactLayoutAssignment>
+    <compactLayouts>
+        <fullName>Individual_Compact</fullName>
+        <fields>IDN_STATE__c</fields>
+        <fields>NAM_FIRST__c</fields>
+        <fields>NAM_LAST__c</fields>
+        <fields>Age__c</fields>
+        <fields>CDE_GENDER__c</fields>
+        <label>Individual Compact</label>
+    </compactLayouts>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Additional demographic information about an individual on a case including name, date of birth, maritial status, race</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>BirthDay__c</fullName>
+        <externalId>false</externalId>
+        <formula>DAY(DTE_DOB__c )</formula>
+        <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+        <label>BirthDay</label>
+        <precision>18</precision>
+        <required>false</required>
+        <scale>0</scale>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>BirthMonth__c</fullName>
+        <externalId>false</externalId>
+        <formula>MONTH(DTE_DOB__c )</formula>
+        <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+        <label>BirthMonth</label>
+        <precision>18</precision>
+        <required>false</required>
+        <scale>0</scale>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Age__c</fullName>
+        <externalId>false</externalId>
+        <formula>IF( NOT( ISBLANK( DTE_DOB__c ) ) ,
+  IF( DATE( 2000 , MONTH( DTE_DOB__c ) , DAY( DTE_DOB__c ) ) &lt;= DATE( 2000 , MONTH( TODAY() ) , DAY( TODAY() ) ),
+     YEAR (Today()) - YEAR ( DTE_DOB__c ),
+     YEAR (Today()) - YEAR ( DTE_DOB__c ) -1 ),
+  null)</formula>
+        <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+        <label>Age</label>
+        <precision>18</precision>
+        <required>false</required>
+        <scale>0</scale>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Is_CBMS_Data__c</fullName>
+        <defaultValue>false</defaultValue>
+        <externalId>false</externalId>
+        <label>Is CBMS Data</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>IND_NOTIF_SIDMOD__c</fullName>
+        <defaultValue>false</defaultValue>
+        <externalId>false</externalId>
+        <label>Notified to SIDMOD</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>Is_StateID_Invalid__c</fullName>
+        <defaultValue>false</defaultValue>
+        <externalId>false</externalId>
+        <label>Is StateID Invalid</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>IND_NOTIFBATCHDATAFIX__c</fullName>
+        <defaultValue>false</defaultValue>
+        <externalId>false</externalId>
+        <label>Notify Batch Datafix Indicator</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>CBMS_CASE_NUM__c</fullName>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>CBMS CASE NUM</label>
+        <length>8</length>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>IND_IPV__c</fullName>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Intentional Program Violations (IPV)</label>
+        <length>1</length>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>CBMS_DENIAL_REASON__c</fullName>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Individual denial/termination Reason</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>CDE_ATTENDING_SCHOOL1__c</fullName>
+        <externalId>false</externalId>
+        <label>Child attending kindergarten or above?</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>Y</fullName>
+                    <default>false</default>
+                    <label>Yes</label>
+                </value>
+                <value>
+                    <fullName>N</fullName>
+                    <default>false</default>
+                    <label>No</label>
+                </value>
+                <value>
+                    <fullName>Unknown</fullName>
+                    <default>false</default>
+                    <label>Unknown</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_ATTENDING_SCHOOL_BEGINDATE__c</fullName>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Child Kindergarten Begin/Start Date</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>CDE_CHILD_ENROLLED_IN_UPK__c</fullName>
+        <externalId>false</externalId>
+        <label>Is this Child dually enrolled in UPK?</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>Y</fullName>
+                    <default>false</default>
+                    <label>Yes</label>
+                </value>
+                <value>
+                    <fullName>N</fullName>
+                    <default>false</default>
+                    <label>No</label>
+                </value>
+                <value>
+                    <fullName>Unknown</fullName>
+                    <default>false</default>
+                    <label>Unknown</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_ETNCTY__c</fullName>
+        <description>Ethnicity</description>
+        <externalId>false</externalId>
+        <label>Ethnicity</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00114</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_GENDER__c</fullName>
+        <description>Gender</description>
+        <externalId>false</externalId>
+        <label>Gender</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00080</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_LEVEL_GRADE_HGHST__c</fullName>
+        <externalId>false</externalId>
+        <label>Highest Education Completed</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00362</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_RACE__c</fullName>
+        <description>Race</description>
+        <externalId>false</externalId>
+        <label>Race</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>MultiselectPicklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00130</valueSetName>
+        </valueSet>
+        <visibleLines>6</visibleLines>
+    </fields>
+    <fields>
+        <fullName>CDE_SOURCE_VRFYD_CITIZEN__c</fullName>
+        <description>How Verified (Citizenship)</description>
+        <externalId>false</externalId>
+        <label>How Verified (Citizenship)</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00708</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_SOURCE_VRFYD_DOB__c</fullName>
+        <description>How Verified (DOB)</description>
+        <externalId>false</externalId>
+        <label>How Verified (DOB)</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00706</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_SOURCE_VRFYD_IDNTY__c</fullName>
+        <description>How Verified (Identity)</description>
+        <externalId>false</externalId>
+        <label>How Verified (Identity)</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00707</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_STATUS_MAR__c</fullName>
+        <description>Marital Status</description>
+        <externalId>false</externalId>
+        <label>Marital Status</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00017</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_TYPE_VERIF_DOB__c</fullName>
+        <description>DOB verified 1?</description>
+        <externalId>false</externalId>
+        <label>DOB verified?</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00367</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>DOB_Change_Indicator__c</fullName>
+        <defaultValue>false</defaultValue>
+        <externalId>false</externalId>
+        <label>DOB Change Indicator</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>CDE_VRFYD_IDNTY__c</fullName>
+        <description>Identity Verified?</description>
+        <externalId>false</externalId>
+        <label>Identity Verified?</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00367</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>DOB_SSN__c</fullName>
+        <externalId>false</externalId>
+        <formula>TEXT(DTE_DOB__c) &amp; &apos;_&apos; &amp; NBR_SSN__c</formula>
+        <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+        <label>DOB_SSN</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>indvFirstNameDobGender__c</fullName>
+        <externalId>false</externalId>
+        <formula>NAM_FIRST__c&amp;&apos; &apos;&amp;NAM_LAST__c&amp;&apos;,&apos;&amp;&apos; &apos;&amp;TEXT(DTE_DOB__c)&amp;&apos;,&apos;&amp;&apos; &apos;&amp; IDN_STATE__c</formula>
+        <formulaTreatBlanksAs>BlankAsBlank</formulaTreatBlanksAs>
+        <label>indvFirstNameDobGender</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>DTE_DOB__c</fullName>
+        <description>DOB</description>
+        <externalId>false</externalId>
+        <label>DOB</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>Has_Allowed_Relationship__c</fullName>
+        <defaultValue>false</defaultValue>
+        <description>Not to be displayed on page layouts. This field is used in the back end to build a functionality.</description>
+        <externalId>false</externalId>
+        <label>Has Allowed Relationship</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>Individual ID External</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    
+    <fields>
+        <fullName>IDN_STATE__c</fullName>
+        <description>State ID</description>
+        <externalId>false</externalId>
+        <label>State ID</label>
+        <length>9</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>IND_CDE_TYPE_VERIF_DOB__c</fullName>
+        <description>This is new field for DOB verification for removing global picklist Set R000367 reference.</description>
+        <externalId>false</externalId>
+        <label>DOB verified?</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>N/A-adult caretaker</fullName>
+                    <default>false</default>
+                    <label>N/A-adult caretaker</label>
+                </value>
+                <value>
+                    <fullName>N/A-not requesting child</fullName>
+                    <default>false</default>
+                    <label>N/A-not requesting child</label>
+                </value>
+                <value>
+                    <fullName>NA</fullName>
+                    <default>false</default>
+                    <label>Not Available</label>
+                </value>
+                <value>
+                    <fullName>SD</fullName>
+                    <default>false</default>
+                    <label>Verbal Verification</label>
+                </value>
+                <value>
+                    <fullName>V</fullName>
+                    <default>false</default>
+                    <label>Written Verification</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IND_CHILD_IDEA__c</fullName>
+        <description>Have you referred this child to Part B or C of the Individuals with Disabilities Education Act (IDEA)?*</description>
+        <externalId>false</externalId>
+        <label>Child referred to IDEA Part B or C?*</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00619</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IND_CHILD_SCREEN__c</fullName>
+        <description>Have you referred this child to Early and Periodic Screening Diagnosis and Treatment?*</description>
+        <externalId>false</externalId>
+        <label>Referred to Early &amp; Periodic Screening?</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00619</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IND_NOTIFY_SIDMOD__c</fullName>
+        <description>Individual Cleared</description>
+        <externalId>false</externalId>
+        <label>Individual Cleared</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00619</valueSetName>
+        </valueSet>
+    </fields>
+
+    <fields>
+        <fullName>Is_Peak_Data__c</fullName>
+        <defaultValue>false</defaultValue>
+        <externalId>false</externalId>
+        <label>Is Peak Data</label>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>Is_Primary_Parent_Caretaker__c</fullName>
+        <defaultValue>false</defaultValue>
+        <description>Not to be displayed on page layouts. This field is used in the back end to build a functionality.</description>
+        <externalId>false</externalId>
+        <label>Is Primary Parent/Caretaker</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>NAM_FIRST__c</fullName>
+        <description>First Name</description>
+        <externalId>false</externalId>
+        <label>First Name</label>
+        <length>32</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>NAM_LAST__c</fullName>
+        <description>Last Name</description>
+        <externalId>false</externalId>
+        <label>Last Name</label>
+        <length>32</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>NAM_MI__c</fullName>
+        <description>Middle Initial</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Middle Initial</label>
+        <length>1</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>NAM_NICKNAME__c</fullName>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Child Nickname</label>
+        <length>100</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>NBR_SSN__c</fullName>
+        <description>SSN</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>SSN</label>
+        <length>9</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>TXT_SNDX__c</fullName>
+        <externalId>false</externalId>
+        <label>Soundex Text</label>
+        <length>10</length>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Notified_to_IDXR__c</fullName>
+        <externalId>false</externalId>
+        <label>Notified to IDXR</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>A</fullName>
+                    <default>false</default>
+                    <label>Added</label>
+                </value>
+                <value>
+                    <fullName>U</fullName>
+                    <default>false</default>
+                    <label>Update</label>
+                </value>
+                <value>
+                    <fullName>R</fullName>
+                    <default>false</default>
+                    <label>Removed</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IDXR_Processed_Time__c</fullName>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>IDXR Processed Time</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>DateTime</type>
+    </fields>
+    <fields>
+        <fullName>UFE_Request_Flag__c</fullName>
+        <defaultValue>false</defaultValue>
+        <externalId>false</externalId>
+        <label>UFE Request Flag</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>Bypass_On__c</fullName>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Bypass On</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>DateTime</type>
+    </fields>
+    <fields>
+	<fullName>DTE_Death__c</fullName>
+        <description>Date of Death</description>
+        <externalId>false</externalId>
+        <label>Date of Death</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <label>Individual</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <columns>CREATEDBY_USER</columns>
+        <columns>CREATED_DATE</columns>
+        <columns>UPDATEDBY_USER</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All1</fullName>
+        <columns>NAME</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All_1</fullName>
+        <columns>NAME</columns>
+        <columns>CREATEDBY_USER</columns>
+        <columns>CREATED_DATE</columns>
+        <columns>UPDATEDBY_USER</columns>
+        <columns>IDN_STATE__c</columns>
+        <columns>NAM_FIRST__c</columns>
+        <columns>NAM_LAST__c</columns>
+        <filterScope>Everything</filterScope>
+        <filters>
+            <field>NAM_FIRST__c</field>
+            <operation>equals</operation>
+            <value>SHAUN</value>
+        </filters>
+        <label>All 1</label>
+    </listViews>
+    <nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>Client ID</label>
+        <trackHistory>false</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Individual</pluralLabel>
+    <searchLayouts>
+        <excludedStandardButtons>New</excludedStandardButtons>
+        <excludedStandardButtons>MassChangeOwner</excludedStandardButtons>
+        <searchResultsAdditionalFields>indvFirstNameDobGender__c</searchResultsAdditionalFields>
+        <searchResultsAdditionalFields>IDN_STATE__c</searchResultsAdditionalFields>        
+        <searchResultsAdditionalFields>NAM_FIRST__c</searchResultsAdditionalFields>
+        <searchResultsAdditionalFields>NAM_LAST__c</searchResultsAdditionalFields>
+        <searchResultsAdditionalFields>DTE_DOB__c</searchResultsAdditionalFields>
+        <searchResultsAdditionalFields>NBR_SSN__c</searchResultsAdditionalFields>
+        <searchResultsAdditionalFields>CDE_GENDER__c</searchResultsAdditionalFields>
+    </searchLayouts>
+    <sharingModel>ReadWrite</sharingModel>
+    <validationRules>
+        <fullName>First_Name_No_Special_Characters</fullName>
+        <active>true</active>
+        <description>First Name must contain at least one letter, and can only use letters, spaces, hyphens, and apostrophes. Names cannot start or end with a space, and cannot use multiple special characters in a row.</description>
+        <errorConditionFormula>NOT(REGEX(NAM_FIRST__c,&quot;^(?! )(?!.*(--|  |&apos;&apos;))(?=.*[A-Za-z])[A-Za-z&apos; -]+(?&lt;! )$&quot;))</errorConditionFormula>
+        <errorMessage>First Name must contain at least one letter, and can only use letters, spaces, hyphens, and apostrophes. Names cannot start or end with a space, and cannot use multiple special characters in a row.</errorMessage>
+    </validationRules>   
+    <validationRules>
+        <fullName>Last_Name_No_Special_Characters</fullName>
+        <active>true</active>
+        <description>Last Name must contain at least one letter, and can only use letters, spaces, hyphens, and apostrophes. Names cannot start or end with a space, and cannot use multiple special characters in a row.</description>
+        <errorConditionFormula>NOT(REGEX(NAM_LAST__c,&quot;^(?! )(?!.*(--|  |&apos;&apos;))(?=.*[A-Za-z])[A-Za-z&apos; -]+(?&lt;! )$&quot;))</errorConditionFormula>
+        <errorMessage>Last Name must contain at least one letter, and can only use letters, spaces, hyphens, and apostrophes. Names cannot start or end with a space, and cannot use multiple special characters in a row.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Middle_Initial_No_Special_Characters</fullName>
+        <active>true</active>
+        <description>Middle Initial cannot contain special characters (except spaces).</description>
+        <errorConditionFormula>AND(NOT(REGEX(NAM_MI__c,&quot;[a-zA-Z ]+&quot;)), NOT(ISBLANK(NAM_MI__c)))</errorConditionFormula>
+        <errorMessage>Middle Initial cannot contain special characters (except spaces).</errorMessage>
+    </validationRules> 
+    <validationRules>
+        <fullName>Req_HowVerified_DOB_If_VerifType_Writtn</fullName>
+        <active>true</active>
+        <description>How Verified DOB is required if Verification Type is written Applicable</description>
+        <errorConditionFormula>AND($Label.Batch_User_Id &lt;&gt; $User.Id , !(Is_Peak_Data__c || (ISCHANGED(Is_Peak_Data__c) &amp;&amp; !Is_Peak_Data__c)),  !(Is_CBMS_Data__c || (ISCHANGED(Is_CBMS_Data__c) &amp;&amp; !Is_CBMS_Data__c)), ISPICKVAL( IND_CDE_TYPE_VERIF_DOB__c , &apos;V&apos;),  ISPICKVAL( CDE_SOURCE_VRFYD_DOB__c , &apos;&apos;),NOT($Setup.ByPass_Validation_Setting__c.Is_Batch_Excluded__c), NOT(ISCHANGED(Bypass_On__c)))</errorConditionFormula>
+        <errorDisplayField>CDE_SOURCE_VRFYD_DOB__c</errorDisplayField>
+        <errorMessage>Required: How Verified is must for Verification Type DOB as &quot;Written Verification&quot;</errorMessage>
+    </validationRules>
+    <!--Commented as part of CCCAP-10798-->
+    <!--validationRules>
+        <fullName>Require_How_Verified_if_SSN_populated</fullName>
+        <active>false</active>
+        <description>How verified(Identity) is required if SSN is populated</description>
+        <errorConditionFormula>NOT(Is_Peak_Data__c) &amp;&amp; NOT(Is_CBMS_Data__c) &amp;&amp;
+NOT(ISBLANK(NBR_SSN__c)) &amp;&amp; ISBLANK(TEXT(CDE_SOURCE_VRFYD_IDNTY__c))</errorConditionFormula>
+        <errorDisplayField>CDE_SOURCE_VRFYD_IDNTY__c</errorDisplayField>
+        <errorMessage>How verified(Identity) is required if SSN is populated</errorMessage>
+    </validationRules-->
+    <validationRules>
+        <fullName>SSN_Alphanumeric_Only</fullName>
+        <active>true</active>
+        <errorConditionFormula>NOT(Is_Peak_Data__c)&amp;&amp; NOT(Is_CBMS_Data__c)&amp;&amp; NOT(ISCHANGED(Bypass_On__c))&amp;&amp; !ISBLANK(NBR_SSN__c )&amp;&amp; OR(NOT(ISNUMBER(NBR_SSN__c )),CONTAINS(NBR_SSN__c  ,&quot; &quot;),CONTAINS(NBR_SSN__c  ,&quot;-&quot;))</errorConditionFormula>
+        <errorDisplayField>NBR_SSN__c</errorDisplayField>
+        <errorMessage>Special characters and spaces are not allowed</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>read_only_if_indiv_cleared</fullName>
+        <active>false</active>
+        <description>Fields: First Name, Middle Initial, Last Name, Gender, SSN, DOB, Date of Death cannot be edited for the cleared individual.</description>
+        <errorConditionFormula>AND( NOT( ISNEW() ) , 
+     OR( 
+        ISCHANGED( DTE_DOB__c ) ,
+        ISCHANGED( NAM_FIRST__c ) ,
+        ISCHANGED( NAM_LAST__c ) ,
+        ISCHANGED( NAM_MI__c ) ,
+        ISCHANGED( NBR_SSN__c ) ,
+        ISCHANGED( CDE_GENDER__c ),
+        ISCHANGED( DTE_Death__c )
+    ),
+    ISPICKVAL( IND_NOTIFY_SIDMOD__c , &quot;Y&quot;),
+    NOT(ISCHANGED(IND_NOTIFY_SIDMOD__c )),
+   $Label.Batch_User_Id  &lt;&gt;  $User.Id 
+)</errorConditionFormula>
+        <errorMessage>Fields: First Name, Middle Initial, Last Name, Gender, SSN, DOB, Date of Death cannot be edited for the cleared individual.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Require_HowVerifiedIf_IdenVer_iswritten</fullName>
+        <active>true</active>
+        <errorConditionFormula>AND($Label.Batch_User_Id &lt;&gt; $User.Id , ISPICKVAL( CDE_VRFYD_IDNTY__c , &quot;V&quot;) ,  ISPICKVAL( CDE_SOURCE_VRFYD_IDNTY__c, &apos;&apos;),NOT(ISNEW()),NOT($Setup.ByPass_Validation_Setting__c.Is_Batch_Excluded__c ), NOT(Is_CBMS_Data__c), NOT(Is_Peak_Data__c), NOT(ISCHANGED(Bypass_On__c)))</errorConditionFormula>
+        <errorDisplayField>CDE_SOURCE_VRFYD_IDNTY__c</errorDisplayField>
+        <errorMessage>Please enter a value</errorMessage>
+    </validationRules>
+    <visibility>Public</visibility>
+</CustomObject>

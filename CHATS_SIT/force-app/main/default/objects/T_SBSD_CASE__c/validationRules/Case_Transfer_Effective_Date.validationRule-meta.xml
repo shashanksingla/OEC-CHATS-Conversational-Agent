@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Case_Transfer_Effective_Date</fullName>
+    <active>false</active>
+    <description>- Cannot be before T_SBSD_CASE.DTE_APPLN
+- Cannot be before 8/10/2018
+- Required if CDE_COUNTY_TRANSFER is populated</description>
+    <errorConditionFormula>OR(
+   DTE_APPLN__c &gt; DTE_CASE_TRANSFER__c,
+   Datevalue(&quot;2018-08-10&quot;) &gt; DTE_CASE_TRANSFER__c
+)</errorConditionFormula>
+    <errorDisplayField>DTE_CASE_TRANSFER__c</errorDisplayField>
+    <errorMessage>Case Transfer Effective Date cannot be before Date Application Received or  8/10/2018.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>If_30_days_Paystub_selected_as_No</fullName>
+    <active>true</active>
+    <description>Estimated Income ,Estimated Income Frequency and Estimated Hours per week is required when 30 days of  Paystub is selected as No</description>
+    <errorConditionFormula>OR(	And( ISNEW(), OR( ISNULL(AMT_INCOME_ANNUAL_ESTMD__c), ISNULL(CNT_WEEK_PER_HOURS_ESTMD__c), ISPICKVAL(CDE_FREQ_PAY_ESTMD__c, &apos;&apos;)), text(IDN_EMPLMT_INDIV__r.IND_STUBS_PAY_RCVS__c) ==&apos;Y&apos;, Is_Peak_Data__c == false ),
+	And( NOT( ISNEW() ), ISPICKVAL( CDE_STATUS__c , &apos;ACT&apos;), OR( ISNULL(AMT_INCOME_ANNUAL_ESTMD__c), ISNULL(CNT_WEEK_PER_HOURS_ESTMD__c), ISPICKVAL(CDE_FREQ_PAY_ESTMD__c, &apos;&apos;)), text(IDN_EMPLMT_INDIV__r.IND_STUBS_PAY_RCVS__c) ==&apos;Y&apos;, Is_Peak_Data__c == false)	)</errorConditionFormula>
+    <errorMessage>These required fields must be completed: Estimated Income, Estimated Hours per Week and Estimated Income Frequency</errorMessage>
+</ValidationRule>

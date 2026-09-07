@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>TXT_DESC_EXCPT_SYSTEM__c</fullName>
+    <description>TXT_DESC_EXCPT_SYSTEM</description>
+    <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+    <externalId>false</externalId>
+    <label>TXT_DESC_EXCPT_SYSTEM</label>
+    <length>100</length>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

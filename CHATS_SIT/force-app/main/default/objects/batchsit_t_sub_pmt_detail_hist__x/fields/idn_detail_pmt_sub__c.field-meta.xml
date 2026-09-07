@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_detail_pmt_sub__c</fullName>
+    <description>idn_detail_pmt_sub</description>
+    <externalDeveloperName>idn_detail_pmt_sub</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Sub Payment Detail ID</label>
+    <length>50</length>
+    <referenceTo>batchsit_t_sub_pmt_detail__x</referenceTo>
+    <relationshipLabel>Sub Payment Detail Legacy History</relationshipLabel>
+    <relationshipName>batchsit_t_sub_pmt_detail_hist</relationshipName>
+    <type>ExternalLookup</type>
+</CustomField>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Delinqc_Rprtd_Date</fullName>
+    <active>true</active>
+    <description>Delinqency Reported Date must be greater than</description>
+    <errorConditionFormula>AND( NOT(ISBLANK(TEXT(DTE_MONTH_DELINQC__c))),
+       NOT(ISBLANK(  DTE_YEAR_DELINQC__c  )),
+       DTE_RPTD_DELINQC__c &lt; DATE(VALUE(DTE_YEAR_DELINQC__c),
+                         VALUE( TEXT( DTE_MONTH_DELINQC__c )),
+                         1)
+ )</errorConditionFormula>
+    <errorDisplayField>DTE_RPTD_DELINQC__c</errorDisplayField>
+    <errorMessage>Delinquency Reported Date must be greater than Month &amp; Year of Delinquency</errorMessage>
+</ValidationRule>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>dte_begin_agrmt__c</fullName>
+    <description>dte_begin_agrmt</description>
+    <externalDeveloperName>dte_begin_agrmt</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Begin Agreement Date</label>
+    <required>false</required>
+    <type>Date</type>
+</CustomField>

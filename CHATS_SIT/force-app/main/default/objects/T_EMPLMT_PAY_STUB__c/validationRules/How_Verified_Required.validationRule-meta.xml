@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>How_Verified_Required</fullName>
+    <active>true</active>
+    <description>How verified is required if Verified is Written Verification</description>
+    <errorConditionFormula>ISPICKVAL(CDE_TYPE_VERIF__c,&apos;V&apos;) &amp;&amp; ISPICKVAL(CDE_SOURCE_VRFYD_PAY__c,&apos;&apos;) &amp;&amp; NOT(ISCHANGED(bypassValidations__c))</errorConditionFormula>
+    <errorDisplayField>CDE_SOURCE_VRFYD_PAY__c</errorDisplayField>
+    <errorMessage>Required if Verified is &apos;Written Verification&apos;</errorMessage>
+</ValidationRule>

@@ -1,0 +1,46 @@
+<aura:component >
+    <aura:attribute name="indivEligIdToWrapper" type="Map"/>
+    <aura:attribute name="indivEligWrappers" type="List"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <h2 class="slds-section__title slds-p-left--small slds-p-top--small slds-border_top">Individual Eligibility</h2>
+	
+    <div class="slds-grid slds-wrap slds-p-around--small">
+    	<table class="slds-table slds-table_bordered">
+        <!--<table class="slds-table slds-table_bordered slds-size_1-of-4">-->
+            <thead>
+                <tr class="slds-text-title_caps">
+                    <th scope="col">
+                        <div class="slds-truncate" title="individual">Individual</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="State ID">State ID</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="State ID">Eligibility Status</div>
+                    </th>
+		    		<th scope="col">
+                        <div class="slds-truncate" title="State ID">Override Reason</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="State ID">Override Comments</div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <aura:iteration items="{!v.indivEligWrappers}" var="indivEligWrapper">
+                    <aura:if isTrue="{!!empty(indivEligWrapper.indivId)}">
+                    	<c:individualRows indivEligWrapper="{!indivEligWrapper}"/>
+                    </aura:if>
+                    
+                                      <!--indiv="{!indivEligWrapper.indiv}"
+                                      caseRec="{!v.caseRec}"
+                                      caseEligibilityId="{!v.caseEligibility.idn_eligty_fcompsn__c}"
+                                      eligibilityRunId="{!v.eligibilityRunId}"
+                                      eligConfirmed="{!v.eligConfirmed}"
+                                      ineligReasons="{!v.ineligReasons}"/>-->
+                </aura:iteration>
+            </tbody>
+        </table>
+    </div>
+    
+</aura:component>

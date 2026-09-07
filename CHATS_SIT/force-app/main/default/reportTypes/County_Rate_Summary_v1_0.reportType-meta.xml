@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ReportType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <baseObject>T_COUNTY__c</baseObject>
+    <category>admin</category>
+    <deployed>false</deployed>
+    <description>Export (non-PDF) county reimbursement rates.</description>
+    <join>
+        <join>
+            <outerJoin>false</outerJoin>
+            <relationship>County_Rate__r</relationship>
+        </join>
+        <outerJoin>false</outerJoin>
+        <relationship>County4__r</relationship>
+    </join>
+    <label>County Rate Summary v1.0</label>
+    <sections>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Name</field>
+            <table>T_COUNTY__c</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>CDE_PROVR_TYPE__c</field>
+            <table>T_COUNTY__c.County4__r.County_Rate__r</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>CDE_AGE_GROUP__c</field>
+            <table>T_COUNTY__c.County4__r.County_Rate__r</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>CDE_TIER__c</field>
+            <table>T_COUNTY__c.County4__r.County_Rate__r</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>CDE_RATE_TYPE__c</field>
+            <table>T_COUNTY__c.County4__r.County_Rate__r</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>CDE_UNIT__c</field>
+            <table>T_COUNTY__c.County4__r.County_Rate__r</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>NBR_AMOUNT__c</field>
+            <table>T_COUNTY__c.County4__r.County_Rate__r</table>
+        </columns>
+        <masterLabel>County Rate Summary</masterLabel>
+    </sections>
+</ReportType>

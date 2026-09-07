@@ -1,0 +1,108 @@
+<template>
+    <template if:true={initLoaded}>
+        <!-- Read-only fields -->
+        <template if:true={readOnly}>
+            <!-- Picklist Read-only -->
+            <template if:true={isPicklistField}>
+                <c-multiselect-combobox behavior-type="readonly" value={fieldValue} label={fieldLabel}
+                    object={objectName} field={fieldAPIName}></c-multiselect-combobox>
+            </template>
+            
+            <!-- Reference Read-only -->
+            <template if:true={isReferenceField}>
+                <c-custom-lookup_lwc label={fieldLabel} required={required}
+                    object-api-name={parentObjectName} name={fieldAPIName}
+                    selected-record-id={fieldValue} 
+                    selectedrecord={selectedLookUpRecord}
+                    show-recent-records="true"
+                    is-disabled="true">
+                </c-custom-lookup_lwc>
+            </template>
+            
+            <!-- Boolean Read-only -->
+            <template if:true={isBooleanField}>
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label">
+                        <template if:true={required}><abbr class="slds-required" title="required">*</abbr></template>
+                        {fieldLabel}
+                    </label>
+                    <lightning-input type="checkbox" checked={checkboxValue} disabled="true" aria-label={fieldLabel}></lightning-input>
+                </div>
+            </template>
+            
+            <!-- Other fields Read-only -->
+            <template if:false={isPicklistField}>
+                <template if:false={isReferenceField}>
+                    <template if:false={isBooleanField}>
+                        <c-output-field_lwc label={fieldLabel} value={displayValue} use-plain-value={usePlainValue}>
+                        </c-output-field_lwc>
+                    </template>
+                </template>
+            </template>
+        </template>
+        
+        <!-- Editable fields -->
+        <template if:false={readOnly}>
+            <!-- String field -->
+            <template if:true={isStringField}>
+                <lightning-input data-id="input-field" type="text" label={fieldLabel} value={fieldValue} 
+                    required={required} readonly={readOnly} onchange={handleFieldChange} aria-label={fieldLabel}></lightning-input>
+            </template>
+            
+            <!-- Number field -->
+            <template if:true={isDoubleField}>
+                <lightning-input data-id="input-field" type="number" label={fieldLabel} value={fieldValue} 
+                    required={required} readonly={readOnly} step="any" onchange={handleFieldChange} aria-label={fieldLabel}> 
+                </lightning-input>
+            </template>
+            
+            <!-- Email field -->
+            <template if:true={isEmailField}>
+                <lightning-input data-id="input-field" type="email" label={fieldLabel} value={fieldValue} 
+                    required={required} readonly={readOnly} onchange={handleFieldChange} aria-label={fieldLabel}></lightning-input>
+            </template>
+            
+            <!-- Phone field -->
+            <template if:true={isPhoneField}>
+                <lightning-input data-id="input-field" type="tel" label={fieldLabel} value={fieldValue} 
+                    maxlength="10" minlength="10" required={required} readonly={readOnly} onchange={handleFieldChange}
+                    aria-label={fieldLabel}></lightning-input>
+            </template>
+            
+            <!-- Picklist field -->
+            <template if:true={isPicklistField}>
+                <c-multiselect-combobox behavior-type="picklist" label={fieldLabel}
+                    value={fieldValue} object={picklistObject} field={picklistField} 
+                    required={required} show-none={required} onselect={handlePicklistChange}>
+                </c-multiselect-combobox>
+            </template>
+            
+            <!-- Boolean field -->
+            <template if:true={isBooleanField}>
+                <c-multiselect-combobox behavior-type="checkboxPicklist" label={fieldLabel}
+                    value={fieldValue} required={required} show-none={required} onvaluechange={handleCheckboxChange}></c-multiselect-combobox>
+            </template>
+            
+            <!-- Reference field -->
+            <template if:true={isReferenceField}>
+                <c-custom-lookup_lwc label={fieldLabel} required={required} show-recent-records
+                    object-api-name={parentObjectName} name={fieldAPIName}
+                    selected-record-id={fieldValue} default-record-id={parentObjectName} default-record-name={fieldValue}                 
+                    selectedrecord={selectedLookUpRecord} is-disabled={readOnly} onvalueselected={handleLookupSelection}>
+                </c-custom-lookup_lwc>
+            </template>
+            
+            <!-- Textarea field -->
+            <template if:true={isTextareaField}>
+                <lightning-textarea data-id="input-field" value={fieldValue} label={fieldLabel} required={required} 
+                    maxlength="300" readonly={readOnly} onchange={handleFieldChange} aria-label={fieldLabel}></lightning-textarea>
+            </template>
+            
+            <!-- Date field -->
+            <template if:true={isDateField}>
+                <lightning-input data-id="input-field" type="date" label={fieldLabel} required={required} 
+                    value={fieldValue} readonly={readOnly} onchange={handleFieldChange} aria-label={fieldLabel}></lightning-input>
+            </template>
+        </template>
+    </template>
+</template>

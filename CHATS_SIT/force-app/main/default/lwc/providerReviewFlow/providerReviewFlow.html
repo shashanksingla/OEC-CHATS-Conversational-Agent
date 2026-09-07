@@ -1,0 +1,378 @@
+<template>
+    <template lwc:if={showSpinner}>
+        <lightning-spinner alternative-text="Loading" variant="base"></lightning-spinner>
+    </template>
+    <div class="slds-hide">{redirectMode}</div>
+    <template if:false={isViewMode}>
+        <template if:true={showReviewForm}>
+            <lightning-card variant="Narrow" heading-level="4" title={providerReviewTitle}
+                icon-name="standard:care_request_reviewer">
+                <lightning-button-group slot="actions">
+                    <lightning-button label="Cancel" onclick={doCancel} disabled={isSaving}></lightning-button>
+                    <lightning-button label="Save" variant={submitVariant} onclick={doSave}
+                        disabled={isSaving}></lightning-button>
+                    <template if:false={providerReviewObj.IsSubmitted__c}>
+                        <lightning-button label="Submit" variant="brand" onclick={doSubmit}
+                            disabled={isSaving}></lightning-button>
+                    </template>
+                </lightning-button-group>
+
+                <lightning-layout multiple-rows>
+                    <!-- Row 1-->
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Review Date-->
+                        <lightning-input type="date" value={providerInfo.reviewDate} label="Review Date"
+                            disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Sample Month-->
+                        <c-multiselect-combobox label="Sample Month" object="Provider_Review__c" field="Sample_Month__c"
+                            data-id="input-field" data-name="sampleMonth" onselect={handlePickselect}
+                            behavior-type="picklist" value={providerReviewObj.Sample_Month__c}
+                            hidden-values={hiddenMonths} required disabled={isSubmitted}></c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Sample Year-->
+                        <c-multiselect-combobox label="Sample Year" object="Provider_Review__c" field="Sample_Year__c"
+                            data-id="input-field" data-name="sampleYear" onselect={handlePickselect}
+                            behavior-type="picklist" value={providerReviewObj.Sample_Year__c} required
+                            already-has-values options={sampleYearOptions}
+                            disabled={isSubmitted}></c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- County-->
+                        <lightning-input label="County" value={providerInfo.currentCounty} disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <!-- Row 2-->
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Review Status-->
+                        <c-multiselect-combobox label="Review Status" object="Provider_Review__c"
+                            field="Review_Status__c" data-name="sampleMonth" behavior-type="picklist" disabled
+                            value={providerReviewObj.Review_Status__c}></c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Reviewer name-->
+                        <lightning-input label="Reviewer Name" value={providerReviewObj.Reviewer_Name__c}
+                            disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Reviewer Title-->
+                        <lightning-input label="Reviewer Title" value={providerReviewObj.Reviewer_Title__c}
+                            disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input label="Provider Type" value={disabledProvReviewData.providerTypeLabel}
+                            disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <!-- Row 3-->
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Provider Id-->
+                        <lightning-input label="Provider ID#" value={providerInfo.providerID}
+                            disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Provider Name-->
+                        <lightning-input label="Provider Name" value={providerInfo.providerName}
+                            disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- License Type -->
+                        <lightning-input label="License Type" value={providerReviewObj.License_Type__c}
+                            disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+
+                        <!-- License Status-->
+                        <lightning-input label="License Status" value={providerReviewObj.License_Status__c}
+                            disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <!-- Row 4-->
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Quality Rating-->
+                        <lightning-input label="Quality Rating" value={providerReviewObj.Quality_of_Rating__c}
+                            disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Fiscal Agreement Closure Reason-->
+
+                        <c-multiselect-combobox label="Fiscal Agreement Closure Reason" object="Provider_Review__c"
+                            field="CDE_REASON_END_AGRMT__c" data-id="input-field" data-name="CDE_REASON_END_AGRMT__c"
+                            behavior-type="picklist" value={providerReviewObj.CDE_REASON_END_AGRMT__c}
+                            required={disabledProvReviewData.requiredClosureRsn} disabled
+                            show-none></c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Fiscal Agreement Begin Date-->
+                        <lightning-input type="date" data-id="input-field" data-name="FA_StartDate"
+                            label="Fiscal Agreement Begin Date" value={providerReviewObj.Fiscal_Agreement_Start_Date__c}
+                            disabled=true></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Fiscal Agreement End Date-->
+                        <lightning-input type="date" data-id="input-field" data-name="Fiscal_Agreement_End_Date__c"
+                            label="Fiscal Agreement End Date" value={providerReviewObj.Fiscal_Agreement_End_Date__c}
+                            disabled required></lightning-input>
+                    </lightning-layout-item>
+
+                    <!-- Row 5-->
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- # of CCCAP children in care-->
+                        <lightning-input label="# of CCCAP children in care"
+                            value={providerReviewObj.No_of_Children_in_care__c} disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Attendance Tracking-->
+                        <c-multiselect-combobox label="Attendance Tracking" object="Provider_Review__c"
+                            field="Attendance_Tracking__c" data-id="input-field" data-name="Attendance_Tracking__c"
+                            onselect={handlePickselect} behavior-type="picklist"
+                            value={providerReviewObj.Attendance_Tracking__c} required
+                            disabled={isFieldDisabled}></c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                    </lightning-layout-item>
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                    </lightning-layout-item>
+
+                    <!-- Row 6-->
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Improper Payment-->
+                        <c-multiselect-combobox label="Improper Payment" object="Provider_Review__c"
+                            field="Improper_Payment__c" data-id="input-field" data-name="improperPayment"
+                            onselect={handlePickselect} behavior-type="picklist"
+                            value={providerReviewObj.Improper_Payment__c}
+                            disabled={isFieldDisabled}></c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Improper Payment Amount-->
+                        <lightning-input type="number" formatter="currency" step="0.01" data-id="input-field"
+                            data-name="imporperPaymentAmount" label="Improper Payment Amount"
+                            value={providerReviewObj.Improper_Payment_Amount__c} onchange={handleCompSelect}
+                            required={isImproperPaymentRequired} disabled={isFieldDisabled}></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Recovery Needed?-->
+                        <c-multiselect-combobox label="Recovery Needed?" object="Provider_Review__c"
+                            field="Recovery_Needed__c" data-id="input-field" data-name="recoveryNeeded"
+                            onselect={handlePickselect} behavior-type="picklist"
+                            value={providerReviewObj.Recovery_Needed__c}
+                            disabled={isFieldDisabled}></c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3"
+                        class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <!-- Recovery Amount-->
+                        <lightning-input type="number" formatter="currency" step="0.01" data-id="input-field"
+                            data-name="recoveryAmount" label="Recovery Amount"
+                            value={providerReviewObj.Recovery_Amount__c} onchange={handleCompSelect}
+                            required={isRecoveryAmountRequired} disabled={isFieldDisabled}></lightning-input>
+
+                    </lightning-layout-item>
+                    <!--cccap-13277-->
+                    <lightning-layout-item flexibility="auto" size="12"
+                        class="slds-p-vertical_xx-small slds-p-horizontal_small">
+                        <c-multiselect-combobox
+                            label="Did this Provider have any attendance recorded for your County and the Sample Month and Sample Year?"
+                            object="Provider_Review__c" field="Attendance_Recorded__c" data-id="input-field"
+                            data-name="AttendanceRecorded" onselect={handlePickselect} behavior-type="picklist" required
+                            show-none value={providerReviewObj.Attendance_Recorded__c} disabled={isSubmitted}></c-multiselect-combobox>
+                    </lightning-layout-item>
+                   <!-- end cccap-13277-->
+                </lightning-layout>
+                <br />
+                <template for:each={filteredResponseWrapperList} for:item="row" for:index="index"
+                    lwc:if={filteredResponseWrapperList}>
+                    <c-provider-review-flow_question-row key={row.Id} data-id="questionRow" response-wrapper={row}
+                        screen-mode={screenMode} access-level={accessLevel} all-cause-options={allCauseOptions}
+                        all-error-options={row.errorOptions} error-count={errorCount} row-indice={index}
+                        child-mode={childMode}></c-provider-review-flow_question-row>
+                </template>
+                <p slot="footer">
+                    <lightning-button-group slot="actions">
+                        <lightning-button label="Cancel" onclick={doCancel} disabled={isSaving}></lightning-button>                        
+                        <lightning-button label="Save" variant={submitVariant} onclick={doSave} disabled={isSaving}></lightning-button>
+                        <template if:false={providerReviewObj.IsSubmitted__c}>
+                            <lightning-button label="Submit" variant="brand" onclick={doSubmit} disabled={isSaving}></lightning-button>
+                        </template>
+                    </lightning-button-group>
+                </p>
+            </lightning-card>
+        </template>
+    </template>
+    <template if:true={isViewMode}>
+        <lightning-card title="Provider Review" icon-name="standard:care_request_reviewer">
+        </lightning-card>
+        <hr
+            style="margin: 0; border: 0; height: 0px; background: gray; background-image: linear-gradient(to right, #ccc, #fff, #ccc);">
+        <lightning-layout multiple-rows="true">
+            <!-- Row 1-->
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Review Date</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-date-time value={providerReviewObj.CreatedDate} day="numeric" month="numeric"
+                        year="numeric"></lightning-formatted-date-time>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Sample Month</span>
+                <div class="slds-form-element__static">{providerReviewObj.Sample_Month__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Sample Year</span>
+                <div class="slds-form-element__static">{providerReviewObj.Sample_Year__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">County</span>
+                <div class="slds-form-element__static">{providerInfo.currentCounty}</div>
+            </lightning-layout-item>
+            <!-- Row 2-->
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Review Status</span>
+                <div class="slds-form-element__static">{providerReviewObj.Review_Status__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Reviewer Name</span>
+                <div class="slds-form-element__static">{providerReviewObj.Reviewer_Name__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Reviewer Title</span>
+                <div class="slds-form-element__static"> {providerReviewObj.Reviewer_Title__c} </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Provider Type</span>
+                <div class="slds-form-element__static">{disabledProvReviewData.providerTypeLabel}</div>
+            </lightning-layout-item>
+            <!-- Row 3-->
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Provider ID#</span>
+                <div class="slds-form-element__static">{providerInfo.providerID}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Provider Name</span>
+                <div class="slds-form-element__static">{providerInfo.providerName}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">License Type</span>
+                <div class="slds-form-element__static">{providerReviewObj.License_Type__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">License Status</span>
+                <div class="slds-form-element__static">{providerReviewObj.License_Status__c}</div>
+            </lightning-layout-item>
+            <!-- Row 4-->
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Quality Rating</span>
+                <div class="slds-form-element__static">{providerReviewObj.Quality_of_Rating__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Fiscal Agreement Closure Reason</span>
+                <div class="slds-form-element__static">{providerReviewObj.CDE_REASON_END_AGRMT__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Fiscal Agreement Begin Date</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-date-time value={providerReviewObj.Fiscal_Agreement_Start_Date__c}
+                        day="numeric" month="numeric" year="numeric" time-zone="UTC"></lightning-formatted-date-time>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Fiscal Agreement End Date</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-date-time value={providerReviewObj.Fiscal_Agreement_End_Date__c} day="numeric"
+                        month="numeric" year="numeric" time-zone="UTC"></lightning-formatted-date-time>
+                </div>
+            </lightning-layout-item>
+            <!-- Row 5-->
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label"># of CCCAP children in care</span>
+                <div class="slds-form-element__static">{providerReviewObj.No_of_Children_in_care__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Attendance Tracking</span>
+                <div class="slds-form-element__static">{providerReviewObj.Attendance_Tracking__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="6" class="slds-p-vertical_x-small slds-p-horizontal_small">
+
+            </lightning-layout-item>
+            <!-- Row 6-->
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Improper Payment</span>
+                <div class="slds-form-element__static">{providerReviewObj.Improper_Payment__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Improper Payment Amount</span>
+                <div class="slds-form-element__static">{providerReviewObj.Improper_Payment_Amount__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Recovery Needed?</span>
+                <div class="slds-form-element__static">
+                    {providerReviewObj.Recovery_Needed__c}
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Recovery Amount</span>
+                <div class="slds-form-element__static">{providerReviewObj.Recovery_Amount__c}</div>
+            </lightning-layout-item>
+            <!--cccap-13277-->
+            <lightning-layout-item flexibility="auto" size="12" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Did this Provider have any attendance recorded for your County and
+                    the Sample Month and Sample Year?</span>
+                <div class="slds-form-element__static">{providerReviewObj.Attendance_Recorded__c}</div>
+            </lightning-layout-item>
+            <!-- end cccap-13277-->
+        </lightning-layout>
+        <br />
+        <template for:each={filteredResponseWrapperList} for:item="row" for:index="index" lwc:if={filteredResponseWrapperList}>
+            <c-provider-review-flow_question-row key={row.Id} data-id="questionRow" response-wrapper={row}
+                screen-mode={screenMode} access-level={accessLevel} all-cause-options={allCauseOptions}
+                all-error-options={row.errorOptions} error-count={errorCount} row-indice={index}
+                child-mode={childMode}></c-provider-review-flow_question-row>
+        </template>
+    </template>
+</template>

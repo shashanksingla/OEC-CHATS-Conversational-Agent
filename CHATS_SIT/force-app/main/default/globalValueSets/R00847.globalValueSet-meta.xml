@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>3</fullName>
+        <default>false</default>
+        <label>Common Law Relationship</label>
+    </customValue>
+    <customValue>
+        <fullName>4</fullName>
+        <default>false</default>
+        <label>Divorced</label>
+    </customValue>
+    <customValue>
+        <fullName>2</fullName>
+        <default>false</default>
+        <label>Married - Living w/ Spouse</label>
+    </customValue>
+    <customValue>
+        <fullName>7</fullName>
+        <default>false</default>
+        <label>Married - Not living with Spouse (Involuntarily)</label>
+    </customValue>
+    <customValue>
+        <fullName>6</fullName>
+        <default>false</default>
+        <label>Married - Not living with Spouse (Voluntarily)</label>
+    </customValue>
+    <customValue>
+        <fullName>8</fullName>
+        <default>false</default>
+        <label>Significant Other</label>
+    </customValue>
+    <customValue>
+        <fullName>1</fullName>
+        <default>false</default>
+        <label>Single - Never Married</label>
+    </customValue>
+    <customValue>
+        <fullName>5</fullName>
+        <default>false</default>
+        <label>Widow/Widower</label>
+    </customValue>
+    <customValue>
+        <fullName>CZN</fullName>
+        <default>false</default>
+        <label>Citizen</label>
+    </customValue>
+    <customValue>
+        <fullName>NCZ</fullName>
+        <default>false</default>
+        <label>Non-Citizen</label>
+    </customValue>
+    <customValue>
+        <fullName>LFR</fullName>
+        <default>false</default>
+        <label>Qualified Alien</label>
+    </customValue>
+    <customValue>
+        <fullName>Y</fullName>
+        <default>false</default>
+        <label>Yes</label>
+    </customValue>
+    <customValue>
+        <fullName>N</fullName>
+        <default>false</default>
+        <label>No</label>
+    </customValue>
+    <customValue>
+        <fullName>U</fullName>
+        <default>false</default>
+        <label>Unknown</label>
+    </customValue>
+    <customValue>
+        <fullName>N/A-adult caretaker</fullName>
+        <default>false</default>
+        <label>N/A-adult caretaker</label>
+    </customValue>
+    <customValue>
+        <fullName>N/A-not requesting child</fullName>
+        <default>false</default>
+        <label>N/A-not requesting child</label>
+    </customValue>
+    <customValue>
+        <fullName>0</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>0</label>
+    </customValue>
+    <masterLabel>R00847</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

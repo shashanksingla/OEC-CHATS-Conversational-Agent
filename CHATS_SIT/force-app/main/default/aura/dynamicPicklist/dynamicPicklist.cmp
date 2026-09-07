@@ -1,0 +1,29 @@
+<aura:component controller="dynamicPicklistApexController">
+    <aura:attribute name="label" type="String" description="Label of the picklist field"/>
+    <aura:attribute name="value" type="String" default="" description="Variable to store the text"/>
+    <aura:attribute name="objectName" type="String" description="API Name of the Object"/>
+    <aura:attribute name="fieldName" type="String" description="API Name of the field"/>
+    <aura:attribute name="picklistType" type="String" description="GlobalPicklist/TableFetchPicklist"/>
+    <aura:attribute name="required" type="Boolean" default="false" description="Specifies whether the field is mandatory or not"/>
+    <aura:attribute name="keyColName" type="String" description="API Name of the field to be fetched"/>
+    <aura:attribute name="valueColName" type="String" description="API Name of the field to be fetched"/>
+    <aura:attribute name="method" type="String" description="Method to be called to fetch table Records"/>
+    <aura:attribute name="showNone" type="Boolean" default="false" description="Boolean attribute to show/hide NONE value"/>
+    <aura:attribute name="picklistId" type="string" description="PicklistId to handle event"/>
+    <aura:attribute name="disable" type="boolean" description="set picklist enable/disable"/>
+    <aura:attribute name="validity" type="Object"/>
+    <aura:attribute name="userRestriction" type="boolean" description="false"/>
+    <aura:method name="showHelpMessageIfInvalid" action="{!c.highlightError}" access="PUBLIC"/>
+    
+    <aura:registerEvent name="eventOnchange" type="c:dynamicPicklistEvent"/>	
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+        <div class="slds-is-relative">
+    		<div aura:id="temp-box" class="border">
+            	<ui:inputSelect aura:id="picklist" label="{!v.label}" value="{!v.value}" required="{!v.required}" change="{!c.onchangeEvent}" disabled="{!v.disable}"/>
+                <!-- <lightning:combobox aura:id="picklist" name="picklist" label="{!v.label}" 
+                                    value="{!v.value}" required="{!v.required}" placeholder=" "
+                                    onchange="{! c.onchangeEvent}" disabled="{!v.disable}"/> -->
+            </div>    
+        </div>    
+</aura:component>

@@ -1,0 +1,10 @@
+.calendarHeaderCells {
+    color: white;
+    width: 14%;
+    text-align: center;
+    border: 0.2px solid #ccc;
+    font-weight: bold;
+    background-color: rgb(0, 57, 107);
+    padding: 14px;
+    float: left;
+}

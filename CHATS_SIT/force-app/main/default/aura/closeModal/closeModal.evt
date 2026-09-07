@@ -1,0 +1,2 @@
+<aura:event type="APPLICATION" description="Event for closing modal from child component">
+</aura:event>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Must_Select_Who_Elevated_To</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(
+NOT(ISBLANK(Date_Elevated__c)),
+(ISPICKVAL(Elevated_to__c, &quot;&quot;))
+)</errorConditionFormula>
+    <errorDisplayField>Elevated_to__c</errorDisplayField>
+    <errorMessage>Enter who the ticket was elevated to. May also specify more in Internal Comments.</errorMessage>
+</ValidationRule>

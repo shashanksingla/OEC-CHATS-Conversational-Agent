@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IDN_COUNTY_PLAN__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>County Plan</description>
+    <label>County Plan</label>
+    <referenceTo>T_COUNTY_PLAN__c</referenceTo>
+    <relationshipLabel>County Plan Notes</relationshipLabel>
+    <relationshipName>County_Plan5</relationshipName>
+    <required>false</required>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

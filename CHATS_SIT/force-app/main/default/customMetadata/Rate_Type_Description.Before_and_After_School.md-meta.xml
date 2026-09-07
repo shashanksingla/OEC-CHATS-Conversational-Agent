@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Before and After School</label>
+    <protected>false</protected>
+    <values>
+        <field>Description__c</field>
+        <value xsi:type="xsd:string">A daily rate used when care is provided to school aged children between Monday through Friday elementary school, such as 6:00 am to 9:00 am and 2:30 pm to 6:30 pm.</value>
+    </values>
+    <values>
+        <field>Rate_Type_Code__c</field>
+        <value xsi:type="xsd:string">25</value>
+    </values>
+</CustomMetadata>

@@ -1,0 +1,91 @@
+<aura:component extends="c:abstractSection" Controller="NewRelationshipController" implements="force:appHostable,lightning:actionOverride,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickAction" access="global" >
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    <aura:attribute name="loggedInUserId" type="String" />
+    <aura:set attribute="pageMessages" value="{!v.recordError}" />
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:set attribute="messageType" value="{!v.message}" />
+    <aura:attribute name="message" type="String" />
+    <aura:attribute name="recordError" type="list" />
+    <aura:attribute name="sObjectName" type="String"/>
+    <aura:attribute name="loggedUserName" type="String"/>
+    <aura:attribute name="oneTimeDateLoadValidatity" type="Boolean" default="true"/>
+    <aura:attribute name="options" type="List" default="[]"/>
+    <aura:attribute name="selectedLookUpRecord" type="sObject" default="{}"/>
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:attribute name="fieldValue" type="String"/>
+    <aura:attribute name="initDataLoaded" type="Boolean" default="false"/>
+    <aura:handler name="change" value="{!v.newRelationshipObj.IDN_CLIENT__c}" action="{!c.getRelationship}"/>
+    <aura:attribute name="newRelationshipObj" type="T_INDIV_REL__c" default="{'sobjectType':'T_INDIV_REL__c',
+                                                                             'CDE_SOURCE_VRFYD_REL__c':'',
+                                                                             'CDE_TYPE_REL_INDIV__c':'',
+                                                                             'CDE_TYPE_VERIF__c':'',
+                                                                             'IDN_CLIENT__c':'',
+                                                                             'IDN_CLIENT_RELTD__c':'',
+                                                                             'DTE_BEGIN_EFFV__c':'',
+                                                                             'DTE_END_EFFV__c':'',
+                                                                             'Name':''}"/>
+    <lightning:layout multipleRows="true">
+        <lightning:layoutItem size="6" padding="around-small">
+            <c:inputPicklist aura:id="input-field"  label="How Verified"
+                             value="{!v.newRelationshipObj.CDE_SOURCE_VRFYD_REL__c}"
+                             object="T_INDIV_REL__c"
+                             showNone="true"
+                             field="CDE_SOURCE_VRFYD_REL__c"/> 
+            <c:fieldLevelMessage aura:id="T_INDIV_REL__c-CDE_SOURCE_VRFYD_REL__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem size="6" padding="around-small">
+            <c:inputPicklist aura:id="input-field"  label="Relationship"
+                             value="{!v.newRelationshipObj.CDE_TYPE_REL_INDIV__c}"
+                             object="T_INDIV_REL__c"
+                             showNone="true"
+                             field="CDE_TYPE_REL_INDIV__c"
+                             required="true"/> 
+            <c:fieldLevelMessage aura:id="T_INDIV_REL__c-CDE_TYPE_REL_INDIV__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem size="6" padding="around-small">
+            <c:inputPicklist aura:id="input-field"  label="Verified"
+                             value="{!v.newRelationshipObj.CDE_TYPE_VERIF__c}"
+                             object="T_INDIV_REL__c"
+                             showNone="true"
+                             field="CDE_TYPE_VERIF__c"/> 
+            <c:fieldLevelMessage aura:id="T_INDIV_REL__c-CDE_TYPE_VERIF__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem size="6" padding="around-small"> 
+            <c:customLookup aura:id="input-field"
+                            value="{!v.newRelationshipObj.IDN_CLIENT__c}"
+                            objectAPIName="T_SBSD_INDIV__c"
+                            label="Primary Caretaker" 
+                            selectedRecord="{!v.selectedLookUpRecord}"
+                            showRecentRecords="true"
+                            required="{!v.sObjectName =='T_SBSD_INDIV__c'?'false':'true'}" />
+            <c:fieldLevelMessage aura:id="T_INDIV_REL__c-IDN_CLIENT__c"/> 
+        </lightning:layoutItem>
+        <lightning:layoutItem size="6" padding="around-small">
+            <c:inputLookup label="Client ID" aura:id="input-field"
+                           value="{!v.newRelationshipObj.IDN_CLIENT_RELTD__c}"
+                           object="T_SBSD_INDIV__c"
+                           searchField="Name"
+                           subtitleField="indvFirstNameDobGender__c"
+                           secondarySearchField="NAM_FIRST__c"
+                           alternateSearchField="IDN_STATE__c"
+                           required="true"
+                           limit="300"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem size="6" padding="around-small">
+            <label class="slds-form-element__label" for="input-id-01">Relationship ID</label> <br />
+            {!v.newRelationshipObj.Name}
+        </lightning:layoutItem>
+        <lightning:layoutItem size="6" padding="around-small">
+            <c:inputDate aura:id="input-field"
+                         label="Effective Begin Date" 
+                         value="{!v.newRelationshipObj.DTE_BEGIN_EFFV__c}"/> 
+            <c:fieldLevelMessage aura:id="cmpBeginDate"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem size="6" padding="around-small">
+            <c:inputDate aura:id="input-field"
+                         label="Effective End Date" 
+                         value="{!v.newRelationshipObj.DTE_END_EFFV__c}"/> 
+            <c:fieldLevelMessage aura:id="cmpEndDate"/>
+        </lightning:layoutItem>   
+    </lightning:layout>
+</aura:component>

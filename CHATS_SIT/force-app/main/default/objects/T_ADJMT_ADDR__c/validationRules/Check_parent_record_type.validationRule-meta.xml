@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Check_parent_record_type</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(
+  NOT(ISNULL(IDN_ADJMT__c)),
+  NOT(ISNEW()),
+  AND(
+    IDN_ADJMT__r.RecordType.Name == &apos;Finalized&apos;,
+    NOT(ISPICKVAL(IDN_ADJMT__r.CDE_STATUS_ADJMT__c, &apos;2&apos;))
+  )
+)</errorConditionFormula>
+    <errorMessage>You cannot update this record as the associated Adjustment is Finalized</errorMessage>
+</ValidationRule>

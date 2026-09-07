@@ -1,0 +1,52 @@
+<aura:component >
+    <aura:attribute name="firstName" type="String"/>
+    <aura:attribute name="lastName" type="String"/>
+    <aura:attribute name="indivDetails" type="batchsit_t_indiv_eligty_detail__x"/>
+    <aura:attribute name="indivElig" type="batchsit_t_fcompsn_indiv_eligty__x"/>
+    <aura:attribute name="indivIneligibilityFailure" type="batchsit_t_indiv_eligty_failr__x[]"/>
+    <aura:attribute name="parentCaretaker" type="Boolean"/>
+    
+    <aura:attribute name="householdEligibilityBeginDate" type="Date"/>
+    <aura:attribute name="individualEnteredHouseholdDate" type="Date"/>
+    <aura:attribute name="lastIndivEligDetailEndDate" type="Date"/>
+    <aura:attribute name="showOverrideButton" type="Boolean" default="true"/>
+	<tr>
+        <td>
+            <div class="slds-truncate" title="Eligibility Status">
+                <c:inputPicklist hideLabel="true"
+                                 value="{!v.indivDetails.cde_status_detail_eligty_indiv__c}"
+                                 object="Field_Utility__c"
+                                 field="R00422__c"
+                                 type="ReadOnly"
+                                 />
+            </div>
+        </td>
+        <td><div class="slds-truncate" title="Eligibility Begin Date"><c:outputField label="Eligibility Begin Date" value="{!v.indivDetails.dte_begin_effv__c}" type="UIDATE" hideLabel="true"/></div></td>
+        <td><div class="slds-truncate" title="Eligibility End Date"><c:outputField label="Eligibility End Date" value="{!v.indivDetails.dte_end_effv__c}" type="UIDATE" hideLabel="true"/></div></td>
+    </tr>
+	<!--
+    <lightning:overlayLibrary aura:id="overlayLib"/>
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+            <lightning:layoutItem flexibility="auto" size="6">
+                <c:inputPicklist label="Eligibility Status" 
+                                 value="{!v.indivDetails.cde_status_detail_eligty_indiv__c}"
+                                 object="Field_Utility__c"
+                                 field="R00422__c"
+                                 type="ReadOnly"
+                                 />
+            </lightning:layoutItem>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="Eligibility Begin Date" value="{!v.indivDetails.dte_begin_effv__c}" type="DATE"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="Eligibility End Date" value="{!v.indivDetails.dte_end_effv__c}" type="DATE"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.showOverrideButton}">
+            <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                <lightning:button label="Override Eligibility" onclick="{!c.showOverrideEligibility}" variant="brand"/>    
+            </lightning:layoutItem>
+        </aura:if>
+    </lightning:layout>-->
+</aura:component>

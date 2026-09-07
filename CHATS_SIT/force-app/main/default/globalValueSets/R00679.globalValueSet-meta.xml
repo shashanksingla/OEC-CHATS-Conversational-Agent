@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>CCCAP Eligibility Contact</fullName>
+        <default>false</default>
+        <label>CCCAP Eligibility Contact</label>
+    </customValue>
+    <customValue>
+        <fullName>Provider Contact</fullName>
+        <default>false</default>
+        <label>Provider Contact</label>
+    </customValue>
+    <customValue>
+        <fullName>Fiscal Contact</fullName>
+        <default>false</default>
+        <label>Fiscal Contact (Fiscal/Business Office Contact)</label>
+    </customValue>
+    <customValue>
+        <fullName>Fraud &amp; Investigations Contact</fullName>
+        <default>false</default>
+        <label>Fraud &amp; Investigations Contact</label>
+    </customValue>
+    <customValue>
+        <fullName>CCCAP Program Integrity Contact</fullName>
+        <default>false</default>
+        <label>CCCAP Program Integrity Contact</label>
+    </customValue>
+    <customValue>
+        <fullName>County Security Administrator</fullName>
+        <default>false</default>
+        <label>County Security Administrator</label>
+    </customValue>
+    <customValue>
+        <fullName>County Supervisor</fullName>
+        <default>false</default>
+        <label>County Supervisor</label>
+    </customValue>
+    <customValue>
+        <fullName>CRC</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>County Rate Ceiling</label>
+    </customValue>
+    <customValue>
+        <fullName>TDS</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>TANF Direct Switch</label>
+    </customValue>
+    <customValue>
+        <fullName>BOF</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Business Office</label>
+    </customValue>
+    <customValue>
+        <fullName>CTL</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>CHATS Liaison</label>
+    </customValue>
+    <customValue>
+        <fullName>SEC</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Security</label>
+    </customValue>
+    <customValue>
+        <fullName>MNC</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Main Contact</label>
+    </customValue>
+    <customValue>
+        <fullName>Quality Assurance Contact</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Quality Assurance Contact</label>
+    </customValue>
+    <masterLabel>R00679</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

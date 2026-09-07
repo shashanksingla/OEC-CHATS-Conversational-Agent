@@ -1,0 +1,64 @@
+<aura:component Controller="EmploymentPayStubApxCtrl" extends="c:abstractComponent" implements="force:appHostable,flexipage:availableForAllPageTypes,lightning:actionOverride,flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickAction" access="global" >
+    <aura:attribute name="newEmploymentPayStabObj" type="T_EMPLMT_PAY_STUB__c" default="{'sobjectType':'T_EMPLMT_PAY_STUB__c',
+                                                                                        'CDE_STATUS__c':'',
+                                                                                        'AMT_TIPS_AVG__c':'',
+                                                                                        'AMT_INCOME_GROSS__c':'',
+                                                                                        'CDE_SOURCE_VRFYD_PAY__c':'',
+                                                                                        'CDE_FREQ_PAY__c':'',
+                                                                                        'CNT_WORKED_HOURS_STUB_PAY__c':'',
+                                                                                        'CDE_TYPE_VERIF__c':'',
+                                                                                        'IDN_EMPLMT_INCOME__c':'',
+                                                                                        'DTE_PAY__c':'',
+                                                                                        'Name':''}"/>
+    <aura:attribute name="employmentPayStabObj" type="T_EMPLMT_PAY_STUB__c" />
+    <aura:set attribute="pageMessages" value="{!v.recordError}" /> 
+    <aura:attribute name="sObjectName" type="String"/>
+    <aura:set attribute="messageType" value="{!v.message}" />
+    <aura:attribute name="recordError" type="List" />
+    <aura:attribute name="options" type="List" default="[]"/>
+    <aura:attribute name="message" type="String" />
+    <aura:attribute name="recordId" type="String" />
+    <aura:attribute name="initDataLoaded" type="Boolean" default="false"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+    <c:LoadingSpinnerComp spinner="{!v.showSpinner}"/>
+    <lightning:overlayLibrary aura:id='overlayLib'/>
+       
+    <aura:if isTrue="{!v.initDataLoaded==true}">
+        <lightning:card iconName="standard:event">
+            <aura:set attribute="title">
+                <div class="slds-grid">
+                    <div class="slds-col slds-has-flexi-truncate">
+                        <div class="slds-media slds-no-space slds-grow">                        
+                            <div class="slds-media__body">
+                                <p class="slds-text-title--caps slds-line-height--reset">
+                                    <aura:if isTrue="{!v.sObjectName=='T_EMPLMT_PAY_STUB__c'}">Edit
+                                         <aura:set attribute="else">  
+                                             New
+                                        </aura:set>
+                                    </aura:if>
+                                    </p>
+                                <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="Employment Pay Stub">Employment Pay Stub</h1>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aura:set>
+            <aura:set attribute="actions">
+                <div class="slds-text-align--right slds-m-top_small">
+                    <c:navigationComponent onFinish="{!c.doFinish}"
+                                           onCancel="{!c.doCancel}"
+                                           finishLabel="Save"
+                                           showNext="false"
+                                           showFinish="true"/>
+                </div>
+            </aura:set>
+            
+            <c:employmentPayStubPg1 aura:id="newpayStubRecord" recordId="{!v.recordId}"
+                                    newEmploymentPayStabObj="{!v.newEmploymentPayStabObj}"
+                                    isCurrentPageValid="{!v.isCurrentPageValid}"
+                                    fieldValidationErrors="{!v.fieldValidationErrors}"
+                                    options = "{!v.options}"/>
+        </lightning:card>
+    </aura:if>
+</aura:component>

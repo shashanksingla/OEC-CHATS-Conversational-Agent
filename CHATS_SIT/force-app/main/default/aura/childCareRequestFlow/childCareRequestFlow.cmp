@@ -1,0 +1,42 @@
+<aura:component extends="c:abstractComponent" controller="ChildCareRequestFlowApxCtrl">
+    <aura:attribute name="currentTabNumber" type="Integer"/>
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="isReadOnly" type="Boolean"/>
+    <aura:attribute name="caseIndividualsWithCCR" type="List"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <div class="slds-grid">
+        <div class="slds-size_2-of-3">
+            <lightning:card iconName="standard:event">
+                <aura:set attribute="title">
+                    <div class="slds-grid">
+                        <div class="slds-col slds-has-flexi-truncate">
+                            <div class="slds-media slds-no-space slds-grow">                        
+                                <div class="slds-media__body">
+                                    <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="Child Care Request">Child Care Request</h1>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aura:set>
+                <aura:set attribute="actions">
+                    <c:navigationComponent totalTabs="1" 
+                                           currentTabNumber="{!v.currentTabNumber}"
+                                           onFinish="{!c.doFinish}"
+                                           showPrevious="false"
+                                           onCancel="{!c.doCancel}"
+                                           showFinish="{!!v.isReadOnly}"/>
+                </aura:set>
+                <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+                <aura:if isTrue="{!v.currentTabNumber==1}">
+                    <c:childCareRequestLayout aura:id="childCareRequestLayout" 
+                                              caseIndividualsWithCCR="{!v.caseIndividualsWithCCR}" 
+                                              isCurrentPageValid="{!v.isCurrentPageValid}"
+                                              isReadOnly = "{!v.isReadOnly}"/>
+                </aura:if>
+            </lightning:card>
+        </div>
+        <div class="slds-size_1-of-3 slds-p-left--small">
+            <c:caseHeader recordId="{!v.recordId}"  sObjectName="T_SBSD_CASE__c"/>
+        </div>     
+    </div>
+</aura:component>

@@ -1,0 +1,82 @@
+<aura:component implements="force:lightningQuickAction,force:hasRecordId" extends="c:abstractComponent" controller="DynamicFormGenerationController">
+    <aura:attribute name="providerFiscalAgreement" type="T_PROVR_FISCAL_AGREMENT__c"
+                    default="{'sobjectType':'T_PROVR_FISCAL_AGREMENT__c',
+                             'DTE_END_AGRMT__c' : null,'DTE_BEGIN_AGRMT__c':null}"/>
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="objectName" type="String" default="T_PROVR_FISCAL_AGREMENT__c"/>
+    <aura:attribute name="fieldDefinition" type="List[]"/>
+    <aura:attribute name="recordError" type="String"/>
+    <aura:attribute name="effectiveEndDate" type="Date"/>
+    <aura:attribute name="reasonForClosure" type="String"/>
+    <aura:attribute name="effectiveEndDateReadOnly" type="boolean" default="false"/>
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="cancelMsg" type="String"/> 
+    <aura:attribute name="fieldNames" type="List" default="['T_PROVR_FISCAL_AGREMENT__c.DTE_END_AGRMT__c']"/>
+    <aura:attribute name="parentId" type="String"/>
+    <aura:attribute name="userData" type="Map"/>
+    <aura:attribute name="ownerId" type="String"/>
+    <aura:attribute name="msgOnDiffOwnerCounty" type="String" default=""/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    
+    <aura:if isTrue="{!!empty(v.recordId)}">
+        <force:recordData aura:id="forceRecordCmp"
+                          recordId="{!v.recordId}"
+                          fields="ID_SERVICE__c, CDE_TYPE_FACILITY__c, Id,DTE_END_AGRMT__c,DTE_BEGIN_AGRMT__c"
+                          mode="EDIT"
+                          targetFields="{!v.providerFiscalAgreement}"
+                          targetError="{!v.recordError}" />
+        {!v.recordError}
+    </aura:if>
+    
+    <div class="slds-wrap slds-grid">
+        <div class="slds-size--2-of-3">
+            <lightning:card iconName="standard:event" title="Close Fiscal Agreement">
+                <aura:set attribute="actions">
+                    <c:navigationComponent totalTabs="1" 
+                                           onFinish="{!c.doFinish}"
+                                           onCancel="{!c.doCancel}"
+                                           showPrevious="true"/>
+                </aura:set>
+                <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+                <lightning:layout multipleRows="true" horizontalAlign="space">
+                    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                        <c:inputDate aura:id="input-field" label="Fiscal Agreement End Date"
+                                     value="{!v.effectiveEndDate}"/>
+                        <c:fieldLevelMessage aura:id="effectiveEndDate"/>
+                    </lightning:layoutItem>
+                    
+                    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                        <c:inputPicklist label="Reason For Closure" aura:id="input-field"
+                                         value="{!v.reasonForClosure}"
+                                         object="T_PROVR_FISCAL_AGREMENT__c"
+                                         field="CDE_REASON_END_AGRMT__c"
+                                         showNone="false"
+                                         required="false"/>
+                        <c:fieldLevelMessage aura:id="reasonForClosure"/>
+                    </lightning:layoutItem>
+                </lightning:layout>
+                <c:confirmationModal aura:id="confirmationModalOnCancel_1" 
+                                     confirmMsg="Confirm to cancel Close Fiscal Agreement Flow"
+                                     confirmModalYes="{!c.actionOnCancelYesButton}"/>
+                <c:confirmationModal aura:id="warningModalOnDiffOwnerCounty" 
+                             confirmMsg="{!v.msgOnDiffOwnerCounty}"
+                             noLabel="Cancel"
+                             confirmModalNo="{!c.actionOnCancelYesButton}"
+                             showYesButton="false"
+                             showCloseButton = "false"
+                             title="ERROR!"/>
+            </lightning:card>
+        </div>
+        <div class="slds-size--1-of-3 slds-p-left--small">
+            <lightning:card iconName="" title="Provider Information">
+                <aura:if isTrue="{!!empty(v.providerFiscalAgreement.ID_SERVICE__c)}">
+                    <c:ProviderHeader aura:id="providerHeader"
+                                      recordId="{!v.providerFiscalAgreement.ID_SERVICE__c}"
+                                      sObjectName='T_CHATS_PROVR_STATUS__c' />
+                </aura:if>
+            </lightning:card>
+        </div> 
+    </div>
+</aura:component>

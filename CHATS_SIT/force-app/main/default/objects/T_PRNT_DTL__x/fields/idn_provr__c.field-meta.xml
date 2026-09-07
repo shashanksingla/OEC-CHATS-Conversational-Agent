@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_provr__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>idn_provr</description>
+    <externalDeveloperName>idn_provr</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Provider ID</label>
+    <referenceTo>T_CHATS_PROVR_STATUS__c</referenceTo>
+    <relationshipLabel>Printed Correspondence</relationshipLabel>
+    <relationshipName>Printed_Correspondence</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

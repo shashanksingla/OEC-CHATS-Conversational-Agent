@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>01</fullName>
+        <default>false</default>
+        <label>Información sobre cuidado infantil. (número de licencia, número de teléfono y fecha de inicio del cuidado) NOTA: Debe enviar esta información para que se cubran los costos de cuidado infantil. Esta información no afecta su elegibilidad para CCCAP.</label>
+    </customValue>
+    <customValue>
+        <fullName>02</fullName>
+        <default>false</default>
+        <label>Acuerdo sobre la custodia de los hijos. (Puede tratarse de una orden de un tribunal o de un acuerdo por escrito entre los padres).</label>
+    </customValue>
+    <customValue>
+        <fullName>03</fullName>
+        <default>false</default>
+        <label>Formulario de solicitud completo, firmado y fechado (se necesita la firma del cuidador principal del hogar).</label>
+    </customValue>
+    <customValue>
+        <fullName>04</fullName>
+        <default>false</default>
+        <label>Formulario de resumen de redeterminación completo, firmado y fechado. (Se necesita la firma del cuidador principal del hogar).</label>
+    </customValue>
+    <customValue>
+        <fullName>16</fullName>
+        <default>false</default>
+        <label>Copia de la orden del tribunal para el pago de la manutención de los hijos. Nota: los ingresos no se ajustarán si no se recibe esta verificación.</label>
+    </customValue>
+    <customValue>
+        <fullName>07</fullName>
+        <default>false</default>
+        <label>Constancia del cese de empleo con la fecha del último día de asistencia al trabajo, fecha e importe bruto del último sueldo.</label>
+    </customValue>
+    <customValue>
+        <fullName>06</fullName>
+        <default>false</default>
+        <label>Carta de verificación de empleo con el horario de trabajo (si pide cuidado infantil de tarde, de noche o los fines de semana), jornal horario o salario neto mensual, fecha de inicio de trabajo y fecha del primer sueldo.</label>
+    </customValue>
+    <customValue>
+        <fullName>18</fullName>
+        <default>false</default>
+        <label>Historia de vacunaciones documentada, como la tarjeta de vacunación o un certificado médico o de la enfermera donde se indique que el niño está al día con todas las vacunas para su edad.</label>
+    </customValue>
+    <customValue>
+        <fullName>17</fullName>
+        <default>false</default>
+        <label>Constancia de incapacidad por maternidad o paternidad o de licencia temporal que incluya fecha de licencia y fecha de regreso anticipado, fecha e importe bruto del último sueldo, así como indicación de que la licencia es con goce de sueldo o no.</label>
+    </customValue>
+    <customValue>
+        <fullName>05</fullName>
+        <default>false</default>
+        <label>Recibos de sueldo correspondientes a los 30 días previos a la fecha de este aviso.</label>
+    </customValue>
+    <customValue>
+        <fullName>19</fullName>
+        <default>false</default>
+        <label>Certificado de domicilio, como el contrato de alquiler o una factura de servicios públicos.</label>
+    </customValue>
+    <customValue>
+        <fullName>15</fullName>
+        <default>false</default>
+        <label>Constancia de pago de sustento de menores para un niño en otro grupo familiar, como carta del padre o madre titular de la custodia, cheques cancelados, comprobantes o copias de pagos.</label>
+    </customValue>
+    <customValue>
+        <fullName>12</fullName>
+        <default>false</default>
+        <label>Constancia de la ciudadanía del niño.</label>
+    </customValue>
+    <customValue>
+        <fullName>13</fullName>
+        <default>false</default>
+        <label>Documento de identidad del niño(como una identificación con fotografía del adulto principal encargado del cuidado infantilen el hogar).</label>
+    </customValue>
+    <customValue>
+        <fullName>10</fullName>
+        <default>false</default>
+        <label>Constancia de actividad académica o de formación profesional, como el horario de clases o una nota del asesor académico.</label>
+    </customValue>
+    <customValue>
+        <fullName>14</fullName>
+        <default>false</default>
+        <label>Documentación de ingresos no salariales, como recibos de pagos diferidos y cartas de concesión de ayuda económica.</label>
+    </customValue>
+    <customValue>
+        <fullName>20</fullName>
+        <default>false</default>
+        <label>Verificación de sus gastos como trabajador independiente durante al menos los últimos treinta (30) días. (Puede ser un libro de contabilidad con recibos de gastos, etc.).</label>
+    </customValue>
+    <customValue>
+        <fullName>21</fullName>
+        <default>false</default>
+        <label>Verificación de sus ingresos de trabajo por cuenta propia y las horas trabajadas durante al menos los últimos 30 días de ingresos. (Esto incluye libros de contabilidad, recibos de ingresos, retiros del propietario, estados de cuenta en línea, etc.)</label>
+    </customValue>
+    <customValue>
+        <fullName>08</fullName>
+        <default>false</default>
+        <label>Constancia del horario de trabajo, que puede constar del horario regular o de una nota del empleador.</label>
+    </customValue>
+    <customValue>
+        <fullName>22</fullName>
+        <default>false</default>
+        <label>Nombre y dirección del programa de tratamiento para el trastorno por consumo de sustancias (esto puede ser autodeclarado a su trabajador(a) social verbalmente o por escrito)</label>
+    </customValue>
+    <customValue>
+        <fullName>11</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Constancia de la actividad de búsqueda de empleo.</label>
+    </customValue>
+    <customValue>
+        <fullName>09</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Constancia de ingresos y gastos de trabajador autónomo, como el libro contable con comprobantes de gastos, documentos de impuestos y comprobantes de ingresos y gastos.</label>
+    </customValue>
+    <masterLabel>checklist CR107 (Spanish)</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

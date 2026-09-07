@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Closed_Ticket</fullName>
+    <columns>NAME</columns>
+    <columns>Status__c</columns>
+    <columns>CHATS_Area__c</columns>
+    <columns>JIRA_ID__c</columns>
+    <columns>County__c</columns>
+    <columns>Support_Team_Assignee__c</columns>
+    <columns>Elevated_to__c</columns>
+    <columns>Expected_Results__c</columns>
+    <columns>UPDATEDBY_USER</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Status__c</field>
+        <operation>equals</operation>
+        <value>Fixed/Completed,Change Denied</value>
+    </filters>
+    <filters>
+        <field>RECORDTYPE</field>
+        <operation>equals</operation>
+        <value>CHATS_Support__c.Support_Ticket</value>
+    </filters>
+    <label>Closed Tickets</label>
+</ListView>

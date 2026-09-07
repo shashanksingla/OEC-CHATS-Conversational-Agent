@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>2PM</fullName>
+        <default>false</default>
+        <label>Twice per Month</label>
+    </customValue>
+    <customValue>
+        <fullName>1PY</fullName>
+        <default>false</default>
+        <label>Once a Year</label>
+    </customValue>
+    <customValue>
+        <fullName>2PY</fullName>
+        <default>false</default>
+        <label>Twice a Year</label>
+    </customValue>
+    <customValue>
+        <fullName>E2M</fullName>
+        <default>false</default>
+        <label>Every Other Month</label>
+    </customValue>
+    <customValue>
+        <fullName>E2W</fullName>
+        <default>false</default>
+        <label>Every Two Weeks</label>
+    </customValue>
+    <customValue>
+        <fullName>MON</fullName>
+        <default>false</default>
+        <label>Monthly</label>
+    </customValue>
+    <customValue>
+        <fullName>ONE</fullName>
+        <default>false</default>
+        <label>One Time Only</label>
+    </customValue>
+    <customValue>
+        <fullName>QRT</fullName>
+        <default>false</default>
+        <label>Quarterly</label>
+    </customValue>
+    <customValue>
+        <fullName>WKY</fullName>
+        <default>false</default>
+        <label>Weekly</label>
+    </customValue>
+    <description>R00325</description>
+    <masterLabel>R00325</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

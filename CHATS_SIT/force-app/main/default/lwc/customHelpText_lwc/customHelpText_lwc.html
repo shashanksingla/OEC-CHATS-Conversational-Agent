@@ -1,0 +1,21 @@
+<template>
+    <div class="slds-form-element__icon"
+        onmouseenter={handleMouseEnter}
+        onmouseleave={handleMouseLeave}>
+        <!-- eslint-disable-next-line @lwc/lwc/no-template-children -->
+        <a href="javascript:void(0);" class="slds-form-element__icon slds-align-middle"
+            tabindex="-1"
+            onclick={handleClick}>
+            <lightning-icon class="slds-icon-text-default ms-help-icon" size="xx-small"
+                icon-name="utility:info"></lightning-icon>
+            <span class="slds-assistive-text">Help</span>
+        </a>
+        <div class={tooltipClasses} role="tooltip" aria-live="polite" lwc:ref="divHelp">
+            <div class="slds-popover__body ms-help-popup-body">
+                <template for:each={formattedLines} for:item="line">
+                    <span key={line.key}>{line.text}<br></span>
+                </template>
+            </div>
+        </div>
+    </div>
+</template>

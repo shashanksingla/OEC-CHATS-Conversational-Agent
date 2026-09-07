@@ -1,0 +1,83 @@
+<!--  
+Author      :	Rishav Maji
+Description :	Re-usable component to display 12 months checkboxes in grids
+Inputs 		:	'title' - text line at the top (e.g. "This is my Title")
+    			'subtitle' - italic text line below title (e.g. "This is my subtitle")
+			    'monthsPerRow' - number of horizontal months per row (e.g. "4")
+				'isSorted' - if true, months are returned in cronological order (e.g. "true")
+				'isDisabled' - if true, checkboxes are disabled
+				'preSelectedMonths' - month numbers in a comma seperated string to pre select checkboxes on component load (e.g. "1,5,7")
+(All inputs are optional. If no input passed, component will render with its default form)
+Outputs 	:	'selectedMonthNumbers' - numeric values of selected months (e.g. "1,2,5")
+    			'selectedMonthNames' - english names of selected months (e.g. "January, February, May")
+-->
+<aura:component>
+    
+    <aura:attribute name="title" type="String" />
+    <aura:attribute name="subtitle" type="String" />
+    <aura:attribute name="selectedMonthNumbers" type="String[]" />
+    <aura:attribute name="selectedMonthNames" type="String[]" />
+    <aura:attribute name="monthsPerRow" type="Integer" default="1" />
+    <aura:attribute name="isSorted" type="boolean" default="false" />
+    <aura:attribute name="isDisabled" type="boolean" default="false" />
+    <aura:attribute name="dynamicGridStyle" type="String" default="slds-col slds-size_12-of-12" />
+    <aura:attribute name="preSelectedMonths" type="String" default="" />
+    <aura:attribute name="preSelectedMonthsMap" type="Map" default="{ 
+                                                                    monthChecked_1: false, monthChecked_2: false,
+                                                                    monthChecked_3: false, monthChecked_4: false,
+                                                                    monthChecked_5: false, monthChecked_6: false,
+                                                                    monthChecked_7: false, monthChecked_8: false,
+                                                                    monthChecked_9: false, monthChecked_10: false,
+                                                                    monthChecked_11: false, monthChecked_12: false
+                                                                    }" />
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.preSelectedMonths}" action="{!c.preSelectMonths}"/>
+    
+    <div class="slds-wrap slds-grid">
+        <div  style="padding-bottom: 0.2rem;">
+            <div class="slds-text-color_default">{!v.title}</div>
+            <div class="slds-text-color_weak"><i>{!v.subtitle}</i></div>
+        </div>
+        <br/>
+        <div class="slds-grid slds-wrap">
+            <div class="{!v.dynamicGridStyle}">
+                <lightning:input id="monthSelectorId_1" type="checkbox" label="January" onchange="{!c.handleChange}" disabled="{!v.isDisabled}" checked="{!v.preSelectedMonthsMap.monthChecked_1}" value="1" />
+            </div>
+            <div class="{!v.dynamicGridStyle}">
+                <lightning:input id="monthSelectorId_2" type="checkbox" label="February" onchange="{!c.handleChange}" disabled="{!v.isDisabled}" checked="{!v.preSelectedMonthsMap.monthChecked_2}" value="2"/>
+            </div>
+            <div class="{!v.dynamicGridStyle}">
+                <lightning:input id="monthSelectorId_3" type="checkbox" label="March" onchange="{!c.handleChange}" disabled="{!v.isDisabled}" checked="{!v.preSelectedMonthsMap.monthChecked_3}" value="3"/>
+            </div>
+            <div class="{!v.dynamicGridStyle}">
+                <lightning:input id="monthSelectorId_4" type="checkbox" label="April" onchange="{!c.handleChange}" disabled="{!v.isDisabled}" checked="{!v.preSelectedMonthsMap.monthChecked_4}" value="4"/>
+            </div>
+            <div class="{!v.dynamicGridStyle}">
+                <lightning:input id="monthSelectorId_5" type="checkbox" label="May" onchange="{!c.handleChange}" disabled="{!v.isDisabled}" checked="{!v.preSelectedMonthsMap.monthChecked_5}" value="5"/>
+            </div>
+            <div class="{!v.dynamicGridStyle}">
+                <lightning:input id="monthSelectorId_6" type="checkbox" label="June" onchange="{!c.handleChange}" disabled="{!v.isDisabled}" checked="{!v.preSelectedMonthsMap.monthChecked_6}" value="6"/>
+            </div>
+            <div class="{!v.dynamicGridStyle}">
+                <lightning:input id="monthSelectorId_7" type="checkbox" label="July" onchange="{!c.handleChange}" disabled="{!v.isDisabled}" checked="{!v.preSelectedMonthsMap.monthChecked_7}" value="7"/>
+            </div>
+            <div class="{!v.dynamicGridStyle}">
+                <lightning:input id="monthSelectorId_8" type="checkbox" label="August" onchange="{!c.handleChange}" disabled="{!v.isDisabled}" checked="{!v.preSelectedMonthsMap.monthChecked_8}" value="8"/>
+            </div>
+            <div class="{!v.dynamicGridStyle}">
+                <lightning:input id="monthSelectorId_9" type="checkbox" label="September" onchange="{!c.handleChange}" disabled="{!v.isDisabled}" checked="{!v.preSelectedMonthsMap.monthChecked_9}" value="9"/>
+            </div>
+            <div class="{!v.dynamicGridStyle}">
+                <lightning:input id="monthSelectorId_10" type="checkbox" label="October" onchange="{!c.handleChange}" disabled="{!v.isDisabled}" checked="{!v.preSelectedMonthsMap.monthChecked_10}" value="10"/>
+            </div>
+            <div class="{!v.dynamicGridStyle}">
+                <lightning:input id="monthSelectorId_11" type="checkbox" label="November" onchange="{!c.handleChange}" disabled="{!v.isDisabled}" checked="{!v.preSelectedMonthsMap.monthChecked_11}" value="11"/>
+            </div>
+            <div class="{!v.dynamicGridStyle}">
+                <lightning:input id="monthSelectorId_12" type="checkbox" label="December" onchange="{!c.handleChange}" disabled="{!v.isDisabled}" checked="{!v.preSelectedMonthsMap.monthChecked_12}" value="12"/>
+            </div>
+        </div>
+    </div>
+    
+</aura:component>

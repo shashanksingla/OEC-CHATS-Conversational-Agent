@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Req_if_Estimated_Income_Frequency_is_HLY</fullName>
+    <active>true</active>
+    <description>Required if CDE_FREQ_PAY_ESTMD = Hourly</description>
+    <errorConditionFormula>AND( NOT( IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_Peak_Data__c ), ISBLANK(CNT_WEEK_PER_HOURS_ESTMD__c) ,  ISPICKVAL(CDE_FREQ_PAY_ESTMD__c, &apos;HLY&apos;) )</errorConditionFormula>
+    <errorDisplayField>CNT_WEEK_PER_HOURS_ESTMD__c</errorDisplayField>
+    <errorMessage>Required if Estimated Income Frequency is Hourly</errorMessage>
+</ValidationRule>

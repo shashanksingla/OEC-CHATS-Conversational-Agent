@@ -1,0 +1,126 @@
+<aura:component extends="c:abstractSection" 
+                implements="flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,lightning:actionOverride,force:hasRecordId"
+                controller="UpdateParentFeeApxCtrl">
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="caseCopayId" type="String"/> 
+    <aura:attribute name="recordError" type="String"/>
+    <aura:attribute name="caseCopayRec" type="batchsit_t_sbsd_case_copay__x"
+                    default="{'sobjectType':'batchsit_t_sbsd_case_copay__x'}"/>
+    <aura:attribute name="newCaseCopayRec" type="batchsit_t_sbsd_case_copay__x"
+                    default="{'sobjectType':'batchsit_t_sbsd_case_copay__x'}"/>
+    
+    <aura:attribute name="authCopayRec" type="batchsit_t_auth_copay__x"
+                    default="{'sobjectType':'batchsit_t_auth_copay__x'}"/>
+    <aura:attribute name="authCopayWrapList" type="List" />
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/> 
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:attribute name="isViewMode" type="Boolean" default="false"/>
+    <aura:attribute name="isSpinner" type="Boolean" default="false"/>
+    <aura:attribute name="isFetchBtnCall" type="Boolean" default="false"/>
+    <aura:attribute name="noDataReturnedFromServer" type="Boolean" default="false"/>
+    <aura:attribute name="errorReturnedFromServer" type="Boolean" default="false"/>
+    <aura:attribute name="showPrivatePayAmtMsg" type="Boolean" default="false"/>
+    <aura:attribute name="title" type="Boolean" default="String"/>
+    <aura:attribute name="description" type="Boolean" default="String"/>
+    <aura:handler name="change" value="{!v.newCaseCopayRec.dte_begin_effv__c}" action="{!c.fetchAuthCopayRecords}"/>
+    <!-- CCCAP-4767 Changes-->
+    <aura:attribute name="authCopayWrapListCopy" type="List" />
+    <!-- CCCAP-4767 Changes-->
+    <div class="loading" style="{!if(v.isSpinner, '', 'display:none;')}">
+        <lightning:spinner variant="brand" size="medium"/>
+    </div>
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <b><h3 class="slds-section__title">Case Parent Fee Details</h3></b> 
+            <h5>Below are the details of the effective Case Parent Fee.</h5>
+        </lightning:layoutItem> 
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:outputField  label="Parent Fee" value="{!!empty(v.newCaseCopayRec.amt_copay_case_assesd__c)?v.newCaseCopayRec.amt_copay_case_assesd__c:v.caseCopayRec.amt_copay_case_assesd__c}"  />
+            <c:fieldLevelMessage aura:id="batchsit_t_sbsd_case_copay__x-AMT_COPAY_CASE_FT__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:outputField label="Effective Date" value="{!!empty(v.newCaseCopayRec.dte_begin_effv__c)?v.newCaseCopayRec.dte_begin_effv__c:v.caseCopayRec.dte_begin_effv__c}" type="UIDATE" />
+            <c:fieldLevelMessage aura:id="batchsit_t_sbsd_case_copay__x-DTE_BEGIN_EFFV__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist  label="Override Reason"
+                             value="{!!empty(v.newCaseCopayRec.cde_reason_ovrd__c)?v.newCaseCopayRec.cde_reason_ovrd__c:v.caseCopayRec.cde_reason_ovrd__c}"
+                             object="Field_Utility__c"
+                             field="R00219__c"
+                             type="ReadOnly"
+                             />
+            <c:fieldLevelMessage aura:id="batchsit_t_sbsd_case_copay__x-CDE_REASON_OVRD__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+        </lightning:layoutItem>
+    </lightning:layout>
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <b><h3 class="slds-section__title">Parent Fee Allocation</h3></b> 
+            <h5 class="">Below are the authorizations that are active on the case parent fee Effective Begin Date.</h5>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <aura:if isTrue="{!v.noDataReturnedFromServer}">
+                <c:viewCaseParentFeeSVG title="{!v.title}" description="{!v.description}"/>
+                <aura:set attribute="else">
+                    <div class="slds-scrollable_x">
+                        <table class="slds-table slds-table_bordered slds-table_cell-buffer" >
+                            <thead>
+                                <tr class="slds-text-title_caps">
+                                    <th scope="col">
+                                        <div class="slds-truncate" title="Child Name">CHILD NAME</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div class="slds-truncate" title="Authorization ID">AUTHORIZATION ID</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div class="slds-truncate" title="Date Of Birth">DATE OF BIRTH</div>
+                                    </th>                   
+                                    <th scope="col">
+                                        <div class="slds-truncate" title="Provider Id">PROVIDER ID</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div class="slds-truncate" title="Provider Name">PROVIDER NAME</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div class="slds-truncate" title="Status">AUTHORIZATION BEGIN DATE</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div class="slds-truncate" title="Status">AUTHORIZATION END DATE</div>
+                                    </th>
+                                    <th scope="col">
+                                        <div class="slds-truncate" title="Amount">ALLOCATED AUTH AMOUNT</div>
+                                    </th>                  
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <aura:iteration items="{!v.authCopayWrapList}" var="item" indexVar="index">
+                                    <tr>
+                                        <td>
+                                            <aura:if isTrue="{!empty(item.CDE_STATUS_AUTH) || item.CDE_STATUS_AUTH=='2'}">{!item.childName}</aura:if>
+                                        </td>
+                                        <td>
+                                            <aura:if isTrue="{!empty(item.CDE_STATUS_AUTH) || item.CDE_STATUS_AUTH=='2'}">{!item.authName}</aura:if>
+                                        </td>
+                                        <td>{!item.childDOB}</td> 
+                                        <td>{!item.providerExternalId}</td>
+                                        <td>{!item.providerName}</td>
+                                        <td> <c:outputField value="{!item.authBeginDate}" type="UIDATE" hideLabel="true"/></td> 
+                                        <td> <c:outputField value="{!item.authEndDate}" type="UIDATE" hideLabel="true"/></td> 
+                                        <td>
+                                            <lightning:input aura:id="input-field" type="number" variant="label-hidden" 
+                                                             name="{!index}" value="{!item.allocatedAuthAmount}"  min="0" messageWhenRangeUnderflow="Value cannot be less than 0" step="any" onblur="{!c.validateAmountField}" disabled="{!v.isViewMode}"/>
+                                            <c:fieldLevelMessage aura:id="batchsit_t_sbsd_case_copay__x-AMT_COPAY_AUTH" message="{!item.errMsg}" />
+                                        </td>
+                                    </tr>
+                                </aura:iteration>
+                            </tbody>
+                        </table>
+                    </div>
+                </aura:set>
+            </aura:if>
+        </lightning:layoutItem>
+    </lightning:layout>
+</aura:component>

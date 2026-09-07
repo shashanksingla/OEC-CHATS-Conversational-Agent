@@ -1,0 +1,73 @@
+<aura:component controller="RateScheduleFlowApxCtrl" extends="c:abstractSection">
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:attribute name="countyName" type="String"/>
+    <aura:attribute name="fiscalRateValues" type="T_FISCAL_RAT_FEES__c"/>
+    <aura:attribute name="rateScheduleId" type="String"/>
+    <aura:attribute name="fiscalAgreementRecordId" type="String"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    
+    <aura:attribute name="amountPerPeriodTrans" type="String"/>
+    <aura:attribute name="amountPerPeriodReg" type="String"/>
+    <aura:attribute name="amountPerPeriodAct" type="String"/>
+    <aura:attribute name="isReadOnly" type="boolean" default="false" description="marker for making the fields readonly"/>
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.fiscalRateValues}" action="{!c.calcAmountToPeriod}"/>
+    
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+            <lightning:layoutItem flexibility="auto" size="4" class='slds-p-right--small'>
+                <lightning:input type="text" name="input-name" label="Fiscal Agreement County"
+                                 value="{!v.countyName}" disabled="true"/>
+            </lightning:layoutItem>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <lightning:input type="number" name="input-name" label="Yearly Activity Fee"
+                             value="{!v.fiscalRateValues.AMT_ACT_PROVR__c}" formatter="currency" step="0.01" 
+                             required="true" aura:id="input-field" min="0"  disabled="{!v.isReadOnly}"/>
+            <c:fieldLevelMessage aura:id="T_FISCAL_RAT_FEES__c-AMT_ACT_PROVR__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <c:inputPicklist label="Activity Fee Frequency" object="T_FISCAL_RAT_FEES__c" field="CDE_ACT_FREQ__c"
+                             value="{!v.fiscalRateValues.CDE_ACT_FREQ__c}" aura:id="input-field" disabled="{!v.isReadOnly}"/>
+            <c:fieldLevelMessage aura:id="T_FISCAL_RAT_FEES__c-CDE_ACT_FREQ__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <lightning:input type="number" name="input-name" label="Amount Per Period"
+                             value="{!v.amountPerPeriodAct}" disabled="true" formatter="currency"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <lightning:input type="number" name="input-name" label="Yearly Registration Fee"
+                             value="{!v.fiscalRateValues.AMT_REG_PROVR__c}" formatter="currency" step="0.01" 
+                             required="true" aura:id="input-field" min="0" disabled="{!v.isReadOnly}"/>
+            <c:fieldLevelMessage aura:id="T_FISCAL_RAT_FEES__c-AMT_REG_PROVR__c" />
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <c:inputPicklist label="Registration Fee Frequency" object="T_FISCAL_RAT_FEES__c" field="CDE_REG_FREQ__c"
+                             value="{!v.fiscalRateValues.CDE_REG_FREQ__c}" aura:id="input-field" disabled="{!v.isReadOnly}"/>
+            <c:fieldLevelMessage aura:id="T_FISCAL_RAT_FEES__c-CDE_REG_FREQ__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <lightning:input type="number" name="input-name" label="Amount Per Period"
+                             value="{!v.amountPerPeriodReg}" aura:id="input-field" disabled="true" formatter="currency"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <lightning:input type="number" name="input-name" label="Yearly Transportation Fee"
+                             value="{!v.fiscalRateValues.AMT_TRANS_PROVR__c}" formatter="currency" step="0.01" 
+                             required="true" aura:id="input-field" min="0" disabled="{!v.isReadOnly}"/>
+            <c:fieldLevelMessage aura:id="T_FISCAL_RAT_FEES__c-AMT_TRANS_PROVR__c" />
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <c:inputPicklist label="Transportation Fee Frequency" object="T_FISCAL_RAT_FEES__c" field="CDE_TRANS_FREQ__c"
+                             value="{!v.fiscalRateValues.CDE_TRANS_FREQ__c}" aura:id="input-field" disabled="{!v.isReadOnly}"/>
+            <c:fieldLevelMessage aura:id="T_FISCAL_RAT_FEES__c-CDE_TRANS_FREQ__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <lightning:input type="number" name="input-name" label="Amount Per Period"
+                             value="{!v.amountPerPeriodTrans}" aura:id="input-field" disabled="true" formatter="currency"/>
+        </lightning:layoutItem>
+        
+        
+    </lightning:layout>	
+    
+</aura:component>

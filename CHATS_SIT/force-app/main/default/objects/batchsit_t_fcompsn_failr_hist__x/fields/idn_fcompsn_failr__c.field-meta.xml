@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_fcompsn_failr__c</fullName>
+    <description>idn_fcompsn_failr</description>
+    <externalDeveloperName>idn_fcompsn_failr</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Family composition Failure ID</label>
+    <length>10</length>
+    <referenceTo>batchsit_t_fcompsn_failr__x</referenceTo>
+    <relationshipLabel>Household Ineligibility Reasons Legacy History</relationshipLabel>
+    <relationshipName>batchsit_t_fcompsn_failr_hist</relationshipName>
+    <type>ExternalLookup</type>
+</CustomField>

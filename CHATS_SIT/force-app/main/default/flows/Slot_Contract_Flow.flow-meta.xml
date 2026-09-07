@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>56.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <environments>Default</environments>
+    <formulas>
+        <name>AvailableforUse</name>
+        <dataType>Boolean</dataType>
+        <expression>AND({!$Record.DTE_END_SLOT__c} &gt;= TODAY(), ISBLANK({!$Record.IDN_AUTH__c}))</expression>
+    </formulas>
+    <formulas>
+        <name>FutureDateVaccant</name>
+        <dataType>Boolean</dataType>
+        <expression>AND({!$Record.DTE_BEGIN_SLOT__c} &gt;= TODAY(), ISBLANK({!$Record.IDN_AUTH__c}))</expression>
+    </formulas>
+    <formulas>
+        <name>Occupied</name>
+        <dataType>Boolean</dataType>
+        <expression>NOT(ISBLANK({!$Record.IDN_AUTH__c}))</expression>
+    </formulas>
+    <interviewLabel>Slot Contract Flow {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Slot Contract Flow</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value>
+            <stringValue>AUTO_LAYOUT_CANVAS</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>OriginBuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordUpdates>
+        <name>Update_Slot_Record</name>
+        <label>Update Slot Record</label>
+        <locationX>176</locationX>
+        <locationY>335</locationY>
+        <inputAssignments>
+            <field>IND_AVAILABLE__c</field>
+            <value>
+                <elementReference>AvailableforUse</elementReference>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>IND_FUTURE_VACANT__c</field>
+            <value>
+                <elementReference>FutureDateVaccant</elementReference>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>IND_OCCUPIED__c</field>
+            <value>
+                <elementReference>Occupied</elementReference>
+            </value>
+        </inputAssignments>
+        <inputReference>$Record</inputReference>
+    </recordUpdates>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Update_Slot_Record</targetReference>
+        </connector>
+        <object>T_SLOT_CONTRACT__c</object>
+        <recordTriggerType>CreateAndUpdate</recordTriggerType>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Draft</status>
+</Flow>

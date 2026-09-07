@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Client_Complaint_1__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>Client Complaint</label>
+    <referenceTo>Client_Complaint__c</referenceTo>
+    <relationshipName>Linked_Client_Complaints</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

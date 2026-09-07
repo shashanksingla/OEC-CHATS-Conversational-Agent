@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Case_Review</fullName>
+    <columns>NAME</columns>
+    <columns>Case__c</columns>
+    <columns>Reviewer_Name__c</columns>
+    <columns>Improper_Payment__c</columns>
+    <columns>Improper_Payment_Type__c</columns>
+    <columns>Correct_Subsidy_Amount__c</columns>
+    <columns>Improper_Payment_Amount__c</columns>
+    <columns>Subsidy_Amount_Paid__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Case__c</field>
+        <operation>equals</operation>
+        <value>11247348</value>
+    </filters>
+    <label>Case Review</label>
+</ListView>

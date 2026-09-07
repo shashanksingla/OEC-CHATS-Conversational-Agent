@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>1</fullName>
+        <default>false</default>
+        <label>Info in a packet</label>
+    </customValue>
+    <customValue>
+        <fullName>2</fullName>
+        <default>false</default>
+        <label>Separate form</label>
+    </customValue>
+    <customValue>
+        <fullName>3</fullName>
+        <default>false</default>
+        <label>Other</label>
+    </customValue>
+    <description>RT_CCDF_Q6</description>
+    <masterLabel>RT_CCDF_Q6</masterLabel>
+    <sorted>true</sorted>
+</GlobalValueSet>

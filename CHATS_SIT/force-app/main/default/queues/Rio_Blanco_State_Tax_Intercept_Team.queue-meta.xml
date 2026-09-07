@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Rio Blanco State Tax Intercept Team</name>
+    <queueMembers>
+        <users>
+            <user>carmen.mckay@state.co.us.chats</user>
+            <user>marcia.allred@state.co.us.chats</user>
+            <user>sadie.armstrong@state.co.us.chats</user>
+        </users>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>Task</sobjectType>
+    </queueSobject>
+</Queue>

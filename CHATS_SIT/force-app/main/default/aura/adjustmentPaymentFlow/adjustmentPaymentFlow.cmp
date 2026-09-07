@@ -1,0 +1,65 @@
+<!--
+Author      :	Rishav Maji
+Description :	Container component for Adjustment Payment (manual) new and edit flow
+JIRA Id     :	CCCAP-6608
+-->
+<aura:component Controller="adjustmentPaymentFlowApexController" extends="c:abstractComponent" implements="force:appHostable,force:hasRecordId,force:lightningQuickAction,lightning:actionOverride,lightning:isUrlAddressable" access="global" >
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.messageType}" action="{!c.handlePageError}"/>
+    
+    <aura:set attribute="pageMessages" value="{!v.recordError}"/>
+    <aura:set attribute="messageType" value="{!v.message}"/>
+    
+    <aura:attribute name="parentObjectAPI" type="String"/>
+    <aura:attribute name="parentObjectId" type="String"/>
+    <aura:attribute name="parentObjectName" type="String"/>
+    <aura:attribute name="recordError" type="List"/>
+    <aura:attribute name="message" type="String"/>
+    <aura:attribute name="adjPaymentObj" type="T_ADJMT_PMT__c" default="{'sobjectType':'T_ADJMT_PMT__c',
+                                                                        'AMT_PMT_ADJMT__c':'',
+                                                                        'CDE_COUNTY__c':'',
+                                                                        'CDE_ACTION_ADMIN__c':'',
+                                                                        'CDE_TYPE_PMT_ADJMT__c':'',
+                                                                        'IDN_CASE__c':'',
+                                                                        'DTE_PMT_ADJMT__c':'',
+                                                                        'IDN_PROVR__c':'',
+                                                                        'IDN_PMT__c':'',
+                                                                        'TXT_INFO_OTHER__c':'',
+                                                                        'IDN_RCPT_PMT__c':'',
+                                                                        'TXT_NBR_CHECK_PMT__c':''}"/>
+    <aura:attribute name="assignedCounties" type="List" default="[]"/>
+    <aura:attribute name="isReadyToRender" type="Boolean" default="false"/>
+    
+    <c:pageMessages aura:id="recordErrors" pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+
+    <aura:if isTrue="{!v.isReadyToRender}">
+        <lightning:card>
+            <header class="slds-modal__header" style="padding-top: 0px;">
+                <span class="slds-text-heading--medium">New Adjustment Payment</span>
+            </header>
+            
+            <div class="slds-modal__content slds-p-around--medium">
+                <c:adjustmentPaymentFlow_Layout aura:id="adjustmentPaymentRecord" 
+                                                parentObjectAPI="{!v.parentObjectAPI}"
+                                                parentObjectId="{!v.parentObjectId}"
+                                                parentObjectName="{!v.parentObjectName}"
+                                                adjPaymentObj="{!v.adjPaymentObj}"
+                                                isCurrentPageValid="{!v.isCurrentPageValid}"
+                                                fieldValidationErrors="{!v.fieldValidationErrors}"
+                                                assignedCounties="{!v.assignedCounties}"/>
+            </div>
+        </lightning:card>
+        
+        <div class="slds-modal__footer">
+            <c:navigationComponent onFinish="{!c.doFinish}"
+                                   onCancel="{!c.doCancel}"
+                                   finishLabel="Save"
+                                   showNext="false"
+                                   showFinish="true"/>
+        </div>
+        
+        <c:confirmationModal aura:id="confirmationModalOnFinish" confirmModalYes="{!c.comfirmFinish}"
+                             confirmMsg="Are you sure you want to create a New Adjustment Payment for the county selected?"/>
+    </aura:if>
+</aura:component>

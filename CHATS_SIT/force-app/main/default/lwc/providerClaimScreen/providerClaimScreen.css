@@ -1,0 +1,27 @@
+td .slds-form-element__static {
+    font-weight: 700;
+}
+
+td .slds-form-element__label {
+    font-weight: 600;
+}
+
+table {
+    border: 1px solid black;
+    table-layout: fixed;
+    width: 100%;
+}
+
+.artFeeTable {
+    width: 50% !important;
+}
+
+th,
+td {
+    border: 1px solid black;
+    /* Solid black border */
+    padding: 0.5rem;
+    white-space: break-spaces !important;
+    word-wrap: break-word !important;
+    /* Optional: Add padding for content */
+}

@@ -1,0 +1,674 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>   
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <content>fiscalAgreementEditOverride</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <content>fiscalAgreementEditOverride</content>
+        <formFactor>Small</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <content>fiscalAgreementEditOverride</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>true</skipRecordTypeSelect>
+        <type>LightningComponent</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <content>fiscalAgreementEditOverride</content>
+        <formFactor>Small</formFactor>
+        <skipRecordTypeSelect>true</skipRecordTypeSelect>
+        <type>LightningComponent</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <comment>Action override created by Lightning App Builder during activation.</comment>
+        <content>Provider_Fiscal_Agreement_Record_Page</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>Flexipage</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <enableActivities>true</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>true</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>Batch_Flag__c</fullName>
+        <defaultValue>false</defaultValue>
+        <externalId>false</externalId>
+        <label>Batch Flag</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>CDE_COUNTY_OWNER__c</fullName>
+        <description>CHAT-489</description>
+        <externalId>false</externalId>
+        <formula>IF(ISBLANK(ID_SERVICE__r.CDE_COUNTY_OWNER__c) , &apos;&apos;, 
+HYPERLINK(&quot;/&quot; &amp; ID_SERVICE__r.CDE_COUNTY_OWNER__c, ID_SERVICE__r.CDE_COUNTY_OWNER__r.Name)
+)</formula>
+        <label>Owner County</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>CDE_COUNTY__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <description>Fiscal Agreement County</description>
+        <externalId>false</externalId>
+        <label>Fiscal Agreement County</label>
+        <referenceTo>T_COUNTY__c</referenceTo>
+        <relationshipLabel>Provider Fiscal Agreement</relationshipLabel>
+        <relationshipName>Provider_Fiscal_Agreement</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>CDE_REASON_END_AGRMT__c</fullName>
+        <description>Reason for Closure</description>
+        <externalId>false</externalId>
+        <label>Reason for Closure</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00712</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_TYPE_FACILITY__c</fullName>
+        <externalId>false</externalId>
+        <label>Facility Type</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>RT_FAC_TYPE</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_TYPE_STATUS__c</fullName>
+        <description>Fiscal Agreement Status</description>
+        <externalId>false</externalId>
+        <label>Fiscal Agreement Status</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00703</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>DTE_BEGIN_AGRMT__c</fullName>
+        <description>Effective Begin Date</description>
+        <externalId>false</externalId>
+        <label>Effective Begin Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_END_AGRMT__c</fullName>
+        <description>Renewal Date</description>
+        <externalId>false</externalId>
+        <label>Effective End Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_RCV_AGRMT_FISCAL__c</fullName>
+        <description>Date Received</description>
+        <externalId>false</externalId>
+        <label>Date Fiscal Agreement Received</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>Fliter_Criteria_on_Begin_Date__c</fullName>
+        <externalId>false</externalId>
+        <formula>DTE_BEGIN_AGRMT__c  &lt;= TODAY()</formula>
+        <label>Fliter Criteria on Begin Date</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>External ID</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <fields>
+        <fullName>ID_SERVICE__c</fullName>
+        <deleteConstraint>Restrict</deleteConstraint>
+        <externalId>false</externalId>
+        <label>Provider ID</label>
+        <referenceTo>T_CHATS_PROVR_STATUS__c</referenceTo>
+        <relationshipLabel>Provider Fiscal Agreements</relationshipLabel>
+        <relationshipName>Provider_Fiscal_Agreements</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>Provider_Name__c</fullName>
+        <externalId>false</externalId>
+        <formula>ID_SERVICE__r.NAM_FACILITY__c</formula>
+        <label>Provider Name</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Record_Type_Name__c</fullName>
+        <externalId>false</externalId>
+        <formula>RecordType.DeveloperName</formula>
+        <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+        <label>Record Type Name</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Owner_ID__c</fullName>
+        <externalId>false</externalId>
+        <formula>HYPERLINK(&apos;/&apos; &amp;  OwnerId , Owner:User.FirstName  &amp; &apos; &apos; &amp;  Owner:User.LastName)</formula>
+        <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+        <label>Owner</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>DTE_PROVD_CLS__c</fullName> 
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Provider Closure Dates</label>
+        <length>32768</length>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>LongTextArea</type>
+        <visibleLines>3</visibleLines>
+    </fields>
+    <fields>
+        <fullName>Provider_Quality_Rating__c</fullName>
+        <description>To use in set visibility in flexi page</description>
+        <formula>(ID_SERVICE__r.TXT_CHATS_RATING__c  &lt;&gt; &apos;Level 1&apos;  &amp;&amp;  NOT( ISNULL( ID_SERVICE__r.TXT_CHATS_RATING__c ) )  &amp;&amp; ID_SERVICE__r.TXT_CHATS_RATING__c  &lt;&gt; &apos;&apos; )  &amp;&amp;  ( ISPICKVAL( CDE_TYPE_STATUS__c , &apos;OPN&apos;) || ISPICKVAL( CDE_TYPE_STATUS__c , &apos;FIN&apos;)  )  &amp;&amp; ( $Permission.System_Administrator  ||  $Permission.Provider_Worker  ||  $Permission.Provider_Worker_Supervisor  ||  $Permission.Business_Office_Worker  ||  $Permission.Business_Office_Supervisor  ||  $Permission.Universal_User  ||  $Permission.CCCAP_Program_Internal_Team )</formula>
+        <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+        <label>Slot Contract Addendum Button Visibility</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <label>Provider Fiscal Agreement</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <columns>OWNER.FIRST_NAME</columns>
+        <filterScope>Everything</filterScope>
+        <filters>
+            <field>CDE_TYPE_STATUS__c</field>
+            <operation>equals</operation>
+            <value>DFT</value>
+        </filters>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All1</fullName>
+        <columns>NAME</columns>
+        <columns>CDE_COUNTY__c</columns>
+        <columns>CDE_TYPE_STATUS__c</columns>
+        <columns>CREATED_DATE</columns>
+        <columns>CDE_COUNTY_OWNER__c</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>ID</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Provider Fiscal Agreements</pluralLabel>
+    <recordTypeTrackHistory>true</recordTypeTrackHistory>
+    <recordTypes>
+        <fullName>Closed</fullName>
+        <active>true</active>
+        <label>Closed</label>
+        <picklistValues>
+            <picklist>CDE_REASON_END_AGRMT__c</picklist>
+            <values>
+                <fullName>CPV</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>DEC</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>EXP</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>MTA</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NCH</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NEW</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NLO</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NUE</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>PRT</fullName>
+                <default>false</default>
+            </values>
+        </picklistValues>
+        <picklistValues>
+            <picklist>CDE_TYPE_FACILITY__c</picklist>
+            <values>
+                <fullName>CEN</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>EXE</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>HOM</fullName>
+                <default>false</default>
+            </values>
+        </picklistValues>
+        <picklistValues>
+            <picklist>CDE_TYPE_STATUS__c</picklist>
+            <values>
+                <fullName>CLS</fullName>
+                <default>true</default>
+            </values>
+        </picklistValues>
+    </recordTypes>
+    <recordTypes>
+        <fullName>Draft</fullName>
+        <active>true</active>
+        <label>Draft</label>
+        <picklistValues>
+            <picklist>CDE_REASON_END_AGRMT__c</picklist>
+            <values>
+                <fullName>CPV</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>DEC</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>EXP</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>MTA</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NCH</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NEW</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NLO</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NUE</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>PRT</fullName>
+                <default>false</default>
+            </values>
+        </picklistValues>
+        <picklistValues>
+            <picklist>CDE_TYPE_FACILITY__c</picklist>
+            <values>
+                <fullName>CEN</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>EXE</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>HOM</fullName>
+                <default>false</default>
+            </values>
+        </picklistValues>
+        <picklistValues>
+            <picklist>CDE_TYPE_STATUS__c</picklist>
+            <values>
+                <fullName>DFT</fullName>
+                <default>true</default>
+            </values>
+        </picklistValues>
+    </recordTypes>
+    <recordTypes>
+        <fullName>Finalized</fullName>
+        <active>true</active>
+        <label>Finalized</label>
+        <picklistValues>
+            <picklist>CDE_REASON_END_AGRMT__c</picklist>
+            <values>
+                <fullName>CPV</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>DEC</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>EXP</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>MTA</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NCH</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NEW</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NLO</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NUE</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>PRT</fullName>
+                <default>false</default>
+            </values>
+        </picklistValues>
+        <picklistValues>
+            <picklist>CDE_TYPE_FACILITY__c</picklist>
+            <values>
+                <fullName>CEN</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>EXE</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>HOM</fullName>
+                <default>false</default>
+            </values>
+        </picklistValues>
+        <picklistValues>
+            <picklist>CDE_TYPE_STATUS__c</picklist>
+            <values>
+                <fullName>FIN</fullName>
+                <default>true</default>
+            </values>
+        </picklistValues>
+    </recordTypes>
+    <recordTypes>
+        <fullName>Open</fullName>
+        <active>true</active>
+        <label>Open</label>
+        <picklistValues>
+            <picklist>CDE_REASON_END_AGRMT__c</picklist>
+            <values>
+                <fullName>CPV</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>DEC</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>EXP</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>MTA</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NCH</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NEW</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NLO</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>NUE</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>PRT</fullName>
+                <default>false</default>
+            </values>
+        </picklistValues>
+        <picklistValues>
+            <picklist>CDE_TYPE_FACILITY__c</picklist>
+            <values>
+                <fullName>CEN</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>EXE</fullName>
+                <default>false</default>
+            </values>
+            <values>
+                <fullName>HOM</fullName>
+                <default>false</default>
+            </values>
+        </picklistValues>
+        <picklistValues>
+            <picklist>CDE_TYPE_STATUS__c</picklist>
+            <values>
+                <fullName>OPN</fullName>
+                <default>true</default>
+            </values>
+        </picklistValues>
+    </recordTypes>
+    <searchLayouts/>
+    <sharingModel>ReadWrite</sharingModel>
+    <validationRules>
+        <fullName>CANNOT_UPDATE_CLOSED_FA</fullName>
+        <active>true</active>
+        <errorConditionFormula>TEXT(PRIORVALUE(CDE_TYPE_STATUS__c))= &apos;CLS&apos;</errorConditionFormula>
+        <errorMessage>Fiscal Agreement with Closed status cannot be edited.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Date_Rcv_Fisc_Agrmnt_LesThan_Begin_Date</fullName>
+        <active>true</active>
+        <description>Fiscal Agreement receive date must be less than Effective Begin Date</description>
+        <errorConditionFormula>DTE_RCV_AGRMT_FISCAL__c &gt; DTE_BEGIN_AGRMT__c</errorConditionFormula>
+        <errorDisplayField>DTE_RCV_AGRMT_FISCAL__c</errorDisplayField>
+        <errorMessage>Fiscal Agreement receive date must be less than Effective Begin Date</errorMessage>
+    </validationRules>
+    <!--Commented as part of CCCAP-10798-->
+    <!--validationRules>
+        <fullName>Date_Received_Required_for_Open_FA</fullName>
+        <active>false</active>
+        <description>Date Fiscal Agreement Received is Required to Finalize Fiscal Agreement</description>
+        <errorConditionFormula>AND (ISBLANK(DTE_RCV_AGRMT_FISCAL__c ) ,OR(ISPICKVAL(CDE_TYPE_STATUS__c  , &apos;OPN&apos;) ,ISPICKVAL(CDE_TYPE_STATUS__c  , &apos;FIN&apos;)) )</errorConditionFormula>
+        <errorDisplayField>DTE_RCV_AGRMT_FISCAL__c</errorDisplayField>
+        <errorMessage>Date Fiscal Agreement Received is Required to Finalize Fiscal Agreement</errorMessage>
+    </validationRules-->
+    <validationRules>
+        <fullName>Record_ReadOnly_status_open_Finalised</fullName>
+        <active>true</active>
+        <description>Added 'EFACH' exception for Project 337, JIRA CCCAP-4768</description>
+        <errorConditionFormula>(
+ ISPICKVAL(CDE_TYPE_STATUS__c, &apos;OPN&apos;) ||
+ ISPICKVAL(CDE_TYPE_STATUS__c, &apos;FIN&apos;)
+) &amp;&amp; (
+ ISCHANGED(Name) ||
+ ISCHANGED(ID_SERVICE__c) ||
+ ISCHANGED(CDE_TYPE_FACILITY__c) ||
+ ISCHANGED(CDE_COUNTY__c) ||
+ ISCHANGED(DTE_RCV_AGRMT_FISCAL__c) ||
+ ISCHANGED(CDE_COUNTY_OWNER__c)
+) &amp;&amp; (
+ IF(
+ NOT(ISPICKVAL(ID_SERVICE__r.CDE_TYPE_PROVR__c, &apos;EFACH&apos;)),
+ ISCHANGED(DTE_BEGIN_AGRMT__c), false
+ )
+)</errorConditionFormula>
+        <errorMessage>Only Owner is editable for Open/Finalized Fiscal Agreements</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Staus_Close_Validation</fullName>
+        <active>true</active>
+        <description>Without Reason of  closure user can&apos;t change status to &apos;Closed&apos;.</description>
+        <errorConditionFormula>AND( ISPICKVAL( CDE_TYPE_STATUS__c , &apos;CLS&apos;) , ISPICKVAL( CDE_REASON_END_AGRMT__c , &quot;&quot;))</errorConditionFormula>
+        <errorDisplayField>CDE_TYPE_STATUS__c</errorDisplayField>
+        <errorMessage>Can not close the fiscal agreement without reason of closure.</errorMessage>
+    </validationRules>
+	<validationRules>
+        <fullName>FABeginDateEqOrGreaterThenLicenceEffDate</fullName>
+        <active>true</active>
+        <description>Fiscal Agreement Begin Date must be greater than or equal to the License Effective Date</description>
+        <errorConditionFormula> OR(AND(ISNEW(), NOT($Setup.ByPass_Validation_Setting__c.Is_Batch_Excluded__c), ISBLANK( TEXT(CDE_REASON_END_AGRMT__c ) ), DTE_BEGIN_AGRMT__c &lt; ID_SERVICE__r.DTE_BEGIN_EFFV__c ), AND(NOT(ISNEW()), NOT($Setup.ByPass_Validation_Setting__c.Is_Batch_Excluded__c), ISBLANK( TEXT(CDE_REASON_END_AGRMT__c ) ), DTE_BEGIN_AGRMT__c &lt; ID_SERVICE__r.DTE_BEGIN_EFFV__c, NOT( ISCHANGED( OwnerId ) ) ))</errorConditionFormula>
+        <errorDisplayField>DTE_BEGIN_AGRMT__c</errorDisplayField>
+        <errorMessage>Fiscal Agreement Begin Date must be greater than or equal to the License Effective Date</errorMessage>
+    </validationRules>
+	<validationRules>
+        <fullName>Restrict_PFA_finalize_for_In_Progress_BG</fullName>
+        <active>true</active>
+        <errorConditionFormula>AND(ISPICKVAL(ID_SERVICE__r.CDE_REQ_BGC_CHK_STATE__c, &quot;In Progress&quot;), OR(
+ISPICKVAL(CDE_TYPE_STATUS__c, &quot;FIN&quot;),
+ISPICKVAL(CDE_TYPE_STATUS__c, &quot;OPN&quot;)
+))</errorConditionFormula>
+        <errorMessage>Fiscal agreement can not be finalized because Background Check is in Progress for this Provider.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>State_BG_Check_Incomplete</fullName>
+        <active>true</active>
+        <description>Project 337, JIRA CCCAP-4768</description>
+        <errorConditionFormula>AND(
+ISPICKVAL(ID_SERVICE__r.CDE_TYPE_PROVR__c, &quot;EFACH&quot;),
+OR(
+ISNULL(ID_SERVICE__r.DTE_FA_ReimEff__c),
+NOT(ISPICKVAL(ID_SERVICE__r.CDE_REQ_BGC_CHK_STATE__c, &quot;Cleared&quot;))
+),
+OR(
+ISPICKVAL(CDE_TYPE_STATUS__c, &quot;FIN&quot;),
+ISPICKVAL(CDE_TYPE_STATUS__c, &quot;OPN&quot;)
+),
+ISPICKVAL(PRIORVALUE(CDE_TYPE_STATUS__c), &quot;DFT&quot;)
+)</errorConditionFormula>
+        <errorMessage>State required background check is not completed. Please contact  State CCCAP Team</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>QEProvr_FA_BeginDate_Validation</fullName>
+        <active>true</active>
+        <description>CCCAP-5987</description>
+        <errorConditionFormula>AND(
+ ISPICKVAL(ID_SERVICE__r.CDE_TYPE_PROVR__c, &quot;EFACH&quot;),
+ DTE_BEGIN_AGRMT__c &lt; ID_SERVICE__r.DTE_FA_ReimEff__c,
+ ISNEW()
+)</errorConditionFormula>
+        <errorMessage>Fiscal Agreement Effective Begin Date should be the same day or greater than the Fiscal Agreement/Reimbursement Effective date on the provider’s details screen.</errorMessage>
+    </validationRules>
+    <visibility>Public</visibility>
+</CustomObject>

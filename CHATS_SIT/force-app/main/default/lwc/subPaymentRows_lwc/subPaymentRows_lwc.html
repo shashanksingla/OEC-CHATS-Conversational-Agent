@@ -1,0 +1,86 @@
+<template>
+    <!-- Slot-based view: 8 columns -->
+    <template if:true={isSlotView}>
+        <tr role="row" class={rowClass} aria-rowindex={index}>
+            <td class="row-cell" role="gridcell">
+                <lightning-input name="subPayment" type="radio" value={subPaymentObj.subPymtId}
+                    aria-label="Select sub-payment row for slot {subPaymentObj.subPymtId}" onchange={handleRadioSelect}>
+                </lightning-input>
+            </td>
+            <td class="row-cell" role="gridcell" aria-label="Payment ID: {subPaymentObj.pymtId}">
+                {subPaymentObj.pymtId}
+            </td>
+            <td class="row-cell" role="gridcell" aria-label="Sub-Payment ID: {subPaymentObj.subPymtId}">
+                {subPaymentObj.subPymtId}
+            </td>
+            <td class="row-cell" role="gridcell" aria-label="Slot Name: {subPaymentObj.slotName}">
+                {subPaymentObj.slotName}
+            </td>
+            <td class="row-cell" role="gridcell"
+                aria-label="Service Period Begin Date: {subPaymentObj.servicePeriodBgnDte}">
+                {subPaymentObj.servicePeriodBgnDte}
+            </td>
+            <td class="row-cell" role="gridcell"
+                aria-label="Service Period End Date: {subPaymentObj.servicePeriodEndDte}">
+                {subPaymentObj.servicePeriodEndDte}
+            </td>
+            <td class="row-cell currency-cell" role="gridcell">
+                <lightning-formatted-number value={subPaymentObj.subPymtSlotContractAmt} format-style="currency"
+                    currency-code="USD" aria-label="Slot Contract Amount in USD">
+                </lightning-formatted-number>
+            </td>
+            <td class="row-cell" role="gridcell" aria-label="Slot County Name: {subPaymentObj.slotCountyName}">
+                {subPaymentObj.slotCountyName}
+            </td>
+        </tr>
+    </template>
+
+    <!-- Case-based view: 12 columns -->
+    <template if:false={isSlotView}>
+        <tr role="row" class={rowClass} aria-rowindex={index}>
+            <td class="row-cell" role="gridcell">
+                <lightning-input name="subPayment" type="radio" value={subPaymentObj.subPymtId}
+                    aria-label="Select sub-payment row for case {subPaymentObj.caseId}" onchange={handleRadioSelect}>
+                </lightning-input>
+            </td>
+            <td class="row-cell" role="gridcell" aria-label="Payment ID: {subPaymentObj.pymtId}">
+                {subPaymentObj.pymtId}
+            </td>
+            <td class="row-cell" role="gridcell" aria-label="Sub-Payment ID: {subPaymentObj.subPymtId}">
+                {subPaymentObj.subPymtId}
+            </td>
+            <td class="row-cell" role="gridcell" aria-label="Case ID: {subPaymentObj.caseId}">
+                {subPaymentObj.caseId}
+            </td>
+            <td class="row-cell" role="gridcell" aria-label="Authorization ID: {subPaymentObj.authid}">
+                {subPaymentObj.authid}
+            </td>
+            <td class="row-cell" role="gridcell"
+                aria-label="Payment Provider Name: {subPaymentObj.paymentProviderName}">
+                {subPaymentObj.paymentProviderName}
+            </td>
+            <td class="row-cell" role="gridcell" aria-label="Child First Name: {subPaymentObj.childFirstName}">
+                {subPaymentObj.childFirstName}
+            </td>
+            <td class="row-cell" role="gridcell" aria-label="Child Last Name: {subPaymentObj.childLastName}">
+                {subPaymentObj.childLastName}
+            </td>
+            <td class="row-cell" role="gridcell"
+                aria-label="Service Period Begin Date: {subPaymentObj.servicePeriodBgnDte}">
+                {subPaymentObj.servicePeriodBgnDte}
+            </td>
+            <td class="row-cell" role="gridcell"
+                aria-label="Service Period End Date: {subPaymentObj.servicePeriodEndDte}">
+                {subPaymentObj.servicePeriodEndDte}
+            </td>
+            <td class="row-cell currency-cell" role="gridcell">
+                <lightning-formatted-number value={subPaymentObj.subPymtAmount} format-style="currency"
+                    currency-code="USD" aria-label="Sub-Payment Amount in USD">
+                </lightning-formatted-number>
+            </td>
+            <td class="row-cell" role="gridcell" aria-label="County: {subPaymentObj.county}">
+                {subPaymentObj.county}
+            </td>
+        </tr>
+    </template>
+</template>

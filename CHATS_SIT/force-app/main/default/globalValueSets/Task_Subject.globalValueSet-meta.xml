@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>Manual Task&lt;User specified text&gt;</fullName>
+        <default>false</default>
+        <label>Manual Task&lt;User specified text&gt;</label>
+    </customValue>
+    <customValue>
+        <fullName>T100 - No Active Authorization for Child</fullName>
+        <default>false</default>
+        <label>T100 - No Active Authorization for Child</label>
+    </customValue>
+    <customValue>
+        <fullName>T101 - SIDMOD Updated Client DOB</fullName>
+        <default>false</default>
+        <label>T101 - SIDMOD Updated Client DOB</label>
+    </customValue>
+    <customValue>
+        <fullName>T102 - Client Has Not Responded to Program Availability</fullName>
+        <default>false</default>
+        <label>T102 - Client Has Not Responded to Program Availability</label>
+    </customValue>
+    <customValue>
+        <fullName>T103 - Client Has Not Returned Redetermination Packet</fullName>
+        <default>false</default>
+        <label>T103 - Client Has Not Returned Redetermination Packet</label>
+    </customValue>
+    <customValue>
+        <fullName>T104 - Eligibility-related Data Changed</fullName>
+        <default>false</default>
+        <label>T104 - Eligibility-related Data Changed</label>
+    </customValue>
+    <customValue>
+        <fullName>T105 - Time Limited Activity End Date Approaching</fullName>
+        <default>false</default>
+        <label>T105 - Time Limited Activity End Date Approaching</label>
+    </customValue>
+    <customValue>
+        <fullName>T106 - Fiscal Agreement Quality Rating Changed</fullName>
+        <default>false</default>
+        <label>T106 - Fiscal Agreement Quality Rating Changed</label>
+    </customValue>
+    <customValue>
+        <fullName>T107 - Authorization has an unsupported rate type</fullName>
+        <default>false</default>
+        <label>T107 - Authorization has an unsupported rate type</label>
+    </customValue>
+    <customValue>
+        <fullName>T108 - Peak Application received 10 days ago is due for processing</fullName>
+        <default>false</default>
+        <label>T108 - Peak Application received 10 days ago is due for processing</label>
+    </customValue>
+    <customValue>
+        <fullName>T109 - Case has been transferred</fullName>
+        <default>false</default>
+        <label>T109 - Case has been transferred</label>
+    </customValue>
+    <customValue>
+        <fullName>T110 - New Authorization for child with joint custody record</fullName>
+        <default>false</default>
+        <label>T110 - New Authorization for child with joint custody record</label>
+    </customValue>
+    <customValue>
+        <fullName>T111 - Authorization has more than 22 absences</fullName>
+        <default>false</default>
+        <label>T111 - Authorization has more than 22 absences</label>
+    </customValue>
+    <customValue>
+        <fullName>T112 - New case was created for Individual with existing Open case</fullName>
+        <default>false</default>
+        <label>T112 - New case was created for Individual with existing Open case</label>
+    </customValue>
+    <customValue>
+        <fullName>T113 - Referral Application received 4 days ago</fullName>
+        <default>false</default>
+        <label>T113 - Referral Application received 4 days ago</label>
+    </customValue>
+    <customValue>
+        <fullName>T114 - Referral Application needs a county change.</fullName>
+        <default>false</default>
+        <label>T114 - Referral Application needs a county change.</label>
+    </customValue>
+    <customValue>
+        <fullName>T115 - PEAK Application has been transferred to your county</fullName>
+        <default>false</default>
+        <label>T115 - PEAK Application has been transferred to your county</label>
+    </customValue>
+    <customValue>
+        <fullName>T116 – Provider has made a suggestion for a Slot Contract record</fullName>
+        <default>false</default>
+        <label>T116 – Provider has made a suggestion for a Slot Contract record</label>
+    </customValue>
+    <customValue>
+        <fullName>T117 – RE106 is Available for Review</fullName>
+        <default>false</default>
+        <label>T117 – RE106 is Available for Review</label>
+    </customValue>
+    <customValue>
+        <fullName>T118 – Case Review Complete</fullName>
+        <default>false</default>
+        <label>T118 – Case Review Complete</label>
+    </customValue>
+    <customValue>
+        <fullName>T120 – County Level Case Review is Overdue</fullName>
+        <default>false</default>
+        <label>T120 – County Level Case Review is Overdue</label>
+    </customValue>
+    <customValue>
+        <fullName>T133 - Client Has Not Returned Missing Information</fullName>
+        <default>false</default>
+        <label>T133 - Client Has Not Returned Missing Information</label>
+    </customValue>
+    <customValue>
+        <fullName>T121 – State Reversal Request</fullName>
+        <default>false</default>
+        <label>T121 – State Reversal Request</label>
+    </customValue>
+    <customValue>
+        <fullName>T122- UPK Dual Enrollment and  Authorization Adjustment for Stacking</fullName>
+        <default>false</default>
+        <label>T122- UPK Dual Enrollment and  Authorization Adjustment for Stacking</label>
+    </customValue>
+    <customValue>
+        <fullName>T123- UPK Program Year Ending</fullName>
+        <default>false</default>
+        <label>T123- UPK Program Year Ending</label>
+    </customValue>
+    <customValue>
+        <fullName>T124 – ATS CCCAP Authorization Change Request</fullName>
+        <default>false</default>
+        <label>T124 – ATS CCCAP Authorization Change Request</label>
+    </customValue>
+    <customValue>
+        <fullName>T190 - Address Change to Case Physical Address</fullName>
+        <default>false</default>
+        <label>T190 - Address Change to Case Physical Address</label>
+    </customValue>
+    <customValue>
+        <fullName>T191 - Address Change to Case Physical Address</fullName>
+        <default>false</default>
+        <label>T191 - Address Change to Case Physical Address</label>
+    </customValue>
+    <customValue>
+        <fullName>T200 - Provider License is Closed</fullName>
+        <default>false</default>
+        <label>T200 - Provider License is Closed</label>
+    </customValue>
+    <customValue>
+        <fullName>T201 - Fiscal Agreement is Closed and Authorizations Exist</fullName>
+        <default>false</default>
+        <label>T201 - Fiscal Agreement is Closed and Authorizations Exist</label>
+    </customValue>
+    <customValue>
+        <fullName>T202 - Provider Requires Immediate Action Based on CBC Results</fullName>
+        <default>false</default>
+        <label>T202 - Provider Requires Immediate Action Based on CBC Results</label>
+    </customValue>
+    <customValue>
+        <fullName>T203 - Fiscal Agreement is Still in Draft Status</fullName>
+        <default>false</default>
+        <label>T203 - Fiscal Agreement is Still in Draft Status</label>
+    </customValue>
+    <customValue>
+        <fullName>T204 - Fiscal Agreement Renewal Date is within 60 days</fullName>
+        <default>false</default>
+        <label>T204 - Fiscal Agreement Renewal Date is within 60 days</label>
+    </customValue>
+    <customValue>
+        <fullName>T205 - Provider Rating Changed</fullName>
+        <default>false</default>
+        <label>T205 - Provider Rating Changed</label>
+    </customValue>
+    <customValue>
+        <fullName>T206 - Trails Abuse and Neglect has been founded</fullName>
+        <default>false</default>
+        <label>T206 - Trails Abuse and Neglect has been founded</label>
+    </customValue>
+    <customValue>
+        <fullName>T207 - Fiscal Agreement has been transferred</fullName>
+        <default>false</default>
+        <label>T207 - Fiscal Agreement has been transferred</label>
+    </customValue>
+    <customValue>
+        <fullName>T208 - Provider&apos;s Location/Relation has been changed on the authorization</fullName>
+        <default>false</default>
+        <label>T208 - Provider&apos;s Location/Relation has been changed on the authorization</label>
+    </customValue>
+    <customValue>
+        <fullName>T209 - A fiscal agreement has opened for a qualified exempt provider</fullName>
+        <default>false</default>
+        <label>T209 - A fiscal agreement has opened for a qualified exempt provider</label>
+    </customValue>
+    <customValue>
+        <fullName>T210 - Fiscal Agreement without an open authorization for more than 90 days</fullName>
+        <default>false</default>
+        <label>T210 - Fiscal Agreement without an open authorization for more than 90 days</label>
+    </customValue>
+    <customValue>
+        <fullName>T211 - Fiscal Agreement without an open authorization for more than 90 days</fullName>
+        <default>false</default>
+        <label>T211 - Fiscal Agreement without an open authorization for more than 90 days</label>
+    </customValue>
+    <customValue>
+        <fullName>T212 - Trails Abuse and Neglect has been founded</fullName>
+        <default>false</default>
+        <label>T212 - Trails Abuse and Neglect has been founded</label>
+    </customValue>
+    <customValue>
+        <fullName>T213 – Slot Contract is becoming vacant in 30 days</fullName>
+        <default>false</default>
+        <label>T213 – Slot Contract is becoming vacant in 30 days</label>
+    </customValue>
+    <customValue>
+        <fullName>T214 – Slot Contract is ending and authorization will no longer have association</fullName>
+        <default>false</default>
+        <label>T214 – Slot Contract is ending and authorization will no longer have association</label>
+    </customValue>
+    <customValue>
+        <fullName>T215 – State Tax Intercept list is available for your review</fullName>
+        <default>false</default>
+        <label>T215 – State Tax Intercept list is available for your review</label>
+    </customValue>
+    <customValue>
+        <fullName>T216 – CR202 - Tax Intercept Notice is available for your review</fullName>
+        <default>false</default>
+        <label>T216 – CR202 - Tax Intercept Notice is available for your review</label>
+    </customValue>
+    <customValue>
+        <fullName>T217 - Slot Contract Addendum is closing in 45 days</fullName>
+        <default>false</default>
+        <label>T217 - Slot Contract Addendum is closing in 45 days</label>
+    </customValue>
+    <customValue>
+        <fullName>T218 - Provider Colorado Background Checks Completed</fullName>
+        <default>false</default>
+        <label>T218 - Provider Colorado Background Checks Completed</label>
+    </customValue>
+    <customValue>
+        <fullName>T219 - 5-year FBI fingerprinting due for a provider</fullName>
+        <default>false</default>
+        <label>T219 - 5-year FBI fingerprinting due for a provider</label>
+    </customValue>
+    <customValue>
+        <fullName>T220 – Upcoming QE Training and Visit</fullName>
+        <default>false</default>
+        <label>T220 – Upcoming QE Training and Visit</label>
+    </customValue>
+    <customValue>
+        <fullName>T221 - Holiday has been removed from CRP</fullName>
+        <default>false</default>
+        <label>T221 - Holiday has been removed from CRP</label>
+    </customValue>
+    <customValue>
+        <fullName>T222 - Adjustment Cancellation Needs Review</fullName>
+        <default>false</default>
+        <label>T222 - Adjustment Cancellation Needs Review</label>
+    </customValue>
+    <customValue>
+        <fullName>T223 - Adjustment Cancellation Needs Review</fullName>
+        <default>false</default>
+        <label>T223 - Adjustment Cancellation Needs Review</label>
+    </customValue>
+    <customValue>
+        <fullName>T224 - Adjustment Cancellation In Draft Status Is Over Due</fullName>
+        <default>false</default>
+        <label>T224 - Adjustment Cancellation In Draft Status Is Over Due</label>
+    </customValue>
+    <customValue>
+        <fullName>T225 - Adjustment Cancellation In Draft Status Is Over Due</fullName>
+        <default>false</default>
+        <label>T225 - Adjustment Cancellation In Draft Status Is Over Due</label>
+    </customValue>
+    <customValue>
+        <fullName>T226 - QE Provider Background Check Status is In Progress</fullName>
+        <default>false</default>
+        <label>T226 - QE Provider Background Check Status is In Progress</label>
+    </customValue>
+    <customValue>
+        <fullName>T230 – RE106 is Available for Review</fullName>
+        <default>false</default>
+        <label>T230 – RE106 is Available for Review</label>
+    </customValue>
+    <customValue>
+        <fullName>T231 – Provider Review Complete</fullName>
+        <default>false</default>
+        <label>T231 – Provider Review Complete</label>
+    </customValue>
+    <customValue>
+        <fullName>T233 – County Level Provider Review is Overdue</fullName>
+        <default>false</default>
+        <label>T233 – County Level Provider Review is Overdue</label>
+    </customValue>
+    <customValue>
+        <fullName>T234 – State Reversal Request</fullName>
+        <default>false</default>
+        <label>T234 – State Reversal Request</label>
+    </customValue>
+    <customValue>
+        <fullName>T235 - Manual Claim Form Received from ATS</fullName>
+        <default>false</default>
+        <label>T235 - Manual Claim Form Received from ATS</label>
+    </customValue>
+    <customValue>
+        <fullName>T236- Client Complaint Submitted</fullName>
+        <default>false</default>
+        <label>T236- Client Complaint Submitted</label>
+    </customValue>
+    <customValue>
+        <fullName>T237- Client Complaint County Transfer</fullName>
+        <default>false</default>
+        <label>T237- Client Complaint County Transfer</label>
+    </customValue>
+    <customValue>
+        <fullName>T300 - County Plan Needs Approval</fullName>
+        <default>false</default>
+        <label>T300 - County Plan Needs Approval</label>
+    </customValue>
+    <customValue>
+        <fullName>T301 - County Rate Plan Needs Approval</fullName>
+        <default>false</default>
+        <label>T301 - County Rate Plan Needs Approval</label>
+    </customValue>
+    <customValue>
+        <fullName>T302 - County Plan Needs Revisions</fullName>
+        <default>false</default>
+        <label>T302 - County Plan Needs Revisions</label>
+    </customValue>
+    <customValue>
+        <fullName>T303 - County Rate Plan Needs Revisions</fullName>
+        <default>false</default>
+        <label>T303 - County Rate Plan Needs Revisions</label>
+    </customValue>
+    <customValue>
+        <fullName>T309 - Redetermination packet received date is 12 days ago</fullName>
+        <default>false</default>
+        <label>T309 - Redetermination packet received date is 12 days ago</label>
+    </customValue>
+    <customValue>
+        <fullName>T501- SIDMOD updated case individual Date of Death</fullName>
+        <default>false</default>
+        <label>T501- SIDMOD updated case individual Date of Death</label>
+    </customValue>
+    <customValue>
+        <fullName>T502- SIDMOD updated case individual Date of Death for a case with an active
+            recovery</fullName>
+        <default>false</default>
+        <label>T502- SIDMOD updated case individual Date of Death for a case with an active recovery</label>
+    </customValue>
+    <customValue>
+        <fullName>T555 - Provider did not take any action to confirm enrollment</fullName>
+        <default>false</default>
+        <label>T555 - Provider did not take any action to confirm enrollment</label>
+    </customValue>
+    <customValue>
+        <fullName>T556 - Provider reporting child never attended</fullName>
+        <default>false</default>
+        <label>T556 - Provider reporting child never attended</label>
+    </customValue>
+    <customValue>
+        <fullName>T557 - Provider reporting date child stopped attending</fullName>
+        <default>false</default>
+        <label>T557 - Provider reporting date child stopped attending</label>
+    </customValue>
+    <customValue>
+        <fullName>T227 - Recovery Overpayment</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>T227 - Recovery Overpayment</label>
+    </customValue>
+    <customValue>
+        <fullName>T232 – Provider Review Submitted by Reviewer</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>T232 – Provider Review Submitted by Reviewer</label>
+    </customValue>
+    <customValue>
+        <fullName>T225  - Adjustment Cancellation In Draft Status Is Over Due</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>T225  - Adjustment Cancellation In Draft Status Is Over Due</label>
+    </customValue>
+    <customValue>
+        <fullName>T224  - Adjustment Cancellation In Draft Status Is Over Due</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>T224  - Adjustment Cancellation In Draft Status Is Over Due</label>
+    </customValue>
+    <customValue>
+        <fullName>T223 -  Adjustment Cancellation Needs Review</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>T223 -  Adjustment Cancellation Needs Review</label>
+    </customValue>
+    <customValue>
+        <fullName>T222 -  Adjustment Cancellation Needs Review</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>T222 -  Adjustment Cancellation Needs Review</label>
+    </customValue>
+    <customValue>
+        <fullName>T119 – Case Review Submitted by Reviewer</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>T119 – Case Review Submitted by Reviewer</label>
+    </customValue>
+    <customValue>
+        <fullName>T200  - Provider License is Closed</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>T200  - Provider License is Closed</label>
+    </customValue>
+    <customValue>
+        <fullName>T200  - Provider Closed in TRAILS.</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>T200  - Provider Closed in TRAILS.</label>
+    </customValue>
+    <customValue>
+        <fullName>T209 - A Fiscal Agreement has opened for a Quality Exempt provider</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>T209 - A Fiscal Agreement has opened for a Quality Exempt provider</label>
+    </customValue>
+    <description>Holds the subject values to be used for Bulk Task Transfer</description>
+    <masterLabel>Task Subject</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

@@ -1,0 +1,3 @@
+<design:component>
+    <design:attribute name="isReadOnly" label="Is ReadOnly?" />
+</design:component>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Provider_Not_Editable</fullName>
+    <active>true</active>
+    <description>Once the record is Created, provider cannot be edited</description>
+    <errorConditionFormula>AND( NOT( ISNEW() ) ,
+    ISCHANGED( IDN_PROVR__c )
+)</errorConditionFormula>
+    <errorDisplayField>IDN_PROVR__c</errorDisplayField>
+    <errorMessage>Once the record is Created, provider cannot be edited</errorMessage>
+</ValidationRule>

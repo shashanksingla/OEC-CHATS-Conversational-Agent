@@ -1,0 +1,10 @@
+/* ── Host: render as table row content ─────────────────────────────────── */
+:host {
+    display: contents;
+}
+
+/* ── Row hover state ────────────────────────────────────────────────────── */
+tr:hover {
+    background-color: #f3f3f3;
+    cursor: pointer;
+}

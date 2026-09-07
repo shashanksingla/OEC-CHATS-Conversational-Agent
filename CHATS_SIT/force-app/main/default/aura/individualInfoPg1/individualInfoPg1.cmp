@@ -1,0 +1,214 @@
+<aura:component controller="AuthorizationFlowApxCtrl" extends="c:abstractSection">
+    <aura:attribute name="indivRec" type="T_SBSD_INDIV__c" default="{'sobjectType':'T_SBSD_INDIV__c'}"/>
+    <aura:attribute name="indivInfoRec" type="T_SBSD_INDIV_INFO__c" default="{'sobjectType':'T_SBSD_INDIV_INFO__c'}"/><!--CCCAP-13633-->
+    <aura:attribute name="caseIndiv" type="T_SBSD_CASE_INDIV__c" default="{'sobjectType':'T_SBSD_CASE_INDIV__c'}"/><!--CCCAP-13633-->
+    <aura:attribute name="fieldValidationErrors" type="List"/>    
+    <aura:attribute name="isCreate" type="Boolean"/>
+    <aura:attribute name="isKinderUpdateDisabled" type="Boolean"/>
+    <aura:attribute name="isBeginDateDisabled" type="Boolean" default="true"/>
+    <aura:attribute name="isBeginDateRequired" type="Boolean"/>
+    <aura:attribute name="selKindleVal" type="String"/>
+    <aura:attribute name="isIntake" type="String"/><!--CCCAP-13633-->
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:handler name="change" value="{!v.indivRec.CDE_ATTENDING_SCHOOL1__c}" action="{!c.handleKindleUpdate}"/>
+    <aura:handler name="change" value="{!v.caseIndiv.Individual_Status__c}" action="{!c.handleStsUpdate}"/><!--CCCAP-13633-->
+    <aura:handler name="change" value="{!v.indivRec.DTE_DOB__c}" action="{!c.handleDobChange}"/>
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    
+    <lightning:layout multipleRows="true">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Basic Information</h3>
+        </lightning:layoutItem>
+        <!--CCCAP-13633-->
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist aura:id="input-field"
+                             label="Individual Status"
+                             value="{!v.caseIndiv.Individual_Status__c}"
+                             object="T_SBSD_CASE_INDIV__c"
+                             field="Individual_Status__c"
+                             required="true"
+                             showSelect="true"/>          
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE_INDIV__c-Individual_Status__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+        </lightning:layoutItem>
+        
+        <!--end CCCAP-13633-->
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input aura:id="input-field" maxlength="32"
+                             type="text" name="input-name" label="First Name"
+                             value="{!v.indivRec.NAM_FIRST__c}"
+                             required="true"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-NAM_FIRST__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input aura:id="input-field" maxlength="1"
+                             type="text" name="input-name" label="Middle Initial"
+                             value="{!v.indivRec.NAM_MI__c}"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-NAM_MI__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input aura:id="input-field" maxlength="32"
+                             type="text" name="input-name" label="Last Name"
+                             value="{!v.indivRec.NAM_LAST__c}"
+                             required="true"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-NAM_LAST__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input aura:id="input-field"
+                             type="text" name="input-name" label="Child Nickname"
+                             value="{!v.indivRec.NAM_NICKNAME__c}"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-NAM_NICKNAME__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input aura:id="input-field"
+                             type="text"
+                             name="input-name" label="SSN" value="{!v.indivRec.NBR_SSN__c}"
+                             maxlength="9" 
+                             />
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-NBR_SSN__c"/>   
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <div class="slds-form-element">
+                <abbr class="slds-required" title="required">*</abbr>
+                <label class="slds-form-element__label" for="input-label">Gender</label>
+                <div class="slds-form-element__control" style="margin-top: -20px;">  
+                    <c:inputPicklist aura:id="input-field"
+                                     value="{!v.indivRec.CDE_GENDER__c}"
+                                     object="T_SBSD_INDIV__c"
+                                     field="CDE_GENDER__c"
+                                     disabled="{!(v.caseIndiv.Individual_Status__c=='PC'|| v.caseIndiv.Individual_Status__c=='AC')}"
+                                     showSelect="true"
+                                     hiddenValues="['4']"/>          
+                    <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-CDE_GENDER__c"/>
+                </div>
+            </div>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist aura:id="input-field"
+                             label="Identity Verified"
+                             value="{!v.indivRec.CDE_VRFYD_IDNTY__c}"
+                             object="T_SBSD_INDIV__c"
+                             showSelect="true"
+                             required="true"
+                             hiddenValues="['SD']"
+                             field="CDE_VRFYD_IDNTY__c"/>            
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-CDE_VRFYD_IDNTY__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist aura:id="input-field"
+                             label="Identity How Verified"
+                             value="{!v.indivRec.CDE_SOURCE_VRFYD_IDNTY__c}"
+                             object="T_SBSD_INDIV__c"
+                             field="CDE_SOURCE_VRFYD_IDNTY__c"
+                             showSelect="true"
+                             required="{!v.indivRec.CDE_VRFYD_IDNTY__c == 'V'}"/>  
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-CDE_SOURCE_VRFYD_IDNTY__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <div class="slds-form-element">
+                <abbr class="slds-required" title="required">*</abbr>
+                <label class="slds-form-element__label" for="input-label">Child attending kindergarten or above?</label>
+                <div class="slds-form-element__control" style="margin-top: -20px;"> 
+                    <c:inputPicklist aura:id="input-field"
+                                     value="{!v.indivRec.CDE_ATTENDING_SCHOOL1__c}"
+                                     object="T_SBSD_INDIV__c"
+                                     field="CDE_ATTENDING_SCHOOL1__c"
+                                     disabled="{!(v.caseIndiv.Individual_Status__c=='PC'|| v.caseIndiv.Individual_Status__c=='AC')}"
+                                     showSelect="true"/>            
+                    <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-CDE_ATTENDING_SCHOOL1__c"/>
+                </div>
+            </div>
+        </lightning:layoutItem>
+        
+        <!--field moved to T_AUTH__c as part of CCCAP-15329-->
+        <!--lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <div class="slds-form-element">
+                <abbr class="slds-required" title="required">*</abbr>
+                <label class="slds-form-element__label" for="input-label">Is this Child dually enrolled in UPK?</label>
+                <div class="slds-form-element__control" style="margin-top: -20px;">
+                    <c:inputPicklist aura:id="input-field"
+                                     value="{!v.indivRec.CDE_CHILD_ENROLLED_IN_UPK__c}"
+                                     object="T_SBSD_INDIV__c"
+                                     field="CDE_CHILD_ENROLLED_IN_UPK__c"
+                                     disabled="{!(v.caseIndiv.Individual_Status__c=='PC'|| v.caseIndiv.Individual_Status__c=='AC')}"
+                                     hiddenValues="{!v.upkHiddenOptions}"
+                                     showSelect="true"/>            
+                    <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-CDE_CHILD_ENROLLED_IN_UPK__c"/>
+                </div>
+            </div>
+        </lightning:layoutItem-->
+
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputDate aura:id="input-field" label="Child Kindergarten Begin/Start Date" 
+                         value="{!v.indivRec.CDE_ATTENDING_SCHOOL_BEGINDATE__c}"
+                         disabled="{!v.isBeginDateDisabled}"
+                         required="{!v.isBeginDateRequired}"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-CDE_ATTENDING_SCHOOL_BEGINDATE__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputDate aura:id="input-field" label="DOB" value="{!v.indivRec.DTE_DOB__c}" 
+                         required="true"  />
+            <!-- <lightning:input aura:id="input-field" type="date" label="DOB" value="{!v.indivRec.DTE_DOB__c}" required="true"/>-->
+            
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-DTE_DOB__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist aura:id="input-field"
+                             label="DOB Verified"
+                             value="{!v.indivRec.IND_CDE_TYPE_VERIF_DOB__c}"
+                             disabled="{!(v.caseIndiv.Individual_Status__c=='PC'|| v.caseIndiv.Individual_Status__c=='AC')}"
+                             object="T_SBSD_INDIV__c"
+                             showSelect="true"
+                             field="IND_CDE_TYPE_VERIF_DOB__c"
+                             />            
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-IND_CDE_TYPE_VERIF_DOB__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist aura:id="input-field"
+                             label="DOB How Verified"
+                             value="{!v.indivRec.CDE_SOURCE_VRFYD_DOB__c}"
+                             object="T_SBSD_INDIV__c"
+                             showSelect="true"
+                             disabled="{!(v.caseIndiv.Individual_Status__c=='PC'|| v.caseIndiv.Individual_Status__c=='AC')}"
+                             field="CDE_SOURCE_VRFYD_DOB__c"
+                             required="{!(v.indivRec.IND_CDE_TYPE_VERIF_DOB__c == 'V'&amp;&amp; (v.caseIndiv.Individual_Status__c!='PC' &amp;&amp; v.caseIndiv.Individual_Status__c!='AC'))}"/>            
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-CDE_SOURCE_VRFYD_DOB__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Referrals</h3>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <div class="slds-form-element">
+                <abbr class="slds-required" title="required">*</abbr>
+                <label class="slds-form-element__label" for="input-label">Child referred to IDEA Part B or C?</label>
+                <div class="slds-form-element__control" style="margin-top: -20px;">
+                    <c:inputPicklist aura:id="input-field"
+                                     value="{!v.indivRec.IND_CHILD_IDEA__c}"
+                                     object="T_SBSD_INDIV__c"
+                                     field="IND_CHILD_IDEA__c"
+                                     disabled="{!(v.caseIndiv.Individual_Status__c=='PC'|| v.caseIndiv.Individual_Status__c=='AC')}"
+                                     showSelect="true"/>            
+                    <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-IND_CHILD_IDEA__c"/>
+                </div>
+            </div>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <div class="slds-form-element">
+                <abbr class="slds-required" title="required">*</abbr>
+                <label class="slds-form-element__label" for="input-label">Referred to Early &amp; Periodic Screening?</label>
+                <div class="slds-form-element__control" style="margin-top: -20px;">
+                    <c:inputPicklist aura:id="input-field"
+                                     value="{!v.indivRec.IND_CHILD_SCREEN__c}"
+                                     object="T_SBSD_INDIV__c"
+                                     field="IND_CHILD_SCREEN__c"
+                                     disabled="{!(v.caseIndiv.Individual_Status__c=='PC'|| v.caseIndiv.Individual_Status__c=='AC')}"
+                                     showSelect="true"/>            
+                    <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-IND_CHILD_SCREEN__c"/>
+                </div>
+            </div>
+        </lightning:layoutItem>
+        
+    </lightning:layout>
+</aura:component>

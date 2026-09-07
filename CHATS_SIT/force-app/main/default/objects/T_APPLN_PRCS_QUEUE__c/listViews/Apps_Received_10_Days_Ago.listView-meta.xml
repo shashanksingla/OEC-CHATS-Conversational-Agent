@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Apps_Received_10_Days_Ago</fullName>
+    <columns>NAME</columns>
+    <columns>County_Name__c</columns>
+    <columns>DTE_RCVD_APPLN__c</columns>
+    <columns>CDE_STATUS_APPLN__c</columns>
+    <columns>IDN_CASE__c</columns>
+    <columns>CDE_SOURCE__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>DTE_RCVD_APPLN__c</field>
+        <operation>lessThan</operation>
+        <value>LAST_N_DAYS:10</value>
+    </filters>
+    <filters>
+        <field>CDE_STATUS_APPLN__c</field>
+        <operation>equals</operation>
+        <value>NEW,PEN</value>
+    </filters>
+    <filters>
+        <field>CDE_SOURCE__c</field>
+        <operation>equals</operation>
+        <value>PK</value>
+    </filters>
+    <label>Received &gt; 10 Days Ago</label>
+</ListView>

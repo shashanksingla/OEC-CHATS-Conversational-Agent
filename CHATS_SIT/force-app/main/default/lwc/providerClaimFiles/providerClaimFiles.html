@@ -1,0 +1,33 @@
+<template>
+    <template lwc:if={showSpinner}>
+        <lightning-spinner alternative-text="Loading" variant="base"></lightning-spinner>
+    </template>
+    <template if:true={claimFileWrapper}>
+        <table class="slds-table slds-table_bordered slds-table_fixed-layout slds-table_resizable-cols" role="grid">
+            <thead class="slds-assistive-text">
+                <tr class="slds-line-height_reset">
+                    <th class="" scope="col">
+                        <div class="" title="Provider Claim Documents"></div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr key={claimFileWrap.Id} class="slds-hint-parent">
+                    <td data-label="Account Name">
+                        <b> Provider Claim Documents</b>
+                    </td>
+                </tr>
+                <template for:each={claimFileWrapper} for:item="claimFileWrap">
+                    <tr key={claimFileWrap.id} class="slds-hint-parent">
+                        <td data-label="Account Name">
+                            <div class="slds=p=around_medium">
+                                <a onclick={handleFileClick} data-id={claimFileWrap.id}>
+                                    {claimFileWrap.fields.Title__c.value}</a>
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </template>
+</template>

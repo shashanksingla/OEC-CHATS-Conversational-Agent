@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>State_Waitlist_Tracking</fullName>
+    <columns>IDN_CASE__c</columns>
+    <columns>NAME</columns>
+    <columns>DTE_BEGIN_EFFV_WTLST__c</columns>
+    <columns>DTE_END_EFFV_WTLST__c</columns>
+    <columns>CDE_STATUS_WTLST__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>CDE_STATUS_WTLST__c</field>
+        <operation>equals</operation>
+        <value>WLT</value>
+    </filters>
+    <filters>
+        <field>DTE_END_EFFV_WTLST__c</field>
+        <operation>equals</operation>
+    </filters>
+    <label>State Waitlist Tracking</label>
+</ListView>

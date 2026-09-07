@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Access_Level_Requested__c</fullName>
+    <description>Profiles eligible for selection by Supervisor</description>
+    <inlineHelpText>Select the access level you are requesting for this user. For Read only, please include their job functions as related to CCCAP, the frequency they would log in, and general reason/need for access.</inlineHelpText>
+    <label>Access Level Requested</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <controllingField>Access_Request_Type__c</controllingField>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Business Office Supervisor</fullName>
+                <default>false</default>
+                <label>Business Office Supervisor</label>
+            </value>
+            <value>
+                <fullName>Business Office Worker</fullName>
+                <default>false</default>
+                <label>Business Office Worker</label>
+            </value>
+            <value>
+                <fullName>Eligibility Worker</fullName>
+                <default>false</default>
+                <label>Eligibility Worker</label>
+            </value>
+            <value>
+                <fullName>Eligibility Worker Supervisor</fullName>
+                <default>false</default>
+                <label>Eligibility Worker Supervisor</label>
+            </value>
+            <value>
+                <fullName>Fiscal Worker</fullName>
+                <default>false</default>
+                <label>Fiscal Worker</label>
+            </value>
+            <value>
+                <fullName>Fiscal Worker Supervisor</fullName>
+                <default>false</default>
+                <label>Fiscal Worker Supervisor</label>
+            </value>
+            <value>
+                <fullName>Provider Worker</fullName>
+                <default>false</default>
+                <label>Provider Worker</label>
+            </value>
+            <value>
+                <fullName>Provider Worker Supervisor</fullName>
+                <default>false</default>
+                <label>Provider Worker Supervisor</label>
+            </value>
+            <value>
+                <fullName>Read Only</fullName>
+                <default>false</default>
+                <label>Read Only</label>
+            </value>
+            <value>
+                <fullName>Universal User</fullName>
+                <default>false</default>
+                <label>Universal User</label>
+            </value>
+        </valueSetDefinition>
+        <valueSettings>
+            <controllingFieldValue>New Worker Access Request</controllingFieldValue>
+            <controllingFieldValue>Change Profile/Access</controllingFieldValue>
+            <controllingFieldValue>Learn Trac/Pilot Environment Access Request</controllingFieldValue>
+            <valueName>Business Office Supervisor</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>New Worker Access Request</controllingFieldValue>
+            <controllingFieldValue>Change Profile/Access</controllingFieldValue>
+            <controllingFieldValue>Learn Trac/Pilot Environment Access Request</controllingFieldValue>
+            <valueName>Business Office Worker</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>New Worker Access Request</controllingFieldValue>
+            <controllingFieldValue>Change Profile/Access</controllingFieldValue>
+            <controllingFieldValue>Learn Trac/Pilot Environment Access Request</controllingFieldValue>
+            <valueName>Eligibility Worker</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>New Worker Access Request</controllingFieldValue>
+            <controllingFieldValue>Change Profile/Access</controllingFieldValue>
+            <controllingFieldValue>Learn Trac/Pilot Environment Access Request</controllingFieldValue>
+            <valueName>Eligibility Worker Supervisor</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>New Worker Access Request</controllingFieldValue>
+            <controllingFieldValue>Change Profile/Access</controllingFieldValue>
+            <controllingFieldValue>Learn Trac/Pilot Environment Access Request</controllingFieldValue>
+            <valueName>Fiscal Worker</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>New Worker Access Request</controllingFieldValue>
+            <controllingFieldValue>Change Profile/Access</controllingFieldValue>
+            <controllingFieldValue>Learn Trac/Pilot Environment Access Request</controllingFieldValue>
+            <valueName>Fiscal Worker Supervisor</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>New Worker Access Request</controllingFieldValue>
+            <controllingFieldValue>Change Profile/Access</controllingFieldValue>
+            <controllingFieldValue>Learn Trac/Pilot Environment Access Request</controllingFieldValue>
+            <valueName>Provider Worker</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>New Worker Access Request</controllingFieldValue>
+            <controllingFieldValue>Change Profile/Access</controllingFieldValue>
+            <controllingFieldValue>Learn Trac/Pilot Environment Access Request</controllingFieldValue>
+            <valueName>Provider Worker Supervisor</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>New Worker Access Request</controllingFieldValue>
+            <controllingFieldValue>Change Profile/Access</controllingFieldValue>
+            <controllingFieldValue>Learn Trac/Pilot Environment Access Request</controllingFieldValue>
+            <valueName>Read Only</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>New Worker Access Request</controllingFieldValue>
+            <controllingFieldValue>Change Profile/Access</controllingFieldValue>
+            <controllingFieldValue>Learn Trac/Pilot Environment Access Request</controllingFieldValue>
+            <valueName>Universal User</valueName>
+        </valueSettings>
+    </valueSet>
+</CustomField>

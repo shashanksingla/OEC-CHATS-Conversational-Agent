@@ -1,0 +1,225 @@
+<!--
+Author      :	Rishav Maji
+Description :	Iterated component to store Element question and related response fields
+Requirement :	Project 425, JIRA CCCAP-4771
+-->
+<aura:component Controller="caseReviewApexController" extends="c:abstractSection" implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickAction,lightning:actionOverride" access="global">
+    
+    <aura:attribute name="responseWrapper" type="caseReviewApexController.responseWrapper"/>
+    <aura:attribute name="screenMode" type="String"/> <!-- NEW / EDIT / VIEW -->
+    <aura:attribute name="accessLevel" type="String"/> <!-- reviewee / reviewer / admin -->
+    <aura:attribute name="allCauseOptions" type="List" default="[]"/>
+    <aura:attribute name="allErrorOptions" type="List" default="[]"/>
+    <aura:attribute name="CaseReview_Error1_Cause" type="List"/>
+    <aura:attribute name="CaseReview_Error2_Cause" type="List"/>
+    <aura:attribute name="CaseReview_Error3_Cause" type="List"/>
+    <aura:attribute name="CaseReview_Error4_Cause" type="List"/>
+    <aura:attribute name="CaseReview_Error1_Options" type="List"/>
+    <aura:attribute name="CaseReview_Error2_Options" type="List"/>
+    <aura:attribute name="CaseReview_Error3_Options" type="List"/>
+    <aura:attribute name="CaseReview_Error4_Options" type="List"/>
+    <aura:attribute name="isNAReasonDisabled" type="Boolean" default="false"/>
+    <aura:attribute name="errorCount" type="Integer" default="0"/>
+    <aura:attribute name="actionDateErrors" type="List" default="[]"/>
+    <aura:attribute name="rendered" type="Boolean" default="false"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="render" value="{!this}" action="{!c.onRender}"/>
+    <aura:handler name="change" value="{!v.responseWrapper.responseRec.CaseReview_Error1__c}" action="{!c.setCausePicklistValues}"/>
+    <aura:handler name="change" value="{!v.responseWrapper.responseRec.CaseReview_Error2__c}" action="{!c.setCausePicklistValues}"/>
+    <aura:handler name="change" value="{!v.responseWrapper.responseRec.CaseReview_Error3__c}" action="{!c.setCausePicklistValues}"/>
+    <aura:handler name="change" value="{!v.responseWrapper.responseRec.CaseReview_Error4__c}" action="{!c.setCausePicklistValues}"/>
+    <aura:handler name="change" value="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c}" action="{!c.handelMainQuestionUpdate}"/>
+    
+    <aura:method name="checkRowValidity" action="{!c.checkRowValidity}">
+        <aura:attribute name="isRowValid" type="Boolean" default="true" />
+    </aura:method>
+    
+    <aura:if isTrue="{!( v.screenMode != 'VIEW' &amp;&amp; v.responseWrapper!=undefined)}">
+        
+        <!-- EDITABLE SCREEN IN NEW & EDIT FLOW -->
+        <lightning:layout multipleRows="true">
+            <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="12">
+                <div style="font-size: 1rem; padding-bottom: 0.2rem;">
+                    Element #{!v.responseWrapper.questionRec.Order__c}: {!v.responseWrapper.questionRec.Element__c}
+                    <span style="vertical-align: bottom; padding-left: 0.4rem;">
+                        <lightning:helptext content="{!v.responseWrapper.questionRec.Review_Requirement__c}"/>
+                    </span>
+                </div>
+                <c:inputPicklist label="{!v.responseWrapper.questionRec.Question__c}" aura:id="input-field" value="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c}" disabled="{!v.accessLevel == 'reviewee'}"
+                                 object="Case_Review_Response__c" field="CaseReview_QuestionMain__c" required="true" showNone="true" alreadyHasValues="true" options="{!v.responseWrapper.elementQuestionOptions}"/>
+            </lightning:layoutItem>
+            
+            <aura:if isTrue="{!!v.responseWrapper.questionRec.Hide_Errors_and_Causes__c}">
+                <!-- Added by Rishav for CCCAP-7697 -->
+                <lightning:layoutItem flexibility="auto" size="12" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide' }">
+                    <c:inputPicklist label="Did this cause a payment error?" aura:id="input-field" value="{!v.responseWrapper.responseRec.Causes_Payment_Error__c}"
+                                     object="Case_Review_Response__c" field="Causes_Payment_Error__c" required="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO'}" showNone="true" disabled="{!v.accessLevel == 'reviewee'}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="12" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NA' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <c:inputPicklist label="If N/A, Reason:" aura:id="input-field" value="{!v.responseWrapper.responseRec.CaseReview_NA_Reason__c}" disabled="{!v.isNAReasonDisabled || v.accessLevel == 'reviewee'}"
+                                     object="Case_Review_Response__c" field="CaseReview_NA_Reason__c" required="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NA'}" showNone="true" alreadyHasValues="true" options="{!v.responseWrapper.NAReasonOptions}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <c:inputPicklist label="If No, Reason for Error #1:" value="{!v.responseWrapper.responseRec.CaseReview_Error1__c}" required="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO'}"
+                                     aura:id="input-field" object="Case_Review_Response__c" field="CaseReview_Error1__c" alreadyHasValues="true" options="{!v.CaseReview_Error1_Options}" disabled="{!v.accessLevel == 'reviewee'}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <c:inputPicklist label="Cause" aura:id="input-field" value="{!v.responseWrapper.responseRec.CaseReview_Cause1__c}" required="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO'}"
+                                     object="Case_Review_Response__c" field="CaseReview_Cause1__c" alreadyHasValues="true" options="{!v.CaseReview_Error1_Cause}" disabled="{!v.accessLevel == 'reviewee'}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <c:inputPicklist label="If No, Reason for Error #2:" aura:id="input-field" value="{!v.responseWrapper.responseRec.CaseReview_Error2__c}"
+                                     object="Case_Review_Response__c" field="CaseReview_Error2__c" alreadyHasValues="true" options="{!v.CaseReview_Error2_Options}" disabled="{!v.accessLevel == 'reviewee'}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <c:inputPicklist label="Cause" aura:id="input-field" value="{!v.responseWrapper.responseRec.CaseReview_Cause2__c}" required="{!v.responseWrapper.responseRec.CaseReview_Error2__c != ''}"
+                                     object="Case_Review_Response__c" field="CaseReview_Cause2__c" showNone="true" alreadyHasValues="true" options="{!v.CaseReview_Error2_Cause}" disabled="{!v.accessLevel == 'reviewee'}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <c:inputPicklist label="If No, Reason for Error #3:" aura:id="input-field" value="{!v.responseWrapper.responseRec.CaseReview_Error3__c}" disabled="{!v.accessLevel == 'reviewee'}"
+                                     object="Case_Review_Response__c" field="CaseReview_Error3__c" alreadyHasValues="true" options="{!v.CaseReview_Error3_Options}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <c:inputPicklist label="Cause" aura:id="input-field" value="{!v.responseWrapper.responseRec.CaseReview_Cause3__c}" required="{!v.responseWrapper.responseRec.CaseReview_Error3__c != ''}"
+                                     object="Case_Review_Response__c" field="CaseReview_Cause3__c" alreadyHasValues="true" options="{!v.CaseReview_Error3_Cause}" disabled="{!v.accessLevel == 'reviewee'}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <c:inputPicklist label="If No, Reason for Error #4:" aura:id="input-field" value="{!v.responseWrapper.responseRec.CaseReview_Error4__c}" disabled="{!v.accessLevel == 'reviewee'}"
+                                     object="Case_Review_Response__c" field="CaseReview_Error4__c" alreadyHasValues="true" options="{!v.CaseReview_Error4_Options}" showNone="true"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <c:inputPicklist label="Cause" aura:id="input-field" value="{!v.responseWrapper.responseRec.CaseReview_Cause4__c}" required="{!v.responseWrapper.responseRec.CaseReview_Error4__c != ''}"
+                                     object="Case_Review_Response__c" field="CaseReview_Cause4__c" alreadyHasValues="true" options="{!v.CaseReview_Error4_Cause}" disabled="{!v.accessLevel == 'reviewee'}"/>
+                </lightning:layoutItem>
+            </aura:if>
+            
+            <lightning:layoutItem flexibility="auto" size="12" class="slds-p-vertical_xx-small slds-p-horizontal_small">
+                <lightning:textarea label="Observation Details &#38; Comments (required for elements)" value="{!v.responseWrapper.responseRec.Observation_Details_Comments__c}" disabled="{!v.accessLevel == 'reviewee'}"/>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="12" class="slds-p-vertical_xx-small slds-p-horizontal_small">
+                <c:inputPicklist label="Is Action Required to Correct Case Before Next Re-determination?" aura:id="input-field" value="{!v.responseWrapper.responseRec.Action_Required__c}" disabled="{!v.accessLevel == 'reviewee'}"
+                                 object="Case_Review_Response__c" field="Action_Required__c" required="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'NO'}" showNone="true"/>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="12" class="{!v.responseWrapper.responseRec.Action_Required__c == 'Y' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                <lightning:textarea aura:id="input-field" label="Actions Taken" value="{!v.responseWrapper.responseRec.Action_Taken__c}" required="{!v.responseWrapper.responseRec.Action_Required__c == 'Y' &#38;&#38; v.accessLevel == 'reviewee'}"/>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="12" class="{!v.responseWrapper.responseRec.Action_Required__c == 'Y' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                <c:inputDate aura:id="input-field" label="Date of Action Taken" value="{!v.responseWrapper.responseRec.Action_Date__c}" required="{!v.responseWrapper.responseRec.Action_Required__c == 'Y' &#38;&#38; v.accessLevel == 'reviewee'}"/>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="12" class="slds-p-vertical_x-small"/>
+        </lightning:layout>
+        
+        <!-- READ-ONLY SCREEN IN VIEW MODE -->
+        <aura:set attribute="else">
+            
+            <hr style="margin: 0; border: 0; height: 1px; background: gray; opacity: 40%;"/>
+            
+            <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="12">
+                <div style="font-size: 1rem; padding-bottom: 0.2rem;">
+                    Element #{!v.responseWrapper.questionRec.Order__c}: {!v.responseWrapper.questionRec.Element__c}
+                </div>
+                <span class="slds-form-element__label">{!v.responseWrapper.questionRec.Question__c}</span>
+                <div class="slds-form-element__static">{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c}</div>
+            </lightning:layoutItem>
+            
+            <aura:if isTrue="{!!v.responseWrapper.questionRec.Hide_Errors_and_Causes__c}">
+                <!-- Added by Rishav for CCCAP-7697 -->
+                <lightning:layoutItem flexibility="auto" size="12" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'No' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <span class="slds-form-element__label">Did this cause a payment error?</span>
+                    <div class="slds-form-element__static">{!v.responseWrapper.responseRec.Causes_Payment_Error__c}</div>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="12" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'N/A' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <span class="slds-form-element__label">If N/A, Reason:</span>
+                    <div class="slds-form-element__static">{!v.responseWrapper.responseRec.CaseReview_NA_Reason__c}</div>
+                </lightning:layoutItem>
+                
+                
+                <lightning:layoutItem flexibility="auto" size="12" class="{!v.responseWrapper.responseRec.CaseReview_QuestionMain__c == 'No' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <table><tr>
+                        <td style="width: 50%;">
+                            <span class="slds-form-element__label">If No, Reason for Error #1:</span>
+                            <div class="slds-form-element__static">{!v.responseWrapper.responseRec.CaseReview_Error1__c}</div>
+                        </td>
+                        <td style="width: 50%;">
+                            <span class="slds-form-element__label">Cause:</span>
+                            <div class="slds-form-element__static">{!v.responseWrapper.responseRec.CaseReview_Cause1__c}</div>
+                        </td>
+                        </tr></table>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="12" class="{!v.responseWrapper.responseRec.CaseReview_Error2__c != null ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <table><tr>
+                        <td style="width: 50%;">
+                            <span class="slds-form-element__label">If No, Reason for Error #2:</span>
+                            <div class="slds-form-element__static">{!v.responseWrapper.responseRec.CaseReview_Error2__c}</div>
+                        </td>
+                        <td style="width: 50%;">
+                            <span class="slds-form-element__label">Cause:</span>
+                            <div class="slds-form-element__static">{!v.responseWrapper.responseRec.CaseReview_Cause2__c}</div>
+                        </td>
+                        </tr></table>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="12" class="{!v.responseWrapper.responseRec.CaseReview_Error3__c != null ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <table><tr>
+                        <td style="width: 50%;">
+                            <span class="slds-form-element__label">If No, Reason for Error #3:</span>
+                            <div class="slds-form-element__static">{!v.responseWrapper.responseRec.CaseReview_Error3__c}</div>
+                        </td>
+                        <td style="width: 50%;">
+                            <span class="slds-form-element__label">Cause:</span>
+                            <div class="slds-form-element__static">{!v.responseWrapper.responseRec.CaseReview_Cause3__c}</div>
+                        </td>
+                        </tr></table>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="12" class="{!v.responseWrapper.responseRec.CaseReview_Error4__c != null ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                    <table><tr>
+                        <td style="width: 50%;">
+                            <span class="slds-form-element__label">If No, Reason for Error #4:</span>
+                            <div class="slds-form-element__static">{!v.responseWrapper.responseRec.CaseReview_Error4__c}</div>
+                        </td>
+                        <td style="width: 50%;">
+                            <span class="slds-form-element__label">Cause:</span>
+                            <div class="slds-form-element__static">{!v.responseWrapper.responseRec.CaseReview_Cause4__c}</div>
+                        </td>
+                        </tr></table>
+                </lightning:layoutItem>
+            </aura:if>
+            <lightning:layoutItem flexibility="auto" size="12" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Observation Details &#38; Comments (required for elements)</span>
+                <div class="slds-form-element__static">{!v.responseWrapper.responseRec.Observation_Details_Comments__c}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="12" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Is Action Required to Correct Case Before Next Re-determination?</span>
+                <div class="slds-form-element__static">{!v.responseWrapper.responseRec.Action_Required__c}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="12" class="{!v.responseWrapper.responseRec.Action_Required__c == 'Yes' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                <span class="slds-form-element__label">Actions Taken</span>
+                        <div class="slds-form-element__static">{!v.responseWrapper.responseRec.Action_Taken__c}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="12" class="{!v.responseWrapper.responseRec.Action_Required__c == 'Yes' ? 'slds-p-vertical_xx-small slds-p-horizontal_small' : 'slds-hide'}">
+                <span class="slds-form-element__label">Date of Action Taken</span>
+                <div class="slds-form-element__static"><lightning:formattedDateTime value="{!v.responseWrapper.responseRec.Action_Date__c}" day="numeric" month="numeric" year="numeric"/></div>
+            </lightning:layoutItem>
+        </aura:set>
+    </aura:if>
+</aura:component>

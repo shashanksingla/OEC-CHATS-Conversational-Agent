@@ -1,0 +1,380 @@
+<aura:component extends="c:abstractSection">
+    
+    <aura:attribute name="countyPlanRec" type="T_COUNTY_PLAN__c" default="{'sobjectType':'T_COUNTY_PLAN__c'}"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:attribute name="countyId" type="String"/>
+    <aura:attribute name="ttanfRemoved" type="boolean"/>
+    <aura:attribute name="recordError" type="String" />
+    
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.CCCAP_Q1__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.CCCAP_Q2__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.CCCAP_Q10__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.CCCAP_Q11__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.CCCAP_Q3__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.CCCAP_Q4__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.CCCAP_Q8__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="isQ3_otherRequired" type="Boolean" default="false"/>
+    <aura:attribute name="isQ4_otherRequired" type="Boolean" default="false"/>
+    <aura:attribute name="isQ8_otherRequired" type="Boolean" default="false"/>
+    
+    <lightning:layout multipleRows="true">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Applications and Referrals</B></h3>
+            <h1 class="slds-section__title">Please complete the following questions related to applications and referrals.</h1>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputRadioGroupForPicklist label="1. Does your county accept other program applications in lieu of the CCCAP Application?" aura:id="input-field"
+                                          value="{!v.countyPlanRec.CCCAP_Q1__c}"
+                                          object="T_COUNTY_PLAN__c"
+                                          field="CCCAP_Q1__c" required="true" isfullSize="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q1__c"/>           
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.countyPlanRec.CCCAP_Q1__c=='Y'}">
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputMultiSelectCombobox label="1.1 If yes, select all that apply." aura:id="input-field"
+                                            value="{!v.countyPlanRec.CCCAP_Q1_1__c}"
+                                            object="T_COUNTY_PLAN__c"
+                                            field="CCCAP_Q1_1__c"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q1_1__c"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="text" name="input-name" label="If other, please specify" 
+                                 aura:id="input-field"
+                                 value="{!v.countyPlanRec.CCCAP_Q1_1_Other__c}" 
+                                 required="{!empty(v.countyPlanRec.CCCAP_Q1_1__c)&amp;&amp; v.countyPlanRec.CCCAP_Q1__c=='Y'?true:false}"
+                                 length="255"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q1_1_Other__c"/>
+            </lightning:layoutItem>
+        </aura:if>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12"></lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputRadioGroupForPicklist label="2. Does your county require a face to face interview or orientation as part of the application process?" aura:id="input-field"
+                                          value="{!v.countyPlanRec.CCCAP_Q2__c}"
+                                          object="T_COUNTY_PLAN__c"
+                                          field="CCCAP_Q2__c" required="true" isfullSize="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q2__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <aura:if isTrue="{!v.countyPlanRec.CCCAP_Q2__c=='Y'}">
+                <lightning:input type="text" name="input-name" label="2.1  If yes, which does your county offer and how does your county ensure that the interview or orientation process does not present a burden to families?" 
+                                 aura:id="input-field"
+                                 value="{!v.countyPlanRec.CCCAP_Q2_1__c}" 
+                                 required="{!v.countyPlanRec.CCCAP_Q2__c=='Y'?true:false}"
+                                 length="255"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q2_1__c"/>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputMultiSelectCombobox label="3. Typically, when do Colorado Works/TANF families receive information on child care choices? Select all that apply." aura:id="input-field"
+                                        value="{!v.countyPlanRec.CCCAP_Q3__c}"
+                                        object="T_COUNTY_PLAN__c"
+                                        field="CCCAP_Q3__c" required="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q3__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="If other, please specify" aura:id="input-field"
+                             value="{!v.countyPlanRec.CCCAP_Q3_OTHER__c}" 
+                             required="{!v.isQ3_otherRequired}"
+                             length="255"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q3_OTHER__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputMultiSelectCombobox label="4. Typically, when do Low-Income families receive information on child care choices?  Select all that apply." aura:id="input-field"
+                                        value="{!v.countyPlanRec.CCCAP_Q4__c}"
+                                        object="T_COUNTY_PLAN__c"
+                                        field="CCCAP_Q4__c" required="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q4__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="If other, please specify" aura:id="input-field"
+                             value="{!v.countyPlanRec.CCCAP_Q4_OTHER__c}" 
+                             required="{!v.isQ4_otherRequired}"
+                             length="255"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q4_OTHER__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!!v.ttanfRemoved}">
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:textarea name="input-name" label="5. Briefly describe your procedure for transitioning Colorado Works families to Low Income Child Care.(Current procedure must be submitted to the State Department for review and approval)"
+                                    value="{!v.countyPlanRec.CCCAP_Q5__c}" required="true" aura:id="input-field" length="1000"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q5__c"/>           
+            </lightning:layoutItem>
+            <!-- Vineet- 02/22/2018- Removed as per CP/CRP Changes tagged to 04/07 -->
+            <!--
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:input type='number' name="input-name" label="6. How many weeks does your county allow for transition from TANF to Low-Income? (Minimum is 4 weeks, maximum is 26 weeks)"
+                                 value="{!v.countyPlanRec.CCCAP_Q6__c}" maxlength="2" min="4" max="26" required="true" aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q6__c"/>           
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:textarea name="input-name" label="7. What information do you obtain from Colorado Works/TANF to verify eligibility for Low- Income child care?"
+                                    value="{!v.countyPlanRec.CCCAP_Q7__c}" required="true" aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q7__c"/>
+            </lightning:layoutItem> 
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:textarea name="input-name" label="7.1 What information do you obtain from the client?"
+                                    value="{!v.countyPlanRec.CCCAP_Q7_1__c}" required="true" aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q7_1__c"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                <lightning:layoutItem flexibility="auto" size="6" >
+                    <lightning:textarea name="input-name" label="7.2 How do you obtain this information?"
+                                        value="{!v.countyPlanRec.CCCAP_Q7_2__c}" required="true"
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q7_2__c"/>           
+                </lightning:layoutItem>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputMultiSelectCombobox label="8. Check the state-prescribed forms your county has changed below, or list them in the 'Other' text box. Please mail or email a copy of each changed form to State CCCAP for approval." 
+                                            aura:id="input-field"
+                                            value="{!v.countyPlanRec.CCCAP_Q8__c}"
+                                            object="T_COUNTY_PLAN__c"
+                                            field="CCCAP_Q8__c"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q8__c"/>           
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <aura:if isTrue="{!empty(v.countyPlanRec.CCCAP_Q8__c)?true:false}">
+                    <lightning:input type="text" name="input-name" label="Other" aura:id="input-field"
+                                     value="{!v.countyPlanRec.CCCAP_Q8_OTHER__c}" 
+                                     required="{!empty(v.countyPlanRec.CCCAP_Q8__c)?true:false}"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q8_OTHER__c"/>
+                </aura:if>
+            </lightning:layoutItem>
+            -->
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:textarea name="input-name" label="6. Provide a brief overview of how your county ensures equal access to child care for families receiving CCCAP"
+                                    value="{!v.countyPlanRec.CCCAP_Q9__c}" required="true"
+                                    aura:id="input-field"
+                                    length="1000"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q9__c"/>           
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputRadioGroupForPicklist label="7. Client Orientation: Is a child care group orientation required as part of your application process?" 
+                                              aura:id="input-field"
+                                              value="{!v.countyPlanRec.CCCAP_Q10__c}"
+                                              object="T_COUNTY_PLAN__c"
+                                              field="CCCAP_Q10__c" required="true" isfullSize="true"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q10__c"/>           
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.countyPlanRec.CCCAP_Q10__c=='Y'}">
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <lightning:textarea name="input-name" label="7.1 If yes, what is your county's policy for gathering additional information needed to complete the application process?"
+                                        value="{!v.countyPlanRec.CCCAP_Q10_1__c}" 
+                                        required="{!v.countyPlanRec.CCCAP_Q10__c=='Y'?true:false}" 
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q10_1__c"/>
+                </lightning:layoutItem>
+            </aura:if>
+            <aura:if isTrue="{!v.countyPlanRec.CCCAP_Q10__c=='Y'}">
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <lightning:textarea name="input-name" label="7.2 If yes, how does the county ensure that the orientation does not present a burden to families?"
+                                        value="{!v.countyPlanRec.CCCAP_Q10_2__c}" 
+                                        required="{!v.countyPlanRec.CCCAP_Q10__c=='Y'? true:false}" 
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q10_2__c"/>
+                </lightning:layoutItem>
+            </aura:if>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small"/>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputRadioGroupForPicklist label="8. Provider Orientation: Is a child care orientation required for providers?" 
+                                              aura:id="input-field"
+                                              value="{!v.countyPlanRec.CCCAP_Q11__c}"
+                                              object="T_COUNTY_PLAN__c"
+                                              field="CCCAP_Q11__c" 
+                                              required="true"
+                                              isfullSize="true"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q11__c"/>           
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <aura:if isTrue="{!v.countyPlanRec.CCCAP_Q11__c=='Y'}">
+                    <c:inputMultiSelectCombobox label="8.1 If yes, please check which providers must attend an orientation. Select all that apply." 
+                                                aura:id="input-field"
+                                                value="{!v.countyPlanRec.CCCAP_Q11_1__c}"
+                                                object="T_COUNTY_PLAN__c"
+                                                field="CCCAP_Q11_1__c" 
+                                                required="{!v.countyPlanRec.CCCAP_Q11__c=='Y'?true:false}"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q11_1__c"/>
+                </aura:if>
+            </lightning:layoutItem>
+            <aura:if isTrue="{!v.countyPlanRec.CCCAP_Q11__c=='Y'}">
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <lightning:textarea name="input-name" label="8.2 What information is provided during the provider orientation?" 
+                                        aura:id="input-field"
+                                        value="{!v.countyPlanRec.CCCAP_Q11_2__c}" 
+                                        required="{!v.countyPlanRec.CCCAP_Q11__c=='Y'?true:false}"
+                                        length="1000"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q11_2__c"/>
+                </lightning:layoutItem>
+            </aura:if>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small"/>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputMultiSelectCombobox label="9. Check the state-prescribed forms your county has changed below, or list them in the 'Other' text box. Please mail or email a copy of each changed form to State CCCAP for approval.  Select all that apply." 
+                                            aura:id="input-field"
+                                            value="{!v.countyPlanRec.CCCAP_Q8__c}"
+                                            object="T_COUNTY_PLAN__c"
+                                            field="CCCAP_Q8__c"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q8__c"/>           
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="text" name="input-name" label="If other, please specify" aura:id="input-field"
+                                 value="{!v.countyPlanRec.CCCAP_Q8_OTHER__c}" 
+                                 required="{!empty(v.countyPlanRec.CCCAP_Q8__c)?true:false}"
+                                 length="255"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q8_OTHER__c"/>
+            </lightning:layoutItem>
+            <!--RY: Commented below section as part of CCCAP-7693 -->
+        <!--    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <c:inputMultiSelectCombobox label="10. Who can perform a case override in your county?  Select all that apply." 
+                                            aura:id="input-field"
+                                            value="{!v.countyPlanRec.CCCAP_Q12__c}"
+                                            object="T_COUNTY_PLAN__c"
+                                            field="CCCAP_Q12__c" />
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q12__c"/>           
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="text" name="input-name" label="If other, please specify" 
+                                 aura:id="input-field"
+                                 value="{!v.countyPlanRec.CCCAP_Q12_OTHER__c}" 
+                                 required="{!empty(v.countyPlanRec.CCCAP_Q12__c)?true:false}"
+                                 length="255"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q12_OTHER__c"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                <lightning:textarea name="input-name" label="11. What is your county's policy/procedure for determining if an override to a case/individual eligibility, redetermination date, and/or parent fee is valid? (Current county policy/procedure must be submitted to the State Department for review and approval)"
+                                    value="{!v.countyPlanRec.CCCAP_Q13__c}" 
+                                    required="true" 
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q13__c"/>           
+            </lightning:layoutItem> -->
+            <aura:set attribute="else">
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <lightning:textarea name="input-name" label="5. Provide a brief overview of how your county ensures equal access to child care for families receiving CCCAP"
+                                        value="{!v.countyPlanRec.CCCAP_Q9__c}" required="true"
+                                        aura:id="input-field"
+                                        length="1000"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q9__c"/>           
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="12"></lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <c:inputRadioGroupForPicklist label="6. Client Orientation: Is a child care group orientation required as part of your application process?" 
+                                                  aura:id="input-field"
+                                                  value="{!v.countyPlanRec.CCCAP_Q10__c}"
+                                                  object="T_COUNTY_PLAN__c"
+                                                  field="CCCAP_Q10__c" required="true" isfullSize="true"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q10__c"/>           
+                </lightning:layoutItem>
+                <aura:if isTrue="{!v.countyPlanRec.CCCAP_Q10__c=='Y'}">
+                    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                        <lightning:textarea name="input-name" label="6.1 If yes, what is your county's policy for gathering additional information needed to complete the application process?"
+                                            value="{!v.countyPlanRec.CCCAP_Q10_1__c}" 
+                                            required="{!v.countyPlanRec.CCCAP_Q10__c=='Y'?true:false}" 
+                                            aura:id="input-field"/>
+                        <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q10_1__c"/>
+                    </lightning:layoutItem>
+                    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                        <lightning:textarea name="input-name" label="6.2 If yes, how does the county ensure that the orientation does not present a burden to families?"
+                                            value="{!v.countyPlanRec.CCCAP_Q10_2__c}" 
+                                            required="{!v.countyPlanRec.CCCAP_Q10__c=='Y'?true:false}" 
+                                            aura:id="input-field"/>
+                        <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q10_2__c"/>
+                    </lightning:layoutItem>
+                </aura:if>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="12"></lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <c:inputRadioGroupForPicklist label="7. Provider Orientation: Is a child care orientation required for providers?" 
+                                                  aura:id="input-field"
+                                                  value="{!v.countyPlanRec.CCCAP_Q11__c}"
+                                                  object="T_COUNTY_PLAN__c"
+                                                  field="CCCAP_Q11__c" 
+                                                  required="true"
+                                                  isfullSize="true"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q11__c"/>           
+                </lightning:layoutItem>
+                <aura:if isTrue="{!v.countyPlanRec.CCCAP_Q11__c=='Y'}">
+                    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                        <c:inputMultiSelectCombobox label="7.1 If yes, please check which providers must attend an orientation. Select all that apply." 
+                                                    aura:id="input-field"
+                                                    value="{!v.countyPlanRec.CCCAP_Q11_1__c}"
+                                                    object="T_COUNTY_PLAN__c"
+                                                    field="CCCAP_Q11_1__c" 
+                                                    required="{!v.countyPlanRec.CCCAP_Q11__c=='Y'?true:false}"/>
+                        <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q11_1__c"/>
+                    </lightning:layoutItem>
+                </aura:if>
+                <aura:if isTrue="{!v.countyPlanRec.CCCAP_Q11__c=='Y'}">
+                    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                        <lightning:textarea name="input-name" label="7.2 What information is provided during the provider orientation?" 
+                                            aura:id="input-field"
+                                            value="{!v.countyPlanRec.CCCAP_Q11_2__c}" 
+                                            required="{!v.countyPlanRec.CCCAP_Q11__c=='Y'?true:false}"
+                                            length="1000"/>
+                        <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q11_2__c"/>
+                    </lightning:layoutItem>
+                </aura:if>
+                <lightning:layoutItem flexibility="auto" size="12" padding="around-small"/>
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <c:inputMultiSelectCombobox label="8. Check the state-prescribed forms your county has changed below, or list them in the 'Other' text box. Please mail or email a copy of each changed form to State CCCAP for approval.  Select all that apply." 
+                                                aura:id="input-field"
+                                                value="{!v.countyPlanRec.CCCAP_Q8__c}"
+                                                object="T_COUNTY_PLAN__c"
+                                                field="CCCAP_Q8__c" required="true"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q8__c"/>           
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input type="text" name="input-name" label="If other, please specify" aura:id="input-field"
+                                     value="{!v.countyPlanRec.CCCAP_Q8_OTHER__c}" 
+                                     required="{!v.isQ8_otherRequired}"
+                                     length="255"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q8_OTHER__c"/>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:textarea name="input-name" label="9. List all County forms that are not State prescribed forms." aura:id="input-field"
+                                     value="{!v.countyPlanRec.CCCAP_Q14__c}" 
+                                     length="2000"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q14__c"/>
+                </lightning:layoutItem>
+                <!--RY: Commented below section as part of CCCAP-7693 -->
+          <!--      <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <c:inputMultiSelectCombobox label="9. Who can perform a case override in your county?  Select all that apply." 
+                                                aura:id="input-field"
+                                                value="{!v.countyPlanRec.CCCAP_Q12__c}"
+                                                object="T_COUNTY_PLAN__c"
+                                                field="CCCAP_Q12__c" />
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q12__c"/>           
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input type="text" name="input-name" label="If other, please specify" 
+                                     aura:id="input-field"
+                                     value="{!v.countyPlanRec.CCCAP_Q12_OTHER__c}" 
+                                     required="{!empty(v.countyPlanRec.CCCAP_Q12__c)?true:false}"
+                                     length="255"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q12_OTHER__c"/>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                    <lightning:textarea name="input-name" label="10. What is your county's policy/procedure for determining if an override to a case/individual eligibility, redetermination date, and/or parent fee is valid? (Current county policy/procedure must be submitted to the State Department for review and approval)"
+                                        value="{!v.countyPlanRec.CCCAP_Q13__c}" 
+                                        required="true" 
+                                        aura:id="input-field"/>
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CCCAP_Q13__c"/>           
+                </lightning:layoutItem> -->
+            </aura:set>
+        </aura:if>
+    </lightning:layout>
+    <!--
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Orientation</B></h3>
+            <h1 class="slds-section__title">Please complete the following questions related to client and provider orientations.</h1>
+        </lightning:layoutItem>
+    </lightning:layout>
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Orientation Overrides</B></h3>
+            <h1 class="slds-section__title">Please complete the following questions related to overrides.</h1>
+        </lightning:layoutItem>
+    </lightning:layout>
+	-->
+</aura:component>

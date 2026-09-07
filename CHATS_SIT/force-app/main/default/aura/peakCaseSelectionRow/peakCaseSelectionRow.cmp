@@ -1,0 +1,19 @@
+<aura:component >
+    <aura:attribute name="caseIndividual" type="SObject"/>
+    <aura:attribute name="mapCaseIdCaseStatus" type="Map"/>
+    <aura:attribute name="caseStatus" type="String"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <tr>
+        <td>
+            <lightning:input type="radio" name="caseSelectionRadioOption" onchange="{!c.onIndividualMatchOptionSelection}"/>    
+        </td>
+        <td>{!v.caseIndividual.IDN_CASE__r.Name}</td>
+        <td>{!v.caseIndividual.IDN_CLIENT__r.IDN_STATE__c}</td>
+        <td>{!v.caseIndividual.IDN_CLIENT__r.NAM_FIRST__c+' '+v.caseIndividual.IDN_CLIENT__r.NAM_LAST__c}</td>
+        <td>{!v.caseIndividual.IDN_CLIENT__r.DTE_DOB__c}</td>
+        <td>{!v.caseIndividual.IDN_CLIENT__r.NBR_SSN__c}</td>
+        <td>{!v.caseStatus}</td>
+
+    </tr>
+	
+</aura:component>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Denver State Tax Intercept Team</name>
+    <queueMembers>
+        <users>
+            <user>angela.marant@denvergov.org.chats</user>
+            <user>christiane.ramsett@denvergov.org.chats</user>
+            <user>david.lucas@denvergov.org.chats</user>
+            <user>karen.kindblade@denvergov.org.chats</user>
+            <user>lorrie.sandoval@denvergov.org.chats</user>
+            <user>orvilette.echols@denvergov.org.chats</user>
+            <user>yvette.griego@denvergov.org.chats</user>
+        </users>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>Task</sobjectType>
+    </queueSobject>
+</Queue>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CDE_RATE_TEMPLT__c</fullName>
+    <description>County Rate Template</description>
+    <label>County Rate Template</label>
+    <required>true</required>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetName>RT_COUNTY_RATE_PLAN_TEMPLT</valueSetName>
+    </valueSet>
+</CustomField>

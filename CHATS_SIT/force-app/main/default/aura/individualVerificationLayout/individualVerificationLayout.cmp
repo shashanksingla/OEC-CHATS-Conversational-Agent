@@ -1,0 +1,123 @@
+<aura:component extends="c:abstractSection"> 
+    <aura:attribute name="individual" type="T_SBSD_INDIV__c"/>
+    <aura:attribute name="caseIndiv" type="T_SBSD_CASE_INDIV__c"/>
+    <aura:attribute name="indVerif" type="T_INDIV_VERIF__c"/>
+    <aura:attribute name="indivInfos" type="List"/>
+    <aura:attribute name="hasChildIndividual" type="Boolean" default="false"/><!--CCCAP-13633-->
+    <aura:attribute name="readOnly" type="Boolean"/>
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/><!--CCCAP-13633-->
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:input type="text" name="input-name" label="First Name"
+                             value="{!v.individual.NAM_FIRST__c}" disabled="true"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:input type="text" name="input-name" label="Last Name"
+                             value="{!v.individual.NAM_LAST__c}" disabled="true"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">DOB</h3>
+        </lightning:layoutItem>
+        <!--CCCAP-14038-->
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputPicklist label="Verified" aura:id="input-field"
+                             value="{!v.individual.IND_CDE_TYPE_VERIF_DOB__c}"
+                             object="T_SBSD_INDIV__c"
+                             field="IND_CDE_TYPE_VERIF_DOB__c"
+                             showNone="true"
+                             disabled="{!(v.readOnly || v.hasChildIndividual==false)}"
+                             />
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-CDE_TYPE_VERIF_DOB__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!!v.hasChildIndividual}">
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            </lightning:layoutItem>
+            
+            <aura:set attribute = "else">
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <c:inputPicklist label="How Verified" aura:id="input-field"
+                                     value="{!v.individual.CDE_SOURCE_VRFYD_DOB__c}"
+                                     object="T_SBSD_INDIV__c"
+                                     field="CDE_SOURCE_VRFYD_DOB__c"
+                                     required="{!v.individual.IND_CDE_TYPE_VERIF_DOB__c == 'V'}"
+                                     showNone="true"
+                                     disabled="{!v.readOnly}"
+                                     />
+                    <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-CDE_SOURCE_VRFYD_DOB__c"/>
+                </lightning:layoutItem>
+            </aura:set>
+        </aura:if>   
+        <!--end CCCAP-14038-->     
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Citizenship Status</h3>
+        </lightning:layoutItem>
+        <!--CCCAP-13633-->
+        <!--Added label as part of CCCAP-14328-->
+        <aura:if isTrue="{!!v.hasChildIndividual}">
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:input type="text" name="input-name" label="Verified"
+                                 value="N/A-adult caretaker" disabled="true"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                
+            </lightning:layoutItem>
+            <aura:set attribute="else">
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <c:inputPicklist label="Verified" aura:id="input-field"
+                                     value="{!v.indVerif.CDE_TYPE_VERIF__c}"
+                                     object="T_INDIV_VERIF__c"
+                                     field="CDE_TYPE_VERIF__c"
+                                     showNone="true"
+                                     disabled="{!v.readOnly}"
+                                     />
+                    <c:fieldLevelMessage aura:id="T_INDIV_VERIF__c-CDE_TYPE_VERIF__c"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <c:inputPicklist label="How Verified" aura:id="input-field"
+                                     value="{!v.individual.CDE_SOURCE_VRFYD_CITIZEN__c}"
+                                     object="T_SBSD_INDIV__c"
+                                     field="CDE_SOURCE_VRFYD_CITIZEN__c"
+                                     showNone="true"
+                                     required="{!and(v.indVerif.CDE_TYPE_VERIF__c == 'V',v.indVerif.CDE_TYPE_INFO_INDIV__c== 'CS')}"
+                                     disabled="{!v.readOnly}"/>
+                    <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-CDE_SOURCE_VRFYD_CITIZEN__c"/>
+                </lightning:layoutItem>
+                
+            </aura:set>
+        </aura:if>
+        <!--end CCCAP-13633-->
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Identity</h3>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputPicklist label="Verified" aura:id="input-field"
+                             value="{!v.individual.CDE_VRFYD_IDNTY__c}"
+                             object="T_SBSD_INDIV__c"
+                             field="CDE_VRFYD_IDNTY__c"
+                             required="true" 
+                             showNone="true"
+                             hiddenValues="['SD']"
+                             disabled="{!v.readOnly}"
+                             />
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-CDE_VRFYD_IDNTY__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputPicklist label="How Verified" aura:id="input-field"
+                             value="{!v.individual.CDE_SOURCE_VRFYD_IDNTY__c}"
+                             object="T_SBSD_INDIV__c"
+                             field="CDE_SOURCE_VRFYD_IDNTY__c"
+                             required="{!v.individual.CDE_VRFYD_IDNTY__c == 'V'}"
+                             showNone="true"
+                             disabled="{!v.readOnly}"
+                             />
+            <c:fieldLevelMessage aura:id="T_SBSD_INDIV__c-CDE_SOURCE_VRFYD_IDNTY__c"/>
+        </lightning:layoutItem>
+        
+    </lightning:layout>    
+</aura:component>

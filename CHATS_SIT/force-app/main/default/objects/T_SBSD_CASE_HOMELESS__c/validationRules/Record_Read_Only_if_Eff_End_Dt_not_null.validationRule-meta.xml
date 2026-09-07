@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Record_Read_Only_if_Eff_End_Dt_not_null</fullName>
+    <active>true</active>
+    <description>Cannot update Record as Effective End Date is Not Null.</description>
+    <errorConditionFormula>AND(!IDN_CASE__r.Is_Peak_Data__c, !IDN_CASE__r.Is_CBMS_Data__c, NOT(ISCHANGED(bypassValidations__c)), !ISBLANK(PRIORVALUE(DTE_END_EFFV__c)),OR(ISCHANGED(IDN_CASE__c),ISCHANGED(TXT_CMT__c),ISCHANGED(DTE_BEGIN_EFFV__c) ,ISCHANGED(DTE_END_EFFV__c) , ISCHANGED(IND_LVG_OTHER__c),ISCHANGED(Is_family_homeless__c) ,ISCHANGED(IND_LVG_CAMPGROUND__c),ISCHANGED(IND_LVG_HOTEL__c),ISCHANGED(IND_LVG_SHELTER__c),ISCHANGED(IND_LVG_SUBSTANDARD__c)))</errorConditionFormula>
+    <errorMessage>Cannot update Record as Effective End Date is Not Null.</errorMessage>
+</ValidationRule>

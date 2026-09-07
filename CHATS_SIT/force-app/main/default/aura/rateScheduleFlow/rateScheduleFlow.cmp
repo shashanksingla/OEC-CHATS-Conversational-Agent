@@ -1,0 +1,266 @@
+<aura:component extends="c:abstractComponent" controller="RateScheduleFlowApxCtrl">
+    
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="currentTabName" type="String" default="New Rate Schedule"/>
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="recordError" type="String"/>
+    <aura:attribute name="countyName" type="String"/>
+    <aura:attribute name="rateTypeOptions" type="List"/>
+    <aura:attribute name="selectedRateTypes" type="List"/>
+    <aura:attribute name="lstFiscalRateAmount" type="List"/>
+    <aura:attribute name="lstExistingFiscalRateAmount" type="List"/>
+    <aura:attribute name="effectiveBeginDate" type="Date"/>
+    <aura:attribute name="effectiveBeginDateReadOnly" type="boolean" default="false"/>
+    <aura:attribute name="showFinishBtnForExmptProvider" type="boolean" default="false"/>
+    <aura:attribute name="providerQualityRating" type="String"/>
+    <aura:attribute name="mapRateDescription" type="map" default="{}" description="stores the list of Rate Type Descriptions"/>
+    <aura:attribute name="mapExistingFiscalRateAmount" type="map" default="{}" description="stores the list of existing CountyRateAmount records."/>
+    <aura:attribute name="mapFiscalRateAmount" type="map" default="{}" description="stores the list of CountyRateAmount records to be upserted as map."/>
+    <aura:attribute name="mapRateTypes" type="Map" default="{'1':'Regular','31':'Overnight','13':'Before School',
+                                                            '19':'After School','25':'Before and After School','37':'Weekend',
+                                                            '43':'Evening', '55':'Additional Needs', '91':'Out-of-County', '7':'School Age'}"
+                    description="stores the mapping of rate type as backend picklist values."/>
+    <aura:attribute name='fiscalRateValues' type='T_FISCAL_RAT_FEES__c' default="{'sobjectType' : 'T_FISCAL_RAT_FEES__c',
+                                                                                 'AMT_TRANS_FA__c':'0',
+                                                                                 'CDE_TRANS_FREQ__c':'',
+                                                                                 'AMT_ACT_FA__c':'0',
+                                                                                 'CDE_REG_FREQ__c':'',
+                                                                                 'AMT_REG_FA__c':'0',
+                                                                                 'CDE_ACT_FREQ__c':'',
+                                                                                 'IDN_FISCAL_SCH__c':'',
+                                                                                 'AMT_REG_CTY__c':'',
+                                                                                 'AMT_TRANS_CTY__c':'',
+                                                                                 'AMT_ACT_CTY__c':'',
+                                                                                 'AMT_ACT_PROVR__c':'0',
+                                                                                 'AMT_REG_PROVR__c':'0',
+                                                                                 'AMT_TRANS_PROVR__c':'0',
+                                                                                 'TXT_ACT_MONTH__c':'',
+                                                                                 'TXT_REG_MONTH__c':'',
+                                                                                 'TXT_TRANS_MONTH__c':''}"/> <!-- Added 3 TXT MONTH fields by Rishav for CCCAP-2616 -->
+    <aura:attribute name='rateSchedule' type='T_FISCAL_SCH__c' default="{'sobjectType' : 'T_FISCAL_SCH__c',
+                                                                        'Id' : null,
+                                                                        'Is_Flow_Completed__c':false}"/>
+    <aura:attribute name='latestRateSchedule' type='T_FISCAL_SCH__c'/>
+    <aura:attribute name="latestRateTypes" type="String"/>                                                                   
+    <aura:attribute name='countyRatePlan' type='T_COUNTY_RATE__c' default="{'sobjectType' : 'T_COUNTY_RATE__c',
+                                                                           'PAYMENT_Q9_1__c' : '',
+                                                                           'PAYMENT_Q10__c' : '',
+                                                                           'PAYMENT_Q11__c': '',
+                                                                           'PAYMENT_Q17__c' : ''}"/>
+    <aura:attribute name='providerFiscalAgreementRec' type='T_PROVR_FISCAL_AGREMENT__c' default="{'sobjectType' : 'T_PROVR_FISCAL_AGREMENT__c', 'Id' : null }"/>
+    <aura:attribute name="cancelMsg" type="String"/> 
+    <aura:attribute name="previousMsg" type="String"/>
+    <aura:attribute name="dateLessThan15Msg" type="String" default="The Effective Begin Date entered is within 15 days of today, would you like to continue?"/>
+    <aura:attribute name="showCalculateButton" type="boolean"/>
+    <aura:attribute name="showCalculateButtonHelp" type="boolean" default="true"/>
+    <aura:attribute name="customButtonHelpText" type="String" default="Enter Full Time rates into the FT tab, calculate will then fill the PT amount at 55% of the FT amount, and will fill FT/PT and FT/FT to correspond. If the PT amount is less than or more than the 55% amount, the user can manually update the amounts and then select &quot;NEXT&quot;. The FA Rates will automatically populate based on a system comparison of the Private Pay Rates entered and the County Ceiling Rate"/>
+    <aura:attribute name="doNextEnabled" type="boolean" default="true"/>
+    <aura:attribute name="previousRateTypeMsg" type="String"/>
+    <aura:attribute name="CDE_TYPE_FACILITY__c" type="String"/>
+    <aura:attribute name="lstAgeGroup" type="List" default="[{'ageGroupLabel':'0-6 Months',
+                                                            'ageGroupValue':'1'},
+                                                            {'ageGroupLabel':'6-12 Months',
+                                                            'ageGroupValue':'2'},
+                                                            {'ageGroupLabel':'12-18 Months',
+                                                            'ageGroupValue':'3'},
+                                                            {'ageGroupLabel':'18-24 Months',
+                                                            'ageGroupValue':'4'},
+                                                            {'ageGroupLabel':'24-30 Months',
+                                                            'ageGroupValue':'5'},
+                                                            {'ageGroupLabel':'30-36 Months',
+                                                            'ageGroupValue':'6'},
+                                                            {'ageGroupLabel':'36 - School Age',
+                                                            'ageGroupValue':'7'},
+                                                            {'ageGroupLabel':'School Age',
+                                                            'ageGroupValue':'8'}]"
+                    description="stores the mapping of ageGroup picklist values."/>
+    <aura:attribute name="retryAttempts" type="integer" default="0"/>
+    <aura:attribute name="rateTypeHelpText" type="String" default="Only select Rate Types that are represented on the Provider's private pay rate sheet"/>
+    <aura:attribute name="totalTabNumber" type="integer" default="6"/> <!-- Added by Rishav for CCCAP-2616 -->
+    <aura:attribute name="msgOnDiffOwnerCounty" type="String" default="The county of the Fiscal Agreement does not match your assigned county(ies)."/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.effectiveBeginDate}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.currentTabNumber}" action="{!c.doUpdateCurrentTabName}"/>
+    <aura:handler name="change" value="{!v.currentTabNumber}" action="{!c.doHandleCustomButton}"/>
+    <aura:registerEvent name="appEvent" type="c:createFiscalRateValidateError"/> 
+    
+    <aura:if isTrue="{!!empty(v.recordId)}">
+        <force:recordData aura:id="forceRecordCmp"
+                          recordId="{!v.recordId}"
+                          fields="ID_SERVICE__c, CDE_TYPE_FACILITY__c, Id, DTE_END_AGRMT__c"
+                          mode="VIEW"
+                          targetFields="{!v.providerFiscalAgreementRec}"
+                          targetError="{!v.recordError}" />
+        {!v.recordError}
+    </aura:if>
+    <!--
+    <aura:if isTrue="{!!empty(v.providerFiscalAgreementRec.ID_SERVICE__c)}">
+        <force:recordData aura:id="forceRecordCmp"
+                          recordId="{!v.providerFiscalAgreementRec.ID_SERVICE__c}"
+                          fields="Id"
+                          mode="VIEW"
+                          targetFields="{!v.providerFiscalAgreementRec}"
+                          targetError="{!v.recordError}" />
+        {!v.recordError}
+    </aura:if>-->
+    <div class="slds-wrap slds-grid">
+        <div class="slds-size--2-of-3">
+            <lightning:card iconName="standard:event">
+                <aura:set attribute="title">
+                    <div class="slds-grid">
+                        <div class="slds-col slds-has-flexi-truncate">
+                            <div class="slds-media slds-no-space slds-grow">                        
+                                <div class="slds-media__body">
+                                    <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="{!v.currentTabName}">{!v.currentTabName}</h1>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aura:set>
+                <aura:set attribute="actions">
+                    <!-- replaced '5' with 'totalTabNumber' by Rishav for CCCAP-2616 -->
+                    <c:navigationComponent totalTabs="{!v.totalTabNumber}" 
+                                           currentTabNumber="{!v.currentTabNumber}"
+                                           onNext="{!c.doNext}"
+                                           onFinish="{!c.doFinish}"
+                                           onPrevious="{!c.doPrevious}"
+                                           onCancel="{!c.doCancel}"
+                                           showPrevious="true"
+                                           showCustomButton="{!v.showCalculateButton}"
+                                           customButtonLabel="Calculate"
+                                           customButtonVariant="Neutral"
+                                           onClickCustomButton="{!c.fireCalculate}" 
+                                           showFinishBtnForExmptProvider="{!v.showFinishBtnForExmptProvider}"
+                                           doNextEnabled="{!v.doNextEnabled}"
+                                           customButtonHelpText="{!v.customButtonHelpText}"
+                                           showCustomButtonHelp="{!v.showCalculateButtonHelp}"/>
+                </aura:set>
+                <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+                
+                <c:confirmationModal aura:id="warningModalOnDiffOwnerCounty" 
+                             confirmMsg="{!v.msgOnDiffOwnerCounty}"
+                             noLabel="Cancel"
+                             confirmModalNo="{!c.actionOnCancelYesButton}"
+                             showYesButton="false"
+                             title="ERROR!"/>
+
+                <!-- New Rate Schedule -->
+                <aura:if isTrue="{!v.currentTabNumber==1}">
+                    <c:rateScheduleFlow_NewRateSchedule aura:id="rateScheduleFlow_NewRateSchedule"
+                                                        countyName="{!v.countyName}" 
+                                                        rateTypeOptions="{!v.rateTypeOptions}"
+                                                        selectedRateTypes="{!v.selectedRateTypes}"
+                                                        effectiveBeginDate="{!v.effectiveBeginDate}"
+                                                        providerQualityRating="{!v.providerQualityRating}"
+                                                        effectiveBeginDateReadOnly="{!v.effectiveBeginDateReadOnly}"
+                                                        isCurrentPageValid="{!v.isCurrentPageValid}"
+                                                        providerFiscalAgreementRec= "{!v.providerFiscalAgreementRec}"
+                                                        rateTypeHelpText="{!v.rateTypeHelpText}"
+                                                        mapRateDescription="{!v.mapRateDescription}"/>
+                    <c:confirmationModal aura:id="confirmationModalOnCancel_1" confirmMsg="{!v.cancelMsg}"
+                                         confirmModalYes="{!c.actionOnCancelYesButton}"/>
+                    <c:confirmationModal aura:id="confirmationModalOnPrevious_1" 
+                                         confirmMsg="{!v.previousMsg}"
+                                         confirmModalYes="{!c.actionOnPreviousYesButton}"/>
+                    <c:confirmationModal aura:id="confirmationModalDatelessThan15Days" 
+                                         confirmMsg="{!v.dateLessThan15Msg}"
+                                         confirmModalYes="{!c.actionOnYesButtonDateLess15Days}"/>
+                    <c:confirmationModal aura:id="confirmationModalRateTypes" 
+                                         confirmMsg="Please confirm that all the applicable Rate Types are selected, Would you like to continue?"
+                                         confirmModalYes="{!c.actionOnYesRateTypes}"/>
+                    <c:confirmationModal aura:id="confirmationModalNoCheckOnRateTypes" 
+                                         confirmMsg="{!v.previousRateTypeMsg}" 
+                                         confirmModalYes="{!c.actionOnNoCheckOnRateTypes}"/>
+                </aura:if>
+                
+                <!-- New Private Rates -->
+                <aura:if isTrue="{!v.currentTabNumber==2}">
+                    <c:rateScheduleFlow_NewPrivateRates aura:id="rateScheduleFlow_NewPrivateRates"
+                                                        countyName="{!v.countyName}" 
+                                                        selectedRateTypes="{!v.selectedRateTypes}"
+                                                        fiscalSchedule="{!v.rateSchedule}"
+                                                        mapFiscalRateAmount="{!v.mapFiscalRateAmount}"
+                                                        mapExistingFiscalRateAmount="{!v.mapExistingFiscalRateAmount}"
+                                                        lstAgeGroup="{!v.lstAgeGroup}"
+                                                        mapRateTypes="{!v.mapRateTypes}"/>
+                    <c:confirmationModal aura:id="confirmationModalOnCancel_2" confirmMsg="{!v.cancelMsg}"
+                                         confirmModalYes="{!c.actionOnCancelYesButton}"/>
+                    <c:confirmationModal aura:id="confirmationModalOnPrevious_2" 
+                                         confirmMsg="{!v.previousMsg}"
+                                         confirmModalYes="{!c.actionOnPreviousYesButton}"/>
+                </aura:if>
+                
+                <!-- Fiscal Agreement Rates -->
+                <aura:if isTrue="{!v.currentTabNumber==3}">
+                    <c:rateScheduleFlow_FiscalRate aura:id="rateScheduleFlow_FiscalRate"
+                                                   countyName="{!v.countyName}" 
+                                                   selectedRateTypes="{!v.selectedRateTypes}"
+                                                   fiscalSchedule="{!v.rateSchedule}"
+                                                   mapFiscalRateAmount="{!v.mapFiscalRateAmount}"
+                                                   mapExistingFiscalRateAmount="{!v.mapExistingFiscalRateAmount}"
+                                                   lstAgeGroup="{!v.lstAgeGroup}"
+                                                   mapRateTypes="{!v.mapRateTypes}"/>
+                    <c:confirmationModal aura:id="confirmationModalOnCancel_3" confirmMsg="{!v.cancelMsg}"
+                                         confirmModalYes="{!c.actionOnCancelYesButton}"/>
+                    <c:confirmationModal aura:id="confirmationModalOnPrevious_3" 
+                                         confirmMsg="{!v.previousMsg}"
+                                         confirmModalYes="{!c.actionOnPreviousYesButton}"/>
+                </aura:if>
+                
+                <!-- ART Fees (Private Rates) -->
+                <aura:if isTrue="{!v.currentTabNumber==4}">
+                    <c:rateScheduleFlow_NewRATFeesScreen aura:id="rateScheduleFlow_NewRATFeesScreen" 
+                                                         countyName="{!v.countyName}" 
+                                                         fiscalRateValues="{!v.fiscalRateValues}"
+                                                         isCurrentPageValid="{!v.isCurrentPageValid}"
+                                                         rateScheduleId="{!v.rateSchedule.Id}"
+                                                         fiscalAgreementRecordId="{!v.recordId}"/>
+                    <c:confirmationModal aura:id="confirmationModalOnCancel_4" confirmMsg="{!v.cancelMsg}"
+                                         confirmModalYes="{!c.actionOnCancelYesButton}"/>
+                    <c:confirmationModal aura:id="confirmationModalOnPrevious_4" 
+                                         confirmMsg="{!v.previousMsg}"
+                                         confirmModalYes="{!c.actionOnPreviousYesButton}"/>
+                </aura:if>
+                
+                <!-- ART Fees (Fiscal Agreement Rates) -->
+                <aura:if isTrue="{!v.currentTabNumber==5}">
+                    <c:rateScheduleFlow_RATFeesFiscalScreen aura:id="rateScheduleFlow_RATFeesFiscalScreen" 
+                                                            countyName="{!v.countyName}" 
+                                                            fiscalRateValues="{!v.fiscalRateValues}"
+                                                            isCurrentPageValid="{!v.isCurrentPageValid}"
+                                                            rateScheduleId="{!v.rateSchedule.Id}"
+                                                            fiscalAgreementRecordId="{!v.recordId}"
+                                                            countyRatePlan="{!v.countyRatePlan}"
+                                                            providerQualityRating="{!v.providerQualityRating}"
+                                                            providerFiscalAgreementRec="{!v.providerFiscalAgreementRec}"/>
+                    <c:confirmationModal aura:id="confirmationModalOnCancel_5" confirmMsg="{!v.cancelMsg}"
+                                         confirmModalYes="{!c.actionOnCancelYesButton}"/>
+                    <c:confirmationModal aura:id="confirmationModalOnPrevious_5" 
+                                         confirmMsg="{!v.previousMsg}"
+                                         confirmModalYes="{!c.actionOnPreviousYesButton}"/>
+                </aura:if>
+                
+                <!-- added tab 6 below by Rishav for CCCAP-2616 -->
+                <!-- ART Fees Payment Restriction -->
+                <aura:if isTrue="{!v.currentTabNumber==6}">
+                    <c:rateScheduleFlow_ARTFeesRestriction aura:id="rateScheduleFlow_ARTFeesRestriction"
+                                                           fiscalRateValues="{!v.fiscalRateValues}"
+                                                           />
+                    <c:confirmationModal aura:id="confirmationModalOnCancel_6" confirmMsg="{!v.cancelMsg}"
+                                         confirmModalYes="{!c.actionOnCancelYesButton}"/>
+                </aura:if>
+            </lightning:card>
+        </div>    
+        <div class="slds-size--1-of-3 slds-p-left--small">
+            <lightning:card iconName="" title="Provider Information">
+                <aura:if isTrue="{!!empty(v.providerFiscalAgreementRec.ID_SERVICE__c)}">
+                    <c:ProviderHeader aura:id="providerHeader"
+                                      recordId="{!v.providerFiscalAgreementRec.ID_SERVICE__c}"
+                                      sObjectName='T_CHATS_PROVR_STATUS__c' />
+                </aura:if>
+            </lightning:card>
+        </div> 
+    </div> 
+
+</aura:component>

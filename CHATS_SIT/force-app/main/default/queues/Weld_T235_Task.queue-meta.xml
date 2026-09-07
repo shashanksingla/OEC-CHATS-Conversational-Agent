@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Weld T235 Task</name>
+    <queueMembers>
+        <users>
+            <user>korthuam@weldgov.com.chats</user>
+            <user>jaking@weld.gov.chats</user>
+            <user>klanderson@weldgov.com.chats</user>
+            <user>kozanesx@weldgov.com.chats</user>
+        </users>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>Task</sobjectType>
+    </queueSobject>
+</Queue>

@@ -1,0 +1,29 @@
+<aura:component >
+    <aura:attribute name="caseRec" type="T_SBSD_CASE__c"/>
+    <aura:attribute name="caseEligibility" type="batchsit_t_fcompsn_eligty__x"/>
+    <aura:attribute name="caseEligibilityRun" type="batchsit_t_eligty_run__x"/>
+    <aura:attribute name="caseEligibilityDetails" type="batchsit_t_fcompsn_eligty_detail__x"/>
+    <aura:attribute name="indivEligIdToWrapper" type="Map"/>
+    <aura:attribute name="householdIneligibilityFailure" type="batchsit_t_fcompsn_failr__x[]"/>  
+    <aura:attribute name="showOverrideButton" type="Boolean" default="false"/>
+    
+    <lightning:overlayLibrary aura:id="overlayLib"/>
+    <tr>
+        <td>
+            <div class="slds-truncate" title="Program">
+                 <c:outputField label="Program" value="{!v.caseEligibility.cde_prog__c}" hideLabel="true"/>
+            </div>
+        </td>
+        <td>
+            <div class="slds-truncate" title="Eligibility Begin Date"><c:outputField label="Eligibility Begin Date" value="{!v.caseEligibilityDetails.dte_begin_effv__c}" type="UIDATE" hideLabel="true"/></div>
+        </td>
+        <td>
+            <div class="slds-truncate" title="Eligibility End Date"><c:outputField label="Eligibility Begin Date" value="{!v.caseEligibilityDetails.dte_end_effv__c}" type="UIDATE" hideLabel="true"/></div>
+        </td>
+        <td>
+            <div class="slds-truncate" title="Eligibility Status">
+                <c:outputField label="Status" value="{!v.caseEligibilityDetails.cde_status_eligty_family__c}" hideLabel="true"/>
+            </div>
+        </td>
+    </tr>
+</aura:component>

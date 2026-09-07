@@ -1,0 +1,12 @@
+.THIS .cellWidth{
+    width:50%;
+}
+.THIS .cellError{
+	border-color: red;
+}
+.THIS .hideLabel .slds-form-element .slds-form-element__label{
+    display:none;
+}
+.THIS .hideLabel .slds-form-element .slds-form-element__help{
+     display:block;
+}

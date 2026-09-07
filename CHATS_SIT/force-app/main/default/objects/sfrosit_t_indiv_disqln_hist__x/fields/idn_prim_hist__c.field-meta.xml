@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_prim_hist__c</fullName>
+    <description>idn_prim_hist</description>
+    <externalDeveloperName>idn_prim_hist</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>PRIM Hist ID</label>
+    <length>50</length>
+    <referenceTargetField>T_INDIV_DISQLN__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_INDIV_DISQLN__c</referenceTo>
+    <relationshipLabel>Individual Disqualification Legacy History</relationshipLabel>
+    <relationshipName>sfrosit_t_indiv_disqln_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

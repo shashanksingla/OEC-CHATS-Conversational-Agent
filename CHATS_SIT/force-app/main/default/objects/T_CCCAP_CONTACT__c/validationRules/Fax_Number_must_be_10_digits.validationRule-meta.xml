@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Fax_Number_must_be_10_digits</fullName>
+    <active>true</active>
+    <description>Fax Number must be 10 digits</description>
+    <errorConditionFormula>AND(NOT(ISBLANK(NBR_FAX__c)),LEN(NBR_FAX__c) != 10)</errorConditionFormula>
+    <errorDisplayField>NBR_FAX__c</errorDisplayField>
+    <errorMessage>Fax Number must be 10 digits</errorMessage>
+</ValidationRule>

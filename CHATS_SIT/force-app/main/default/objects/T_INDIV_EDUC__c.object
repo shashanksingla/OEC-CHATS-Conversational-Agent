@@ -1,0 +1,513 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <comment>Override Edit action to use custom form with SUD logic CCCAP-13790</comment>
+        <content>teenParentEducationNew_recordEditForm</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>    
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <comment>Override Edit action to use custom form with SUD logic CCCAP-13790</comment>
+        <content>teenParentEducationNew_recordEditForm</content>
+        <formFactor>Small</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>    
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <comment>Changed component as part of CCCAP-13790</comment>
+        <content>teenParentEducationNew_recordEditForm</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>    
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <comment>Changed component as part of CCCAP-13790</comment>
+        <content>teenParentEducationNew_recordEditForm</content>
+        <formFactor>Small</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>    
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Individual Education information</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <!--<enableChangeDataCapture>false</enableChangeDataCapture>-->
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+ <fullName>CDE_SOURCE_VRFD_EDUC__c</fullName>
+    <description>How Verified</description>
+    <externalId>false</externalId>
+    <label>How Verified</label>
+    <required>false</required>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <controllingField>CDE_TYPE_SCHOOL__c</controllingField>
+        <restricted>true</restricted>
+        <valueSetName>R00705</valueSetName>
+        <valueSettings>
+            <controllingFieldValue>ABE</controllingFieldValue>
+            <controllingFieldValue>CPR</controllingFieldValue>
+            <controllingFieldValue>ESL</controllingFieldValue>
+            <controllingFieldValue>GED</controllingFieldValue>
+            <controllingFieldValue>HJS</controllingFieldValue>
+            <controllingFieldValue>JST</controllingFieldValue>
+            <controllingFieldValue>PSL</controllingFieldValue>
+            <controllingFieldValue>SUD</controllingFieldValue>
+            <valueName>CSH</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>ABE</controllingFieldValue>
+            <controllingFieldValue>CPR</controllingFieldValue>
+            <controllingFieldValue>ESL</controllingFieldValue>
+            <controllingFieldValue>GED</controllingFieldValue>
+            <controllingFieldValue>HJS</controllingFieldValue>
+            <controllingFieldValue>JST</controllingFieldValue>
+            <controllingFieldValue>PSL</controllingFieldValue>
+            <controllingFieldValue>SUD</controllingFieldValue>
+            <valueName>LSO</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>ABE</controllingFieldValue>
+            <controllingFieldValue>CPR</controllingFieldValue>
+            <controllingFieldValue>ESL</controllingFieldValue>
+            <controllingFieldValue>GED</controllingFieldValue>
+            <controllingFieldValue>HJS</controllingFieldValue>
+            <controllingFieldValue>JST</controllingFieldValue>
+            <controllingFieldValue>PSL</controllingFieldValue>
+            <controllingFieldValue>SUD</controllingFieldValue>
+            <valueName>SPT</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>ABE</controllingFieldValue>
+            <controllingFieldValue>CPR</controllingFieldValue>
+            <controllingFieldValue>ESL</controllingFieldValue>
+            <controllingFieldValue>GED</controllingFieldValue>
+            <controllingFieldValue>HJS</controllingFieldValue>
+            <controllingFieldValue>JST</controllingFieldValue>
+            <controllingFieldValue>PSL</controllingFieldValue>
+            <controllingFieldValue>SUD</controllingFieldValue>
+            <valueName>TF</valueName>
+        </valueSettings>
+        <valueSettings>
+            <controllingFieldValue>SUD</controllingFieldValue>
+            <valueName>SA</valueName>
+        </valueSettings>
+    </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_TYPE_SCHOOL__c</fullName>
+        <externalId>false</externalId>
+        <label>Training or Education Type</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00704</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_TYPE_INFO_EDUC__c</fullName>
+        <externalId>false</externalId>
+        <label>Temporary Break Type</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00854_BreakType</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>DTE_END_EFFV_INFO__c</fullName>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Temporary Break Effective End Date</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_BEGIN_EFFV_INFO__c</fullName>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Temporary Break Effective Begin Date</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>CDE_TYPE_VERIF__c</fullName>
+        <description>Verified</description>
+        <externalId>false</externalId>
+        <label>Verified</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00367</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>DTE_BEGIN_EFFV__c</fullName>
+        <description>Effective Begin Date</description>
+        <externalId>false</externalId>
+        <label>Effective Begin Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_END_ANT__c</fullName>
+        <description>Anticipated Completion Date</description>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Anticipated Completion Date</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_END_EFFV__c</fullName>
+        <description>Effective End Date</description>
+        <externalId>false</externalId>
+        <label>Effective End Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>IDN_CLIENT__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <description>Client ID</description>
+        <externalId>false</externalId>
+        <label>Client ID</label>
+        <referenceTo>T_SBSD_INDIV__c</referenceTo>
+        <relationshipLabel>Teen Parent Education</relationshipLabel>
+        <relationshipName>T_SBSD_INDIV7</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>External ID</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <fields>
+        <fullName>Ignore__c</fullName>
+        <defaultValue>false</defaultValue>
+        <externalId>false</externalId>
+        <label>Ignore</label>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>NAM_SCHOOL__c</fullName>
+        <description>School Name</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Training Institution/Treatment Facility</label>
+        <length>71</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Licensed_by_BHA__c</fullName>
+        <externalId>false</externalId>
+        <label>Licensed by BHA </label>
+        <required>false</required>
+        <inlineHelpText>The Colorado Behavioral Health Administration (BHA) licenses substance use disorder treatment programs in Colorado. Please refer to State CCCAP guidance for instructions on confirming license status.</inlineHelpText>
+        <trackFeedHistory>false</trackFeedHistory>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <label>Yes</label>
+                    <fullName>Y</fullName>
+                    <default>false</default>
+                </value>
+                <value>
+                    <label>No</label>
+                    <fullName>N</fullName>
+                    <default>false</default>
+                </value>               
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>City__c</fullName>
+        <description>City</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>City</label>
+        <length>30</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>ADR_LINE_1__c</fullName>
+        <description>Address Line 1</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Address Line 1</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+            <fullName>ADR_LINE_2__c</fullName>
+            <description>Address Line 2</description>
+            <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+            <externalId>false</externalId>
+            <label>Address Line 2</label>
+            <length>35</length>
+            <required>false</required>
+            <trackHistory>true</trackHistory>
+            <trackTrending>false</trackTrending>
+            <type>Text</type>
+            <unique>false</unique>
+    </fields>
+    <fields>
+            <fullName>ADR_STATE__c</fullName>
+            <label>State of Facility</label>
+            <externalId>false</externalId>
+            <required>false</required>
+            <trackHistory>true</trackHistory>
+            <trackTrending>false</trackTrending>
+            <type>Picklist</type>
+            <valueSet>
+                <restricted>true</restricted>
+                <valueSetName>R00002</valueSetName>
+            </valueSet>
+    </fields>
+    <fields>
+            <fullName>ADR_ZIP_EXTN__c</fullName>
+            <description>Zip Ext.</description>
+            <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+            <externalId>false</externalId>
+            <label>Zip Ext</label>
+            <length>4</length>
+            <required>false</required>
+            <trackHistory>true</trackHistory>
+            <trackTrending>false</trackTrending>
+            <type>Text</type>
+            <unique>false</unique>
+    </fields>
+    <fields>
+            <fullName>ADR_ZIP_MAIN__c</fullName>
+            <description>Zip</description>
+            <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+            <externalId>false</externalId>
+            <label>Zip</label>
+            <length>5</length>
+            <required>false</required>
+            <trackHistory>true</trackHistory>
+            <trackTrending>false</trackTrending>
+            <type>Text</type>
+            <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>HOURS_SUD__c</fullName>
+        <externalId>false</externalId>
+        <label>Hours Per Week of Substance Use Disorder</label>
+        <precision>10</precision>
+        <required>false</required>
+        <scale>2</scale>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>Treatment_Types__c</fullName>
+        <externalId>false</externalId>
+        <label>Treatment Types</label>
+        <required>false</required>
+        <trackFeedHistory>false</trackFeedHistory>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <label>Structured outpatient</label>
+                    <fullName>SO</fullName>
+                    <default>false</default>
+                </value>
+                <value>
+                    <label>Residential</label>
+                    <fullName>Res</fullName>
+                    <default>false</default>
+                </value>
+                <value>
+                    <label>Highly structured residential</label>
+                    <fullName>HSR</fullName>
+                    <default>false</default>
+                </value>
+                <value>
+                    <label>Highly structured residential services with medical staff onsite</label>
+                    <fullName>HSRMED</fullName>
+                    <default>false</default>
+                </value>               
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <label>Teen Parent Education</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All1</fullName>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>Training or Education ID</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Teen Parent Education</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ReadWrite</sharingModel>
+    <validationRules>
+        <fullName>Begin_Date_Prior_To_End_Date</fullName>
+        <active>true</active>
+        <errorConditionFormula>NOT(IDN_CLIENT__r.Is_Peak_Data__c) &amp;&amp; NOT(IDN_CLIENT__r.Is_CBMS_Data__c) &amp;&amp; DTE_BEGIN_EFFV__c &gt; DTE_END_EFFV__c</errorConditionFormula>
+        <errorDisplayField>DTE_END_EFFV__c</errorDisplayField>
+        <errorMessage>Effective End Date must be later than Effective Begin Date.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Req_HowVerified_If_VerifType_Writtn</fullName>
+        <active>true</active>
+        <description>Require How Verified field for Verified Type is &quot;Written Verification&quot;</description>
+        <errorConditionFormula>AND(AND(NOT(IDN_CLIENT__r.Is_Peak_Data__c),NOT(IDN_CLIENT__r.Is_CBMS_Data__c)), ISPICKVAL(CDE_TYPE_VERIF__c, &quot;V&quot;) , 
+    ISBLANK(TEXT(CDE_SOURCE_VRFD_EDUC__c) ) 
+)</errorConditionFormula>
+        <errorDisplayField>CDE_SOURCE_VRFD_EDUC__c</errorDisplayField>
+        <errorMessage>Require How Verified field for Verified Type is &quot;Written Verification&quot;</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Warning_Message_before_saving_the_record</fullName>
+        <active>true</active>
+        <description>This record may not be appropriate for this individual based on their age and/or relationship to the primary caretaker of this case</description>
+        <errorConditionFormula>AND(NOT(IDN_CLIENT__r.Is_Peak_Data__c),NOT(IDN_CLIENT__r.Is_CBMS_Data__c), NOT(IDN_CLIENT__r.Is_Primary_Parent_Caretaker__c),IDN_CLIENT__r.Age__c &lt; VALUE( $Label.Teen_Parent_Age_Limit ),NOT(IDN_CLIENT__r.Has_Allowed_Relationship__c),NOT(Ignore__c))</errorConditionFormula>
+        <errorMessage>This record may not be appropriate for this individual based on their age and/or relationship to the primary caretaker of this case(to continue saving please tick Ignore checkbox)</errorMessage>
+    </validationRules>
+    <validationRules>
+    	<fullName>BeginDateWithin31DaysFuture</fullName>
+   	    <active>true</active>
+    	<description>Begin Date cannot be more than 31 days in the future</description>
+    	<errorConditionFormula>DTE_BEGIN_EFFV__c &gt;  TODAY() +31</errorConditionFormula>
+    	<errorDisplayField>DTE_BEGIN_EFFV__c</errorDisplayField>
+    	<errorMessage>Begin Date cannot be more than 31 days in the future</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>AntCompDateGreaterThanBeginDate</fullName>
+        <active>true</active>
+        <description>Anticipated completion date must be greater than effective begin date.</description>
+        <errorConditionFormula>DTE_BEGIN_EFFV__c &gt;= DTE_END_ANT__c</errorConditionFormula>
+        <errorDisplayField>DTE_END_ANT__c</errorDisplayField>
+        <errorMessage>Anticipated Completion Date must be greater than Effective Begin Date.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>AntCompDateNotInPast</fullName>
+        <active>true</active>
+        <description>Anticipated completion date cannot be in the past.</description>
+        <errorConditionFormula>DTE_END_ANT__c &lt; TODAY()</errorConditionFormula>
+        <errorDisplayField>DTE_END_ANT__c</errorDisplayField>
+        <errorMessage>Anticipated Completion Date cannot be in the past.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Hours_validation</fullName>
+        <active>true</active>
+        <errorConditionFormula>HOURS_SUD__c  &gt; 168</errorConditionFormula>
+        <errorDisplayField>HOURS_SUD__c</errorDisplayField>
+        <errorMessage>Enter the number of hours, up to 168</errorMessage>
+    </validationRules>
+    <visibility>Public</visibility>
+</CustomObject>

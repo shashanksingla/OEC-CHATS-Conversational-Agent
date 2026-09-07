@@ -1,0 +1,32 @@
+<aura:component extends="c:genericUtilities">
+    <aura:attribute name="indivEligWrapper" type="IndividualEligibilityWrapper"/>
+    <tr>
+        <td>
+            <a onclick="{!c.handleIndivLink}">
+                <lightning:formattedText value="{!v.indivEligWrapper.lastName + ', ' + v.indivEligWrapper.firstName }"/> 
+            </a>
+        </td>
+        <td>
+            <lightning:formattedText value="{!v.indivEligWrapper.stateId}"/>
+        </td>
+        <td>
+            <c:inputPicklist hideLabel="true"
+                             value="{!v.indivEligWrapper.status}"
+                             object="Field_Utility__c"
+                             field="R00422__c"
+                             type="ReadOnly"
+                             />
+        </td>
+        <td>
+            <c:inputPicklist hideLabel="true"
+                             value="{!v.indivEligWrapper.overrideReason}"
+                             object="Field_Utility__c"
+                             field="R00375__c"
+                             type="ReadOnly"
+                                />
+        </td>
+        <td>
+            <lightning:formattedText value="{!v.indivEligWrapper.overrideComments}"/>
+        </td>
+    </tr>
+</aura:component>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Adjustment_Details_Amount__c</fullName>
+    <description>Sum of Adjusted Amount on all Adjustment Details. This field is referred in AMT_ADJMT.</description>
+    <label>Adjustment Details Amount</label>
+    <summarizedField>T_ADJMT_DETAIL__c.AMT_DETAIL_ADJMT__c</summarizedField>
+    <summaryForeignKey>T_ADJMT_DETAIL__c.IDN_ADJMT__c</summaryForeignKey>
+    <summaryOperation>sum</summaryOperation>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Summary</type>
+</CustomField>

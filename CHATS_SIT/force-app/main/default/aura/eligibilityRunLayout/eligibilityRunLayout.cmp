@@ -1,0 +1,302 @@
+<aura:component implements="force:hasrecordId,force:hasSObjectName,flexipage:availableForRecordHome" controller="EligRunApxCtrl">
+    <aura:attribute name="eligibilityRun" type="batchsit_t_eligty_run__x"/>
+    <aura:attribute name="case" type="T_SBSD_CASE__c"/>
+    <aura:attribute name="childCareProgram" type="String"/>
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="textBoxVal" type="String" />
+    <aura:handler name="change" value="{!v.textBoxVal}" action="{!c.handleValueChange}"/>
+    <aura:attribute name="CharCounter" default="0" type="Decimal"/>
+    <aura:attribute name="recordError" type="String"/>
+    <aura:attribute name="activeSections" type="List" default="['RedeterminationInformation','SystemInformation','ApplicationDateInformation']" />
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <aura:if isTrue="{!!empty(v.recordId)}">
+        <force:recordData aura:id="forceRecordCmp"
+                          recordId="{!v.recordId}"
+                          layoutType="FULL"
+                          fields="Id,
+                                  idn_case__c,
+                                  idn_case__r.Name,
+                                  cde_eligty_cfmd__c,
+                                  dte_redet_prpsd__c,
+                                  cde_date_redet_ovrd__c,
+                                  dte_redet_ovrd__c,
+                                  dte_run_eligty__c, 
+                                  txt_cmt_ovrd__c,
+                                  createdbyid__c,
+                                  createddate__c,
+                                  lastmodifiedbyid__c,
+                                  lastmodifieddate__c,
+                                  dte_appln_old__c,
+                                  dte_appln_new__c,
+                                  rsn_appln_dte_override__c,
+                                  cmt_appln_dte_override__c"
+                          targetFields="{!v.eligibilityRun}"
+                          mode="VIEW"
+                          targetError="{!v.recordError}" />
+    </aura:if>
+    <aura:if isTrue="{!!empty(v.eligibilityRun.idn_case__r.Name)}">
+        <force:recordData aura:id="forceRecordCmp"
+                          recordId="{!v.eligibilityRun.idn_case__r.Name}"
+                          fields="Id,Name"
+                          targetFields="{!v.case}"
+                          mode="VIEW"
+                          targetError="{!v.recordError}" />
+    </aura:if>
+    
+    <aura:if isTrue="{!!empty(v.eligibilityRun)}">
+        <lightning:card >
+            <aura:set attribute="title">
+            </aura:set>
+            <aura:set attribute="footer">
+            </aura:set>
+            <aura:set attribute="actions">
+            </aura:set>
+            <p class="slds-p-horizontal_small">
+                <lightning:accordion class="grey-header-bg" aura:id="accordion" allowMultipleSectionsOpen="true" activeSectionName="{!v.activeSections}">
+                    <lightning:layout  horizontalAlign="spread" multipleRows="true" class="slds-p_small height-setup">
+                        <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                            <div class="slds-form-element">
+                                <label class="slds-form-element__label" for="Case ID">Case ID</label>
+                                <div class="slds-form-element__control">
+                                    <aura:if isTrue="{!!empty(v.eligibilityRun.idn_case__r.Name)}">
+                                        <a href="" onclick="{!c.navigateToRecord}" data-item="{!v.eligibilityRun.idn_case__r.Id}">
+                                            <lightning:formattedText  value="{!v.eligibilityRun.idn_case__r.Name}" aura:id="Case ID"/>
+                                        </a>
+                                        <aura:set attribute="else">
+                                            <br/>
+                                        </aura:set>
+                                    </aura:if>
+                                </div>
+                            </div>
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                            <div class="slds-form-element">
+                                <label class="slds-form-element__label" for="Eligibility Confirmed Status">Eligibility Confirmed Status</label>
+                                <div class="slds-form-element__control">
+                                    <aura:if isTrue="{!!empty(v.eligibilityRun.cde_eligty_cfmd__c)}">
+                                        <c:inputPicklist object="Field_Utility__c" 
+                                                         field="R00396__c" 
+                                                         type="ReadOnly"
+                                                         value="{!v.eligibilityRun.cde_eligty_cfmd__c}"
+                                                         hideLabel="true"/>
+                                        <aura:set attribute="else">
+                                            <br/>
+                                        </aura:set>
+                                    </aura:if> 
+                                </div>
+                            </div>
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                            <div class="slds-form-element">
+                                <label class="slds-form-element__label" for="Run Date">Run Date</label>
+                                <div class="slds-form-element__control">
+                                    <aura:if isTrue="{!!empty(v.eligibilityRun.dte_run_eligty__c)}">
+                                        <ui:outputDate value="{!v.eligibilityRun.dte_run_eligty__c}" format="MM/DD/YYYY" aura:id="Run Date"/>
+                                        <!--<lightning:formattedDateTime  value="{!v.eligibilityRun.dte_run_eligty__c}" year="numeric" month="numeric" day="numeric" aura:id="Run Date"/>-->
+                                        <aura:set attribute="else">
+                                            <br/>
+                                        </aura:set>
+                                    </aura:if> 
+                                </div>
+                            </div>
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" padding="around-small" size="5">
+                            <br/>  
+                        </lightning:layoutItem>
+                    </lightning:layout>
+                    
+                    <aura:if isTrue="{!v.childCareProgram !='CW'}">
+                        <lightning:accordionSection name="RedeterminationInformation" label="Redetermination Information">     
+                            <lightning:layout horizontalAlign="spread" multipleRows="true" class="slds-p_small height-setup">
+                                
+                                <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                                    <div class="slds-form-element">
+                                        <label class="slds-form-element__label" for="Determined Redetermination Date Reason">Determined Redetermination Date Reason</label>
+                                        <div class="slds-form-element__control">
+                                            <aura:if isTrue="{!!empty(v.eligibilityRun.cde_date_redet_ovrd__c)}">
+                                                <c:inputPicklist object="Field_Utility__c" 
+                                                                 field="R00369__c" 
+                                                                 type="ReadOnly"
+                                                                 value="{!v.eligibilityRun.cde_date_redet_ovrd__c}"
+                                                                 hideLabel="true"/>
+                                                <aura:set attribute="else">
+                                                    <br/>
+                                                </aura:set>
+                                            </aura:if> 
+                                        </div>
+                                    </div>
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                                    <div class="slds-form-element">
+                                        <label class="slds-form-element__label" for="Determined Redetermination Date">Determined Redetermination Date</label>
+                                        <div class="slds-form-element__control">
+                                            <aura:if isTrue="{!!empty(v.eligibilityRun.dte_redet_ovrd__c)}">
+                                                <ui:outputDate value="{!v.eligibilityRun.dte_redet_ovrd__c}" format="MM/DD/YYYY" aura:id="Determined Redetermination Date"/>
+                                                <!--<lightning:formattedDateTime  value="{!v.eligibilityRun.dte_redet_ovrd__c}" year="numeric" month="numeric" day="numeric" aura:id="Determined Redetermination Date"/>-->
+                                                <aura:set attribute="else">
+                                                    <br/>
+                                                </aura:set>
+                                            </aura:if>
+                                        </div>
+                                    </div>
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                                    <div class="slds-form-element">
+                                        <label class="slds-form-element__label" for="System Determined Redetermination Date">System Determined Redetermination Date</label>
+                                        <div class="slds-form-element__control">
+                                            <aura:if isTrue="{!!empty(v.eligibilityRun.dte_redet_prpsd__c)}">
+                                                <ui:outputDate value="{!v.eligibilityRun.dte_redet_prpsd__c}" format="MM/DD/YYYY" aura:id="System Determined Redetermination Date"/>
+                                                <!--<lightning:formattedDateTime  value="{!v.eligibilityRun.dte_redet_prpsd__c}" year="numeric" month="numeric" day="numeric" aura:id="System Determined Redetermination Date"/>-->
+                                                <aura:set attribute="else">
+                                                    <br/>
+                                                </aura:set>
+                                            </aura:if>
+                                        </div>
+                                    </div>
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                                    <div class="slds-form-element">
+                                        <label class="slds-form-element__label" for="Determined Redetermination Date Comments">Determined Redetermination Date Comments</label>
+                                        <div class="slds-form-element__control">
+                                            <aura:if isTrue="{!!empty(v.eligibilityRun.txt_cmt_ovrd__c)}">
+                                                <lightning:formattedText  value="{!v.eligibilityRun.txt_cmt_ovrd__c}" aura:id="Determined Redetermination Date Comments"/>
+                                                <aura:set attribute="else">
+                                                    <br/>
+                                                </aura:set>
+                                            </aura:if>
+                                        </div>
+                                    </div>
+                                </lightning:layoutItem>
+                            </lightning:layout> 
+                        </lightning:accordionSection>
+                    </aura:if>
+
+                    <lightning:accordionSection name="ApplicationDateInformation" label="Application Date Information">     
+                        <lightning:layout horizontalAlign="spread" multipleRows="true" class="slds-p_small height-setup">
+                            <aura:if isTrue="{!!empty(v.eligibilityRun.dte_appln_new__c)}">
+                                <lightning:layoutItem flexibility="auto" padding="around-small" size="6" class="slds-border_bottom">
+                                    <div class="slds-form-element">
+                                        <label class="slds-form-element__label" for="Application Date Override Reason">Application Date Override Reason</label>
+                                        <div class="slds-form-element__control">
+                                            <aura:if isTrue="{!!empty(v.eligibilityRun.rsn_appln_dte_override__c)}">
+                                                <c:inputPicklist object="T_CASE_APPLN_DTE__c" 
+                                                                    field="RSN_OVERRIDE__c" 
+                                                                    type="ReadOnly"
+                                                                    value="{!v.eligibilityRun.rsn_appln_dte_override__c}"
+                                                                    hideLabel="true"/>
+                                                <aura:set attribute="else">
+                                                    <br/>
+                                                </aura:set>
+                                            </aura:if>
+                                        </div>
+                                    </div>
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                                    <div class="slds-form-element">
+                                        <label class="slds-form-element__label" for="Application Override Date">Application Override Date</label>
+                                        <div class="slds-form-element__control">
+                                            <aura:if isTrue="{!!empty(v.eligibilityRun.dte_appln_new__c)}">
+                                                <ui:outputDate value="{!v.eligibilityRun.dte_appln_new__c}" format="MM/DD/YYYY" aura:id="Application Override Date"/>
+                                                <aura:set attribute="else">
+                                                    <br/>
+                                                </aura:set>
+                                            </aura:if>
+                                        </div>
+                                    </div>
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" padding="around-small" size="6" class="slds-border_bottom">
+                                    <div class="slds-form-element">
+                                        <label class="slds-form-element__label" for="Previous Application Date">Previous Application Date</label>
+                                        <div class="slds-form-element__control">
+                                            <aura:if isTrue="{!!empty(v.eligibilityRun.dte_appln_old__c)}">
+                                                <ui:outputDate value="{!v.eligibilityRun.dte_appln_old__c}" format="MM/DD/YYYY" aura:id="Previous Application Date"/>
+                                                <aura:set attribute="else">
+                                                    <br/>
+                                                </aura:set>
+                                            </aura:if>
+                                        </div>
+                                    </div>
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                                    <div class="slds-form-element">
+                                        <label class="slds-form-element__label" for="Application Date Override Comments">Application Date Override Comments</label>
+                                        <div class="slds-form-element__control textwrap">
+                                            <aura:if isTrue="{!!empty(v.eligibilityRun.cmt_appln_dte_override__c)}">
+                                                <lightning:formattedText  value="{!v.eligibilityRun.cmt_appln_dte_override__c}" aura:id="Application Date Override Comments"/>
+                                                <aura:set attribute="else">
+                                                    <br/>
+                                                </aura:set>
+                                            </aura:if>                                        
+                                        </div>
+                                    </div>
+                                </lightning:layoutItem>
+                                <aura:set attribute="else">
+                                    <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                                        <div class="slds-form-element">
+                                            <label class="slds-form-element__label" for="Current Application Date">Current Application Date</label>
+                                            <div class="slds-form-element__control">
+                                                <aura:if isTrue="{!!empty(v.eligibilityRun.dte_appln_old__c)}">
+                                                    <ui:outputDate value="{!v.eligibilityRun.dte_appln_old__c}" format="MM/DD/YYYY" aura:id="Previous Application Date"/>
+                                                    <aura:set attribute="else">
+                                                        <br/>
+                                                    </aura:set>
+                                                </aura:if>
+                                            </div>
+                                        </div>
+                                    </lightning:layoutItem>                                    
+                                </aura:set>
+                            </aura:if>
+                            
+                        </lightning:layout>
+                    </lightning:accordionSection>
+
+                    <lightning:accordionSection name="SystemInformation" label="System Information">     
+                        <lightning:layout horizontalAlign="spread" multipleRows="true" class="slds-p_small height-setup">
+                            <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                                <div class="slds-form-element">
+                                    <label class="slds-form-element__label" for="Created By">Created By</label>
+                                    <div class="slds-form-element__control">
+                                        <lightning:icon iconName="action:user" alternativeText="user" size="xx-small"/>
+                                        &nbsp;<a href="" onclick="{!c.navigateToRecord}" data-item="{!v.eligibilityRun.createdbyid__c}">
+                                        <lightning:formattedText  value="{!v.eligibilityRun.createdbyid__r.Name}" year="numeric" month="numeric" day="numeric" aura:id="Created By"/>
+                                        </a>
+                                    </div>
+                                </div>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                                <div class="slds-form-element">
+                                    <label class="slds-form-element__label" for="Last Modified By">Last Modified By</label>
+                                    <div class="slds-form-element__control">
+                                        <lightning:icon iconName="action:user" alternativeText="user" size="xx-small" />
+                                        &nbsp;<a href="" onclick="{!c.navigateToRecord}" data-item="{!v.eligibilityRun.lastmodifiedbyid__c}">
+                                        <lightning:formattedText  value="{!v.eligibilityRun.lastmodifiedbyid__r.Name}" year="numeric" month="numeric" day="numeric" aura:id="Last Modified By"/>
+                                        </a>
+                                    </div>
+                                </div>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                                <div class="slds-form-element">
+                                    <label class="slds-form-element__label" for="Created Date">Created Date</label>
+                                    <div class="slds-form-element__control">
+                                        <lightning:formattedDateTime  value="{!v.eligibilityRun.createddate__c}" year="numeric" month="numeric" day="numeric" hour="2-digit"
+                                                                     minute="2-digit" hour12="true" timeZone="{!$locale.timezone}" aura:id="Created Date"/>
+                                    </div>
+                                </div>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" padding="around-small" size="5" class="slds-border_bottom">
+                                <div class="slds-form-element">
+                                    <label class="slds-form-element__label" for="Last Modified Date">Last Modified Date</label>
+                                    <div class="slds-form-element__control">
+                                        <lightning:formattedDateTime  value="{!v.eligibilityRun.lastmodifieddate__c}" year="numeric" month="numeric" day="numeric" hour="2-digit"
+                                                                     minute="2-digit" hour12="true" timeZone="{!$locale.timezone}" aura:id="Last Modified Date"/>
+                                    </div>
+                                </div>
+                            </lightning:layoutItem>
+                        </lightning:layout>
+                    </lightning:accordionSection>
+                </lightning:accordion>
+            </p>
+        </lightning:card> 
+    </aura:if>
+</aura:component>

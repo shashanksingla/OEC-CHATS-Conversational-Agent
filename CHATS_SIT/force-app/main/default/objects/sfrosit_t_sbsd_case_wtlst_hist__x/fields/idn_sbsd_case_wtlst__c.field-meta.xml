@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_sbsd_case_wtlst__c</fullName>
+    <description>idn_sbsd_case_wtlst</description>
+    <externalDeveloperName>idn_sbsd_case_wtlst</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Case Waitlist ID</label>
+    <length>50</length>
+    <referenceTargetField>T_SBSD_CASE_WTLST__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_SBSD_CASE_WTLST__c</referenceTo>
+    <relationshipLabel>Legacy Waitlist/Enrollment Freeze Hist</relationshipLabel>
+    <relationshipName>sfrosit_t_sbsd_case_wtlst_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

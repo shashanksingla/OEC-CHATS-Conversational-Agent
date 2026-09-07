@@ -1,0 +1,93 @@
+<aura:component extends="c:abstractSection">
+    <aura:attribute name="currentTabNumber" type="Integer"/>
+    <aura:attribute name="adjustmentObj" type="T_ADJMT__c"/>
+    <aura:attribute name="individualObj" type="T_SBSD_INDIV__c"/>
+    <aura:attribute name="nonAdjustmentDetailLst" type="T_NON_ADJMT_DETAIL__c[]"/>
+    <aura:attribute name="adjustmentEntryEditMode" type="Boolean"/>
+    <aura:attribute name="nonAdjustmentDetail" type="T_NON_ADJMT_DETAIL__c"/>
+    <aura:attribute name="pageMode" type="String" default="view"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.nonAdjustmentDetailLst}" action="{!c.updateTotalAmount}"/>
+    
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <aura:if isTrue="{!!empty(v.adjustmentObj.IDN_PROVR__r.Name)}">
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <c:outputField label="Provider ID" value="{!v.adjustmentObj.IDN_PROVR__r.Name}"/>
+            </lightning:layoutItem>
+        </aura:if>
+        
+        <aura:if isTrue="{!!empty(v.adjustmentObj.IDN_CASE__r.Name)}">
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <c:outputField label="Case ID" value="{!v.adjustmentObj.IDN_CASE__r.Name}"/>
+            </lightning:layoutItem>
+        </aura:if>
+        
+        
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <c:outputField label="Adjustment ID" value="{!v.adjustmentObj.Name}"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <c:outputField label="Status" value="{!v.adjustmentObj.CDE_STATUS_ADJMT__c}"/>
+        </lightning:layoutItem>
+        
+        <aura:if isTrue="{!!empty(v.adjustmentObj.IDN_PROVR__c)}">
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <c:outputField label="Provider Name" value="{!v.adjustmentObj.IDN_PROVR__r.NAM_FACILITY__c}"/>
+            </lightning:layoutItem>
+        </aura:if>
+        
+        <aura:if isTrue="{!!empty(v.adjustmentObj.IDN_CASE__c)}">
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <c:outputField label="Primary Caretaker" value="{!v.individualObj.NAM_FIRST__c + ' ' + v.individualObj.NAM_LAST__c}"/>
+            </lightning:layoutItem>
+        </aura:if>
+        
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <c:outputField label="Adjustment Type" value="{!v.adjustmentObj.CDE_TYPE_ADJMT__c}"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <label class="slds-form-element__label" for="input-id-01">Adjustment Amount</label><br />
+            <ui:outputCurrency aura:id="curr" value="{!v.adjustmentObj.AMT_ADJMT__c}"/>
+            <!-- <c:outputField label="Adjustment Amount" value="{!v.adjustmentObj.AMT_ADJMT__c}"/> -->
+        </lightning:layoutItem>
+    </lightning:layout>
+    
+    <div class="slds-grid slds-wrap slds-p-around--small">
+        <table class="slds-table slds-table_bordered">
+            <thead>
+                <tr class="slds-text-title_caps">
+                    <th scope="col">
+                        <div class="slds-truncate" title="authorizationId">Authorization ID</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="childName">Child Name</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="adjustmentAmount">Adjustment Amount</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="adjustmentFundingProgram">Adjustment Funding Program</div>
+                    </th>
+                    <aura:if isTrue="{!!(v.adjustmentObj &amp;&amp; v.pageMode=='view')}">
+                        <th scope="col">
+                            <div class="slds-truncate" title="userAction"></div>
+                        </th>
+                    </aura:if>
+                </tr>
+            </thead>
+            <tbody>
+                <aura:iteration items="{!v.nonAdjustmentDetailLst}" var="nonAdjDetail">
+                    <c:nonAdjustmentDetailRow nonAdjustmentDetailRec='{!nonAdjDetail}'
+                                              adjustmentEntryEditMode="{!v.adjustmentEntryEditMode}"
+                                              nonAdjustmentDetailLst="{!v.nonAdjustmentDetailLst}"
+                                              currentTabNumber="{!v.currentTabNumber}"
+                                              nonAdjustmentDetail="{!v.nonAdjustmentDetail}"
+                                              adjustmentObj="{!v.adjustmentObj}"
+                                              pageMode="{!v.pageMode}"/>
+                </aura:iteration>
+            </tbody>
+        </table>
+    </div>
+</aura:component>

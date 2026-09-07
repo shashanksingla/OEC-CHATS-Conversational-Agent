@@ -1,0 +1,301 @@
+<template>
+    <div class="slds-scrollable">
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             SEARCH FILTERS SECTION
+        ════════════════════════════════════════════════════════════════ -->
+        <div class="slds-card slds-p-around_small slds-m-bottom_small" role="search"
+            aria-label="Payment search filters">
+            <div class="slds-grid slds-wrap slds-gutters_small">
+
+                <!-- Row 1: Search Mode Radio Buttons -->
+                <fieldset class="slds-col slds-size_1-of-1 slds-grid slds-wrap slds-gutters_small slds-p-around_none"
+                    style="border:none;margin:0;padding:0;">
+                    <legend class="slds-assistive-text">Search Mode</legend>
+                    <div class="slds-col slds-size_1-of-3 slds-p-around_x-small">
+                        <div class="search-radio-group">
+                            <lightning-input type="radio" name="searchMode" label="Search By Case ID" value="caseId"
+                                checked={searchByChilName} onchange={searchByChildNameCtrl}>
+                            </lightning-input>
+                        </div>
+                    </div>
+
+                    <div class="slds-col slds-size_1-of-3 slds-p-around_x-small">
+                        <div class="search-radio-group">
+                            <lightning-input type="radio" name="searchMode" label="Search By Authorization ID"
+                                value="authId" checked={searchByAuthId} onchange={searchByAuthIdCtrl}>
+                            </lightning-input>
+                        </div>
+                    </div>
+
+                    <div class="slds-col slds-size_1-of-3 slds-p-around_x-small">
+                        <template if:true={showSlotContractOption}>
+                            <div class="search-radio-group">
+                                <lightning-input type="radio" name="searchMode"
+                                    label="Search By Vacant Slot Contract ID" value="slotCntId"
+                                    checked={searchBySlotCntId} onchange={searchBySlotCntrtIdCtrl}>
+                                </lightning-input>
+                            </div>
+                        </template>
+                    </div>
+                </fieldset>
+
+                <!-- Row 2: Case ID / Auth ID / Slot Contract ID lookups -->
+                <div class="slds-col slds-size_1-of-3 slds-p-around_x-small">
+                    <c-custom-lookup_lwc
+                        label="Case ID"
+                        object-api-name="T_SBSD_CASE__c"
+                        search-field="Name"
+                        selected-record-id={caseId}
+                        is-disabled={isCaseIdDisabled}
+                        unique-key="caseId"
+                        onvalueselected={handleCaseIdLookupChange}
+                        hide-recent-records>
+                    </c-custom-lookup_lwc>
+                </div>
+
+                <div class="slds-col slds-size_1-of-3 slds-p-around_x-small">
+                    <c-custom-lookup_lwc
+                        label="Authorization ID"
+                        object-api-name="T_AUTH__c"
+                        search-field="Name"
+                        selected-record-id={authId}
+                        is-disabled={isAuthIdDisabled}
+                        unique-key="authId"
+                        onvalueselected={handleAuthIdLookupChange}
+                        hide-recent-records>
+                    </c-custom-lookup_lwc>
+                </div>
+
+                <div class="slds-col slds-size_1-of-3 slds-p-around_x-small">
+                    <template if:true={showSlotContractOption}>
+                        <c-custom-lookup_lwc
+                            label="Vacant Slot Contract ID"
+                            object-api-name="T_SLOT_CONTRACT__c"
+                            search-field="Name"
+                            selected-record-id={slotCntId}
+                            is-disabled={isSlotCntIdDisabled}
+                            unique-key="slotCntId"
+                            onvalueselected={handleSlotCntIdLookupChange}
+                            hide-recent-records>
+                        </c-custom-lookup_lwc>
+                    </template>
+                </div>
+
+                <!-- Row 3: Payment ID / Child First Name / Service Period Begin Date -->
+                <div class="slds-col slds-size_1-of-3 slds-p-around_x-small">
+                    <lightning-input type="text" label="Payment ID" value={paymentObjId}
+                        onchange={handlePaymentObjIdChange}>
+                    </lightning-input>
+                </div>
+
+                <div class="slds-col slds-size_1-of-3 slds-p-around_x-small">
+                    <lightning-input type="text" label="Child First Name" value={subPaymentObj_NAM_FIRST}
+                        onchange={handleFirstNameChange}>
+                    </lightning-input>
+                </div>
+
+                <div class="slds-col slds-size_1-of-3 slds-p-around_x-small">
+                    <lightning-input type="date" label="Service Period Begin Date"
+                        value={servicePeriodObj_DTE_BEGIN_EFFV} onchange={handleBeginDateChange}>
+                    </lightning-input>
+                </div>
+
+                <!-- Row 4: Sub Payment ID / Child Last Name / Service Period End Date -->
+                <div class="slds-col slds-size_1-of-3 slds-p-around_x-small">
+                    <lightning-input type="text" label="Sub Payment ID" value={subPaymentObj_Id}
+                        onchange={handleSubPaymentObjIdChange}>
+                    </lightning-input>
+                </div>
+
+                <div class="slds-col slds-size_1-of-3 slds-p-around_x-small">
+                    <lightning-input type="text" label="Child Last Name" value={subPaymentObj_NAM_LAST}
+                        onchange={handleLastNameChange}>
+                    </lightning-input>
+                </div>
+
+                <div class="slds-col slds-size_1-of-3 slds-p-around_x-small">
+                    <lightning-input type="date" label="Service Period End Date" value={servicePeriodObj_DTE_END_EFFV}
+                        onchange={handleEndDateChange}>
+                    </lightning-input>
+                </div>
+
+                <!-- Row 5: Spacers + Search Button -->
+                <div class="slds-col slds-size_1-of-3 slds-p-around_x-small"></div>
+                <div class="slds-col slds-size_1-of-3 slds-p-around_x-small"></div>
+                <div class="slds-col slds-size_1-of-3 slds-p-around_x-small slds-float_right">
+                    <div class="slds-float_right">
+                        <lightning-button label="Search" variant="brand" onclick={handleSearch}>
+                        </lightning-button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             OVER-LIMIT ALERT BANNER
+        ════════════════════════════════════════════════════════════════ -->
+        <template if:true={isOverLimit}>
+            <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_info slds-m-bottom_small"
+                role="alert">
+                <span class="slds-assistive-text">Info</span>
+                <lightning-icon icon-name="utility:info" alternative-text="Info" size="x-small"
+                    class="slds-m-right_x-small">
+                </lightning-icon>
+                {errorMessageText}
+            </div>
+        </template>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             RESULTS ANNOUNCEMENT REGION (Screen Readers)
+        ════════════════════════════════════════════════════════════════ -->
+        <div id="results-announcement" aria-live="polite" aria-atomic="false" class="slds-assistive-text">
+            {resultsAnnouncementText}
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             RESULTS TABLE
+        ════════════════════════════════════════════════════════════════ -->
+        <div class="slds-grid slds-wrap slds-p-around_small" role="region" aria-label="Search Results" aria-live="off"
+            aria-describedby="table-description">
+            <div class="slds-col slds-size_1-of-1">
+                <!-- Screen reader description of table functionality -->
+                <p id="table-description" class="slds-assistive-text">
+                    Results table with {subPaymentSearchLstPage.length} rows. Use arrow keys to navigate rows, Space or
+                    Enter to select a row.
+                </p>
+                <table class="slds-table slds-table_bordered" role="grid" aria-label="Sub Payment Search Results"
+                    aria-rowcount={totalSearchResults} aria-colcount={tableColumnCount}>
+
+                    <!-- ── Slot Contract View Header (8 columns) ── -->
+                    <template if:true={searchBySlotCntId}>
+                        <thead>
+                            <tr class="slds-text-title_caps" role="row" aria-rowindex="1">
+                                <th scope="col" role="columnheader" aria-colindex="1">
+                                    <div class="slds-truncate" title="Select"><span class="slds-assistive-text">Select
+                                            payment row</span></div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="2">
+                                    <div class="slds-truncate" title="Payment ID">Payment ID</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="3">
+                                    <div class="slds-truncate" title="Vacant Slot Contract SubPayment ID">Vacant Slot
+                                        Contract SubPayment ID</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="4">
+                                    <div class="slds-truncate" title="Slot Contract ID">Slot Contract ID</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="5">
+                                    <div class="slds-truncate" title="Service Period Begin Date">Service Period Begin
+                                        Date</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="6">
+                                    <div class="slds-truncate" title="Service Period End Date">Service Period End Date
+                                    </div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="7">
+                                    <div class="slds-truncate" title="Vacant Slot Contract Amount Paid">Vacant Slot
+                                        Contract Amount Paid</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="8">
+                                    <div class="slds-truncate" title="County">County</div>
+                                </th>
+                            </tr>
+                        </thead>
+                    </template>
+
+                    <!-- ── Case-Based View Header (12 columns) ── -->
+                    <template if:false={searchBySlotCntId}>
+                        <thead>
+                            <tr class="slds-text-title_caps" role="row" aria-rowindex="1">
+                                <th scope="col" role="columnheader" aria-colindex="1">
+                                    <div class="slds-truncate" title="Select"><span class="slds-assistive-text">Select
+                                            payment row</span></div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="2">
+                                    <div class="slds-truncate" title="Payment ID">Payment ID</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="3">
+                                    <div class="slds-truncate" title="Sub Payment ID">Sub Payment ID</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="4">
+                                    <div class="slds-truncate" title="Case ID">Case ID</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="5">
+                                    <div class="slds-truncate" title="Authorization ID">Authorization ID</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="6">
+                                    <div class="slds-truncate" title="Provider ID">Provider ID</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="7">
+                                    <div class="slds-truncate" title="Child First Name">Child First Name</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="8">
+                                    <div class="slds-truncate" title="Child Last Name">Child Last Name</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="9">
+                                    <div class="slds-truncate" title="Service Period Begin Date">Service Period Begin
+                                        Date</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="10">
+                                    <div class="slds-truncate" title="Service Period End Date">Service Period End Date
+                                    </div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="11">
+                                    <div class="slds-truncate" title="Amount">Amount</div>
+                                </th>
+                                <th scope="col" role="columnheader" aria-colindex="12">
+                                    <div class="slds-truncate" title="County">County</div>
+                                </th>
+                            </tr>
+                        </thead>
+                    </template>
+
+                    <!-- ── Table Body: rows delegated to c-sub-payment-rows_lwc ── -->
+                    <tbody>
+                        <template for:each={subPaymentSearchLstPage} for:item="subPaymentRec" for:index="index">
+                            <c-sub-payment-rows_lwc key={subPaymentRec.subPymtId} data-row-index={index}
+                                data-row-id={subPaymentRec.subPymtId} sub-payment-obj={subPaymentRec}
+                                slot-cntcheckbox={searchBySlotCntId} onsubpaymentselect={handleSubPaymentSelect}>
+                            </c-sub-payment-rows_lwc>
+                        </template>
+                    </tbody>
+
+                </table>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             PAGINATION CONTROLS
+        ════════════════════════════════════════════════════════════════ -->
+        <div class="slds-align_absolute-center slds-m-top_small slds-m-bottom_small">
+            <template if:false={hasOnePage}>
+                <nav role="navigation" aria-label="Results pagination">
+                    <div class="slds-button-group" role="group">
+                        <button class="slds-button slds-button_neutral" onclick={handlePrevious}
+                            disabled={isPreviousDisabled}
+                            aria-label="Go to previous page of results. Currently on page {currentPageLabel} of {numberOfPages}">
+                            Previous
+                        </button>
+                        <div class="slds-align_absolute-center slds-p-horizontal_small slds-text-body_regular page-indicator"
+                            role="status" aria-current="page" aria-live="polite" aria-atomic="true">
+                            Page <span id="current-page">{currentPageLabel}</span> of <span
+                                id="total-pages">{numberOfPages}</span>
+                        </div>
+                        <button class="slds-button slds-button_neutral" onclick={handleNext} disabled={isNextDisabled}
+                            aria-label="Go to next page of results. Currently on page {currentPageLabel} of {numberOfPages}">
+                            Next
+                        </button>
+                    </div>
+                </nav>
+            </template>
+            <template if:true={hasOnePage}>
+                <p class="slds-text-body_small slds-text-color_weak slds-p-vertical_small">
+                    Showing {subPaymentSearchLstPage.length} of {totalSearchResults} results
+                </p>
+            </template>
+        </div>
+
+    </div>
+</template>

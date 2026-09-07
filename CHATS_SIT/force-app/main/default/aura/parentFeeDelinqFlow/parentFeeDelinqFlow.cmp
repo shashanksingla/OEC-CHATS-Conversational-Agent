@@ -1,0 +1,26 @@
+<aura:component Controller="ParentFeeDelinquencyCntrl" extends="c:abstractComponent" implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickAction" access="global" >
+    <aura:attribute name="newParentFeeDelinquencyObj" type="T_COPAY_DELINQC__c" default="{'sobjectType':'T_COPAY_DELINQC__c', 'AMT_DELINQC_COPAY_ENRLMT__c':'',
+                                                                                         'DTE_RPTD_DELINQC__c':'', 'IDN_CASE__c':'', 'DTE_MONTH_DELINQC__c':'',
+                                                                                         'DTE_RESOLN_DELINQC__c':'', 'IDN_COPAY_AUTH__c':'', 'CDE_REASON_RESOLN__c':'',
+                                                                                         'DTE_YEAR_DELINQC__c':'', 'IDN_COPAY_AUTH__c':''}"/>
+    <aura:attribute name="recordError" type="List" />
+    <aura:attribute name="message" type="String" />
+    
+    <aura:set attribute="pageMessages" value="{!v.recordError}" />  
+    <aura:set attribute="messageType" value="{!v.message}" />
+    
+    <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+    
+    <div class="slds-text-align--right slds-m-top_small">
+        <c:navigationComponent onFinish="{!c.doFinish}"
+                               onCancel="{!c.doCancel}"
+                               finishLabel="Save"
+                               showNext="false"
+                               showFinish="true"/>
+    </div>
+    
+    <c:parentFeeDelinquencies aura:id="newDelinqRecord" recordId="{!v.recordId}"
+                              newParentFeeDelinquencyObj="{!v.newParentFeeDelinquencyObj}"
+                              isCurrentPageValid="{!v.isCurrentPageValid}"
+                              fieldValidationErrors="{!v.fieldValidationErrors}" />
+</aura:component>

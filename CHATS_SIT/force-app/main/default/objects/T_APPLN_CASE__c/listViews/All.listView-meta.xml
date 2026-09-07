@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All</fullName>
+    <columns>NAME</columns>
+    <columns>CBMS_CASE_NUM__c</columns>
+    <columns>CDE_CBMS_REF_TYP__c</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>IDN_CBMS_REF__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>NAME</field>
+        <operation>equals</operation>
+        <value>AC-96798</value>
+    </filters>
+    <label>All</label>
+</ListView>

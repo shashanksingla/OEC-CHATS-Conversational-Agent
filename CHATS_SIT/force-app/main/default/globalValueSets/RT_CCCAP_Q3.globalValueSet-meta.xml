@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>6</fullName>
+        <default>false</default>
+        <label>At TANF redetermination</label>
+    </customValue>
+    <customValue>
+        <fullName>2</fullName>
+        <default>false</default>
+        <label>Orientation/Interview</label>
+    </customValue>
+    <customValue>
+        <fullName>1</fullName>
+        <default>false</default>
+        <label>Time of application</label>
+    </customValue>
+    <customValue>
+        <fullName>7</fullName>
+        <default>false</default>
+        <label>Other</label>
+    </customValue>
+    <customValue>
+        <fullName>3</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Upon request</label>
+    </customValue>
+    <customValue>
+        <fullName>5</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Monthly clinic</label>
+    </customValue>
+    <customValue>
+        <fullName>4</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>During treatment plan development</label>
+    </customValue>
+    <description>RT_CCCAP_Q3</description>
+    <masterLabel>RT_CCCAP_Q3</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

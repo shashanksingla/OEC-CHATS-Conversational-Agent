@@ -1,0 +1,164 @@
+<aura:component implements="force:hasRecordId" controller="SlotContractFlowApxCtrl" extends="c:abstractComponent" access="global" >
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    <!--aura handler with waiting and donewaiting events-->
+    <aura:handler event="aura:waiting" action="{!c.showSpinner}"/>
+    <aura:handler event="aura:doneWaiting" action="{!c.hideSpinner}"/>
+    <!--component attributs -->
+    <aura:attribute name="spinner" type="boolean" default="FALSE"/>
+    
+    <!-- record id for getting provider id from parent -->
+    <aura:attribute name="recordId" type="String"/>
+    <!-- weekOpt list of weekdays weekValue selected weekdays value -->
+    <aura:attribute name="weekOpt" type="List" default="[]"/>
+    <aura:attribute name="weekValue" type="List" />
+    <!-- careLevel list selected value -->
+    <aura:attribute name="clevelOpt" type="List" default="[]"/>
+    <!-- careLevel list selected value -->
+    <aura:attribute name="clevelOrg" type="List" default="[]"/>
+    <!-- care unit list selected value -->
+    <aura:attribute name="cunitOpt" type="List" default="[]"/>
+    <!-- careLevel list selected value -->
+    <aura:attribute name="rtypeOpt" type="List" default="[]"/>
+    <!-- careLevel list selected value -->
+    <aura:attribute name="ptypOpt" type="List" default="[]"/>
+    <!-- countyOpt list of counties associated to provider countyVal selected county value -->
+    <aura:attribute name="countyOpt" type="List" default="[]"/>
+    <!-- Cancle message to show on popup  -->
+    <aura:attribute name="cancelMsg" type="String" default="Cancel Slot Contract Creation?" />
+    <!-- attribute for todays date  -->
+    <aura:attribute name="today" type="Date"/>
+    <!-- attribute for begin date minimum  -->
+    <aura:attribute name="beginDateMin" type="Date"/>
+    <!-- attribute for End date minimum  -->
+    <aura:attribute name="endDateMin" type="Date"/>
+    <!-- attribute for End date minimax  -->
+    <aura:attribute name="endDateMax" type="Date"/>
+    <!-- attribute for Provider Name  -->
+    <aura:attribute name="provdName" type="String"/>
+    <!-- attribute for Sequence  -->
+    <aura:attribute name="sequence" type="String"/>
+    <aura:attribute name="slotContract" type="Map" default="{}"/>
+    
+     <aura:attribute name="countyTrue" type="boolean" default="FALSE"/>
+     <aura:attribute name="beginTrue" type="boolean" default="FALSE"/>
+   
+    <!-- list of active sections default all will be open  -->
+    <aura:attribute name="activeSections" type="List" default="['A','B']" />
+    
+    <!--Error Attributes -->
+     <aura:attribute name="messageText" type="String" />
+     <!--Error and Cancel Messages -->
+     <c:confirmationModal aura:id="warningModal" 
+                             confirmMsg="{!v.messageText}"
+                             noLabel="Cancel"
+                             confirmModalNo="{!c.actionOnCancel}"
+                             showYesButton="false"
+                             title="ERROR!"/>
+    <c:confirmationModal aura:id="confirmationModalOnCancel" confirmMsg="{!v.cancelMsg}"
+                         confirmModalYes="{!c.actionOnCancelYesButton}"/>
+    
+    <lightning:card >
+        <!--loading spinner start-->
+    <aura:if isTrue="{!v.spinner}">
+        <div aura:id="spinnerId" class="slds-spinner_container">
+            <div class="slds-spinner--brand  slds-spinner slds-spinner--large slds-is-relative" role="alert">
+                <span class="slds-assistive-text">Loading...</span>
+                <div class="slds-spinner__dot-a"></div>
+                <div class="slds-spinner__dot-b"></div>
+            </div>
+        </div>
+    </aura:if>
+    <!-- Loading spinner end-->  
+        <div class="slds-text-align_center slds-text-heading_medium">New Slot Contract Record</div>
+        <lightning:accordion class="grey-header-bg" aura:id="accordion" activeSectionName="A"  allowMultipleSectionsOpen="true">
+           
+            <lightning:accordionSection name="A" label="Slot Information">
+                
+                <aura:set attribute="body">
+                   <lightning:layout multipleRows="true" horizontalAlign="space">
+                    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            <lightning:combobox name="county" label="County" value="{!v.slotContract.countyVal}"  aura:id="field" options="{!v.countyOpt}" placeholder="--None--" required="true"  onchange="{!c.handleCountyChange}"/>
+                        </lightning:layoutItem>
+                          <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            <lightning:input label="Provider ID" value="{!v.slotContract.provdName}"  readonly="true"/>
+                         </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            <lightning:input label="Slot Contract Begin Date" type="date" aura:id="fieldBegin"  dateStyle="short"   required="true" onchange="{!c.handleBeginDate}" value="{!v.slotContract.beginDate}"  />
+                        </lightning:layoutItem>
+                         <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            <lightning:input label="Slot Contract End Date" type="date" aura:id="fieldEnd"    dateStyle="short"   required="true" value="{!v.slotContract.endDate}" />
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            <lightning:combobox name="rtype" label="Rate Type" aura:id="field" onchange="{!c.rateTypeChange}" value="{!v.slotContract.rtypeVal}" required="true"  options="{!v.rtypeOpt}" placeholder="--None--" />
+                        </lightning:layoutItem>
+                         <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            <lightning:combobox name="clevel" label="Care Level" aura:id="field" value="{!v.slotContract.clevelVal}" required="true"  options="{!v.clevelOpt}" placeholder="--None--" />
+                        </lightning:layoutItem>
+                        
+                         <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            <lightning:combobox name="cunit" label="Care Unit"  aura:id="field" value="{!v.slotContract.cunitVal}" required="true"  options="{!v.cunitOpt}" placeholder="--None--" />
+                        </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            <lightning:input label="# of days per month" type="number" required="true" aura:id="field" value="{!v.slotContract.noDays}" max="23"/>
+                         </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                        
+                                    <abbr title="required" class="slds-required">*</abbr>
+                                    <label class="slds-text-title slds-m-left_none">Days of Week</label>
+                                
+                                    <lightning:checkboxGroup aura:id="field" name="Weekdays"
+                                                             label="Days of Week"
+                                                             options="{!v.weekOpt}"
+                                                             value="{! v.weekValue }"
+                                                             onchange="{! c.handleChange }"
+                                                             variant="label-hidden"
+                                                             required="true" class="multiSelect"/>
+                               
+                       </lightning:layoutItem>
+                                               
+                         <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            <lightning:input type="checkbox" label="Available for Use?" name="available" checked="{!v.slotContract.avaVal}" disabled="true"/>
+                            
+                         </lightning:layoutItem>
+                         <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            <lightning:input type="text" label="Slot Contract Description"  name="desc" value="{!v.slotContract.scdesc}" disabled="true"/>
+                            
+                         </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                          
+                         </lightning:layoutItem>
+                    </lightning:layout>
+                </aura:set>
+            </lightning:accordionSection>
+        </lightning:accordion>
+         <lightning:accordion class="grey-header-bg" aura:id="accordion" activeSectionName="B"  allowMultipleSectionsOpen="true">
+       
+            <lightning:accordionSection name="B" label="Authorization Information">
+                
+                <aura:set attribute="body">
+                     <lightning:layout multipleRows="true" horizontalAlign="space">
+                    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            <lightning:recordEditForm aura:id="recordEditForm"
+                                                      objectApiName="T_SLOT_CONTRACT__c">
+                                <lightning:inputField fieldName="IDN_AUTH__c" value="{!v.slotContract.authVal}" onchange="{! c.handleChange }"/>
+                                
+                            </lightning:recordEditForm>
+                            
+                         </lightning:layoutItem>
+                        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            <lightning:combobox name="ptype" label="Program Type" value="{!v.slotContract.progTyp}" aura:id="field" required="true"  options="{!v.ptypOpt}" placeholder="--None--"/>
+                         </lightning:layoutItem>
+                    </lightning:layout>
+                </aura:set>
+            </lightning:accordionSection>
+        </lightning:accordion>
+        
+        
+        <div class="slds-text-align_center">
+            <lightning:button label="Cancel" title="Cancel" onclick="{! c.handleCancelClick }"/>
+            <lightning:button class="slds-m-around_none" variant="brand" label="Save" title="Save" onclick="{! c.handleSaveClick }" />
+        </div>
+    </lightning:card>
+    
+</aura:component>

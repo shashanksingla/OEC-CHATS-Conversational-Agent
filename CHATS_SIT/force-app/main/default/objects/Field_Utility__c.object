@@ -1,0 +1,1478 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>false</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>Case_Reopen_Reason__c</fullName>
+        <externalId>false</externalId>
+        <label>Case Reopen Reason</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>true</sorted>
+                <value>
+                    <fullName>WER</fullName>
+                    <default>false</default>
+                    <label>Agency Error</label>
+                </value>
+                <value>
+                    <fullName>APL</fullName>
+                    <default>false</default>
+                    <label>Appeal</label>
+                </value>
+                <value>
+                    <fullName>VER</fullName>
+                    <default>false</default>
+                    <label>Application Verification Returned</label>
+                </value>
+                <value>
+                    <fullName>CWR</fullName>
+                    <default>false</default>
+                    <label>Child Welfare Referral</label>
+                </value>
+                <value>
+                    <fullName>TAN</fullName>
+                    <default>false</default>
+                    <label>Colorado Works Referral</label>
+                </value>
+                <value>
+                    <fullName>TFR</fullName>
+                    <default>false</default>
+                    <label>County Transfer at Redetermination</label>
+                </value>
+                <value>
+                    <fullName>RAP</fullName>
+                    <default>false</default>
+                    <label>Reapply</label>
+                </value>
+                <value>
+                    <fullName>AAR</fullName>
+                    <default>false</default>
+                    <label>Redetermination &amp; Verification Returned</label>
+                </value>
+                <value>
+                    <fullName>RP</fullName>
+                    <default>false</default>
+                    <label>Reinstatement Period</label>
+                </value>
+                <value>
+                    <fullName>WEP</fullName>
+                    <default>false</default>
+                    <label>Withdrawal within 12 month Eligibility Period</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Application_Status__c</fullName>
+        <externalId>false</externalId>
+        <label>Application Status</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>MultiselectPicklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>RE194_Application_Status</valueSetName>
+        </valueSet>
+        <visibleLines>4</visibleLines>
+    </fields>
+    <fields>
+        <fullName>Overdue__c</fullName>
+        <externalId>false</externalId>
+        <label>Overdue</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00619</valueSetName>
+        </valueSet>
+    </fields>
+
+    <fields>
+        <fullName>Payment_Type__c</fullName>
+        <externalId>false</externalId>
+        <label>Payment Type</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>CHATSR</fullName>
+                    <default>false</default>
+                    <label>Recovery</label>
+                </value>
+                <value>
+                    <fullName>CHATSI</fullName>
+                    <default>false</default>
+                    <label>Issuance</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>RE226_Payment_Type__c</fullName>
+        <externalId>false</externalId>
+        <label>RE226 Payment Type</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>RT_Payment_Type</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Activity_Name__c</fullName>
+        <externalId>false</externalId>
+        <label>Activity Name</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00851</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Attendance_Transaction_Status__c</fullName>
+        <externalId>false</externalId>
+        <label>Attendance-Transaction Status</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>0</fullName>
+                    <default>false</default>
+                    <label>Void</label>
+                </value>
+                <value>
+                    <fullName>1</fullName>
+                    <default>false</default>
+                    <label>Parent Approved</label>
+                </value>
+                <value>
+                    <fullName>2</fullName>
+                    <default>false</default>
+                    <label>Parent Pending</label>
+                </value>
+                <value>
+                    <fullName>3</fullName>
+                    <default>false</default>
+                    <label>Parent Pending (These are for records in SAF - Store in forward)</label>
+                </value>
+                <value>
+                    <fullName>4</fullName>
+                    <default>false</default>
+                    <label>Parent Rejected</label>
+                </value>
+                <value>
+                    <fullName>5</fullName>
+                    <default>false</default>
+                    <label>Unknown</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Attendance_Transaction_Type__c</fullName>
+        <externalId>false</externalId>
+        <label>Attendance-Transaction Type</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>0</fullName>
+                    <default>false</default>
+                    <label>Void</label>
+                </value>
+                <value>
+                    <fullName>1</fullName>
+                    <default>false</default>
+                    <label>Check In</label>
+                </value>
+                <value>
+                    <fullName>2</fullName>
+                    <default>false</default>
+                    <label>Check Out</label>
+                </value>
+                <value>
+                    <fullName>3</fullName>
+                    <default>false</default>
+                    <label>Previous Check In</label>
+                </value>
+                <value>
+                    <fullName>4</fullName>
+                    <default>false</default>
+                    <label>Previous Check Out</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Referral_Type__c</fullName>
+        <externalId>false</externalId>
+        <label>Referral Type</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>New Referral</fullName>
+                    <default>false</default>
+                    <label>New Referral</label>
+                </value>
+                <value>
+                    <fullName>Change Referral</fullName>
+                    <default>false</default>
+                    <label>Change Referral</label>
+                </value>
+                <value>
+                    <fullName>Transition Referral</fullName>
+                    <default>false</default>
+                    <label>Transition Referral</label>
+                </value>
+                <value>
+                    <fullName>Closure Referral</fullName>
+                    <default>false</default>
+                    <label>Closure Referral</label>
+                </value>
+                <value>
+                    <fullName>Renewal Referral</fullName>
+                    <default>false</default>
+                    <label>Renewal Referral</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Case_Mode__c</fullName>
+        <externalId>false</externalId>
+        <label>Case Mode</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00358</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Case_Status__c</fullName>
+        <externalId>false</externalId>
+        <label>Case Status</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00357</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Care_Level__c</fullName>
+        <externalId>false</externalId>
+        <label>Care Level</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00750</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>FA_Status__c</fullName>
+        <externalId>false</externalId>
+        <label>FA Status</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00703</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Program_Type__c</fullName>
+        <externalId>false</externalId>
+        <label>Program Type</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00853</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Program_Type_without_TTANF__c</fullName>
+        <externalId>false</externalId>
+        <label>Program Type without TTANF</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00854</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Provider_Type__c</fullName>
+        <externalId>false</externalId>
+        <label>Provider Type</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>RT_FAC_TYPE</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00219__c</fullName>
+        <externalId>false</externalId>
+        <label>R00219</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00219</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00335__c</fullName>
+        <externalId>false</externalId>
+        <label>R00335</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00335</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00369__c</fullName>
+        <externalId>false</externalId>
+        <label>R00369</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00369</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00373__c</fullName>
+        <externalId>false</externalId>
+        <label>R00373</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00373</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00375__c</fullName>
+        <externalId>false</externalId>
+        <label>R00375</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00375</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00376__c</fullName>
+        <externalId>false</externalId>
+        <label>R00376</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00376</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00393__c</fullName>
+        <externalId>false</externalId>
+        <label>R00393</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00393</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00422__c</fullName>
+        <externalId>false</externalId>
+        <label>R00422</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00422</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00559__c</fullName>
+        <externalId>false</externalId>
+        <label>R00559</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>Mobile Phone</fullName>
+                    <default>false</default>
+                    <label>Mobile Phone</label>
+                </value>
+                <value>
+                    <fullName>Email</fullName>
+                    <default>false</default>
+                    <label>Email</label>
+                </value>
+                <value>
+                    <fullName>Mail</fullName>
+                    <default>false</default>
+                    <label>Mail</label>
+                </value>
+                <value>
+                    <fullName>Home Phone</fullName>
+                    <default>false</default>
+                    <label>Home Phone</label>
+                </value>
+                <value>
+                    <fullName>Work Phone</fullName>
+                    <default>false</default>
+                    <label>Work Phone</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00686__c</fullName>
+        <externalId>false</externalId>
+        <label>R00686</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00686</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00687__c</fullName>
+        <externalId>false</externalId>
+        <label>R00687</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00687</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00690__c</fullName>
+        <externalId>false</externalId>
+        <label>R00690</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00690</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00700__c</fullName>
+        <externalId>false</externalId>
+        <label>R00700</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00700</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00710__c</fullName>
+        <externalId>false</externalId>
+        <label>R00710</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00710</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00714__c</fullName>
+        <externalId>false</externalId>
+        <label>R00714</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00714</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00715__c</fullName>
+        <externalId>false</externalId>
+        <label>R00715</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00715</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00716__c</fullName>
+        <externalId>false</externalId>
+        <label>R00716</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00716</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00728__c</fullName>
+        <externalId>false</externalId>
+        <label>R00728</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00728</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00751__c</fullName>
+        <externalId>false</externalId>
+        <label>R00751</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>1</fullName>
+                    <default>false</default>
+                    <label>Regular</label>
+                </value>
+                <value>
+                    <fullName>2</fullName>
+                    <default>false</default>
+                    <label>Regular Tier 1</label>
+                </value>
+                <value>
+                    <fullName>3</fullName>
+                    <default>false</default>
+                    <label>Regular Tier 2</label>
+                </value>
+                <value>
+                    <fullName>4</fullName>
+                    <default>false</default>
+                    <label>Regular Tier 3</label>
+                </value>
+                <value>
+                    <fullName>5</fullName>
+                    <default>false</default>
+                    <label>Regular Tier 4</label>
+                </value>
+                <value>
+                    <fullName>6</fullName>
+                    <default>false</default>
+                    <label>Regular Tier 5</label>
+                </value>
+                <value>
+                    <fullName>7</fullName>
+                    <default>false</default>
+                    <label>School Age</label>
+                </value>
+                <value>
+                    <fullName>8</fullName>
+                    <default>false</default>
+                    <label>School Age Tier 1</label>
+                </value>
+                <value>
+                    <fullName>9</fullName>
+                    <default>false</default>
+                    <label>School Age Tier 2</label>
+                </value>
+                <value>
+                    <fullName>10</fullName>
+                    <default>false</default>
+                    <label>School Age Tier 3</label>
+                </value>
+                <value>
+                    <fullName>11</fullName>
+                    <default>false</default>
+                    <label>School Age Tier 4</label>
+                </value>
+                <value>
+                    <fullName>12</fullName>
+                    <default>false</default>
+                    <label>School Age Tier 5</label>
+                </value>
+                <value>
+                    <fullName>13</fullName>
+                    <default>false</default>
+                    <label>Before School</label>
+                </value>
+                <value>
+                    <fullName>14</fullName>
+                    <default>false</default>
+                    <label>Before School Tier 1</label>
+                </value>
+                <value>
+                    <fullName>15</fullName>
+                    <default>false</default>
+                    <label>Before School Tier 2</label>
+                </value>
+                <value>
+                    <fullName>16</fullName>
+                    <default>false</default>
+                    <label>Before School Tier 3</label>
+                </value>
+                <value>
+                    <fullName>17</fullName>
+                    <default>false</default>
+                    <label>Before School Tier 4</label>
+                </value>
+                <value>
+                    <fullName>18</fullName>
+                    <default>false</default>
+                    <label>Before School Tier 5</label>
+                </value>
+                <value>
+                    <fullName>19</fullName>
+                    <default>false</default>
+                    <label>After School</label>
+                </value>
+                <value>
+                    <fullName>20</fullName>
+                    <default>false</default>
+                    <label>After School Tier 1</label>
+                </value>
+                <value>
+                    <fullName>21</fullName>
+                    <default>false</default>
+                    <label>After School Tier 2</label>
+                </value>
+                <value>
+                    <fullName>22</fullName>
+                    <default>false</default>
+                    <label>After School Tier 3</label>
+                </value>
+                <value>
+                    <fullName>23</fullName>
+                    <default>false</default>
+                    <label>After School Tier 4</label>
+                </value>
+                <value>
+                    <fullName>24</fullName>
+                    <default>false</default>
+                    <label>After School Tier 5</label>
+                </value>
+                <value>
+                    <fullName>25</fullName>
+                    <default>false</default>
+                    <label>B and A School</label>
+                </value>
+                <value>
+                    <fullName>26</fullName>
+                    <default>false</default>
+                    <label>B and A School Tier 1</label>
+                </value>
+                <value>
+                    <fullName>27</fullName>
+                    <default>false</default>
+                    <label>B and A School Tier 2</label>
+                </value>
+                <value>
+                    <fullName>28</fullName>
+                    <default>false</default>
+                    <label>B and A School Tier 3</label>
+                </value>
+                <value>
+                    <fullName>29</fullName>
+                    <default>false</default>
+                    <label>B and A School Tier 4</label>
+                </value>
+                <value>
+                    <fullName>30</fullName>
+                    <default>false</default>
+                    <label>B and A School Tier 5</label>
+                </value>
+                <value>
+                    <fullName>31</fullName>
+                    <default>false</default>
+                    <label>Overnight</label>
+                </value>
+                <value>
+                    <fullName>32</fullName>
+                    <default>false</default>
+                    <label>Overnight Tier 1</label>
+                </value>
+                <value>
+                    <fullName>33</fullName>
+                    <default>false</default>
+                    <label>Overnight Tier 2</label>
+                </value>
+                <value>
+                    <fullName>34</fullName>
+                    <default>false</default>
+                    <label>Overnight Tier 3</label>
+                </value>
+                <value>
+                    <fullName>35</fullName>
+                    <default>false</default>
+                    <label>Overnight Tier 4</label>
+                </value>
+                <value>
+                    <fullName>36</fullName>
+                    <default>false</default>
+                    <label>Overnight Tier 5</label>
+                </value>
+                <value>
+                    <fullName>37</fullName>
+                    <default>false</default>
+                    <label>Weekend</label>
+                </value>
+                <value>
+                    <fullName>38</fullName>
+                    <default>false</default>
+                    <label>Weekend Tier 1</label>
+                </value>
+                <value>
+                    <fullName>39</fullName>
+                    <default>false</default>
+                    <label>Weekend Tier 2</label>
+                </value>
+                <value>
+                    <fullName>40</fullName>
+                    <default>false</default>
+                    <label>Weekend Tier 3</label>
+                </value>
+                <value>
+                    <fullName>41</fullName>
+                    <default>false</default>
+                    <label>Weekend Tier 4</label>
+                </value>
+                <value>
+                    <fullName>42</fullName>
+                    <default>false</default>
+                    <label>Weekend Tier 5</label>
+                </value>
+                <value>
+                    <fullName>43</fullName>
+                    <default>false</default>
+                    <label>Evening</label>
+                </value>
+                <value>
+                    <fullName>44</fullName>
+                    <default>false</default>
+                    <label>Evening Tier 1</label>
+                </value>
+                <value>
+                    <fullName>45</fullName>
+                    <default>false</default>
+                    <label>Evening Tier 2</label>
+                </value>
+                <value>
+                    <fullName>46</fullName>
+                    <default>false</default>
+                    <label>Evening Tier 3</label>
+                </value>
+                <value>
+                    <fullName>47</fullName>
+                    <default>false</default>
+                    <label>Evening Tier 4</label>
+                </value>
+                <value>
+                    <fullName>48</fullName>
+                    <default>false</default>
+                    <label>Evening Tier 5</label>
+                </value>
+                <value>
+                    <fullName>49</fullName>
+                    <default>false</default>
+                    <label>Alternate</label>
+                </value>
+                <value>
+                    <fullName>50</fullName>
+                    <default>false</default>
+                    <label>Alternate Tier 1</label>
+                </value>
+                <value>
+                    <fullName>51</fullName>
+                    <default>false</default>
+                    <label>Alternate Tier 2</label>
+                </value>
+                <value>
+                    <fullName>52</fullName>
+                    <default>false</default>
+                    <label>Alternate Tier 3</label>
+                </value>
+                <value>
+                    <fullName>53</fullName>
+                    <default>false</default>
+                    <label>Alternate Tier 4</label>
+                </value>
+                <value>
+                    <fullName>54</fullName>
+                    <default>false</default>
+                    <label>Alternate Tier 5</label>
+                </value>
+                <value>
+                    <fullName>55</fullName>
+                    <default>false</default>
+                    <label>Disability</label>
+                </value>
+                <value>
+                    <fullName>56</fullName>
+                    <default>false</default>
+                    <label>Disability Tier 1</label>
+                </value>
+                <value>
+                    <fullName>57</fullName>
+                    <default>false</default>
+                    <label>Disability Tier 2</label>
+                </value>
+                <value>
+                    <fullName>58</fullName>
+                    <default>false</default>
+                    <label>Disability Tier 3</label>
+                </value>
+                <value>
+                    <fullName>59</fullName>
+                    <default>false</default>
+                    <label>Disability Tier 4</label>
+                </value>
+                <value>
+                    <fullName>60</fullName>
+                    <default>false</default>
+                    <label>Disability Tier 5</label>
+                </value>
+                <value>
+                    <fullName>61</fullName>
+                    <default>false</default>
+                    <label>Disability Alternative</label>
+                </value>
+                <value>
+                    <fullName>62</fullName>
+                    <default>false</default>
+                    <label>Disability Alternative Tier 1</label>
+                </value>
+                <value>
+                    <fullName>63</fullName>
+                    <default>false</default>
+                    <label>Disability Alternative Tier 2</label>
+                </value>
+                <value>
+                    <fullName>64</fullName>
+                    <default>false</default>
+                    <label>Disability Alternative Tier 3</label>
+                </value>
+                <value>
+                    <fullName>65</fullName>
+                    <default>false</default>
+                    <label>Disability Alternative Tier 4</label>
+                </value>
+                <value>
+                    <fullName>66</fullName>
+                    <default>false</default>
+                    <label>Disability Alternative Tier 5</label>
+                </value>
+                <value>
+                    <fullName>67</fullName>
+                    <default>false</default>
+                    <label>At-Risk</label>
+                </value>
+                <value>
+                    <fullName>68</fullName>
+                    <default>false</default>
+                    <label>At-Risk Tier 1</label>
+                </value>
+                <value>
+                    <fullName>69</fullName>
+                    <default>false</default>
+                    <label>At-Risk Tier 2</label>
+                </value>
+                <value>
+                    <fullName>70</fullName>
+                    <default>false</default>
+                    <label>At-Risk Tier 3</label>
+                </value>
+                <value>
+                    <fullName>71</fullName>
+                    <default>false</default>
+                    <label>At-Risk Tier 4</label>
+                </value>
+                <value>
+                    <fullName>72</fullName>
+                    <default>false</default>
+                    <label>At-Risk Tier 5</label>
+                </value>
+                <value>
+                    <fullName>73</fullName>
+                    <default>false</default>
+                    <label>Sick Care</label>
+                </value>
+                <value>
+                    <fullName>74</fullName>
+                    <default>false</default>
+                    <label>Sick Care Tier 1</label>
+                </value>
+                <value>
+                    <fullName>75</fullName>
+                    <default>false</default>
+                    <label>Sick Care Tier 2</label>
+                </value>
+                <value>
+                    <fullName>76</fullName>
+                    <default>false</default>
+                    <label>Sick Care Tier 3</label>
+                </value>
+                <value>
+                    <fullName>77</fullName>
+                    <default>false</default>
+                    <label>Sick Care Tier 4</label>
+                </value>
+                <value>
+                    <fullName>78</fullName>
+                    <default>false</default>
+                    <label>Sick Care Tier 5</label>
+                </value>
+                <value>
+                    <fullName>79</fullName>
+                    <default>false</default>
+                    <label>Wraparound</label>
+                </value>
+                <value>
+                    <fullName>80</fullName>
+                    <default>false</default>
+                    <label>Wraparound Tier 1</label>
+                </value>
+                <value>
+                    <fullName>81</fullName>
+                    <default>false</default>
+                    <label>Wraparound Tier 2</label>
+                </value>
+                <value>
+                    <fullName>82</fullName>
+                    <default>false</default>
+                    <label>Wraparound Tier 3</label>
+                </value>
+                <value>
+                    <fullName>83</fullName>
+                    <default>false</default>
+                    <label>Wraparound Tier 4</label>
+                </value>
+                <value>
+                    <fullName>84</fullName>
+                    <default>false</default>
+                    <label>Wraparound Tier 5</label>
+                </value>
+                <value>
+                    <fullName>85</fullName>
+                    <default>false</default>
+                    <label>Experience FCCH</label>
+                </value>
+                <value>
+                    <fullName>86</fullName>
+                    <default>false</default>
+                    <label>Experience FCCH Tier 1</label>
+                </value>
+                <value>
+                    <fullName>87</fullName>
+                    <default>false</default>
+                    <label>Experience FCCH Tier 2</label>
+                </value>
+                <value>
+                    <fullName>88</fullName>
+                    <default>false</default>
+                    <label>Experience FCCH Tier 3</label>
+                </value>
+                <value>
+                    <fullName>89</fullName>
+                    <default>false</default>
+                    <label>Experience FCCH Tier 4</label>
+                </value>
+                <value>
+                    <fullName>90</fullName>
+                    <default>false</default>
+                    <label>Experience FCCH Tier 5</label>
+                </value>
+                <value>
+                    <fullName>91</fullName>
+                    <default>false</default>
+                    <label>Out-of-County</label>
+                </value>
+                <value>
+                    <fullName>92</fullName>
+                    <default>false</default>
+                    <label>Out-of-County Tier 1</label>
+                </value>
+                <value>
+                    <fullName>93</fullName>
+                    <default>false</default>
+                    <label>Out-of-County Tier 2</label>
+                </value>
+                <value>
+                    <fullName>94</fullName>
+                    <default>false</default>
+                    <label>Out-of-County Tier 3</label>
+                </value>
+                <value>
+                    <fullName>95</fullName>
+                    <default>false</default>
+                    <label>Out-of-County Tier 4</label>
+                </value>
+                <value>
+                    <fullName>96</fullName>
+                    <default>false</default>
+                    <label>Out-of-County Tier 5</label>
+                </value>
+                <value>
+                    <fullName>97</fullName>
+                    <default>false</default>
+                    <label>Option One</label>
+                </value>
+                <value>
+                    <fullName>98</fullName>
+                    <default>false</default>
+                    <label>Option Two</label>
+                </value>
+                <value>
+                    <fullName>99</fullName>
+                    <default>false</default>
+                    <label>Option Three</label>
+                </value>
+                <value>
+                    <fullName>100</fullName>
+                    <default>false</default>
+                    <label>Care Not Offered</label>
+                </value>
+                <value>
+                    <fullName>101</fullName>
+                    <default>false</default>
+                    <label>Option Five</label>
+                </value>
+                <value>
+                    <fullName>102</fullName>
+                    <default>false</default>
+                    <label>Option Six</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00838__c</fullName>
+        <externalId>false</externalId>
+        <label>R00838</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00838</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00839__c</fullName>
+        <externalId>false</externalId>
+        <label>R00839</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00839</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00840__c</fullName>
+        <externalId>false</externalId>
+        <label>R00840</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00840</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Task_Subject__c</fullName>
+        <externalId>false</externalId>
+        <label>Task Subject</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>Task_Subject</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00378__c</fullName>
+        <externalId>false</externalId>
+        <label>R00378</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00378</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00883__c</fullName>
+        <description>Override Type</description>
+        <externalId>false</externalId>
+        <label>R00883</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00883</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00884__c</fullName>
+        <externalId>false</externalId>
+        <label>R00884</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00884</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>RE225_Case_Mode__c</fullName>
+        <externalId>false</externalId>
+        <label>RE225 Case Mode</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>Case_Mode</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>RE701_Provider_Type__c</fullName>
+        <externalId>false</externalId>
+        <label>RE701 Provider Type</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00852</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Restricted_Adjustment_Status__c</fullName>
+        <externalId>false</externalId>
+        <label>Restricted_Adjustment_Status</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>1</fullName>
+                    <default>true</default>
+                    <label>In Process</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Restricted_Adjustment_Type__c</fullName>
+        <externalId>false</externalId>
+        <label>Restricted Adjustment Type</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>1</fullName>
+                    <default>false</default>
+                    <label>Claim</label>
+                </value>
+                <value>
+                    <fullName>2</fullName>
+                    <default>false</default>
+                    <label>Recovery</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00396__c</fullName>
+        <externalId>false</externalId>
+        <label>R00396</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00396</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Provider_Note_Type__c</fullName>
+        <externalId>false</externalId>
+        <label>Provider Note Type</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00695</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Location_of_Care__c</fullName>
+        <externalId>false</externalId>
+        <label>Location of Care</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00856</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Rate_Type__c</fullName>
+        <externalId>false</externalId>
+        <label>Rate Type</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>Rate_Type</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>RE209_Correspondence_Names__c</fullName>
+        <externalId>false</externalId>
+        <label>RE209 Correspondence Names</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>CR202</fullName>
+                    <default>false</default>
+                    <label>CR202 – Tax Intercept Notice</label>
+                </value>
+                <value>
+                    <fullName>CR206</fullName>
+                    <default>false</default>
+                    <label>CR206 – Notice of Established Recovery</label>
+                </value>
+                <value>
+                    <fullName>CR208</fullName>
+                    <default>false</default>
+                    <label>CR208 – Statement of Recovery</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>RE206_Application_Status__c</fullName>
+        <label>RE206 Application Status</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>MultiselectPicklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>Submitted</fullName>
+                    <default>false</default>
+                    <label>Submitted</label>
+                </value>
+                <value>
+                    <fullName>In Progress</fullName>
+                    <default>false</default>
+                    <label>In Progress</label>
+                </value>
+                <value>
+                    <fullName>Paid</fullName>
+                    <default>false</default>
+                    <label>Paid</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+        <visibleLines>3</visibleLines>
+    </fields>
+    <fields>
+        <fullName>Waitlist_Enrollment_Freeze_Status__c</fullName>
+        <externalId>false</externalId>
+        <label>Waitlist/Enrollment Freeze Status</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00754</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>R00899__c</fullName>
+        <label>R00899</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>MultiselectPicklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00899</valueSetName>
+        </valueSet>
+        <visibleLines>4</visibleLines>
+    </fields>
+    <fields>
+        <fullName>R00900__c</fullName>
+        <label>R00900</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00900</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Complaint_Recipient_Type__c</fullName>
+        <externalId>false</externalId>
+        <label>Complaint Recipient Type</label>
+        <required>false</required>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00901</valueSetName>
+        </valueSet>
+    </fields>
+    <label>Field Utility</label>
+    <nameField>
+        <label>Picklist Fields Name</label>
+        <type>Text</type>
+    </nameField>
+    <pluralLabel>Field Utilities</pluralLabel>
+    <searchLayouts />
+    <sharingModel>ReadWrite</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

@@ -1,0 +1,446 @@
+<template>
+    <template if:true={claim}>
+        <div style="background:white">
+            <div class="slds-m-around_medium slds-float_right slds-no-print">
+                <lightning-badge label="For best results, print with landscape orientation."
+                class="slds-m-bottom_small"></lightning-badge>
+                <br />
+                <lightning-button-group class="slds-float_right">
+                    <lightning-button label="Return to Inbox" onclick={goBack}></lightning-button>
+                    <lightning-button variant="brand" label="Print" onclick={handlePrint}></lightning-button>
+                </lightning-button-group>
+            </div>
+            <div class="print-section">
+                <div class="slds-p-around_medium">
+                    <table class="slds-table slds-table_bordered slds-table_fixed-layout slds-table_resizable-cols"
+                        role="grid">
+                        <thead class="slds-assistive-text">
+                            <tr class="slds-line-height_reset">
+                                <th class="" scope="col">
+                                    <div class="" title="Header 1"></div>
+                                </th>
+                                <th class="" scope="col">
+                                    <div class="" title="Header 2"></div>
+                                </th>
+                                <th class="" scope="col">
+                                    <div class="" title="Header 3"></div>
+                                </th>
+                                <th class="" scope="col">
+                                    <div class="" title="Header 4"></div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="slds-hint-parent">
+                                <td data-label="Account Name">
+                                    <div class="">
+                                        <span class="slds-form-element__label">Record ID</span>
+                                    </div>
+                                </td>
+                                <td data-label="Account Name" colspan="3">
+                                    <div class="slds-form-element__static">{claim.Name}</div>
+                                </td>
+                            </tr>
+                            <!--  Row 1-->
+                            <tr class="slds-hint-parent">
+                                <td data-label="Account Name">
+                                    <div class="">
+                                        <span class="slds-form-element__label">Provider Mailing Address</span>
+                                    </div>
+                                </td>
+                                <td data-label="Account Name" colspan="3">
+                                    <div class="slds-form-element__static">{claim.Provider_Mailing_Address__c}</div>
+                                </td>
+                            </tr>
+                            <!--  Row 2-->
+                            <tr class="slds-hint-parent">
+                                <td data-label="Account Name">
+                                    <div class="">
+                                        <span class="slds-form-element__label">Provider e-mail</span>
+                                    </div>
+                                </td>
+                                <td data-label="Account Name">
+                                    <div class="slds-form-element__static">{claim.Provider_Email__c}</div>
+                                </td>
+                                <td data-label="Account Name"><span class="slds-form-element__label">Provider
+                                        Phone</span>
+                                </td>
+                                <td data-label="Account Name">
+                                    <div class="slds-form-element__static">{claim.Provider_phone__c}</div>
+                                </td>
+                            </tr>
+                            <!--  Row 3-->
+                            <tr class="slds-hint-parent">
+                                <td data-label="Account Name">
+                                    <div class="">
+                                        <span class="slds-form-element__label">County Name</span>
+                                    </div>
+                                </td>
+                                <td data-label="Account Name">
+                                    <div class="slds-form-element__static">{claim.County__c}</div>
+                                </td>
+                                <td data-label="Account Name"><span class="slds-form-element__label">Total Claimed
+                                        Amount</span>
+                                </td>
+                                <td data-label="Account Name">
+                                    <div class="slds-form-element__static">
+                                        <lightning-formatted-number value={claim.Total_Amount_Claimed__c}
+                                            format-style="currency" currency-code="USD"></lightning-formatted-number>
+                                    </div>
+                                </td>
+                            </tr>
+                            <!--  Row 4-->
+                            <tr class="slds-hint-parent">
+                                <td data-label="Account Name">
+                                    <div class="">
+                                        <span class="slds-form-element__label">Provider ID</span>
+                                    </div>
+                                </td>
+                                <td data-label="Account Name">
+                                    <div class="slds-form-element__static">{claim.Provider_Id__c}</div>
+                                </td>
+                                <td data-label="Account Name"><span class="slds-form-element__label">Provider
+                                        Name</span>
+                                </td>
+                                <td data-label="Account Name">
+                                    <div class="slds-form-element__static">{claim.Provider_Name__c}</div>
+                                </td>
+                            </tr>
+                            <!--  Row 4-->
+                            <tr class="slds-hint-parent">
+                                <td data-label="Account Name">
+                                    <div class="">
+                                        <span class="slds-form-element__label">Care Month</span>
+                                    </div>
+                                </td>
+                                <td data-label="Account Name">
+                                    <div class="slds-form-element__static">{claim.Care_Month__c}</div>
+                                </td>
+                                <td data-label="Account Name"><span class="slds-form-element__label">Care
+                                        Year</span>
+                                </td>
+                                <td data-label="Account Name">
+                                    <div class="slds-form-element__static">{claim.Care_Year__c}</div>
+                                </td>
+                            </tr>
+                            <!--  Row 5-->
+                            <tr class="slds-hint-parent">
+                                <td data-label="Account Name">
+                                    <div class="">
+                                        <span class="slds-form-element__label">Status</span>
+                                    </div>
+                                </td>
+                                <td data-label="Account Name">
+                                    <div class="slds-form-element__static">{claim.Claim_Status__c}</div>
+                                </td>
+                                <td data-label="Account Name"><span class="slds-form-element__label">Status Updated
+                                        Date</span>
+                                </td>
+                                <td data-label="Account Name">
+                                    <div class="slds-form-element__static">{claim.Status_Updated_Date__c}</div>
+                                </td>
+                            </tr>
+                            <!--  Row 6-->
+                            <tr class="slds-hint-parent">
+                                <td data-label="Submitted By Label">
+                                    <div class="">
+                                        <span class="slds-form-element__label">Submitted By</span>
+                                    </div>
+                                </td>
+                                <td data-label="Submitted By">
+                                    <div class="slds-form-element__static">{claim.Created_By__c}</div>
+                                </td>
+                                <td data-label="Signature Label"><span class="slds-form-element__label">Signature</span>
+                                </td>
+                                <td data-label="Signature">
+                                    <div class="slds-form-element__static">{claim.Signature__c}</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="slds-m-around_medium slds-m-top_none" style="border:2px solid">
+                    <c-provider-claim-files record-id={recordId}></c-provider-claim-files>
+                </div>
+                <template if:true={claimDetails}>
+                    <div class="slds-m-around_medium slds-p-around_small" style="border:2px solid">
+                        <template for:each={claimDetails} for:item="claimDetailWrap">
+                            <div key={claimDetailWrap.claimDetail.Id} class="slds-m-top_xx-small slds-p-around_small"
+                                style="border:1px solid">
+                                <table
+                                    class="slds-table slds-table_bordered slds-table_fixed-layout slds-table_resizable-cols "
+                                    role="grid">
+                                    <thead class="slds-assistive-text">
+                                        <tr class="slds-line-height_reset">
+                                            <th class="" scope="col">
+                                                <div class="" title="Header 1"></div>
+                                            </th>
+                                            <th class="" scope="col">
+                                                <div class="" title="Header 2"></div>
+                                            </th>
+                                            <th class="" scope="col">
+                                                <div class="" title="Header 3"></div>
+                                            </th>
+                                            <th class="" scope="col">
+                                                <div class="" title="Header 4"></div>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!--  Row 1-->
+                                        <template lwc:if={claimDetailWrap.isVacantSlot}>
+                                            <tr key={claimDetailWrap.claimDetail.Id} class="slds-hint-parent">
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Total Amount
+                                                            Claimed</span>
+                                                    </div>
+                                                </td>
+                                                <td colspan="9" data-label="Account Name">
+                                                    <div class="slds-form-element__static">
+                                                        <lightning-formatted-number
+                                                            value={claimDetailWrap.claimDetail.Total_Child_Claimed_Amount__c}
+                                                            format-style="currency" currency-code="USD">
+                                                        </lightning-formatted-number>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr key={claimDetailWrap.claimDetail.Id} class="slds-hint-parent">
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Slot Contract
+                                                            ID</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name" colspan="9">
+                                                    <div class="slds-form-element__static">
+                                                        {claimDetailWrap.claimDetail.Slot_Contract_Id__c}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                        <template lwc:else>
+                                            <tr key={claimDetailWrap.claimDetail.Id} class="slds-hint-parent">
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Child Total Amount
+                                                            Claimed</span>
+                                                    </div>
+                                                </td>
+                                                <td colspan="9" data-label="Account Name">
+                                                    <div class="slds-form-element__static">
+                                                        <lightning-formatted-number
+                                                            value={claimDetailWrap.claimDetail.Total_Child_Claimed_Amount__c}
+                                                            format-style="currency" currency-code="USD">
+                                                        </lightning-formatted-number>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <!--  Row 2-->
+                                            <tr key={claimDetailWrap.claimDetail.Id} class="slds-hint-parent">
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Child First
+                                                            Name</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="slds-form-element__static">
+                                                        {claimDetailWrap.claimDetail.Child_First_Name__c}
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Child Last
+                                                            Name</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <div class="slds-form-element__static">
+                                                            {claimDetailWrap.claimDetail.Child_Last_Name__c}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Case Id</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <div class="slds-form-element__static">
+                                                            {claimDetailWrap.claimDetail.Case_Id__c}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Individual Id</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <div class="slds-form-element__static">
+                                                            {claimDetailWrap.claimDetail.Individual_Id__c}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Authorization
+                                                            ID</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <div class="slds-form-element__static">
+                                                            {claimDetailWrap.claimDetail.Authorization_Id__c}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                        <template for:each={claimDetailWrap.claimDayDetails} for:item="claimDayDetail">
+                                            <tr key={claimDayDetail.Id}>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Care Date</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <div class="slds-form-element__static">
+                                                            {claimDayDetail.Care_Date__c}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Authorized Care
+                                                            Amount</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <div class="slds-form-element__static">
+                                                            {claimDayDetail.Authorized_Care_Amount__c}</div>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Claim Care
+                                                            Amount</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <div class="slds-form-element__static">
+                                                            {claimDayDetail.Claim_Care_Amount__c}</div>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Reason for
+                                                            Claim</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <div class="slds-form-element__static">
+                                                            {claimDayDetail.Reason_for_Claim__c}</div>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <span class="slds-form-element__label">Claim Amount</span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Account Name">
+                                                    <div class="">
+                                                        <div class="slds-form-element__static">
+                                                            <lightning-formatted-number
+                                                                value={claimDayDetail.Claim_Amount__c}
+                                                                format-style="currency" currency-code="USD">
+                                                            </lightning-formatted-number>
+
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                                <template if:true={claimDetailWrap.artFees}>
+                                    <div key={claimDetailWrap.claimDetail.Id}>
+                                        <table
+                                            class="slds-table slds-table_bordered slds-table_fixed-layout slds-table_resizable-cols slds-m-top_medium artFeeTable"
+                                            role="grid">
+                                            <thead class="slds-assistive-text">
+                                                <tr class="slds-line-height_reset">
+                                                    <th class="" scope="col">
+                                                        <div class="" title="Header 1">ART Fees</div>
+                                                    </th>
+                                                    <th class="" scope="col">
+                                                        <div class="" title="Header 2"></div>
+                                                    </th>
+                                                    <th class="" scope="col">
+                                                        <div class="" title="Header 3"></div>
+                                                    </th>
+                                                    <th class="" scope="col">
+                                                        <div class="" title="Header 4"></div>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr key={artFeeDetail.Id} class="slds-hint-parent">
+                                                    <td data-label="Account Name" colspan="8">
+                                                        <div class="">
+                                                            <span class="slds-form-element__label"><b> ART
+                                                                    Fees</b></span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <template for:each={claimDetailWrap.artFees} for:item="artFeeDetail">
+                                                    <!--  Row 1-->
+                                                    <tr key={artFeeDetail.Id} class="slds-hint-parent">
+                                                        <td data-label="Account Name">
+                                                            <div class="">
+                                                                <span class="slds-form-element__label">ART Fee
+                                                                    Type</span>
+                                                            </div>
+                                                        </td>
+                                                        <td colspan="3" data-label="Account Name">
+                                                            <div class="slds-form-element__static">
+                                                                {artFeeDetail.ART_Fee_Type__c}
+                                                            </div>
+                                                        </td>
+                                                        <td data-label="Account Name">
+                                                            <div class="">
+                                                                <span class="slds-form-element__label">Fee
+                                                                    Amount</span>
+                                                            </div>
+                                                        </td>
+                                                        <td colspan="3" data-label="Account Name">
+                                                            <div class="slds-form-element__static">
+                                                                <lightning-formatted-number
+                                                                    value={artFeeDetail.Claim_Amount__c}
+                                                                    format-style="currency" currency-code="USD">
+                                                                </lightning-formatted-number>
+
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
+</template>

@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Used to support the web service interface with ACSES</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableChangeDataCapture>false</enableChangeDataCapture>
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>CDE_SOURCE_VRFD_CODA__c</fullName>
+        <description>How Verified</description>
+        <externalId>false</externalId>
+        <label>How Verified</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00696</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>DTE_BEGIN_CS_COOP__c</fullName>
+        <description>Co-operation Child Support Begin Date</description>
+        <externalId>false</externalId>
+        <label>Co-operation Child Support Begin Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_BEGIN_GDC__c</fullName>
+        <description>Good Cause Effective Begin Date</description>
+        <encryptionScheme>ProbabilisticEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Good Cause Effective Begin Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_BIRTH_CUST_NON__c</fullName>
+        <description>DOB of Non-Custodial Parent</description>
+        <encryptionScheme>ProbabilisticEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>DOB of Non-Custodial Parent</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_END_CS_COOP__c</fullName>
+        <description>Co-operation Child Support End Date</description>
+        <externalId>false</externalId>
+        <label>Co-operation Child Support End Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_END_GDC__c</fullName>
+        <description>Good Cause Effective End Date</description>
+        <encryptionScheme>ProbabilisticEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Good Cause Effective End Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>IDN_CLIENT__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <description>Child Name</description>
+        <externalId>false</externalId>
+        <label>Child Name</label>
+        <referenceTo>T_SBSD_INDIV__c</referenceTo>
+        <relationshipLabel>Child Support Enforcement</relationshipLabel>
+        <relationshipName>T_SBSD_INDIV1</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>External ID</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <fields>
+        <fullName>IDN_STATE_CUST_NON__c</fullName>
+        <description>State ID of Non-Custodial Parent</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>State ID of Non-Custodial Parent</label>
+        <length>9</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>IND_CASE_OPEN__c</fullName>
+        <description>Do you have an open child support case?</description>
+        <externalId>false</externalId>
+        <label>Do you have an open child support case?</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00619</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IND_COOP_PARENT__c</fullName>
+        <description>Is parent co-operating with child support enforcement</description>
+        <externalId>false</externalId>
+        <label>Non-Cust Parent co-operating with CSE?</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00619</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IND_GDC__c</fullName>
+        <description>Does Custodial Party have a good cause for not pursuing child support?</description>
+        <externalId>false</externalId>
+        <label>Cause for not pursuing Child Support?</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00619</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IND_RCV_SUP_CHILD__c</fullName>
+        <description>Is any child support being received from this person?</description>
+        <externalId>false</externalId>
+        <label>Child support received from this person?</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00619</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IND_VISITN__c</fullName>
+        <description>Does this parent have scheduled visitation with the child?</description>
+        <externalId>false</externalId>
+        <label>Non-Cust Parent has scheduled visits?</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00619</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IND_VRFYD__c</fullName>
+        <description>Verified</description>
+        <externalId>false</externalId>
+        <label>Verified</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00367</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>Ignore__c</fullName>
+        <defaultValue>false</defaultValue>
+        <externalId>false</externalId>
+        <label>Ignore</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>NAM_FIRST_CUST_NON__c</fullName>
+        <description>First Name of Non-Custodial Parent</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>First Name of Non-Custodial Parent</label>
+        <length>32</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>NAM_LAST_CUST_NON__c</fullName>
+        <description>Last Name of Non-Custodial Parent</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Last Name of Non-Custodial Parent</label>
+        <length>32</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>NAM_MI_CUST_NON__c</fullName>
+        <description>Middle Name of Non-Custodial Parent</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Middle Name of Non-Custodial Parent</label>
+        <length>1</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>NBR_SSN_CUST_NON__c</fullName>
+        <description>SSN of Non-Custodial Parent</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>SSN of Non-Custodial Parent</label>
+        <length>9</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <label>Child Support Enforcement</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All1</fullName>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>Child Support ID</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Child Support</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ReadWrite</sharingModel>
+    <validationRules>
+        <fullName>Child_Support_End_Date_less_Than_Begin</fullName>
+        <active>true</active>
+        <description>Co-operation Child Support End Date must be greater than Co-operation Child Support Begin Date</description>
+        <errorConditionFormula>NOT( IDN_CLIENT__r.Is_Peak_Data__c ) &amp;&amp; DTE_BEGIN_CS_COOP__c &gt; DTE_END_CS_COOP__c</errorConditionFormula>
+        <errorDisplayField>DTE_END_CS_COOP__c</errorDisplayField>
+        <errorMessage>Co-operation Child Support End Date must be greater than Co-operation Child Support Begin Date</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Good_Cause_Begin_Date_Less_than_End_Date</fullName>
+        <active>true</active>
+        <description>Good Cause Effective End Date must be greater than Good Cause Effective Begin Date.</description>
+        <errorConditionFormula>AND(NOT( IDN_CLIENT__r.Is_Peak_Data__c ),OR((DTE_BEGIN_GDC__c &gt; DTE_END_GDC__c),
+AND(ISBLANK( DTE_BEGIN_GDC__c ),NOT(ISBLANK( DTE_END_GDC__c )))))</errorConditionFormula>
+        <errorDisplayField>DTE_END_GDC__c</errorDisplayField>
+        <errorMessage>Good Cause Effective End Date must be greater than Good Cause Effective Begin Date or cannot be filled when Good Cause Begin Date is Blank.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Req_HowVerified_If_VerifType_Writtn</fullName>
+        <active>true</active>
+        <description>How Verified field is must for verified = &quot;Written Verification&quot;.</description>
+        <errorConditionFormula>AND( NOT( IDN_CLIENT__r.Is_Peak_Data__c ),ISPICKVAL(IND_VRFYD__c, &quot;V&quot;) , 
+     ISBLANK(TEXT(CDE_SOURCE_VRFD_CODA__c) ) 
+)</errorConditionFormula>
+        <errorDisplayField>CDE_SOURCE_VRFD_CODA__c</errorDisplayField>
+        <errorMessage>How Verified field is must for verified = &quot;Written Verification&quot;.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Warning_Message_before_saving_the_record</fullName>
+        <active>true</active>
+        <description>This record may not be appropriate for this individual based on their age and/or relationship to the primary caretaker of this case</description>
+        <errorConditionFormula>AND(NOT( IDN_CLIENT__r.Is_Peak_Data__c ),OR(IDN_CLIENT__r.Is_Primary_Parent_Caretaker__c,IDN_CLIENT__r.Age__c &gt;= 19, AND(IDN_CLIENT__r.Age__c &lt; 19, 
+IDN_CLIENT__r.Has_Allowed_Relationship__c)),NOT(Ignore__c))</errorConditionFormula>
+        <errorMessage>This record may not be appropriate for this individual based on their age and/or relationship to the primary caretaker of this case(to continue saving please tick Ignore checkbox)</errorMessage>
+    </validationRules>
+    <visibility>Public</visibility>
+</CustomObject>

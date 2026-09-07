@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SSN_Alphanumeric_Only</fullName>
+    <active>true</active>
+    <errorConditionFormula>NOT(Is_Peak_Data__c)&amp;&amp; NOT(Is_CBMS_Data__c)&amp;&amp; NOT(ISCHANGED(Bypass_On__c))&amp;&amp; !ISBLANK(NBR_SSN__c )&amp;&amp; OR(NOT(ISNUMBER(NBR_SSN__c )),CONTAINS(NBR_SSN__c  ,&quot; &quot;),CONTAINS(NBR_SSN__c  ,&quot;-&quot;))</errorConditionFormula>
+    <errorDisplayField>NBR_SSN__c</errorDisplayField>
+    <errorMessage>Special characters and spaces are not allowed</errorMessage>
+</ValidationRule>

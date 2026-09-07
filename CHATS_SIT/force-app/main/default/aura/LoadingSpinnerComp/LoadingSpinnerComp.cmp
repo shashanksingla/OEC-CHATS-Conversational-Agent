@@ -1,0 +1,7 @@
+<aura:component >
+    <aura:attribute name="spinner" type="Boolean" default="false" description="Boolean flag to hide/show spinner."/>    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    <div class="loading" style="{!if(v.spinner, '', 'display:none;')}">
+        <lightning:spinner variant="brand" size="medium"/>
+    </div>
+</aura:component>

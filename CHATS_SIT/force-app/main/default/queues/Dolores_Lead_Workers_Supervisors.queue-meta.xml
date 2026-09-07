@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Dolores Lead Workers / Supervisors</name>
+    <queueMembers>
+        <users>
+            <user>ana.martinez@state.co.us.chats</user>
+            <user>invalid_janet.crawford@state.co.us.chats</user>
+            <user>malynda.evans@state.co.us.chats</user>
+        </users>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>Case_Review__c</sobjectType>
+    </queueSobject>
+    <queueSobject>
+        <sobjectType>Task</sobjectType>
+    </queueSobject>
+</Queue>

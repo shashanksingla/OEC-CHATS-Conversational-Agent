@@ -1,0 +1,4 @@
+<design:component>
+	<design:attribute name="buttonLabel" label="Button Label" />
+    <design:attribute name="objectAPIName" label="Object API Name" />
+</design:component>

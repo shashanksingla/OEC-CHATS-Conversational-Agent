@@ -1,0 +1,127 @@
+<aura:component extends="c:abstractComponent" controller="AssessEligibilityFlowApxCtrl">
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="recordId" type="String" />
+    <aura:attribute name="programType" type="String" />
+    <aura:attribute name="recordError" type="String" />
+    <aura:attribute name="warningMessage" type="String" default=''/>
+    <aura:attribute name="warningProgramMessage" type="String" default=''/>
+    <aura:attribute name="childCareProgram" type="String"/>
+    <aura:attribute name="warningMessageList" type="String[]"/>
+    <aura:attribute name="warningProgramMessageList" type="String[]"/>
+    <aura:attribute name="isCBMSTANFProgm" type="Boolean"/>
+    <aura:attribute name="programOptions" type="List"/>
+    <aura:attribute name="caseRecord" type="T_SBSD_CASE__c" default="{'sobjectType':'T_SBSD_CASE__c'}"/>
+    <aura:attribute name="newApplnDateInfo" type="T_CASE_APPLN_DTE__c" default="{'sobjectType':'T_CASE_APPLN_DTE__c'}"/>
+    <aura:attribute name="loggedInUserId" type="String" />
+    <aura:handler name="change" value="{!v.newApplnDateInfo.DTE_APPLN_NEW__c}" action="{!c.validateInput}"/>
+    <aura:handler name="change" value="{!v.newApplnDateInfo.RSN_OVERRIDE__c}" action="{!c.validateInput}"/>
+    <aura:handler name="change" value="{!v.newApplnDateInfo.CMT_OVERRIDE__c}" action="{!c.validateInput}"/>
+    <aura:handler name="init" value="{! this }" action="{! c.doInit }"/>
+    <div class="slds-wrap slds-grid">
+        <div class="slds-size--2-of-3 slds-p-left--small">
+            <lightning:card iconName="standard:event">
+                <aura:set attribute="actions">
+                    <c:navigationComponent totalTabs="1" 
+                                           currentTabNumber="{!v.currentTabNumber}"
+                                           showCancel="true"
+                                           finishLabel="Assess Eligibility"
+                                           onFinish="{!c.doFinish}"
+                                           onCancel="{!c.doCancel}"/>
+                </aura:set>
+                <aura:set attribute="title">
+                    <div class="slds-grid">
+                        <div class="slds-col slds-has-flexi-truncate">
+                            <div class="slds-media slds-no-space slds-grow">                        
+                                <div class="slds-media__body">
+                                    <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate"
+                                        title="Individual">Assess Eligibility</h1>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aura:set>
+                
+                <aura:if isTrue="{!v.currentTabNumber==1}">
+                    <h2 class="slds-section__title slds-p-left--small slds-p-top--small slds-border_top">Assess Eligibility</h2>
+                    <c:pageMessages pageMessages="{!v.pageMessages}" messageType="error"/>
+                    <lightning:layout multipleRows="true" horizontalAlign="space">
+                        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                            <lightning:layoutItem flexibility="auto" size="6">   
+                                                         
+                                <aura:if isTrue="{!!v.isCBMSTANFProgm}">
+                                                <c:inputPicklist label="Program" object="Field_Utility__c" 
+                                                field="Program_Type_without_TTANF__c" 
+                                                value="{!v.programType}" 
+                                                aura:id="input-field1" 
+                                                required="true"
+                                                showNone="true"/>
+                                <aura:set attribute="else"> 
+                                    <c:inputPicklist label="Program" 
+                                                        options="{!v.programOptions}" 
+                                                        value="{!v.programType}" 
+                                                        aura:id="input-field2" 
+                                                        required="true"
+                                                        showNone="true"/>
+                                    </aura:set>
+                                </aura:if>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" size="12" padding="around-small"/>
+
+                            <!--CCCAP-13251-->
+                            <lightning:layoutItem flexibility="auto" size="6">
+                                <c:outputField label="Current Application Date is..." type="UIDATE" value="{!v.newApplnDateInfo.DTE_APPLN_OLD__c}"/>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" size="6">
+                                <c:inputDate label="Updated Application Date is..." value="{!v.newApplnDateInfo.DTE_APPLN_NEW__c}" aura:id="input-field"/>
+                                <c:fieldLevelMessage aura:id="T_CASE_APPLN_DTE__c-DTE_APPLN_NEW__c"/>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" size="6">
+                                <c:inputPicklist type="Picklist" label="Override Reason" value="{!v.newApplnDateInfo.RSN_OVERRIDE__c}" required="{!AND(v.newApplnDateInfo.DTE_APPLN_NEW__c != null,v.newApplnDateInfo.DTE_APPLN_NEW__c != '')}"
+                                object="T_CASE_APPLN_DTE__c" field="RSN_OVERRIDE__c" aura:id="input-field3" showNone="true" hiddenValues="['7','8']"/>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" size="6">
+                                <div class="slds-form-element">
+                                    <aura:if isTrue="{!AND(v.newApplnDateInfo.DTE_APPLN_NEW__c != null,v.newApplnDateInfo.DTE_APPLN_NEW__c != '')}">
+                                        <abbr class="slds-required" title="required">*</abbr>
+                                    </aura:if>
+                                    <label class="slds-form-element__label" for="input-field4">Override Comments</label>
+                                    <div class="slds-form-element__control" style="margin-top: -20px;">
+                                        <lightning:textarea name="input-name" aura:id="input-field4" maxlength="255"
+                                        value="{!v.newApplnDateInfo.CMT_OVERRIDE__c}"/>
+                                        <c:fieldLevelMessage aura:id="T_CASE_APPLN_DTE__c-CMT_OVERRIDE__c"/>
+                                    </div>
+                                </div>
+                            </lightning:layoutItem>                        
+                        </lightning:layoutItem>                        
+                    </lightning:layout>
+                    
+                    <c:confirmationModal aura:id="assessEligibilityPrgm_warningMessage" 
+                                         confirmMsgLst="{!v.warningProgramMessageList}"
+                                         confirmMsg="{!v.warningProgramMessage}"
+                                         confirmModalYes="{!c.confirmPrgCancel}"
+                                         title="WARNING!"/>
+                                         
+                    <c:confirmationModal aura:id="assessEligibility_warningMessage" 
+                                         confirmMsgLst="{!v.warningMessageList}"
+                                         confirmMsg="{!v.warningMessage}"
+                                         confirmModalYes="{!c.confirmCancel}"
+                                         title="WARNING!"/>
+
+                    <!--CCCAP-13251-->
+                    <c:confirmationModal aura:id="assessEligibilityApplnDt_warningMessage" 
+                                         confirmMsg="{!$Label.c.eligibilityRun_ApplnDateWarning}"
+                                         confirmModalYes="{!c.confirmApplnDate}"
+                                         title="WARNING!"/>
+                </aura:if>
+            </lightning:card>
+        </div>
+        
+        <div class="slds-size--1-of-3 slds-p-left--small">
+            <lightning:card iconName="" title="Case Header">
+                <c:caseHeader recordId ="{!v.recordId}" sObjectName="T_SBSD_CASE__c" />
+            </lightning:card>
+        </div>
+    </div>
+    <!-- For Continuation Callbacks  -->
+    <c:continuationProxy aura:id="proxy" />
+</aura:component>

@@ -1,0 +1,65 @@
+<template>
+    <!-- Spinner -->
+    <template if:true={showSpinner}>
+        <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+    </template>
+
+    <!-- Card wrapper for standalone usage (not in modal) -->
+    <lightning-card icon-name="standard:event">
+        <div slot="title">
+            <p class="slds-text-title_caps slds-line-height_reset">{headerModeLabel}</p>
+            <h1 class="slds-page-header__title slds-truncate" title="Adjustment Note">Adjustment Note</h1>
+        </div>
+
+        <div slot="actions">
+            <c-navigation-component_lwc total-tabs="1" current-tab-number={currentTabNumber} finish-label="Save"
+                show-cancel onfinish={handleFinish} oncancel={handleCancel}>
+            </c-navigation-component_lwc>
+        </div>
+
+        <!-- Form Content -->
+        <div class="slds-p-around_small">
+            <c-page-messages_lwc page-messages={pageMessages} message-type={messageType}></c-page-messages_lwc>
+            <template if:true={recordError}>
+                <div class="slds-text-color_error slds-m-vertical_x-small">{recordError}</div>
+            </template>
+            <div class="slds-grid slds-wrap" role="form" aria-label="Adjustment Note Form">
+                <div class="slds-col slds-size_1-of-2 slds-p-around_small">
+                    <label id="adj-note-id-label" class="slds-form-element__label">ID</label>
+                    <lightning-formatted-text value={adjNoteName}
+                        aria-labelledby="adj-note-id-label"></lightning-formatted-text>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-p-around_small">
+                    <c-custom-lookup_lwc label="Adjustment" placeholder="Select an option" object-api-name="T_ADJMT__c"
+                        search-field="Name" selected-icon-name="standard:account"
+                        selected-record-id={adjNoteRec.IDN_ADJMT__c} required hide-recent-records
+                        is-disabled={isAdjustmentLookupDisabled} onvalueselected={handleAdjustmentChange}>
+                    </c-custom-lookup_lwc>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-p-around_small">
+                    <lightning-input type="text" label="Subject" data-field="TXT_SUBJ__c" value={adjNoteRec.TXT_SUBJ__c}
+                        required maxlength="30" onchange={handleInputChange}>
+                    </lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-p-around_small">
+                    <lightning-textarea label="Body" data-field="TXT_CMT__c" value={adjNoteRec.TXT_CMT__c}
+                        maxlength="4000" onchange={handleInputChange}>
+                    </lightning-textarea>
+                    <template if:true={helpText}>
+                        <c-custom-help-text_lwc content={helpText}></c-custom-help-text_lwc>
+                    </template>
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-p-around_small">
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-p-around_small">
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-p-around_small">
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-p-around_small">
+                </div>
+                <div class="slds-col slds-size_1-of-1 slds-p-around_small">
+                </div>
+            </div>
+        </div>
+    </lightning-card>
+</template>

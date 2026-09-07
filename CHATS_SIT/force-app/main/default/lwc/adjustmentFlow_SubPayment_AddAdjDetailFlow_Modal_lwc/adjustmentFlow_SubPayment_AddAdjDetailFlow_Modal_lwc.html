@@ -1,0 +1,184 @@
+<template>
+    <!-- Modal Header -->
+    <lightning-modal-header label={tabHeaderName}></lightning-modal-header>
+
+    <!-- ART Fee Confirmation Modal (shown before Save or Save And New when ART fees have changed) -->
+    <template if:true={showARTFeeConfirmModal}>
+        <c-confirmation-modal_-l-w-c
+            confirm-msg="ART Fee payment is being adjusted. Please make sure that the revised amounts are within the Rate Schedule yearly fee amounts. Would you like to continue?"
+            onyes={handleARTFeeConfirmYes}
+            onno={handleARTFeeConfirmNo}>
+        </c-confirmation-modal_-l-w-c>
+    </template>
+
+    <!-- Cancel Confirmation Modal (shown on Cancel button click from Tab 1 or Tab 2) -->
+    <template if:true={showCancelConfirmModal}>
+        <c-confirmation-modal_-l-w-c
+            confirm-msg="Are You Sure?"
+            onyes={handleCancelConfirmYes}
+            onno={handleCancelConfirmNo}>
+        </c-confirmation-modal_-l-w-c>
+    </template>
+
+    <!-- Previous Confirmation Modal (shown on Previous button click from Tab 2, normal flow) -->
+    <template if:true={showPreviousConfirmModal}>
+        <c-confirmation-modal_-l-w-c
+            confirm-msg="Values on this screen will not be saved, Are you sure?"
+            onyes={handlePreviousConfirmYes}
+            onno={handlePreviousConfirmNo}>
+        </c-confirmation-modal_-l-w-c>
+    </template>
+
+    <!-- Modal Body -->
+    <lightning-modal-body>
+        <!-- Loading Spinner -->
+        <template if:true={showSpinner}>
+            <lightning-spinner alternative-text="Loading..." size="medium"></lightning-spinner>
+        </template>
+
+        <!-- Card with Header Info -->
+        <lightning-card icon-name="custom:custom67" aria-label="Adjustment Details Card">
+            <div slot="title">
+                <div class="slds-grid">
+                    <div class="slds-col slds-has-flexi-truncate">
+                        <div class="slds-media slds-no-space slds-grow">
+                            <div class="slds-media__body">
+                                <h1 id="modal-page-header-title" class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate">{cardHeaderName}</h1>
+                                <p id="modal-page-header-desc" class="slds-text-title">{cardHeaderTitle}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page Messages -->
+            <template if:true={hasPageMessages}>
+                <div role="region" aria-label="Page Messages" aria-live="polite" aria-atomic="true">
+                    <c-page-messages_lwc 
+                        page-messages={pageMessages} 
+                        message-type={messageType}>
+                    </c-page-messages_lwc>
+                </div>
+            </template>
+
+            <!-- Tab 1: Sub Payment Selection -->
+            <template if:true={isTab1}>
+                <div role="region" aria-label="Sub Payment Selection" aria-describedby="modal-page-header-title modal-page-header-desc">
+                    <c-adjustment-flow_-select-sub-payment_lwc
+                        payment-obj-id={paymentObjId}
+                        adjustment={adjustment}
+                        sub-payment-obj_-n-a-m_-f-i-r-s-t={subPaymentObj_NAM_FIRST}
+                        service-period-obj_-d-t-e_-b-e-g-i-n_-e-f-f-v={servicePeriodObj_DTE_BEGIN_EFFV}
+                        sub-payment-obj_-id={subPaymentObj_Id}
+                        sub-payment-obj_-n-a-m_-l-a-s-t={subPaymentObj_NAM_LAST}
+                        service-period-obj_-d-t-e_-e-n-d_-e-f-f-v={servicePeriodObj_DTE_END_EFFV}
+                        sub-payment-search-lst={subPaymentSearchLst}
+                        selected-sub-payment={selectedSubPayment}
+                        auth-id={authId}
+                        case-id={caseId}
+                        slot-cnt-id={slotCntId}
+                        slot-cntcheckbox={slotCntcheckbox}
+                        search-by-slot-cnt-id={searchBySlotCntId}
+                        error-message-text={errorMessageText}
+                        ondosearch={handleSearch}
+                        onsubpaymentselect={handleSubPaymentSelection}>
+                    </c-adjustment-flow_-select-sub-payment_lwc>
+                </div>
+            </template>
+
+            <!-- Tab 2: Adjustment Entry (Edit Mode) -->
+            <template if:true={isTab2}>
+                <div role="region" aria-label="Adjustment Entry" aria-describedby="modal-page-header-title modal-page-header-desc">
+                    <c-adjustment-flow_-adjustment-entry_lwc
+                        selected-sub-payment={selectedSubPayment}
+                        adjustment={adjustment}
+                        sub-payment-details={subPaymentDetails}
+                        exist-adj-wrap={existAdjWrap}
+                        rate-type-options={rateTypeOptions}
+                        care-unit-type-options={careUnitTypeOptions}
+                        care-level-options={careLevelOptions}
+                        adjustment-detail-list={adjustmentDetailList}
+                        rate-type-options-care-date-map={rateTypeOptionsCareDateMap}
+                        care-level-options-map={careLevelOptionsMap}
+                        care-unit-type-options-map={careUnitTypeOptionsMap}
+                        rate-type-options-map={rateTypeOptionsMap}
+                        adjust-detail-map={adjustDetailMap}
+                        adjustment-details-map1={adjustmentDetailsMap}
+                        adjustment-details-a-r-t-fee-map={adjustmentDetailsARTFeeMap}
+                        child-current-utilization={childCurrentUtilization}
+                        slot-cntcheckbox={slotCntcheckbox}
+                        disabled-a-r-t-fees={disabledARTFees}
+                        oncreateadjustdetails={handleCreateAdjustDetails}>
+                    </c-adjustment-flow_-adjustment-entry_lwc>
+                </div>
+            </template>
+        </lightning-card>
+    </lightning-modal-body>
+
+    <!-- Modal Footer with Navigation -->
+    <lightning-modal-footer>
+        <div class="slds-grid slds-grid_align-end" role="group" aria-label="Modal Actions">
+            <!-- Cancel Button -->
+            <lightning-button 
+                label="Cancel" 
+                aria-label="Cancel and close modal"
+                onclick={handleCancel}
+                class="slds-m-right_small">
+            </lightning-button>
+
+            <!-- Previous Button (shown on Tab 2) -->
+            <template if:true={showPreviousBtn}>
+                <lightning-button 
+                    label="Previous" 
+                    variant="brand"
+                    aria-label="Go to previous step"
+                    onclick={handlePrevious}
+                    class="slds-m-right_small">
+                </lightning-button>
+            </template>
+
+            <!-- Next Button (shown on Tab 1) -->
+            <template if:true={showNextBtn}>
+                <lightning-button 
+                    label="Next" 
+                    variant="brand"
+                    aria-label="Go to next step"
+                    onclick={handleNext}
+                    class="slds-m-right_small">
+                </lightning-button>
+            </template>
+
+            <!-- Calculate Button (shown on Tab 2) -->
+            <template if:true={showCalculateBtn}>
+                <lightning-button 
+                    label="Calculate" 
+                    variant="brand"
+                    aria-label="Calculate adjustment"
+                    onclick={handleCalculate}
+                    class="slds-m-right_small">
+                </lightning-button>
+            </template>
+
+            <!-- Save And New Button (shown on Tab 2, not in edit mode) -->
+            <template if:true={showSaveAndNewBtn}>
+                <lightning-button 
+                    label="Save And New" 
+                    variant="success"
+                    aria-label="Save and create new"
+                    onclick={handleSaveAndNew}
+                    class="slds-m-right_small">
+                </lightning-button>
+            </template>
+
+            <!-- Save Button (shown on Tab 2) -->
+            <template if:true={showFinishBtn}>
+                <lightning-button 
+                    label="Save" 
+                    variant="success"
+                    aria-label="Save adjustment"
+                    onclick={handleFinish}>
+                </lightning-button>
+            </template>
+        </div>
+    </lightning-modal-footer>
+</template>

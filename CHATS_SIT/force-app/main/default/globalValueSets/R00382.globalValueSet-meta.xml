@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>WER</fullName>
+        <default>false</default>
+        <label>Agency Error</label>
+    </customValue>
+    <customValue>
+        <fullName>APL</fullName>
+        <default>false</default>
+        <label>Appeal</label>
+    </customValue>
+    <customValue>
+        <fullName>RAP</fullName>
+        <default>false</default>
+        <label>Reapply</label>
+    </customValue>
+    <customValue>
+        <fullName>AAR</fullName>
+        <default>false</default>
+        <label>Redetermination &amp; Verification Returned</label>
+    </customValue>
+    <customValue>
+        <fullName>TAN</fullName>
+        <default>false</default>
+        <label>TANF/FS/CW Reopen</label>
+    </customValue>
+    <customValue>
+        <fullName>VER</fullName>
+        <default>false</default>
+        <label>Verification returned</label>
+    </customValue>
+    <masterLabel>R00382</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

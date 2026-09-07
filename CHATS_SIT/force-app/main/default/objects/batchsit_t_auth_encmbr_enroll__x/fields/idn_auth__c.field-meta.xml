@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_auth__c</fullName>
+    <description>idn_auth</description>
+    <externalDeveloperName>idn_auth</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Authorization ID</label>
+    <length>50</length>
+    <referenceTargetField>T_AUTH__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_AUTH__c</referenceTo>
+    <relationshipLabel>Authorization Encumbrance Enrollment</relationshipLabel>
+    <relationshipName>batchsit_t_auth_encmbr_enroll</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

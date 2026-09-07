@@ -1,0 +1,120 @@
+<aura:component extends="c:abstractSection">
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:attribute name="caseRec" type="T_SBSD_CASE__c"
+                    default="{'sobjectType':'T_SBSD_CASE__c'}"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:attribute name="countyRec" type="T_COUNTY__c"/>
+    
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">General Information</h3>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputLookup label="County" aura:id="input-field"
+                           value="{!v.caseRec.CDE_COUNTY__c}"
+                           object="T_COUNTY__c"
+                           required="true"
+                           searchField="Name"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputDate aura:id="input-field" label="Date Application Received"
+                         value="{!v.caseRec.DTE_APPLN__c}" required="true"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-DTE_APPLN__c"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <lightning:layoutItem flexibility="auto" size="6">
+                <c:inputPicklist label="Primary Language Spoken at Home" aura:id="input-field"
+                                 value="{!v.caseRec.CDE_LANG_CORR__c}"
+                                 object="T_SBSD_CASE__c"
+                                 field="CDE_LANG_CORR__c" required="true"/>
+                <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-CDE_LANG_CORR__c"/>
+            </lightning:layoutItem>
+            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Provider Information</h3>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist label="Provider assisted with application?" 
+                             aura:id="input-field"
+                             value="{!v.caseRec.IND_ASSIST_PROVR__c}"
+                             object="T_SBSD_CASE__c"
+                             field="IND_ASSIST_PROVR__c" required="true"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-IND_ASSIST_PROVR__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+           
+            <c:inputPicklistForCheckbox label="Pre-Eligibility Determination"
+                                        value="{!v.caseRec.IND_ELG_PRE_PROVR__c}"
+                                        object="T_SBSD_CASE__c"
+                                        showNone="True"
+                             			field="IND_ELG_PRE_PROVR__c"
+                                        aura:id="input-field" 
+                                        required="true"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-IND_ELG_PRE_PROVR__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist label="Who determined eligibility?"
+                             aura:id="input-field"
+                             value="{!v.caseRec.LOC_ELG_DETERM__c}"
+                             object="T_SBSD_CASE__c"
+                             field="LOC_ELG_DETERM__c"
+                             />
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-LOC_ELG_DETERM__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="Number" name="input-name" label="Provider ID"
+                             value="{!v.caseRec.IDN_PROVR__c}" maxlength="10" />
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-IDN_PROVR__c"/>
+            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="Provider/Facility Name"
+                             value="{!v.caseRec.NAM_FACLTY_PROVR__c}" maxlength="51"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-NAM_FACLTY_PROVR__c"/>
+            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="Provider First Name"
+                             value="{!v.caseRec.NAM_FIRST_PROVR__c}" maxlength="25"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-NAM_FIRST_PROVR__c"/>
+            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="Provider Last Name"
+                             value="{!v.caseRec.NAM_LAST_PROVR__c}" maxlength="25"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-NAM_LAST_PROVR__c"/>
+            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="Provider Address"
+                             value="{!v.caseRec.ADR_LINE_1_PROVR__c}" maxlength="255"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-ADR_LINE_1_PROVR__c"/>
+            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="Provider City"
+                             value="{!v.caseRec.ADR_CITY_PROVR__c}" maxlength="255"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-ADR_CITY_PROVR__c"/>
+            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist label="Provider State" aura:id="input-field"
+                             value="{!v.caseRec.ADR_STATE_PROVR__c}"
+                             object="T_SBSD_CASE__c"
+                             field="ADR_STATE_PROVR__c" showNone="True"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-ADR_STATE_PROVR__c"/>
+            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <lightning:layoutItem flexibility="auto" size="6">
+                <lightning:input type="text" name="input-name" label="Provider Zip"
+                                 value="{!v.caseRec.ADR_ZIP_PROVR__c}" maxlength="6"/>
+                <c:fieldLevelMessage aura:id="T_SBSD_CASE__c-ADR_ZIP_PROVR__c"/>
+            </lightning:layoutItem>
+        </lightning:layoutItem>
+    </lightning:layout>
+    
+</aura:component>

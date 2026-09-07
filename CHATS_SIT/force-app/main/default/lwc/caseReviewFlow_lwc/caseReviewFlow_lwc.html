@@ -1,0 +1,450 @@
+<template>
+    <template if:true={showSpinner}>
+        <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+    </template>
+    <div class="slds-hide">{redirectMode}</div>
+    <!-- EDITABLE SCREEN IN NEW & EDIT FLOW -->
+    <template if:false={isViewMode}>
+
+        <!-- Draft Form Modal (CCCAP-7603) -->
+        <template if:true={showDraftForm}>
+            <section class="slds-modal slds-fade-in-open" style="background: rgba(0, 0, 0, .5);">
+                <div class="slds-modal__container">
+                    <!-- Draft Question 1 -->
+                    <template if:true={showDraftForm_Q1}>
+                        <div class="slds-modal__content slds-p-around_medium" style="border-top-right-radius: 0.25rem; border-top-left-radius: 0.25rem; padding-top: 1.3rem">
+                            <p>There is an existing Case Review in Draft Status. Would you like to pick up where you left off?</p>
+                        </div>
+                        <footer class="slds-modal__footer">
+                            <lightning-button-group>
+                                <lightning-button label="No" aria-label="No" onclick={doNo4}></lightning-button>
+                                <lightning-button label="Yes" aria-label="Yes" variant="brand" onclick={doYes4}></lightning-button>
+                            </lightning-button-group>
+                        </footer>
+                    </template>
+                    <!-- Draft Question 2 -->
+                    <template if:true={showDraftForm_Q2}>
+                        <div class="slds-modal__content slds-p-around_medium" style="border-top-right-radius: 0.25rem; border-top-left-radius: 0.25rem; padding-top: 1.3rem">
+                            <p>The Case Review in Draft Status will be deleted. Would you like to continue?</p>
+                        </div>
+                        <footer class="slds-modal__footer">
+                            <lightning-button-group>
+                                <lightning-button label="No" aria-label="No" onclick={doNo5}></lightning-button>
+                                <lightning-button label="Yes" aria-label="Yes" variant="brand" onclick={doYes5}></lightning-button>
+                            </lightning-button-group>
+                        </footer>
+                    </template>
+                    <!-- Draft Question 3 -->
+                    <template if:true={showDraftForm_Q3}>
+                        <div class="slds-modal__content slds-p-around_medium" style="border-top-right-radius: 0.25rem; border-top-left-radius: 0.25rem; padding-top: 1.3rem">
+                            <p>Please review the case reviews and determine if user needs to manually delete any draft status reviews.</p>
+                        </div>
+                        <footer class="slds-modal__footer">
+                            <lightning-button label="Ok" aria-label="Ok" variant="brand" onclick={doOk3}></lightning-button>
+                        </footer>
+                    </template>
+                </div>
+            </section>
+        </template>
+
+        <!-- Initial Question Modals -->
+        <template if:true={showQuestion1}>
+            <template if:false={showCaseOwnerForm1}>
+                <section class="slds-modal slds-fade-in-open" style="background: rgba(0, 0, 0, .5);">
+                    <div class="slds-modal__container">
+                        <template if:true={showQuestion2}>
+                            <div class="slds-modal__content slds-p-around_medium" style="border-top-right-radius: 0.25rem; border-top-left-radius: 0.25rem; padding-top: 1.3rem">
+                                <p>Were there case changes since last review? (such as Re-determination, referrals, or required mid-certification changes)</p>
+                            </div>
+                            <footer class="slds-modal__footer">
+                                <lightning-button-group>
+                                    <lightning-button label="No" aria-label="No" onclick={doNo2}></lightning-button>
+                                    <lightning-button label="Yes" aria-label="Yes" variant="brand" onclick={doYes2}></lightning-button>
+                                </lightning-button-group>
+                            </footer>
+                        </template>
+                        <template if:false={showQuestion2}>
+                            <div class="slds-modal__content slds-p-around_medium" style="border-top-right-radius: 0.25rem; border-top-left-radius: 0.25rem; padding-top: 1.3rem">
+                                <p>This case has been reviewed in the last 6 months. Were all required case corrections made from the last review?</p>
+                            </div>
+                            <footer class="slds-modal__footer">
+                                <lightning-button-group>
+                                    <lightning-button label="No" aria-label="No" onclick={doNo1}></lightning-button>
+                                    <lightning-button label="Yes" aria-label="Yes" variant="brand" onclick={doYes1}></lightning-button>
+                                </lightning-button-group>
+                            </footer>
+                        </template>
+                    </div>
+                </section>
+            </template>
+        </template>
+
+        <!-- Case Owner Form Modal (CCCAP-7603) -->
+        <template if:true={showCaseOwnerForm1}>
+            <section class="slds-modal slds-fade-in-open" style="background: rgba(0, 0, 0, .5);">
+                <div class="slds-modal__container">
+                    <template if:true={showCaseOwnerForm2}>
+                        <div class="slds-modal__content slds-p-around_medium" style="border-top-right-radius: 0.25rem; border-top-left-radius: 0.25rem; padding-top: 1.3rem">
+                            <p>Please assign to a different reviewer</p>
+                        </div>
+                        <footer class="slds-modal__footer">
+                            <lightning-button label="Ok" aria-label="Ok" variant="brand" onclick={doOk2}></lightning-button>
+                        </footer>
+                    </template>
+                    <template if:false={showCaseOwnerForm2}>
+                        <div class="slds-modal__content slds-p-around_medium" style="border-top-right-radius: 0.25rem; border-top-left-radius: 0.25rem; padding-top: 1.3rem">
+                            <p>You are the case owner for this case and there may be a conflict with creating this case review. Do you wish to proceed?</p>
+                        </div>
+                        <footer class="slds-modal__footer">
+                            <lightning-button-group>
+                                <lightning-button label="No" aria-label="No" onclick={doNo3}></lightning-button>
+                                <lightning-button label="Yes" aria-label="Yes" variant="brand" onclick={doYes3}></lightning-button>
+                            </lightning-button-group>
+                        </footer>
+                    </template>
+                </div>
+            </section>
+        </template>
+
+        <!-- Main Review Form -->
+        <template if:true={showReviewForm}>
+            <lightning-card icon-name="standard:care_request_reviewer">
+                <h1 slot="title" class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate">
+                    <template if:true={isEditMode}>Eligibility Case Review - Edit</template>
+                    <template if:true={isNewMode}>Eligibility Case Review - New</template>
+                </h1>
+
+                <div slot="actions">
+                    <lightning-button-group>
+                        <lightning-button label="Cancel" aria-label="Cancel" onclick={doCancel}></lightning-button>
+                        <lightning-button label="Save" aria-label="Save" onclick={doSave} variant={saveButtonVariant}></lightning-button>
+                        <template if:false={caseReviewObj.IsSubmitted__c}>
+                            <lightning-button label="Submit" aria-label="Submit" onclick={doSubmit} variant="brand"></lightning-button>
+                        </template>
+                    </lightning-button-group>
+                </div>
+
+                <hr style="margin: 0; border: 0; height: 1px; background: gray; background-image: linear-gradient(to right, #ccc, #fff, #ccc); box-shadow: inset 0 12px 12px -12px rgb(0 0 0 / 50%);">
+
+                <lightning-layout multiple-rows>
+                    <!-- Row 1 -->
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="date" label="Review Date" aria-label="Review Date" data-id="input-field" value={reviewDate} disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <c-multiselect-combobox behavior-type="picklist" label="Sample Month" aria-label="Sample Month" data-id="input-field"
+                            data-field="Sample_Month__c" value={caseReviewObj.Sample_Month__c} object="Case_Review__c" field="Sample_Month__c"
+                            required show-none disabled={isRevieweeAccess} onselect={handlePicklistChange}>
+                        </c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <c-multiselect-combobox behavior-type="picklist" label="Sample Year" aria-label="Sample Year" data-id="input-field"
+                            data-field="Sample_Year__c" value={caseReviewObj.Sample_Year__c} required show-none already-has-values
+                            object="Case_Review__c" field="Sample_Year__c" 
+                            options={sampleYearOptions} disabled={isRevieweeAccess} onselect={handlePicklistChange}>
+                        </c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="text" label="County" aria-label="County" data-id="input-field" 
+                            value={countyName} disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <!-- Row 2 -->
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <c-multiselect-combobox behavior-type="picklist" label="Review Status" aria-label="Review Status"
+                            data-id="input-field" value={caseReviewObj.Review_Status__c} object="Case_Review__c"
+                            field="Review_Status__c" disabled>
+                        </c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="text" label="Case Name" aria-label="Case Name" data-id="input-field" 
+                            value={caseRecord.NAM_PRIMARY_CARETAKER__c} disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="date" data-id="input-field" value={caseReviewObj.Eligibility_Period_From__c}
+                            label="Eligibility Period (From)" aria-label="Eligibility Period (From)" data-field="Eligibility_Period_From__c"
+                            required={eligFromRequired} disabled={eligFromDisabled} onchange={handleInputChange}>
+                        </lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="text" label="Reviewer Name" aria-label="Reviewer Name" data-id="input-field" 
+                            value={caseReviewObj.Reviewer_Name__c} disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <!-- Row 3 -->
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <c-multiselect-combobox behavior-type="picklist" label="Improper Payment" aria-label="Improper Payment"
+                            data-id="input-field" value={caseReviewObj.Improper_Payment__c} required show-none data-field="Improper_Payment__c"
+                            object="Case_Review__c" field="Improper_Payment__c" disabled={isRevieweeAccess} onselect={handlePicklistChange}>
+                        </c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="text" label="Case Number" aria-label="Case Number" data-id="input-field" 
+                            value={caseRecord.Name} disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="date" data-id="input-field" label="Eligibility Period (To)" aria-label="Eligibility Period (To)"
+                            value={caseReviewObj.Eligibility_Period_To__c} required={eligToRequired} data-field="Eligibility_Period_To__c"
+                            disabled={eligToDisabled} onchange={handleInputChange}>
+                        </lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="text" label="Reviewer Title" aria-label="Reviewer Title" data-id="input-field" 
+                            value={caseReviewObj.Reviewer_Title__c} disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <!-- Row 4 -->
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input data-id="input-field" type="number" formatter="currency" step="0.01"
+                            label="Improper Payment Amount" aria-label="Improper Payment Amount" data-field="Improper_Payment_Amount__c"
+                            value={caseReviewObj.Improper_Payment_Amount__c} required={improperPaymentAmountRequired}
+                            disabled={improperPaymentAmountDisabled} onchange={handleInputChange}
+                            onblur={roundOffPaymentAmount}>
+                        </lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="text" label="Current Case Status" aria-label="Current Case Status" data-id="input-field" 
+                            value={currentCaseStatus} disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <c-multiselect-combobox behavior-type="picklist" label="Most Recent Type of Eligibility Determination"
+                            data-id="input-field" data-field="Recent_Eligibility_Detrm__c" aria-label="Most Recent Type of Eligibility Determination"
+                            value={caseReviewObj.Recent_Eligibility_Detrm__c} object="Case_Review__c" field="Recent_Eligibility_Detrm__c"
+                            required show-none disabled={isRevieweeAccess} onselect={handlePicklistChange}>
+                        </c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="date" data-id="input-field" label="Closure Date (if applicable)"
+                            aria-label="Closure Date (if applicable)" value={caseReviewObj.Closure_Date__c}
+                            disabled={isRevieweeAccess} onchange={handleInputChange} data-field="Closure_Date__c">
+                        </lightning-input>
+                    </lightning-layout-item>
+
+                    <!-- Row 5 (CCCAP-7697) -->
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <c-multiselect-combobox behavior-type="picklist" data-id="input-field" data-field="Improper_Payment_Type__c"
+                            label="Overpayment or Underpayment?" aria-label="Overpayment or Underpayment?" value={caseReviewObj.Improper_Payment_Type__c}
+                            object="Case_Review__c" field="Improper_Payment_Type__c" required={improperPaymentTypeRequired} 
+                            show-none disabled={improperPaymentTypeDisabled} onselect={handlePicklistChange}>
+                        </c-multiselect-combobox>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="number" label="Correct Subsidy Amount" aria-label="Correct Subsidy Amount" 
+                            value={correctSubsidyAmount} formatter="currency" step="any" disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="number" label="Subsidy Amount Paid" aria-label="Subsidy Amount Paid" data-id="input-field" 
+                            value={caseReviewObj.Subsidy_Amount_Paid__c} formatter="currency" step="any" disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="number" label="Parent Fee for Sample Month" aria-label="Parent Fee for Sample Month" 
+                            data-id="input-field" value={caseReviewObj.Parent_Fee__c} formatter="currency" step="any" disabled></lightning-input>
+                    </lightning-layout-item>
+
+                    <!-- Row 6 (CCCAP-12378) -->
+                    <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                        <lightning-input type="text" label="Case Review Program Type" aria-label="Case Review Program Type" 
+                            data-id="input-field" value={caseTypeLabel} disabled></lightning-input>
+                    </lightning-layout-item>
+                </lightning-layout>
+
+                <br>
+
+                <!-- Question Rows -->
+                <template if:true={showQuestions}>
+                    <template for:each={responseWrapperList} for:item="row" for:index="index">
+                        <c-case-review_question-row_lwc key={row.questionRec.Id} screen-mode={screenMode}
+                            access-level={accessLevel} all-cause-options={allCauseOptions} all-error-options={allErrorOptions}
+                            error-count={errorCount} onerrorchange={handleErrorCountChange} response-wrapper={row}>
+                        </c-case-review_question-row_lwc>
+                    </template>
+                </template>
+
+                <hr style="margin: 1rem 0rem 0rem 0rem; border: 0; height: 1px; background: gray; background-image: linear-gradient(to right, #ccc, #fff, #ccc); box-shadow: inset 0 12px 12px -12px rgb(0 0 0 / 50%);">
+
+                <div style="padding: 0.8rem 0rem 0rem 0rem; text-align: center;">
+                    <lightning-button-group>
+                        <lightning-button label="Cancel" aria-label="Cancel" onclick={doCancel}></lightning-button>
+                        <lightning-button label="Save" aria-label="Save" onclick={doSave} variant={saveButtonVariant}></lightning-button>
+                        <template if:false={caseReviewObj.IsSubmitted__c}>
+                            <lightning-button label="Submit" aria-label="Submit" onclick={doSubmit} variant="brand"></lightning-button>
+                        </template>
+                    </lightning-button-group>
+                </div>
+            </lightning-card>
+
+            <!-- Task Reminder Modal -->
+            <template if:true={showTaskReminder}>
+                <section class="slds-modal slds-fade-in-open" style="background: rgba(0, 0, 0, .5);">
+                    <div class="slds-modal__container">
+                        <div class="slds-modal__content slds-p-around_medium" style="border-top-right-radius: 0.25rem; border-top-left-radius: 0.25rem; padding-top: 1.3rem">
+                            <p>Case Review has been submitted. Please remember to create a T118 - Case Review Complete task and assign it to the appropriate reviewer.</p>
+                        </div>
+                        <footer class="slds-modal__footer">
+                            <lightning-button label="Ok" aria-label="Ok" variant="brand" onclick={doOk}></lightning-button>
+                        </footer>
+                    </div>
+                </section>
+            </template>
+        </template>
+    </template>
+
+    <!-- READ-ONLY SCREEN IN VIEW MODE -->
+    <template if:true={isViewMode}>
+        <lightning-card icon-name="standard:care_request_reviewer">
+            <h1 slot="title" class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate">Eligibility Case Review</h1>
+        </lightning-card>
+        <hr style="margin: 0; border: 0; height: 0px; background: gray; background-image: linear-gradient(to right, #ccc, #fff, #ccc);">
+
+        <lightning-layout multiple-rows>
+            <!-- Row 1 -->
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Review Date</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-date-time value={caseReviewObj.CreatedDate} day="numeric" month="numeric" year="numeric"></lightning-formatted-date-time>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Sample Month</span>
+                <div class="slds-form-element__static">{caseReviewObj.Sample_Month__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Sample Year</span>
+                <div class="slds-form-element__static">{caseReviewObj.Sample_Year__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">County</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-text value={countyName}></lightning-formatted-text>
+                </div>
+            </lightning-layout-item>
+
+            <!-- Row 2 -->
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Review Status</span>
+                <div class="slds-form-element__static">{caseReviewObj.Review_Status__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Case Name</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-text value={caseRecord.NAM_PRIMARY_CARETAKER__c}></lightning-formatted-text>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Eligibility Period (From)</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-date-time value={formattedEligibilityFrom} day="numeric" month="numeric" year="numeric" time-zone="UTC"></lightning-formatted-date-time>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Reviewer Name</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-text value={caseReviewObj.Reviewer_Name__c}></lightning-formatted-text>
+                </div>
+            </lightning-layout-item>
+
+            <!-- Row 3 -->
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Improper Payment</span>
+                <div class="slds-form-element__static">{caseReviewObj.Improper_Payment__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Case Number</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-text value={caseRecord.Name}></lightning-formatted-text>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Eligibility Period (To)</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-date-time value={formattedEligibilityTo} day="numeric" month="numeric" year="numeric" time-zone="UTC"></lightning-formatted-date-time>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Reviewer Title</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-text value={caseReviewObj.Reviewer_Title__c}></lightning-formatted-text>
+                </div>
+            </lightning-layout-item>
+
+            <!-- Row 4 -->
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Improper Payment Amount</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-number value={caseReviewObj.Improper_Payment_Amount__c} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Current Case Status</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-text value={currentCaseStatus}></lightning-formatted-text>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Most Recent Type of Eligibility Determination</span>
+                <div class="slds-form-element__static">{caseReviewObj.Recent_Eligibility_Detrm__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Closure Date (if applicable)</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-date-time value={formattedClosureDate} day="numeric" month="numeric" year="numeric" time-zone="UTC"></lightning-formatted-date-time>
+                </div>
+            </lightning-layout-item>
+
+            <!-- Row 5 (CCCAP-7697) -->
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Overpayment or Underpayment?</span>
+                <div class="slds-form-element__static">{caseReviewObj.Improper_Payment_Type__c}</div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Correct Subsidy Amount</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-number value={caseReviewObj.Correct_Subsidy_Amount__c} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Subsidy Amount Paid</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-number value={caseReviewObj.Subsidy_Amount_Paid__c} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Parent Fee for Sample Month</span>
+                <div class="slds-form-element__static">
+                    <lightning-formatted-number value={caseReviewObj.Parent_Fee__c} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                </div>
+            </lightning-layout-item>
+
+            <!-- Row 6 (CCCAP-12378) -->
+            <lightning-layout-item flexibility="auto" size="3" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                <span class="slds-form-element__label">Case Review Program Type</span>
+                <div class="slds-form-element__static">{caseTypeLabel}</div>
+            </lightning-layout-item>
+        </lightning-layout>
+
+        <!-- Question Rows (View Mode) -->
+        <template if:true={showQuestions}>
+            <template for:each={responseWrapperList} for:item="row" for:index="index">
+                <c-case-review_question-row_lwc key={row.questionRec.Id} screen-mode={screenMode}
+                    access-level={accessLevel} all-cause-options={allCauseOptions} all-error-options={allErrorOptions}
+                    error-count={errorCount} response-wrapper={row}>
+                </c-case-review_question-row_lwc>
+            </template>
+        </template>
+    </template>
+</template>

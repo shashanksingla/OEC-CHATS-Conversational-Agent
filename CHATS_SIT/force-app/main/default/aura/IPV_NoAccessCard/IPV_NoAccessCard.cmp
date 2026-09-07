@@ -1,0 +1,6 @@
+<aura:component implements="flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId" access="global" >
+	<lightning:card >
+        <lightning:formattedText  value="This record has restricted access. Please contact your supervisor if access is required."/>
+    </lightning:card>
+
+</aura:component>

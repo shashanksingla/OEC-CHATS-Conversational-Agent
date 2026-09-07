@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>ELI</fullName>
+        <default>false</default>
+        <label>Eligible</label>
+    </customValue>
+    <customValue>
+        <fullName>INE</fullName>
+        <default>false</default>
+        <label>Ineligible</label>
+    </customValue>
+    <description>R00376</description>
+    <masterLabel>R00376</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

@@ -1,0 +1,469 @@
+<aura:component controller="ReportRequestApxCtrl" extends="c:abstractComponent" implements="force:lightningQuickAction,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:appHostable" access="GLOBAL">
+    <aura:attribute name="countyList" type="List"/>
+    <aura:attribute name="selectedCounty" type="String"/>
+    <aura:attribute name="dummyFieldValue" type="String"/>
+    <aura:attribute name="successMsg" type="String"/>
+    <aura:attribute name="errorMsg" type="String"/>
+    <aura:attribute name="requestInboxMsg" type="String"/>
+    <aura:attribute name="reportInboxURL" type="String"/>
+    <aura:attribute name="reportName" type="String" default="RE213"/>
+    <aura:attribute name="selectedReport" type="Canned_Report__mdt" />
+    <aura:attribute name="selectedReportCopy" type="Canned_Report__mdt" />
+    <aura:attribute name="paymentTypeList" type="List"/>
+    <aura:attribute name="reoprtRequestFilterList" type="List"/>
+    <aura:attribute name="countyOptions" type="List"/>
+    <aura:attribute name="isRequestSuccessFull" type="Boolean" default="false"/>
+    <aura:attribute name="isReportRequested" type="Boolean" default="false"/>
+    <aura:attribute name="isMultiSelectCounty" type="Boolean" default="false"/>
+    <aura:attribute name="isRefreshAfterSubmit" type="Boolean" default="true"/>
+    <aura:attribute name="isCountyOptions" type="Boolean" default="false"/>
+    <aura:attribute name="isCountyRequired" type="Boolean" default="true"/>
+    <aura:attribute name="validity" type="Object"/>
+    <aura:attribute name="isProvidorMandatory" type="Boolean" default="true"/>
+    <aura:attribute name="reportRequestFilterListToCreate" type="Canned_Report_Request_Filter__c[]" />
+    <aura:attribute name="reportRequestFilterObj" type="sobject" default="{'sobjectType': 'Canned_Report_Request_Filter__c',
+                                                                          'Field__c': '',
+                                                                          'Value__c': '',
+                                                                          'Canned_Report_Request__c': ''
+                                                                          }"/>
+    <aura:attribute name="reportRequestObj" type="sobject" default="{'sobjectType': 'Canned_Report_Request__c',
+                                                                    'Report_Id__c': '',
+                                                                    'Report_Name__c': '',
+                                                                    'Report_Type__c': '',
+                                                                    'Request_Description__c': '',
+                                                                    'Start_Date__c': null,
+                                                                    'End_Date__c': null,
+                                                                    'Date_Requested__c': null
+                                                                    }"/>
+    <aura:attribute name="beginDate" type="Date" />
+    <aura:attribute name="endDate" type="Date" />
+    <!--CCCAP 4284-->
+    <aura:attribute name="beginDateDis" type="Date" />
+    <aura:attribute name="endDateDis" type="Date" />
+    <aura:attribute name="isDisDatesReq" type="Boolean" default="false"/>
+    <aura:attribute name="isAllgDatesReq" type="Boolean" default="true"/>
+    <!--END-->
+    <aura:attribute name="beginDateCopy" type="Date" />
+    <aura:attribute name="endDateCopy" type="Date" />
+    <aura:attribute name="initData" type="object"/>
+    <aura:attribute name="recordError" type="List" />
+    <aura:attribute name="message" type="String" />
+    <aura:attribute name="requestFilterObjectName" type="String" default="Canned_Report_Request_Filter__c"/>
+    <aura:attribute name="months" type="List" default='[{ value: "", label: "--None--" },
+                                                       { value: "1", label: "January" },
+                                                       { value: "2", label: "February" },
+                                                       { value: "3", label: "March" },
+                                                       { value: "4", label: "April" },
+                                                       { value: "5", label: "May" },
+                                                       { value: "6", label: "June" },
+                                                       { value: "7", label: "July" },
+                                                       { value: "8", label: "August" },
+                                                       { value: "9", label: "September" },
+                                                       { value: "10", label: "October" },
+                                                       { value: "11", label: "November" },
+                                                       { value: "12", label: "December" }]'/>
+    <aura:attribute name="endMonths" type="List" default='[{ value: "", label: "--None--" },
+                                                          { value: "1", label: "January" },
+                                                          { value: "2", label: "February" },
+                                                          { value: "3", label: "March" },
+                                                          { value: "4", label: "April" },
+                                                          { value: "5", label: "May" },
+                                                          { value: "6", label: "June" },
+                                                          { value: "7", label: "July" },
+                                                          { value: "8", label: "August" },
+                                                          { value: "9", label: "September" },
+                                                          { value: "10", label: "October" },
+                                                          { value: "11", label: "November" },
+                                                          { value: "12", label: "December" }]'/>
+    <aura:attribute name="selectedStartMonth" type="String" default=""/>
+    <aura:attribute name="selectedStartYear" type="Integer" default=""/>
+    <aura:attribute name="selectedEndMonth" type="String" default=""/>
+    <aura:attribute name="selectedEndYear" type="Integer" default=""/>
+    <aura:attribute name="missingYearError" type="String" default="Please enter a value"/>
+    <aura:attribute name="isFinishedFlow" type="Boolean" default="false"/>
+    <aura:attribute name="providerIdVal" type="String"/>
+    <aura:attribute name="providerRecord" type="T_CHATS_PROVR_STATUS__c" default="{'sobjectType':'T_CHATS_PROVR_STATUS__c'}"/>
+    <aura:attribute name="selectedLookUpRecord" type="sObject" default="{}"/>
+    <aura:attribute name="dynamicMultiPicklistOptions" type="List"/>
+    <aura:attribute name="startYearOptions" type="List" default='[{ value: "", label: "--None--" }]' />
+    <aura:attribute name="endYearOptions" type="List" default='[{ value: "", label: "--None--" }]' />
+    <aura:set attribute="pageMessages" value="{!v.recordError}"/>
+    <aura:set attribute="messageType" value="{!v.message}"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.selectedStartMonth}" action="{!c.validateMonthDate}"/>
+    <aura:handler name="change" value="{!v.selectedEndMonth}" action="{!c.validateMonthDate}"/>
+    <aura:handler name="change" value="{!v.selectedStartYear}" action="{!c.validateDate}"/>
+    <aura:handler name="change" value="{!v.selectedEndYear}" action="{!c.validateDate}"/>
+    
+    <aura:method name="setProviderValFunc" action="{!c.setProviderValue}" access="public" >
+        <aura:attribute name="key" type="String" default="" /> 
+        <aura:attribute name="keyValue" type="String" default="" /> 
+    </aura:method>
+    
+    <!--Change handler method for disabling the field based in criteria for CCCAP-11681-->
+    <aura:method name="disableField" action="{!c.disableFieldSetValue}" access="public" >
+        <aura:attribute name="key" type="String" default="" /> 
+        <aura:attribute name="keyValue" type="String" default="" /> 
+    </aura:method>
+    
+    <lightning:card iconName="standard:product_request">        
+        <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+        
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate"
+                                title="CHATS Canned Report Request">CHATS Canned Report Request </h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        
+        <aura:set attribute="actions">
+            <div class="slds-button-group" role="group">
+                <lightning:button label="Reports Home" onclick="{!c.navigateToReportHome}" />
+                <lightning:button label="Reports Inbox"   onclick="{!c.navigateToReportInbox}" />
+            </div>
+        </aura:set>
+        
+        <div class="{!not(empty(v.selectedReport.Start_Date_Label__c))?'slds-m-around_large slds-border_bottom':'slds-m-around_large'}" >
+            <div>
+                <h2 class="slds-card__header-title">
+                    <!-- <a href="javascript:void(0);" class="slds-card__header-link slds-truncate" title="CR211- Payment Reconciliation Report"> -->
+                    <b><span>Select fields below to filter and click Submit to request</span></b>  
+                    <!--  </a> -->
+                </h2>
+            </div><br/>
+            
+            <div>
+                <h2 class="slds-card__header-title">
+                    <!-- <a href="javascript:void(0);" class="slds-card__header-link slds-truncate" title="CR211- Payment Reconciliation Report"> -->
+                    <b><span>{!v.selectedReport.Report_Name__c} </span></b> 
+                    <!--  </a> -->
+                </h2>
+            </div>
+            
+            <div>
+                <lightning:layout multipleRows="true" horizontalAlign="space">
+                    <aura:if isTrue="{!!v.selectedReport.Hide_County__c}">
+                        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                            <!--
+                            <c:inputMultiSelectPicklist aura:id="multiSelectPicklist"
+                                                        label="{!v.selectedReport.County_Label__c}"
+                                                        required="true"
+                                                        value="{!v.selectedCounty}"
+                                                        object="Canned_Report_Request__c"
+                                                        field="County__c"
+                                                        doLabelMatch="false"
+                                                        width ="340px"
+                                                        />
+                            -->
+                            <aura:if isTrue="{!v.isMultiSelectCounty}">
+                                <c:inputMultiSelectCombobox aura:id="multiSelectPicklist" label="{!v.selectedReport.County_Label__c}" value="{!v.selectedCounty}" 
+                                                        required="{!v.isCountyRequired}" object="Canned_Report_Request__c" field="County__c" width="73.5%"/>
+                                <aura:set attribute="else">
+                                    <div style="width: 73.5%">
+                                        <c:inputPicklist aura:id="input-field" label="{!v.selectedReport.County_Label__c}" value="{!v.selectedCounty}" object="Canned_Report_Request__c"
+                                                     field="County__c" showNone="true" required="{!v.isCountyRequired}"/>
+                                    </div>
+                            	</aura:set>
+                            </aura:if>
+                            
+                            <c:fieldLevelMessage aura:id="inputMultiSelectPIcklistError"/>
+                        </lightning:layoutItem>
+                        
+                        <aura:if isTrue="{! v.selectedReport.DeveloperName!='RE226'}">
+                            <lightning:layoutItem flexibility="auto" size="4" padding="around-small"/>
+                            <lightning:layoutItem flexibility="auto" size="4" padding="around-small"/>
+                            
+                            <aura:set attribute="else">                                
+                                <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                                    <c:customLookup aura:id="providerLkUpId226"
+                                                    value="{!v.providerIdVal}"
+                                                    objectAPIName="T_CHATS_PROVR_STATUS__c"
+                                                    label="Provider Id" 
+                                                    required="{!v.isProvidorMandatory}"
+                                                    selectedRecord="{!v.selectedLookUpRecord}"
+                                                    showRecentRecords="true"
+                                                    /> 
+                                    <c:fieldLevelMessage aura:id="ProviderILkUpId226"/>
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="1" padding="around-small"/>
+                            </aura:set>
+                        </aura:if>
+                    </aura:if>
+                    
+                    <aura:if isTrue="{!v.isRefreshAfterSubmit}" >
+                        <aura:iteration items="{!v.reoprtRequestFilterList}" var="reoprtRequestFilterObj"> 
+                            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                                <c:genericReportFilters aura:id="input-filters"
+                                                        fieldType="{!reoprtRequestFilterObj.Field_Data_Type__c}" 
+                                                        fieldLabel="{!reoprtRequestFilterObj.Field__c}"
+                                                        fieldAPIName="{!reoprtRequestFilterObj.Field_Api_Name__c}"
+                                                        initData="{!v.initData}"
+                                                        associatedObjName="{!v.requestFilterObjectName}"
+                                                        required="{!reoprtRequestFilterObj.Required__c}"
+                                                        disabled="{!reoprtRequestFilterObj.disabled}"
+                                                        parentObjectName="{!reoprtRequestFilterObj.Options__c}"
+                                                        reportName="{!v.selectedReport.DeveloperName}"
+                                                        isMonthYearFilter="{!v.selectedReport.isMonthYearFilter__c}"
+                                                        multiPicklistOptions="{!v.dynamicMultiPicklistOptions}"
+                                                        parent="{!this}"/>
+                                <!--CCCAP-13192-->
+                                <aura:if isTrue="{!and(v.selectedReport.DeveloperName == 'RE117', reoprtRequestFilterObj.Field__c == 'Case Status')}">
+                                    <lightning:helptext content="Please select all necessary case status for which you want to view cases based on their current case status mode." />
+                                </aura:if>
+                                <aura:if isTrue="{!and(v.selectedReport.DeveloperName == 'RE117', reoprtRequestFilterObj.Field__c == 'Case Mode')}">
+                                    <lightning:helptext content="Please select all necessary case mode for which you want to view cases based on their current case status mode." />
+                                </aura:if>
+                                <aura:if isTrue="{!and(v.selectedReport.DeveloperName == 'RE117', reoprtRequestFilterObj.Field__c == 'Application Received End Date')}">
+                                    <c:fieldLevelMessage aura:id="ApplnRecEndDateErr"/>
+                                    <lightning:helptext content="Please select the latest date for which you want to view cases based on the date the application was received" />
+                                </aura:if>
+                        		<!--end CCCAP-13192-->
+                                <c:fieldLevelMessage aura:id="inputPaymentError"/>
+                            </lightning:layoutItem>
+                            
+                            <lightning:layoutItem flexibility="auto" size="1" padding="around-small"/>
+                        </aura:iteration>
+                    </aura:if>
+                    
+                    <aura:if isTrue="{! v.selectedReport.DeveloperName!='RE226'}"> 
+                        <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                            <aura:if isTrue="{! v.selectedReport.isProviderDependentLkUp__c}"> 
+                                <c:customLookup aura:id="providerLkUpId"
+                                                value="{!v.providerIdVal}"
+                                                objectAPIName="T_CHATS_PROVR_STATUS__c"
+                                                label="Provider Id" 
+                                                required="{!v.isProvidorMandatory}"
+                                                selectedRecord="{!v.selectedLookUpRecord}"
+                                                showRecentRecords="true"
+                                                /> 
+                                <c:fieldLevelMessage aura:id="ProviderILkUpId"/>
+                            </aura:if>
+                        </lightning:layoutItem>
+                        
+                        <lightning:layoutItem flexibility="auto" size="1" padding="around-small"/>
+                    </aura:if>   
+                    
+                    <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                        <aura:if isTrue="{!!empty(v.providerIdVal)}">
+                            <force:recordData aura:id="forceRecordCmp"
+                                              recordId="{!v.providerIdVal}"
+                                              fields="Id,Name,NAM_FACILITY__c"
+                                              mode="VIEW"
+                                              targetFields="{!v.providerRecord}"
+                                              targetError="{!v.recordError}" />
+                            
+                        </aura:if>
+                        <aura:if isTrue="{!v.selectedReport.isProviderDependentLkUp__c}"> 
+                            <aura:if isTrue="{!v.isProvidorMandatory}"><label class="slds-form-element__label" for="input-id-01"><abbr class="slds-required" title="required">*</abbr> Provider Name</label><br /> </aura:if>
+                            <aura:if isTrue="{!!v.isProvidorMandatory}"><label class="slds-form-element__label" for="input-id-01"> Provider Name</label><br /></aura:if>
+                            {!v.providerRecord.NAM_FACILITY__c}
+                        </aura:if>
+                    </lightning:layoutItem>
+                    
+                    <lightning:layoutItem flexibility="auto" size="4" padding="around-small"/>
+                    <lightning:layoutItem flexibility="auto" size="4" padding="around-small"/>
+                    
+                    <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                        <lightning:textarea aura:id="reportDesc" name="Report Description" value="{!v.selectedReport.Description__c}" required="true" messageWhenValueMissing="This field is required." label="Report Description" maxlength="250" />
+                    </lightning:layoutItem>
+                </lightning:layout>
+            </div>
+        </div>
+        
+        <div class="slds-m-around_large">
+            <div>
+                <aura:if isTrue="{!not(empty(v.selectedReport.Start_Date_Label__c))}">
+                    <h2 class="slds-card__header-title">
+                        <b> <span>Report Request Date Range</span></b>  
+                        <!--   </a> -->
+                    </h2>
+                </aura:if>
+            </div>
+            <div>
+                <lightning:layout multipleRows="true" horizontalAlign="space">
+                    <aura:if isTrue="{!v.selectedReport.isMonthYear__c}">
+                        <lightning:layoutItem flexibility="auto" size="3" padding="around-small" class="dateRangeCss slds-p-top_large">
+                            <h3><b>{!v.selectedReport.Start_Date_Label__c}</b></h3> 
+                        </lightning:layoutItem>
+                        
+                        <lightning:layoutItem flexibility="auto" size="2" padding="around-small">
+                            <c:inputPicklist label="Month" 
+                                             aura:id="startMonth"
+                                             value="{!v.selectedStartMonth}"
+                                             alreadyHasValues="true"
+                                             options="{!v.months}"
+                                             onchange="{!c.validateMonthDate}"
+                                             required="{!or(v.selectedReport.Date_Required__c, not(empty(v.selectedStartYear)))}"
+                                             />
+                            <c:fieldLevelMessage aura:id="startMonthMsg"/>
+                        </lightning:layoutItem>
+                        
+                        <lightning:layoutItem flexibility="auto" size="2" padding="around-small">
+                            <aura:if isTrue="{!(v.selectedReport.DeveloperName!='RE219' &amp;&amp; v.selectedReport.DeveloperName!='RE222')}">
+                            <lightning:input type="Number" 
+                                             name="input-name" 
+                                             label="Year"
+                                             value="{!v.selectedStartYear}" 
+                                             min="1000" 
+                                             max="9999"
+                                             aura:id="startYear"
+                                             required="{!or(v.selectedReport.Date_Required__c, not(empty(v.selectedStartMonth)))}"
+                                             messageWhenValueMissing="{!v.missingYearError}"
+                                             messageWhenRangeOverflow="Please enter a valid year"
+                                             messageWhenRangeUnderflow="Please enter a valid year"/>
+                                <aura:set attribute="else">
+                                    <c:inputPicklist label="Year" 
+                                                     aura:id="startYear"
+                                                     value="{!v.selectedStartYear}"
+                                                     alreadyHasValues="true"
+                                                     options="{!v.startYearOptions}"
+                                                     required="{!or(v.selectedReport.Date_Required__c, not(empty(v.selectedStartMonth)))}"
+                                                     />
+                                </aura:set>
+                            </aura:if>
+                            <c:fieldLevelMessage aura:id="startYearMsg"/>
+                        </lightning:layoutItem>  
+                        
+                        <lightning:layoutItem flexibility="auto" size="5" padding="around-small"/>
+                        
+                        <lightning:layoutItem flexibility="auto" size="3" padding="around-small" class="dateRangeCss slds-p-top_large">
+                            <h3><b>{!v.selectedReport.End_Date_Label__c}</b></h3> 
+                        </lightning:layoutItem>
+                        
+                        <lightning:layoutItem flexibility="auto" size="2" padding="around-small">
+                            <c:inputPicklist label="Month" 
+                                             aura:id="endMonth"
+                                             value="{!v.selectedEndMonth}"
+                                             alreadyHasValues="true"
+                                             options="{!v.endMonths}"
+                                             onchange="{!c.validateMonthDate}"
+                                             required="{!or(v.selectedReport.EndDateRequired__c, not(empty(v.selectedEndYear)))}"
+                                             />
+                            <c:fieldLevelMessage aura:id="endMonthMsg"/>
+                        </lightning:layoutItem>
+                        
+                        <lightning:layoutItem flexibility="auto" size="2" padding="around-small">
+                            <aura:if isTrue="{!(v.selectedReport.DeveloperName!='RE219' &amp;&amp; v.selectedReport.DeveloperName!='RE222')}">
+                                <lightning:input type="Number" 
+                                                 name="input-name" 
+                                                 label="Year"
+                                                 value="{!v.selectedEndYear}" 
+                                                 min="1000" 
+                                                 max="9999"
+                                                 aura:id="endYear"
+                                                 messageWhenValueMissing="{!v.missingYearError}"
+                                                 messageWhenRangeOverflow="Please enter a valid year"
+                                                 messageWhenRangeUnderflow="Please enter a valid year"
+                                                 required="{!or(v.selectedReport.EndDateRequired__c, not(empty(v.selectedEndMonth)))}"
+                                                 />
+                                <aura:set attribute="else">
+                                    <c:inputPicklist label="Year" 
+                                                     aura:id="endYear"
+                                                     value="{!v.selectedEndYear}"
+                                                     alreadyHasValues="true"
+                                                     options="{!v.endYearOptions}"
+                                                     required="{!or(v.selectedReport.EndDateRequired__c, not(empty(v.selectedEndMonth)))}"
+                                                     />
+                                </aura:set>
+                            </aura:if>
+                            <c:fieldLevelMessage aura:id="endYearMsg"/>
+                        </lightning:layoutItem> 
+                        
+                        <lightning:layoutItem flexibility="auto" size="5" padding="around-small"/>
+                        
+                        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                            <lightning:button label="Submit" variant="brand" onclick="{!c.submitReportRequest}"  class="slds-m-top--large"/>
+                        </lightning:layoutItem>
+                        
+                        <aura:set attribute="else">
+                            <aura:if isTrue="{!not(empty(v.selectedReport.Start_Date_Label__c))}">
+                                <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                                    <ui:inputDate displayDatePicker="true"  format="MM/DD/YYYY"
+                                                  class="field"
+                                                  aura:id="beginInputDate"
+                                                  required="{!v.selectedReport.Date_Required__c}"
+                                                  label="{!v.selectedReport.Start_Date_Label__c}" 
+                                                  value="{!v.beginDate}" 
+                                                  />
+                                    <!--  <c:inputDate aura:id="input-field"
+                                         required="true"
+                                         label="Begin Date" 
+                                         value="{!v.beginDate}"
+                                         />  -->
+                                </lightning:layoutItem>
+                                
+                                <aura:if isTrue="{!!v.selectedReport.Hide_End_Date__c}">
+                                    <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                                        <ui:inputDate displayDatePicker="true"  format="MM/DD/YYYY"
+                                                      class="field"
+                                                      aura:id="endInputDate"
+                                                      required="{!v.selectedReport.EndDateRequired__c}"
+                                                      label="{!v.selectedReport.End_Date_Label__c}" 
+                                                      value="{!v.endDate}" 
+                                                      />
+                                    </lightning:layoutItem>
+                                    
+                                    <aura:set attribute="else">
+                                        <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                                            <div class="header-column">
+                                                <p class="field-title" />
+                                            </div>
+                                        </lightning:layoutItem>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                            
+                            <aura:if isTrue="{!v.selectedReport.DeveloperName == 'RE110'}">
+                                <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                                    <ui:inputDate displayDatePicker="true"  format="MM/DD/YYYY"
+                                                  class="field"
+                                                  aura:id="beginInputDateDisqualification"
+                                                  
+                                                  label="* Disqualification Begin Date" 
+                                                  
+                                                  value="{!v.beginDateDis}" 
+                                                  />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                                    <ui:inputDate displayDatePicker="true"  format="MM/DD/YYYY"
+                                                  class="field"
+                                                  aura:id="endInputDateDisqualification"
+                                                  
+                                                  label="* Disqualification End Date" 
+                                                  
+                                                  value="{!v.endDateDis}" 
+                                                  />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="3" padding="" class="slds-p-top_x-large customCs" >
+                                    <lightning:button label="Submit" variant="brand" onclick="{!c.submitReportRequest}" />
+                                </lightning:layoutItem>
+                                <aura:set attribute="else">
+                                    <lightning:layoutItem flexibility="auto" size="3" padding="" class="slds-p-top_x-large">
+                                        <lightning:button label="Submit" variant="brand" onclick="{!c.submitReportRequest}" />
+                                    </lightning:layoutItem>
+                                </aura:set>
+                                
+                            </aura:if>
+                            
+                            
+                            <lightning:layoutItem flexibility="auto" size="3" padding="around-small"/>
+                            <lightning:layoutItem flexibility="auto" size="6" padding="around-small"/>                            
+                            <lightning:layoutItem flexibility="auto" size="6" padding="around-small"/>
+                        </aura:set>
+                    </aura:if>
+                </lightning:layout>
+            </div>
+        </div>
+    </lightning:card>
+</aura:component>

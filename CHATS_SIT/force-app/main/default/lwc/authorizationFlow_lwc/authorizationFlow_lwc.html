@@ -1,0 +1,105 @@
+<template>
+    <template if:true={showSpinner}>
+        <lightning-spinner variant="brand" size="large"></lightning-spinner>
+    </template>
+
+    <lightning-card icon-name="standard:event">
+        <div slot="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">
+                        <div class="slds-media__body">
+                            <p class="slds-text-title--caps slds-line-height--reset">
+                                <lightning-formatted-text value={cardTitle}></lightning-formatted-text>
+                            </p>
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate"
+                                title="Authorization">Authorization</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div slot="actions">
+            <c-navigation-component_lwc total-tabs={totalTabsValue} current-tab-number={currentTabNumber} do-next-enabled
+                onnext={doNext} onfinish={doFinish} onprevious={doPrevious} oncancel={doCancel}
+                show-cancel={showCancelButton} finish-label="Finish">
+            </c-navigation-component_lwc>
+        </div>
+        <c-page-messages_lwc page-messages={pageMessages} message-type={messageType}></c-page-messages_lwc>
+
+        <template if:true={isTabOne}>
+            <template if:true={isDataLoaded}>
+                <c-authorization-info-pg1_lwc data-id="authorizationInfoPg1"
+                    s-c-association-rec={sCAssociationRec} is-county-rate-s-c-q={isCountyRateSCQ} auth-rec={authRec}
+                    case-rec={caseRec} slot-contract-options={slotContractOptions} auth-provider-rec={authProviderRec}
+                    child-state-options={childStateOptions} hours-per-week-day={hoursPerWeekDay} is-create={isCreate}
+                    provider-id-val={providerIdVal} rate-type-options={rateTypeOptions} is-invalid-provider={isInvalidProvider}
+                    field-validation-errors={fieldValidationErrors} is-current-page-valid={isCurrentPageValid}
+                    is-read-only={isReadOnly} is-child-wefare-care={isChildWefareCare} is-child-disable={isChildDisable}
+                    auth-drop-in-days={authDropInDays} auth-rec-clone={authRecClone} is-drop-in-days-indicator={isDropInDaysIndicator}
+                    number-of-days-drop={numberOfDaysDrop} is-protective-service-indicator={isProtectiveServiceIndicator}
+                    is-show-contract-to-indicator={isShowContractToIndicator} auth-end-date={authEndDate}
+                    schedule-recurr-obj={scheduleRecurrObj} schedule-recurr={scheduleRecurr} enter-recurrence={enterRecurrence}
+                    is-encumbrnce-created={isEncumbrnceCreated} is-modified-after-change={isModifiedAfterChange}
+                    is-u-p-k-enrollment-manually-set={isUPKEnrollmentManuallySet} upk-fetched-values={upkFetchedValues}
+                    onrecurrence={doValidateRecurrence} onauthreccloneupdate={handleAuthRecCloneUpdate} onprovselected={handleProviderSelected}>
+                </c-authorization-info-pg1_lwc>
+
+                 <template if:true={confirmationModalOnCountyCheck}>
+                    <c-confirmation-modal_-l-w-c data-id="confirmationModalOnCountyCheck"
+                        confirm-msg={countyMessage} onyes={confirmYes} onno={confirmNo}>
+                    </c-confirmation-modal_-l-w-c>
+                </template>
+
+                <template if:true={confirmationModalOnCareLevel}>
+                    <c-confirmation-modal_-l-w-c data-id="confirmationModalOnCareLevel"
+                        confirm-msg={careLevelMessage} onyes={confirmYes1} onno={confirmNo1}>
+                    </c-confirmation-modal_-l-w-c>
+                </template>
+
+                <template if:true={confirmationModalOnReplaceofscAssRec}>
+                    <c-confirmation-modal_-l-w-c data-id="confirmationModalOnReplaceofscAssRec"
+                        confirm-msg={replaceMessage} onyes={confirmYes2} onno={confirmNo2}>
+                    </c-confirmation-modal_-l-w-c>
+                </template>
+
+                <template if:true={confirmationModalBelowSchoolAge}>
+                    <c-confirmation-modal_-l-w-c data-id="confirmationModalBelowSchoolAge"
+                        confirm-msg={warningMessageBelowSchoolAge} onyes={confirmYes3} onno={confirmNo3}>
+                    </c-confirmation-modal_-l-w-c>
+                </template>
+
+                <template if:true={confirmationModalOnCancel}>
+                    <c-confirmation-modal_-l-w-c data-id="confirmationModalOnCancel"
+                        confirm-msg={cancelMessage} onyes={confirmCancel} onno={confirmCancelNo}>
+                    </c-confirmation-modal_-l-w-c>
+                </template>
+
+                <!-- added for CCCAP-15329 -->
+                <template if:true={showUPKDualEnrollmentModal}>
+                    <c-confirmation-modal_-l-w-c data-id="confirmationModalUPKDualEnrollment"
+                        confirm-msg="Child is dually enrolled and provider participates in UPK."
+                        yes-label="Ok" no-label="Cancel" show-yes-button="true" show-no-button="true"
+                        onyes={confirmUPKDualEnrollmentYes} onno={confirmUPKDualEnrollmentNo}>
+                    </c-confirmation-modal_-l-w-c>
+                </template>
+            </template>
+        </template>
+        
+        <template if:true={isTabTwo}>
+            <c-authorization-sched-pg2_lwc data-id="authorizationSchedPg2"
+                care-date-to-auth-encmbr={careDateToAuthEncmbr} rate-type-options={rateTypeOptions} auth-rec={authRec}
+                is-encumbrnce-created={isEncumbrnceCreated} auth-terminated={authTerminated} is-read-only={isReadOnly}
+                prov-id-valtwo={provIdValtwo} county-s-f-id={countySFId} is-child-disable={isChildDisable}>
+            </c-authorization-sched-pg2_lwc>
+
+            <template if:true={confirmationModalUnsavedChanges}>
+                <c-confirmation-modal_-l-w-c data-id="confirmationModalUnsavedChanges"
+                    confirm-msg="There are unsaved changes to the schedule, Would you like to continue?"
+                    onyes={actionOnYesUnsavedChanges} onno={actionOnNoUnsavedChanges}>
+                </c-confirmation-modal_-l-w-c>
+            </template>
+        </template>
+    </lightning-card>
+</template>

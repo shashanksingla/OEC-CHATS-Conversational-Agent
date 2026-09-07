@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Closed_with_wrong_root_cause</fullName>
+    <columns>NAME</columns>
+    <columns>Ticket_Closure_Date__c</columns>
+    <columns>Ticket_Created_Date_Date_only__c</columns>
+    <columns>Root_Cause__c</columns>
+    <columns>Support_Team_Assignee__c</columns>
+    <columns>CHATS_Area__c</columns>
+    <columns>JIRA_ID__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Ticket_Closure_Date__c</field>
+        <operation>notEqual</operation>
+    </filters>
+    <filters>
+        <field>Root_Cause__c</field>
+        <operation>equals</operation>
+        <value>Pending Triage</value>
+    </filters>
+    <label>Closed with wrong root cause</label>
+</ListView>

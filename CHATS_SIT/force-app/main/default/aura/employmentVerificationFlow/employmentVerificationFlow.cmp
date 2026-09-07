@@ -1,0 +1,47 @@
+<aura:component extends="c:abstractComponent" controller="EmploymentVerificationApxCtrl">
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="recordId" type="String" default="a1Tg0000002cHIA"/>
+     <aura:attribute name="isReadOnlyUser" type="Boolean" default="false"/>
+    <aura:attribute name="employment" type="T_SBSD_INDIV_EMPLMT__c" default="{'sobjectType':'T_SBSD_INDIV_EMPLMT__c',
+                                                                             'CDE_TYPE_VERIF__c':''}"/>
+    <aura:attribute name="employmentVerification" type="T_INDIV_EMPLMT_VERIF__c" default="{'sobjectType':'T_INDIV_EMPLMT_VERIF__c',
+                                                                                          'CDE_TYPE_VERIF__c':''
+                                                                                          }"/>
+    <aura:attribute name="employmentInformation" type="T_INDIV_EMPLMT_INFO__c" default="{'sobjectType':'T_INDIV_EMPLMT_INFO__c',
+                                                                                        'CDE_TYPE_VERIF__c':''
+                                                                                        }"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="recordError" type="String"/>
+    <lightning:card iconName="standard:event">
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="Case">Employment Verifications</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        <aura:set attribute="actions">
+            <c:navigationComponent totalTabs="1" 
+                                   currentTabNumber="{!v.currentTabNumber}"
+                                   onFinish="{!c.doFinish}"
+                                   showPrevious="false"
+                                   showCancel="false"
+                                   finishLabel="Finish"/>
+        </aura:set>
+        <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+        <aura:if isTrue="{!v.currentTabNumber==1}">
+            <c:employmentVerificationLayout aura:id="employmentVerificationLayout" 
+                                            employment="{!v.employment}"
+                                            employmentVerification="{!v.employmentVerification}"
+                                            employmentInformation="{!v.employmentInformation}"
+                                            isCurrentPageValid="{!v.isCurrentPageValid}"
+                                            fieldValidationErrors="{!v.fieldValidationErrors}"
+                                            isReadOnlyUser ="{!v.isReadOnlyUser}"
+                                            />
+        </aura:if>
+    </lightning:card>
+</aura:component>

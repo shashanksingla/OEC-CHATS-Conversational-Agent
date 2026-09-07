@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Triage</fullName>
+    <columns>NAME</columns>
+    <columns>CHATS_Area__c</columns>
+    <columns>CREATEDBY_USER</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>Root_Cause__c</columns>
+    <columns>Status__c</columns>
+    <columns>Elevated_to__c</columns>
+    <columns>Support_Type__c</columns>
+    <columns>Support_Team_Assignee__c</columns>
+    <columns>Description_Steps_to_Reproduce__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Status__c</field>
+        <operation>equals</operation>
+        <value>New,In Progress,Elevated,Change Approved</value>
+    </filters>
+    <filters>
+        <field>Support_Team_Assignee__c</field>
+        <operation>equals</operation>
+    </filters>
+    <label>Pending Ticket Triage</label>
+</ListView>

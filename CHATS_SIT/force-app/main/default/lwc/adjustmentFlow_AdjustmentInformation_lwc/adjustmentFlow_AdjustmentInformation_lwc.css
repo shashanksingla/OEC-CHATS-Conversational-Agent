@@ -1,0 +1,39 @@
+/* Migrated from Aura: adjustmentFlow_AdjustmentInformation.css */
+
+/* ── Host / Root ─────────────────────────────────────────────────────────── */
+:host {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ── Section Header ──────────────────────────────────────────────────────── */
+.slds-section__title {
+    background-color: #f3f2f2;
+    border-left: 4px solid #0070d2;
+    padding: 0.1rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #3e3e3c;
+    letter-spacing: 0.0625rem;
+}
+
+@media (min-width: 640px) {
+
+    /* ── Table container: allow dropdown overflow ─────────────────────────────── */
+    .slds-scrollable {
+        overflow: visible !important;
+    }
+
+    table {
+        overflow: visible;
+    }
+
+    tbody {
+        overflow: visible;
+    }
+
+    td {
+        overflow: visible;
+    }
+}

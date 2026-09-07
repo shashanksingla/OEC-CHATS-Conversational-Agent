@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Req_Which_other_county</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(ISPICKVAL(Do_you_work_for_multiple_counties__c , &apos;Yes&apos;), RecordType.DeveloperName =&apos;System_Access_Request&apos;,ISBLANK( Which_other_county__c ) )</errorConditionFormula>
+    <errorDisplayField>Which_other_county__c</errorDisplayField>
+    <errorMessage>Required when Do you perform work for multiple counties is Yes</errorMessage>
+</ValidationRule>

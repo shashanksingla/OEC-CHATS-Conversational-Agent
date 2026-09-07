@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>APP</fullName>
+        <default>false</default>
+        <label>Appeal</label>
+    </customValue>
+    <customValue>
+        <fullName>CE</fullName>
+        <default>false</default>
+        <label>County Error</label>
+    </customValue>
+    <customValue>
+        <fullName>TFR</fullName>
+        <default>false</default>
+        <label>County Transfer at Redetermination</label>
+    </customValue>
+    <customValue>
+        <fullName>TLI</fullName>
+        <default>false</default>
+        <label>Transition to Low Income from Colorado Works</label>
+    </customValue>
+    <customValue>
+        <fullName>DM</fullName>
+        <default>false</default>
+        <label>Other</label>
+    </customValue>
+    <customValue>
+        <fullName>PFD</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>PFD</label>
+    </customValue>
+    <customValue>
+        <fullName>WE</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>WE</label>
+    </customValue>
+    <customValue>
+        <fullName>OS</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>OS</label>
+    </customValue>
+    <customValue>
+        <fullName>DV</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>DV</label>
+    </customValue>
+    <description>R00375</description>
+    <masterLabel>R00375</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

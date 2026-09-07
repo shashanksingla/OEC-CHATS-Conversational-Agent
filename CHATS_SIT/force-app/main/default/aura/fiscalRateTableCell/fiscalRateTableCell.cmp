@@ -1,0 +1,52 @@
+<aura:component >
+    <aura:attribute name="fiscalRateAmount" type="batchsit_t_fiscal_rate__x" description="stores the batchsit_t_fiscal_rate__x sObject."/>
+    <aura:attribute name="fiscalSchedule" type="T_FISCAL_SCH__c" description="stores the FISCAL RATE detail, used to access Id, rate types."/>
+    <aura:handler event="c:createFiscalRateValidateError" action="{!c.validateRecord}"/>
+    <aura:attribute name="isReadOnly" type="boolean" default="false" description="marker for making the fields readonly"/>
+    <aura:attribute name="amountField" type="String" />
+    <td data-label="tier1">
+        <div class="slds-truncate">
+            <aura:if isTrue="{!v.amountField=='FA'}">
+            <!-- <ui:inputNumber aura:id="amount" 
+                            value="{! v.fiscalRateAmount.AMT_FA__c}" 
+                            class="cellWidth" 
+                            blur="{!c.updateRecord}"
+                            keyup="{!c.checkDecimalPlaces}"
+                            updateOn="keyup"
+                            disabled="{!v.isReadOnly ? true:false}"
+                            /> -->
+            <div class="hideLabel">
+                <lightning:input aura:id="amount" 
+                                 type="number" 
+                                 name="decimal" 
+                                 label="" 
+                                 value="{! v.fiscalRateAmount.amt_fa__c}" 
+                                 min="0" 
+								 onchange="{!c.updateRecord}"
+                                 onblur="{!c.checkDecimalPlaces}"
+	                             disabled="{!v.isReadOnly ? true:false}"
+                                 formatter="currency"
+                                 step="any"
+                                 />                    
+            </div>
+             </aura:if>
+            <aura:if isTrue="{!v.amountField=='PROVR'}">
+            <div class="hideLabel">
+                <lightning:input aura:id="amountPROVR" 
+                                 type="number" 
+                                 name="number" 
+                                 label="" 
+								 onchange="{!c.updateRecord}"
+                                 onblur="{!c.checkDecimalPlaces}"
+                                 value="{!v.fiscalRateAmount.amt_provr__c}" 
+                                 formatter="currency"
+                                 min="0"
+                                 step="any"
+	                             disabled="{!v.isReadOnly ? true:false}"
+                                 />                    
+            </div>
+            </aura:if>
+            
+        </div>        
+    </td>
+</aura:component>

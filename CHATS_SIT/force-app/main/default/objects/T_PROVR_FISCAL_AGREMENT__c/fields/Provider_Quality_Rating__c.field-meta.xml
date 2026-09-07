@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Provider_Quality_Rating__c</fullName>
+    <description>To use in set visibility in flexi page</description>
+    <formula>(ID_SERVICE__r.TXT_CHATS_RATING__c  &lt;&gt; &apos;Level 1&apos;  &amp;&amp;  NOT( ISNULL( ID_SERVICE__r.TXT_CHATS_RATING__c ) )  &amp;&amp; ID_SERVICE__r.TXT_CHATS_RATING__c  &lt;&gt; &apos;&apos; )  &amp;&amp;  ( ISPICKVAL( CDE_TYPE_STATUS__c , &apos;OPN&apos;) || ISPICKVAL( CDE_TYPE_STATUS__c , &apos;FIN&apos;)  )  &amp;&amp; ( $Permission.System_Administrator  ||  $Permission.Provider_Worker  ||  $Permission.Provider_Worker_Supervisor  ||  $Permission.Business_Office_Worker  ||  $Permission.Business_Office_Supervisor  ||  $Permission.Universal_User  ||  $Permission.CCCAP_Program_Internal_Team )</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Slot Contract Addendum Button Visibility</label>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

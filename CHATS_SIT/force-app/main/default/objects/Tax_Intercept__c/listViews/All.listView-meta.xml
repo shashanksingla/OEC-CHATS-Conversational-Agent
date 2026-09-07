@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All</fullName>
+    <columns>NAME</columns>
+    <columns>Tax_Year__c</columns>
+    <columns>County__c</columns>
+    <columns>Adjustment__c</columns>
+    <columns>Case__c</columns>
+    <columns>Provider__c</columns>
+    <columns>Name__c</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>UPDATEDBY_USER</columns>
+    <columns>LAST_UPDATE</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>NAME</field>
+        <operation>equals</operation>
+        <value>TI20250901006160</value>
+    </filters>
+    <label>All</label>
+</ListView>

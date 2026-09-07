@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CCCAP_4001_1</fullName>
+    <columns>NAME</columns>
+    <columns>IDN_EXTNL__c</columns>
+    <columns>CBMS_CASE_NUM__c</columns>
+    <columns>IDN_CBMS_REF__c</columns>
+    <columns>CDE_CBMS_REF_TYP__c</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>CBMS_REF_REASON__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>CBMS_CASE_NUM__c</field>
+        <operation>equals</operation>
+        <value>1BC5GC2,1B7FSX7,1B623C3,1B90LJ3,1BBN4M5,1BD98G0,1BCLPM4</value>
+    </filters>
+    <label>CCCAP-4001_1</label>
+    <sharedTo>
+        <group>CHATS_Develoepr</group>
+    </sharedTo>
+</ListView>

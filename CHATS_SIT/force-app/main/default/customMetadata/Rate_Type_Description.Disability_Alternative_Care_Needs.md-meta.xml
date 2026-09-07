@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Disability/Alternative Care Needs</label>
+    <protected>false</protected>
+    <values>
+        <field>Description__c</field>
+        <value xsi:type="xsd:string">A daily rate used for children with additional care needs based on a physical and/or mental disability and/or who needs a higher level of care than peers of the same age; can be up to twice the Regular Rate; is paid to providers who document when the additional care needs are with a request for additional payment that is not more than would be charged to the general public along with professional/physician&apos;s statement from the adult caretaker verifying the needs (see rule for reference)</value>
+    </values>
+    <values>
+        <field>Rate_Type_Code__c</field>
+        <value xsi:type="xsd:string">55</value>
+    </values>
+</CustomMetadata>

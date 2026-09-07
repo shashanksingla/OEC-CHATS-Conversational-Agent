@@ -1,0 +1,136 @@
+<!--
+* @Component Name   : cannedReportsHomePage
+* @Created Date     : May 7, 2019
+* @Description      : Lightning Component for Canned Report Homepage Landing
+-->
+<aura:component extends="c:abstractSection" controller="CannedReportHomepageController" access="GLOBAL"
+                implements="force:lightningQuickAction,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:appHostable">
+    <aura:attribute name="searchResults" type="Canned_Report__mdt[]"/>
+    <aura:attribute name="encapsulatedSearchResult" type="Canned_Report__mdt[]" default ='[]'/>
+    <aura:attribute name="encapsulatedSearchRecord" type="Canned_Report__mdt"/>
+    <aura:attribute name="isOpen" type="boolean" default="true"/>
+    <aura:attribute name="toggleSpinner" type="boolean" default="false"/>
+    <aura:attribute type="string" name="sortField" />
+    <aura:attribute type="Boolean" name="sortAsc" />
+    <aura:attribute name="lstOfPicklistValues" type = "List" default = "[]" />
+    <aura:attribute name="lstOfPicklistNames" type = "List" default = "[]" />
+    <aura:attribute name="errors" type = "String"  />
+    <aura:attribute name="reportType" type = "String"  />
+    <aura:attribute name="reportName" type = "String"  />
+    
+    <aura:handler name="init" value="this" action="{!c.doInit}"/>
+    
+    <!-- LOADING GIF -->
+    <aura:if isTrue="{!v.toggleSpinner}">
+        <lightning:spinner variant="brand" size="large"/>
+    </aura:if>
+    <!-- / LOADING GIF -->
+    
+    <lightning:card>
+        <aura:if isTrue="{!v.isOpen}">
+            <lightning:card iconName="standard:report">
+                <aura:set attribute="title">
+                    <div class="slds-grid">
+                        <div class="slds-col slds-has-flexi-truncate">
+                            <div class="slds-media slds-no-space slds-grow">                        
+                                <div class="slds-media__body">
+                                    <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate"
+                                        title="Authorization">CHATS Canned Reports</h1>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aura:set>
+                
+                <aura:set attribute="actions">
+                    <div class="slds-button-group" role="group">
+                        <lightning:button label="Reports Inbox" variant="brand" onclick="{!c.navigate2ReportInbox}"/>
+                    </div>
+                </aura:set>
+                
+                <div class="slds-modal__content slds-p-around--medium">
+                    <div>
+                        <h2 class="slds-card__header-title">
+                            <b><span>Select report and click next to request for generation. User generated reports will be deleted from the reports inbox after 30 days.</span></b> 
+                        </h2>
+                    </div>
+                    <lightning:layout multipleRows="true" horizontalAlign="space">
+                        <lightning:layoutItem flexibility="auto" padding="around-small" size="4">
+                            <c:inputPicklist label="Report Type" aura:id="reportType"
+                                             object="Canned_Report_Request__c"
+                                             field="Report_Type__c"
+                                             onChange="{!c.onchangeEvent}"/>
+                            <aura:iteration items="{!v.lstOfPicklistValues}" var="eachPicklistValue">
+                                <option value="{!eachPicklistValue}" text="{!eachPicklistValue}"></option>
+                            </aura:iteration>
+                        </lightning:layoutItem>
+                        
+                        <lightning:layoutItem flexibility="auto" padding="around-small" size="4">
+                            <lightning:select aura:id="reportName" name="selectName" label="Report Name" required="true" value="{!v.reportName}" >
+                                <option text="None"></option>
+                                <aura:iteration items="{!v.lstOfPicklistNames}" var="eachPicklistValue">
+                                    <option value="{!eachPicklistValue}" text="{!eachPicklistValue}"></option>
+                                </aura:iteration>
+                            </lightning:select> 
+                        </lightning:layoutItem>
+                        
+                        <lightning:layoutItem flexibility="auto" class="slds-p-top_x-large ButtonPadding"  size="4">  
+                            <lightning:button variant="brand" label="Request Report" onclick="{!c.navigate2RequestReport}"/>               	
+                        </lightning:layoutItem>   
+                    </lightning:layout> 
+                </div>
+            </lightning:card>
+            
+            <div style="overflow-x: auto;">
+                <aura:if isTrue="{!notequals(v.encapsulatedSearchResult.length, 0)}">
+                    <div class="slds-text-heading--medium slds-modal__header slds-border_top"></div>
+                    <table class="slds-table slds-table_bordered slds-table--cell-buffer">
+                        <thead>
+                            <tr>
+                                <th class="slds-is-sortable" scope="col" >
+                                    <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="{#clm}" id="Report_Type__c">Report Type
+                                        <aura:if isTrue="{!(v.sortField == 'Report_Type__c')}">
+                                            <aura:if isTrue="{!v.sortAsc}">
+                                                <!--&#8679;--><!-- &#8593; -->
+                                                &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                                <aura:set attribute="else">
+                                                    <!--&#8681;--><!--  &#8595; -->
+                                                    &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                                </aura:set>
+                                            </aura:if>
+                                        </aura:if>
+                                    </div>
+                                </th>
+                                <th class="slds-is-sortable" scope="col" >
+                                    <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="{#clm}" id="Report_Name__c">Report Name
+                                        <aura:if isTrue="{!(v.sortField == 'Report_Name__c')}">
+                                            <aura:if isTrue="{!v.sortAsc}">
+                                                <!--&#8679;--><!-- &#8593; -->
+                                                &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                                <aura:set attribute="else">
+                                                    <!--&#8681;--><!--  &#8595; -->
+                                                    &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                                </aura:set>
+                                            </aura:if>
+                                        </aura:if>
+                                    </div>
+                                </th> 
+                                <th scope="col"><div class="slds-truncate" title="Description Of Report">Report Description</div></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <aura:iteration items="{!v.encapsulatedSearchResult}" var="res" indexVar="i">
+                                <tr>
+                                    <td scope="row"><div class="slds-truncate slds-cell-wrap" title="Report Type">{!res.Report_Type__c}</div></td>
+                                    <td scope="row"><div class="slds-truncate slds-cell-wrap" title="Report Name">{!res.Report_Name__c}</div></td>
+                                    <td scope="row"><div class="slds-truncate slds-cell-wrap" title="Description Of Report">{!res.Description__c}</div></td>
+                                </tr>
+                            </aura:iteration>
+                        </tbody>
+                    </table>
+                </aura:if>
+            </div>
+            
+        </aura:if>
+    </lightning:card>
+</aura:component>

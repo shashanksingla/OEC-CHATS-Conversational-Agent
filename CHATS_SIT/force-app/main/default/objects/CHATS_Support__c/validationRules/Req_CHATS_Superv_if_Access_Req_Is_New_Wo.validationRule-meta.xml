@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Req_CHATS_Superv_if_Access_Req_Is_New_Wo</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(ISPICKVAL( Access_Request_Type__c , &apos;New Worker Access Request&apos;), RecordType.DeveloperName =&apos;System_Access_Request&apos;,  ISBLANK(  CHATS_Supervisor__c ))</errorConditionFormula>
+    <errorDisplayField>CHATS_Supervisor__c</errorDisplayField>
+    <errorMessage>Required when Access Type is New Worker Access Request.</errorMessage>
+</ValidationRule>

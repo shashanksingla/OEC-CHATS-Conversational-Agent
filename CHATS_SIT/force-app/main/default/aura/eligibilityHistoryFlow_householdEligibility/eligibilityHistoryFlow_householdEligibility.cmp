@@ -1,0 +1,97 @@
+<aura:component extends="c:abstractSection">
+    <aura:attribute name="caseStatus" type="t_sbsd_case_status_mode_hist__x"/>
+    <aura:attribute name="caseRec" type="T_SBSD_CASE__c"/>
+    <aura:attribute name="caseEligibility" type="batchsit_t_fcompsn_eligty_hist__x"/>
+    <aura:attribute name="houseHoldEligibility" type="batchsit_t_fcompsn_eligty_hist__x"/>
+    <aura:attribute name="eligibilityHisRunId" type="String"/>
+    <aura:attribute name="lastCaseEligibility" type="batchsit_t_fcompsn_eligty_hist__x"/>
+    <aura:attribute name="secondLastCaseEligibility" type="batchsit_t_fcompsn_eligty_hist__x"/>
+    <aura:attribute name="caseEligibilityDetails" type="batchsit_t_fcompsn_eligty_detail_hist__x"/>
+    <aura:attribute name="lastCaseEligibilityDetails" type="batchsit_t_fcompsn_eligty_detail_hist__x"/>
+    <aura:attribute name="secondLastCaseEligibilityDetails" type="batchsit_t_fcompsn_eligty_detail_hist__x"/>
+    <aura:attribute name="caseEligibilityRun" type="batchsit_t_eligty_run_hist__x"/>
+    <aura:attribute name="indivEligIdToWrapper" type="Map"/>
+    <aura:attribute name="readOnlyMode" type="Boolean" default="false"/>
+    
+    <aura:attribute name="householdIneligibilityFailure" type="batchsit_t_fcompsn_failr_hist__x[]"/>  
+    <aura:attribute name="individual" type="sfrosit_t_sbsd_indiv_hist__x"/>
+    <aura:attribute name="casePayment" type="batchsit_t_sbsd_case_copay_hist__x[]"/>
+    <aura:attribute name="countyPlan" type="T_COUNTY_PLAN__c"/>
+    <aura:attribute name="eligibilityRunId" type="String"/>
+    <aura:attribute name="withdrawCCR" type="Boolean" default="false"/>
+    <aura:attribute name="indivEmplmtIncomeTypeEmployment" type="batchsit_t_indiv_eligty_emplmt_income__x"/>
+    <aura:attribute name="indivEmplmtIncomeTypeSelfEmployment" type="batchsit_t_indiv_eligty_emplmt_income__x"/>
+    <!--<aura:attribute name="indivEmplmtIncomeTypeEmployment" type="Map"/>
+    <aura:attribute name="indivEmplmtIncomeTypeSelfEmployment" type="Map"/>-->
+    <aura:attribute name="indivEmplmtExpense" type="batchsit_t_indiv_eligty_emplmt_exp__x"/>
+    <aura:attribute name="indivEligtyOtherIncome" type="batchsit_t_indiv_eligty_income_other__x"/>
+    <aura:attribute name="indivEligtyIncomeDeduction" type="batchsit_t_indiv_eligty_income_ddtn__x"/>
+    <aura:attribute name="eligConfirmed" type="Boolean" default="false"/>
+    <aura:attribute name="ineligReasons" type="T_INELIG_REASON__c[]"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:set attribute="pageMessages" value="{!v.recordError}" />  
+    <aura:set attribute="messageType" value="{!v.message}" />
+     <aura:attribute name="recordError" type="List" />
+    <aura:attribute name="message" type="String" />
+    <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+    <lightning:overlayLibrary aura:id="overlayLib"/>
+    <h2 class="slds-section__title slds-p-left--small slds-p-top--small slds-border_top"></h2>
+    <c:eligibilityFlow_householdEligibility_header caseID="{!v.caseRec.Name}"
+                                                   runDate="{!v.caseEligibilityRun.dte_run_eligty__c}"/>
+    
+    <div class="slds-m-around--medium">
+        <table class="slds-table slds-table_bordered">
+            <c:eligibilityFlow_householdEligibility_householdResults_title />
+            <tbody>
+                <aura:if isTrue="{!!empty(v.secondLastCaseEligibilityDetails)}">
+                    <c:eligibilityHistoryFlow_householdEligibility_householdResults caseEligibility="{!v.secondLastCaseEligibility}"
+                                                                             caseEligibilityDetails="{!v.secondLastCaseEligibilityDetails}"
+                                                                             caseEligibilityRun="{!v.caseEligibilityRun}"
+                                                                             showOverrideButton="false"
+                                                                             />
+                </aura:if>
+                <aura:if isTrue="{!!empty(v.lastCaseEligibilityDetails)}">
+                    <c:eligibilityHistoryFlow_householdEligibility_householdResults caseEligibility="{!v.lastCaseEligibility}"
+                                                                             caseEligibilityDetails="{!v.lastCaseEligibilityDetails}"
+                                                                             caseEligibilityRun="{!v.caseEligibilityRun}"
+                                                                             showOverrideButton="false"
+                                                                             />
+                </aura:if>
+                <c:eligibilityHistoryFlow_householdEligibility_householdResults caseRec="{!v.caseRec}"
+                                                                         caseEligibility="{!v.caseEligibility}"
+                                                                         caseEligibilityDetails="{!v.caseEligibilityDetails}"
+                                                                         caseEligibilityRun="{!v.caseEligibilityRun}"
+                                                                         indivEligIdToWrapper="{!v.indivEligIdToWrapper}"
+                                                                         householdIneligibilityFailure="{!v.householdIneligibilityFailure}"
+                                                                         showOverrideButton="false"
+                                                                         />
+                
+            </tbody>
+        </table>
+    </div>
+    <lightning:layout multipleRows="true">
+        <aura:if isTrue="{!!v.readOnlyMode}">
+            <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                <lightning:button label="Override Eligibility" onclick="{!c.navigateToOverrideEligibility}" variant="brand"/>    
+            </lightning:layoutItem>
+        </aura:if>
+    </lightning:layout>	
+
+    <c:eligibilityHistoryFlow_FailureReason ineligibilityFailures="{!v.householdIneligibilityFailure}"
+                                     FCEligibilityID="{!v.caseEligibility.idn_eligty_fcompsn__c}"
+                                     showOverrideButton="{!!v.readOnlyMode}"/>
+    
+    <c:eligibilityHistoryFlow_caseRedetermination caseEligibilityRun="{!v.caseEligibilityRun}"
+                                           eligConfirmed="{!v.eligConfirmed}"
+                                           caseRecId="{!v.caseRec.Id}"
+                                           showOverrideButton="{!!v.readOnlyMode}"/>
+    
+    <c:eligibilityFlow_householdEligibility_individualResults indivEligIdToWrapper="{!v.indivEligIdToWrapper}"/>
+    
+    <!-- Need to optimize-->
+    <c:eligibilityHistoryFlow_householdEligibility_parentFees casePayment="{!v.casePayment}"
+                                                       caseEligibility="{!v.caseEligibility}"/>
+   <c:eligibilityHistoryFlow_householdEligibility_incomeResult houseHoldEligibility="{!v.houseHoldEligibility}"
+                                                         />
+     <c:eligibilityHistoryFlow_householdEligibility_incomeSummary  eligibilityHisRunId="{!v.eligibilityRunId}" recordError="{!v.pageMessages}" message ="{!v.messageType}" />
+</aura:component>

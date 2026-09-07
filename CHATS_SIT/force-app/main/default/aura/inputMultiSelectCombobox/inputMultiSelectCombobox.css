@@ -1,0 +1,56 @@
+.THIS .verticalAlign {
+    cursor: pointer;
+    padding: 0px 5px !important;
+}
+.THIS .slds-dropdown {
+    padding:0px !important;
+}
+.THIS .fullWidth {
+    width: 100% !important;
+}
+.THIS .disabledItem {
+    color: #bbb;
+    cursor: no-drop; 
+}
+.THIS .recordListBox {
+    margin-top:0px !important;
+    overflow-y: scroll;
+}
+.THIS .slds-listbox li {
+    padding: .45rem 0.7rem !important;
+    display: flex;
+}
+.THIS .inputBox input {
+    padding-left: 10px;
+}
+.THIS .eachItem:hover {
+    background-color: #F1F1F1;
+    cursor: pointer;
+}
+.THIS .inputIcon {
+    z-index: 99;
+    padding: 2px 0;
+}
+.THIS ::placeholder {
+  color: black;
+  opacity: 1;
+}
+.THIS .removeCross .slds-pill__remove {
+    display: none !important;
+}
+.THIS .no_pointer{
+    pointer-events: none;
+}
+/* For Scrolling */
+.THIS ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+    /* display: none !important; */
+}
+.THIS ::-webkit-scrollbar-track {
+    display: none !important;
+}
+.THIS ::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: rgba(0,0,0,0.4);
+}

@@ -1,0 +1,20 @@
+.THIS .grey-header-bg .slds-accordion__summary-action{
+    background:rgb(243, 242, 242);
+    padding: 0.5rem;
+}
+.THIS .height-setup .slds-col {
+    min-height: 4.25rem;  /* Allow growth when text wraps */
+    height: auto;         /* Remove fixed constraint */
+}
+
+/* Ensure consistent row alignment */
+.THIS .height-setup lightning-layout-item {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Prevent label overflow on zoom */
+.THIS .height-setup .slds-form-element__label {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}

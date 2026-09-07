@@ -1,0 +1,17 @@
+<aura:component implements="flexipage:availableForRecordHome,force:hasRecordId" access="global" controller="IndividualCareLvlApexCtrl" extends="c:abstractComponent">
+    <aura:attribute name="individualCareLst" type="batchsit_t_sbsd_indiv_care_level__x[]"/>
+    <aura:attribute name="individualCareWrap" type="List"/>
+    <aura:attribute name="currentRecord" type="T_SBSD_INDIV__c"/>
+    <aura:attribute name="existingValue" type="String" />
+    <aura:attribute name="onLoadbeginDate" type="String" />
+    <aura:attribute name="recordId" type="String" />
+    <aura:attribute name="isLoading" type="Boolean" />
+    <aura:if isTrue="{!v.isLoading}">
+        <lightning:spinner variant="brand" size="large"/>
+    </aura:if>
+    <force:recordData aura:id="forceRecord"
+                      recordId="{!v.recordId}" 
+                      fields="CDE_ATTENDING_SCHOOL1__c,DTE_DOB__c,CDE_ATTENDING_SCHOOL_BEGINDATE__c"
+                      targetFields="{!v.currentRecord}"
+                      recordUpdated="{!c.recordUpdated}" />
+</aura:component>

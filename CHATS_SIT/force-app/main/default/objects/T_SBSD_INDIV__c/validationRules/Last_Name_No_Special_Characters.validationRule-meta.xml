@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_Name_No_Special_Characters</fullName>
+    <active>true</active>
+    <description>Last Name must contain at least one letter, and can only use letters, spaces, hyphens, and apostrophes. Names cannot start or end with a space, and cannot use multiple special characters in a row.</description>
+    <errorConditionFormula>NOT(REGEX(NAM_LAST__c,&quot;^(?! )(?!.*(--|  |&apos;&apos;))(?=.*[A-Za-z])[A-Za-z&apos; -]+(?&lt;! )$&quot;))</errorConditionFormula>
+    <errorMessage>Last Name must contain at least one letter, and can only use letters, spaces, hyphens, and apostrophes. Names cannot start or end with a space, and cannot use multiple special characters in a row.</errorMessage>
+</ValidationRule>

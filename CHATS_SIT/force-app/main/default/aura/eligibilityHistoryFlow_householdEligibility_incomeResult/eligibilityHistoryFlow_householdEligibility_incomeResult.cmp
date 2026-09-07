@@ -1,0 +1,40 @@
+<aura:component >
+    <aura:attribute name="houseHoldEligibility" type="batchsit_t_fcompsn_eligty_hist__x"/>
+    <h2 class="slds-section__title slds-p-left--small slds-p-top--small slds-border_top">Income Result</h2>
+    
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="County Maximum Income" value="{!v.houseHoldEligibility.amt_income_county_max__c}" type="CURRENCY"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="Annual Countable Income" value="{!v.houseHoldEligibility.amt_income_annual__c}" type="CURRENCY"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small"></lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="Monthly Income" value="{!!empty(v.houseHoldEligibility.amt_income_annual__c)?v.houseHoldEligibility.amt_income_annual__c/12:0}" type="CURRENCY"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <div>
+                <lightning:formattedText value="County Ceiling" class="slds-form-element__label slds-no-flex"/>
+            </div>   
+            <div>
+            	<ui:outputCurrency value="{!!empty(v.houseHoldEligibility.amt_clg_county_new__c)? v.houseHoldEligibility.amt_clg_county_new__c/100:0}" format="0%"/>
+            </div>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <div>
+                <lightning:formattedText value="FPG based on Countable Income" class="slds-form-element__label slds-no-flex"/>
+            </div>   
+            <div>
+            	<ui:outputCurrency value="{!!empty(v.houseHoldEligibility.amt_fpg_pctg__c)? v.houseHoldEligibility.amt_fpg_pctg__c/100:0}" format="0.000%"/>
+            </div>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="85% SMI" value="{!!empty(v.houseHoldEligibility.amt_income_smi__c)? v.houseHoldEligibility.amt_income_smi__c * 0.85:0}" type="CURRENCY"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="Income Result" value="{!v.houseHoldEligibility.cde_income_result__c}"/>
+        </lightning:layoutItem>
+    </lightning:layout>	
+    
+</aura:component>

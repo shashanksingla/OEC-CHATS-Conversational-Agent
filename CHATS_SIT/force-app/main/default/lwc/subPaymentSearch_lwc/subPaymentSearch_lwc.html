@@ -1,0 +1,96 @@
+<template>
+    <!--<lightning-card title="Sub Payment Search"> -->
+    <template if:true={showSpinner}>
+        <lightning-spinner alternative-text="Loading" variant="base"></lightning-spinner>
+    </template>
+    <template if:false={isCurrentPageValid}>
+        <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_info">
+            <c-page-messages_lwc page-messages={pageMessages} message-type={messageType}>
+            </c-page-messages_lwc>
+        </div>
+    </template>
+    <div class="slds-theme_default">
+        <div class="slds-grid slds-wrap slds-var-p-left_medium slds-var-p-right_medium">
+            <div class="slds-col slds-size_3-of-12 slds-var-p-around_small">
+                <lightning-input data-id="paymentId" type="text" class="validate" label="Payment ID" value={paymentId}
+                    onchange={handleInput} required={isRequired}>
+                </lightning-input>
+            </div>
+            <div class="slds-col slds-size_3-of-12 slds-var-p-around_small">
+                <c-custom-lookup_lwc label="Provider ID" object-label="Provider"
+                    object-api-name="T_CHATS_PROVR_STATUS__c" show-recent-records=true
+                    onvalueselected={handleValueSelectedOnAccount} required={isRequired}>
+                </c-custom-lookup_lwc>
+            </div>
+            <div class="slds-col slds-size_3-of-12 slds-var-p-around_small">
+                <c-custom-lookup_lwc label="Case ID" object-label="Provider" object-api-name="T_SBSD_CASE__c"
+                    onvalueselected={handleValueSelectedOnAccount} required={isRequired}>
+                </c-custom-lookup_lwc>
+            </div>
+            <div class="slds-col slds-size_3-of-12 slds-var-p-around_small">
+                <c-custom-lookup_lwc label="County" object-label="Provider" object-api-name="T_COUNTY__c"
+                    onvalueselected={handleValueSelectedOnAccount}>
+                </c-custom-lookup_lwc>
+            </div>
+        </div>
+        <div class="slds-grid slds-wrap slds-var-p-left_medium slds-var-p-right_medium">
+            <div class="slds-col slds-size_3-of-12  slds-var-p-around_small">
+                <c-custom-lookup_lwc label="Service Period (mm/dd/yyyy To mm/dd/yyyy)" object-label="Provider"
+                    search-field="Service_Period_Dates__c" object-api-name="T_SERV_PERIOD__c"
+                    onvalueselected={handleValueSelectedOnAccount} hide-recent-records>
+                </c-custom-lookup_lwc>
+            </div>
+            <div class="slds-col slds-size_3-of-12  slds-var-p-around_small">
+                <c-custom-lookup_lwc label="State ID" object-label="T_SBSD_INDIV__c" search-field="IDN_STATE__c"
+                    object-api-name="T_SBSD_INDIV__c" onvalueselected={handleValueSelectedOnAccount}
+                    required={isRequired} hide-recent-records>
+                </c-custom-lookup_lwc>
+            </div>
+            <div class="slds-col slds-size_3-of-12 slds-var-p-around_small">
+                <lightning-input data-id="childFirstName" type="text" class="validate" label="Child's First Name"
+                    onchange={handleInput} value={childFirstName}>
+                </lightning-input>
+            </div>
+            <div class="slds-col slds-size_3-of-12 slds-var-p-around_small">
+                <lightning-input data-id="childLastName" type="text" class="validate" label="Child's Last Name"
+                    onchange={handleInput} value={childLastName}>
+                </lightning-input>
+            </div>
+        </div>
+        <div class="slds-grid slds-wrap slds-var-p-left_medium slds-var-p-right_medium slds-var-p-top_small">
+            <div class="slds-col slds-size_9-of-12 slds-var-p-around_small"></div>
+            <div class="slds-col slds-size_3-of-12 slds-var-p-around_small">
+                <lightning-button variant="neutral" label="Search" onclick={doSearch} class="slds-float_right">
+                </lightning-button>
+            </div>
+
+        </div>
+        <div class="slds-wrap slds-grid slds-var-p-around_small">
+            <template lwc:if={showTable}>
+                <div class="slds-col slds-size_1-of-1 slds-border_top"
+                    style="height:300px;border-left:1px solid rgb(229, 229, 229);">
+                    <lightning-datatable aria-label="Sub Payment Search Results" key-field="Id" data={dataList}
+                        columns={columns} onrowaction={viewSubpayment} hide-checkbox-column="true"
+                        wrap-text-max-lines="3" is-loading={showSpinner} enable-infinite-loading
+                        onloadmore={loadMoreData} resize-column-disabled sorted-by={sortBy}
+                        sorted-direction={sortDirection} onsort={doSorting} wrap-table-header="all"
+                        class="slds-table slds-table_cell-buffer slds-table_bordered">
+                    </lightning-datatable>
+                </div>
+            </template>
+            <template lwc:else>
+                <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_info">
+                    <template lwc:if={hasSearched}>
+                        <lightning-formatted-text
+                            value="No search results to display. Modify your search criteria and search again"></lightning-formatted-text>
+                    </template>
+                    <template lwc:else>
+                        <lightning-formatted-text
+                            value="You have not performed a search yet. Enter your search criteria"></lightning-formatted-text>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </div>
+    <!-- </lightning-card>-->
+</template>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_exp__c</fullName>
+    <description>idn_exp</description>
+    <externalDeveloperName>idn_exp</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Expense ID</label>
+    <length>50</length>
+    <referenceTargetField>T_SBSD_EMPLMT_EXP__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_SBSD_EMPLMT_EXP__c</referenceTo>
+    <relationshipLabel>Employment Expense Legacy History</relationshipLabel>
+    <relationshipName>sfrosit_t_sbsd_emplmt_exp_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

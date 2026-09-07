@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AuraDefinitionBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>41.0</apiVersion>
+    <description>&lt;aura:event type=&quot;COMPONENT&quot; description=&quot;Despatched when a select has changed value&quot; &gt;
+  &lt;aura:attribute name=&quot;values&quot; type=&quot;String[]&quot; description=&quot;Selected values&quot; access=&quot;global&quot; /&gt;
+&lt;/aura:event&gt;</description>
+</AuraDefinitionBundle>

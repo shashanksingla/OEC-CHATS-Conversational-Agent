@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IDN_COUNTY_RATE__c</fullName>
+    <description>County Rate Plan</description>
+    <label>County Rate Plan</label>
+    <referenceTo>T_COUNTY_RATE__c</referenceTo>
+    <relationshipLabel>County Rate</relationshipLabel>
+    <relationshipName>County_Rate</relationshipName>
+    <relationshipOrder>0</relationshipOrder>
+    <reparentableMasterDetail>false</reparentableMasterDetail>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>MasterDetail</type>
+    <writeRequiresMasterRead>false</writeRequiresMasterRead>
+</CustomField>

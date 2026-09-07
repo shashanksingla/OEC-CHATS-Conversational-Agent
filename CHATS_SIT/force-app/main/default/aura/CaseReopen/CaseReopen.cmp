@@ -1,0 +1,109 @@
+<aura:component extends="c:abstractComponent" controller="CaseReOpenApxCtrl">
+    
+    <aura:attribute name="currentTabNumber" type="Integer"/>
+    <aura:attribute name="recordId" type="String" default="a1Tg0000002cHIA"/>
+    <aura:attribute name="recordError" type="String"/>
+    <aura:attribute name="childCareProgram" type="String"/>
+    <aura:attribute name="isCountyMatch" type="Boolean"/>    
+    <aura:attribute name="countyName" type="String"/>
+    <aura:attribute name="case" type="T_SBSD_CASE__c" default="{'sobjectType':'T_SBSD_CASE__c',
+                                                               'IND_INCOME_FED_OTHER__c':''
+                                                               }"/>
+    <aura:attribute name="caseCopy" type="T_SBSD_CASE__c" default="{'sobjectType':'T_SBSD_CASE__c',
+                                                                   'IND_INCOME_FED_OTHER__c':''
+                                                                   }"/>
+    <aura:attribute name="caseStatus" type="T_SBSD_CASE_STATUS_MODE__c" default="{'sobjectType':'T_SBSD_CASE_STATUS_MODE__c',
+                                                                                 'CDE_MODE_CASE__c':'',
+                                                                                 'CDE_ELIGTY_CONTNUS__c':'',
+                                                                                 'CDE_REASON_CHANGE_MODE_STATUS__c':'',
+                                                                                 }"/>
+    <aura:attribute name="newCaseStatus" type="T_SBSD_CASE_STATUS_MODE__c" default="{'sobjectType':'T_SBSD_CASE_STATUS_MODE__c',
+                                                                                    'CDE_MODE_CASE__c':'',
+                                                                                    'CDE_ELIGTY_CONTNUS__c':'',
+                                                                                    'CDE_REASON_CHANGE_MODE_STATUS__c':''
+                                                                                    }"/>
+    <aura:attribute name="currentCaseStatusMode" type="T_SBSD_CASE_STATUS_MODE__c"/>
+    <aura:attribute name="caseApplnDateInfo" type="T_CASE_APPLN_DTE__c" default="{'sobjectType':'T_CASE_APPLN_DTE__c',
+                                                                                 'IDN_CASE__c':'',
+                                                                                 'DTE_APPLN_OLD__c':'',
+                                                                                 'DTE_APPLN_NEW__c':'',
+                                                                                 'RSN_OVERRIDE__c':'',
+                                                                                 'CMT_OVERRIDE__c':'',
+                                                                                 }"/> <!--CCCAP-13251-->
+
+    <aura:attribute name="showConfirmationModal" type="boolean" default="true"/>
+    <aura:attribute name="ipvDisqualification" type="boolean" default="false"/>
+    <aura:attribute name="ipvDisqualificationMsg" type="String"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <div class="slds-wrap slds-grid">
+        
+        <div class="slds-size--2-of-3">
+            <lightning:card iconName="standard:event">
+                
+                <aura:set attribute="title">
+                    <div class="slds-grid">
+                        <div class="slds-col slds-has-flexi-truncate">
+                            <div class="slds-media slds-no-space slds-grow">                        
+                                <div class="slds-media__body">
+                                    <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="Case">Case Reopen</h1>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aura:set>
+                
+                <aura:set attribute="actions">
+                    <c:navigationComponent totalTabs="1" 
+                                           currentTabNumber="{!v.currentTabNumber}"
+                                           onFinish="{!c.doFinish}"
+                                           finishLabel="Save"
+                                           showPrevious="false"
+                                           showCancel="true"
+                                           onCancel="{!c.doCancel}"/>
+                </aura:set>
+                
+                <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+                
+                <aura:if isTrue="{!v.currentTabNumber==1 &amp;&amp; !empty(v.case.Id)}">
+                    <!--added caseApplnDateInfo for CCCAP-13251-->
+                    <c:CaseReopenLayout aura:id="CaseReopenLayout" 
+                                        case="{!v.case}"
+                                        caseCopy="{!v.caseCopy}"
+                                        caseStatusMode="{!v.caseStatus}"
+                                        isCurrentPageValid="{!v.isCurrentPageValid}"
+                                        newCaseStatusMode="{!v.newCaseStatus}"
+                                        fieldValidationErrors="{!v.fieldValidationErrors}"
+                                        currentCaseStatusMode="{!v.currentCaseStatusMode}"
+                                        caseApplnDateInfo="{!v.caseApplnDateInfo}" 
+                                        childCareProgram ="{!v.childCareProgram}"
+                                        />
+                    
+                    <c:confirmationModal aura:id="confirmationModalOnReopenWithApplnDate" 
+                                         confirmMsg="Application Date has not been updated. Do you want to continue?"
+                                         confirmModalYes="{!c.actionOnYesButton}" />
+                    <c:confirmationModal aura:id="confirmationModalOnIPVDisqualification" 
+                                         confirmMsg="{!v.ipvDisqualificationMsg}"
+                                         confirmModalYes="{!c.actionOnIPVYesButton}" 
+                                         showNoButton="false"
+                                         yesLabel="Ok"
+                                         title="Warning!"/>
+                </aura:if>
+            </lightning:card>
+        </div>
+        
+        <div class="slds-size--1-of-3 slds-p-left--small">
+            <lightning:card iconName="" title="Case Header">
+                <aura:if isTrue="{!!empty(v.case.Id)}">
+                    <c:caseHeader aura:id="CaseHeader"
+                                  sObjectName="T_SBSD_CASE__c"
+                                  recordId="{!v.case.Id}"
+                                  childCareProgram ="{!v.childCareProgram}"
+                                  />
+                </aura:if>
+            </lightning:card>
+        </div>
+        
+    </div>    
+</aura:component>

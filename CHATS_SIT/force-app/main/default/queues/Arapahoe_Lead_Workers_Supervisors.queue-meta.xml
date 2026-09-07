@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Arapahoe Lead Workers / Supervisors</name>
+    <queueMembers>
+        <users>
+            <user>djimenez@arapahoegov.com.chats</user>
+            <user>kwilson2@arapahoegov.com.chats</user>
+            <user>mwilson@arapahoegov.com.chats</user>
+            <user>nmohammedali@arapahoegov.com.chats</user>
+            <user>sreynoso@arapahoegov.com.chats</user>
+            <user>ykim@co.arapahoe.co.us.chats</user>
+        </users>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>Case_Review__c</sobjectType>
+    </queueSobject>
+    <queueSobject>
+        <sobjectType>Task</sobjectType>
+    </queueSobject>
+</Queue>

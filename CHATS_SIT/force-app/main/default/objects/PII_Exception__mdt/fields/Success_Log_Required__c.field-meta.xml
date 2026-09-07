@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Success_Log_Required__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>This field will be used for controlling the success callout logging.</description>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Success Log Required</label>
+    <type>Checkbox</type>
+</CustomField>

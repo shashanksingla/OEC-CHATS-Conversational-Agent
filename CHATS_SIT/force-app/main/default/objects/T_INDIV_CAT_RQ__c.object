@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <comment>Action override created by Lightning App Builder during activation.</comment>
+        <content>Child_Care_Request_Record_Page</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>Flexipage</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Individual is requesting care indicators.</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>true</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>CCR_Case_Id__c</fullName>
+        <externalId>false</externalId>
+        <formula>IDN_CASE_INDIV__r.IDN_CASE__c</formula>
+        <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+        <label>Case Id</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>CDE_CAT_PROG__c</fullName>
+        <description>Program Category</description>
+        <externalId>false</externalId>
+        <label>Program Category</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00368</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_CHANGE_RQ_CAT__c</fullName>
+        <description>Program Category Change Request</description>
+        <externalId>false</externalId>
+        <label>Reason for Ending Care</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00322</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>DTE_BEGIN_EFFV__c</fullName>
+        <description>System Determined Effective Begin Date</description>
+        <externalId>false</externalId>
+        <label>System Determined Effective Begin Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_END_EFFV__c</fullName>
+        <description>Effective End Date</description>
+        <externalId>false</externalId>
+        <label>Effective End Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>IDN_CASE_INDIV__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <externalId>false</externalId>
+        <label>Case Individual ID</label>
+        <referenceTo>T_SBSD_CASE_INDIV__c</referenceTo>
+        <relationshipLabel>Child Care Requests</relationshipLabel>
+        <relationshipName>Child_Care_Requests</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>Case Individual External ID</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <fields>
+        <fullName>cde_reason_ovrd__c</fullName>
+        <externalId>false</externalId>
+        <label>Override Reason</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value>
+                    <fullName>County/Worker Error</fullName>
+                    <default>false</default>
+                    <label>County/Worker Error</label>
+                </value>
+                <value>
+                    <fullName>Standard processing time (Delay in processing Child Care Request)</fullName>
+                    <default>false</default>
+                    <label>Standard processing time (Delay in processing Child Care Request)</label>
+                </value>
+                <value>
+                    <fullName>Care Request Received After Care Started</fullName>
+                    <default>false</default>
+                    <label>Care Request Received After Care Started</label>
+                </value>
+                <value>
+                    <fullName>Other</fullName>
+                    <default>false</default>
+                    <label>Other</label>
+                </value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>OVERRIDDEN_DTE_BEGIN_EFFV__c</fullName>
+        <externalId>false</externalId>
+        <description>Overriden Effective Begin Date</description>
+        <label>Overridden Effective Begin Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>txt_cmt_ovrd__c</fullName>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Override Comments</label>
+        <length>2000</length>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>LongTextArea</type>
+        <visibleLines>3</visibleLines>
+    </fields>
+    <label>Child Care Request</label>
+    <listViews>
+        <fullName>All</fullName>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+   <nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>Child Care Request ID</label>
+        <trackHistory>false</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Child Care Requests</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ReadWrite</sharingModel>
+    <validationRules>
+        <fullName>Effective_End_Date_less_than_Begin_Date</fullName>
+        <active>true</active>
+        <description>Effective End Date must be greater than Effective Begin Date.</description>
+        <errorConditionFormula>NOT(IDN_CASE_INDIV__r.IDN_CLIENT__r.Is_Peak_Data__c ) &amp;&amp; 
+        ((ISNULL(OVERRIDDEN_DTE_BEGIN_EFFV__c) &amp;&amp; DTE_BEGIN_EFFV__c &gt; DTE_END_EFFV__c) || 
+        (NOT(ISNULL(OVERRIDDEN_DTE_BEGIN_EFFV__c)) &amp;&amp; OVERRIDDEN_DTE_BEGIN_EFFV__c &gt; DTE_END_EFFV__c))</errorConditionFormula>
+        <errorDisplayField>DTE_END_EFFV__c</errorDisplayField>
+        <errorMessage>Effective End Date must be greater than Effective Begin Date.</errorMessage>
+    </validationRules>
+    <visibility>Public</visibility>
+</CustomObject>

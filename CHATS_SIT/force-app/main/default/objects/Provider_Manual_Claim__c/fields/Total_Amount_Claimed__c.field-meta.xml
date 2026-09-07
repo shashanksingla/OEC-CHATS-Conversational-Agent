@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Total_Amount_Claimed__c</fullName>
+    <label>Total Amount Claimed</label>
+    <summarizedField>Claim_Detail__c.Total_Child_Claimed_Amount__c</summarizedField>
+    <summaryFilterItems>
+        <field>Claim_Detail__c.Is_Active__c</field>
+        <operation>equals</operation>
+        <value>True</value>
+    </summaryFilterItems>
+    <summaryForeignKey>Claim_Detail__c.Provider_Manual_Claim__c</summaryForeignKey>
+    <summaryOperation>sum</summaryOperation>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Summary</type>
+</CustomField>

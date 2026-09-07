@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>Food Stamps</fullName>
+        <default>false</default>
+        <label>Food Stamps</label>
+    </customValue>
+    <customValue>
+        <fullName>Head Start</fullName>
+        <default>false</default>
+        <label>Head Start</label>
+    </customValue>
+    <customValue>
+        <fullName>Medicaid</fullName>
+        <default>false</default>
+        <label>Medicaid</label>
+    </customValue>
+    <customValue>
+        <fullName>TANF</fullName>
+        <default>false</default>
+        <label>TANF</label>
+    </customValue>
+    <masterLabel>RT_CCCAP_Q1_1</masterLabel>
+    <sorted>true</sorted>
+</GlobalValueSet>

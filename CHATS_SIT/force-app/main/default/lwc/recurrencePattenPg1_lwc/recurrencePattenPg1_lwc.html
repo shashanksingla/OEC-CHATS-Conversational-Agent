@@ -1,0 +1,86 @@
+<template>
+    <lightning-layout multiple-rows="true">
+        <lightning-layout-item size="6" padding="around-small">
+            <label class="slds-form-element__label">Name</label>
+            <div>{_authSchRecurrObj.Name}</div>
+        </lightning-layout-item>
+        
+        <lightning-layout-item size="6" padding="around-small">
+            <c-custom-lookup_lwc 
+                object-api-name="T_AUTH__c"
+                label="Authorization ID"
+                aria-label="Authorization ID"
+                selected-record-id={_authSchRecurrObj.IDN_AUTH__c}
+                show-recent-records="true"
+                is-disabled="true">
+            </c-custom-lookup_lwc>
+            <c-field-level-message_lwc data-field="Auth_Schedule_Recurrence__c-IDN_AUTH__c"></c-field-level-message_lwc>
+        </lightning-layout-item>
+        
+        <lightning-layout-item size="6" padding="around-small">
+            <label class="slds-form-element__label">Sunday</label>
+            <lightning-input type="checkbox" checked={_authSchRecurrObj.Sun__c} disabled="true"></lightning-input>
+        </lightning-layout-item>
+        
+        <lightning-layout-item size="6" padding="around-small">
+            <label class="slds-form-element__label">Monday</label>
+            <lightning-input type="checkbox" checked={_authSchRecurrObj.Mon__c} disabled="true"></lightning-input>
+        </lightning-layout-item>
+        
+        <lightning-layout-item size="6" padding="around-small">
+            <label class="slds-form-element__label">Tuesday</label>
+            <lightning-input type="checkbox" checked={_authSchRecurrObj.Tue__c} disabled="true"></lightning-input>
+        </lightning-layout-item>
+        
+        <lightning-layout-item size="6" padding="around-small">
+            <label class="slds-form-element__label">Wednesday</label>
+            <lightning-input type="checkbox" checked={_authSchRecurrObj.Wed__c} disabled="true"></lightning-input>
+        </lightning-layout-item>
+        
+        <lightning-layout-item size="6" padding="around-small">
+            <label class="slds-form-element__label">Thursday</label>
+            <lightning-input type="checkbox" checked={_authSchRecurrObj.Thur__c} disabled="true"></lightning-input>
+        </lightning-layout-item>
+        
+        <lightning-layout-item size="6" padding="around-small">
+            <label class="slds-form-element__label">Friday</label>
+            <lightning-input type="checkbox" checked={_authSchRecurrObj.Fri__c} disabled="true"></lightning-input>
+        </lightning-layout-item>
+        
+        <lightning-layout-item size="6" padding="around-small">
+            <label class="slds-form-element__label">Saturday</label>
+            <lightning-input type="checkbox" checked={_authSchRecurrObj.Sat__c} disabled="true"></lightning-input>
+        </lightning-layout-item>
+        
+        <lightning-layout-item size="6" padding="around-small">
+            <label class="slds-form-element__label">Days Of Month</label>
+            <div>{_authSchRecurrObj.DaysOfMonth__c}</div>
+        </lightning-layout-item>
+        
+        <lightning-layout-item size="6" padding="around-small">
+            <label class="slds-form-element__label">Week Days</label>
+            <div>{_authSchRecurrObj.WeekDays__c}</div>
+        </lightning-layout-item>
+        
+        <lightning-layout-item flexibility="auto" size="6" class="slds-is-relative" padding="around-small">
+            <lightning-input 
+                type="date"
+                label="Start Date"
+                value={_authSchRecurrObj.DTE_Begin_Date__c}
+                disabled="true"
+                data-field="startDate">
+            </lightning-input>
+        </lightning-layout-item>
+        
+        <lightning-layout-item flexibility="auto" size="6" class="slds-is-relative" padding="around-small">
+            <lightning-input 
+                type="date"
+                label="End Date"
+                value={_authSchRecurrObj.DTE_End_Date__c}
+                required="true"
+                onchange={handleEndDateChange}
+                data-field="endDate">
+            </lightning-input>
+        </lightning-layout-item>
+    </lightning-layout>
+</template>

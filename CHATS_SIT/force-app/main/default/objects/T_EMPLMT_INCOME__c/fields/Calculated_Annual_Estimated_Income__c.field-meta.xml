@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Calculated_Annual_Estimated_Income__c</fullName>
+    <externalId>false</externalId>
+    <formula>CASE( TEXT( CDE_FREQ_PAY_ESTMD__c ) ,
+&apos;WKY&apos;, AMT_INCOME_ANNUAL_ESTMD__c*4.33*12,
+&apos;E2M&apos;, AMT_INCOME_ANNUAL_ESTMD__c*6,
+&apos;2PM&apos;, AMT_INCOME_ANNUAL_ESTMD__c*2*12,
+&apos;E2W&apos;, (AMT_INCOME_ANNUAL_ESTMD__c/2)*4.33*12,
+&apos;HLY&apos;, (AMT_INCOME_ANNUAL_ESTMD__c*CNT_WEEK_PER_HOURS_ESTMD__c*4.33)*12,
+&apos;MON&apos;, AMT_INCOME_ANNUAL_ESTMD__c*12,
+&apos;QRT&apos;, (AMT_INCOME_ANNUAL_ESTMD__c/3)*12,
+&apos;2PY&apos;, AMT_INCOME_ANNUAL_ESTMD__c*2,
+&apos;1PY&apos;, AMT_INCOME_ANNUAL_ESTMD__c,
+&apos;ONE&apos;, AMT_INCOME_ANNUAL_ESTMD__c,
+0
+)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Calculated Annual Estimated Income</label>
+    <precision>18</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

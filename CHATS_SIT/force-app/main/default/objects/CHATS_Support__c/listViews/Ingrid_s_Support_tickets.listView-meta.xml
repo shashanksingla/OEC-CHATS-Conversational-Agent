@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Ingrid_s_Support_tickets</fullName>
+    <columns>Client_or_Provider_Name__c</columns>
+    <columns>NAME</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>Date_Elevated__c</columns>
+    <columns>UPDATEDBY_USER</columns>
+    <columns>Status__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Status__c</field>
+        <operation>equals</operation>
+        <value>New,In Progress,Awaiting User,Elevated,Reopened</value>
+    </filters>
+    <filters>
+        <field>Support_Team_Assignee__c</field>
+        <operation>equals</operation>
+        <value>ingrid deruiter</value>
+    </filters>
+    <label>Ingrid&apos;s Support tickets</label>
+</ListView>

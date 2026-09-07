@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>BeginDateCannotBeMoreThan4WeeksFuture</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(NOT( ISCHANGED( DTE_BEGIN_SLOT__c ) ) , NOT ( ISCHANGED( IDN_SLOT_CONTRACT__c ) ),NOT($Permission.System_Administrator ),NOT(CONTAINS( LEFT(OwnerId , 15) ,LEFT($Label.ByPass_Auth_validation, 15))), DTE_BEGIN_EFFV_AUTH__c &gt; (TODAY()+VALUE($Label.AllowedDays_Authorization_Begin_Date)))</errorConditionFormula>
+    <errorDisplayField>DTE_BEGIN_EFFV_AUTH__c</errorDisplayField>
+    <errorMessage>Authorization Begin Date cannot be more than 60 days into the future.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Primary_Care_Taker_cannot_have_self_rel</fullName>
+    <active>true</active>
+    <description>Client ID/Primary Caretaker cannot have Self Relationship</description>
+    <errorConditionFormula>IDN_CLIENT_RELTD__c   =   IDN_CLIENT__c</errorConditionFormula>
+    <errorMessage>The Primary Caretaker and Client ID selected may not be for the same individual.</errorMessage>
+</ValidationRule>

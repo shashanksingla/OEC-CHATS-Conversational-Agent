@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>User-Generated</fullName>
+        <default>true</default>
+        <label>User-Generated</label>
+    </customValue>
+    <customValue>
+        <fullName>System-Generated</fullName>
+        <default>false</default>
+        <label>System-Generated</label>
+    </customValue>
+    <customValue>
+        <fullName>Transfer</fullName>
+        <default>false</default>
+        <label>Transfer</label>
+    </customValue>
+    <customValue>
+        <fullName>SIDMOD</fullName>
+        <default>false</default>
+        <label>SIDMOD</label>
+    </customValue>
+    <customValue>
+        <fullName>TRAILS</fullName>
+        <default>false</default>
+        <label>TRAILS</label>
+    </customValue>
+    <customValue>
+        <fullName>General Case Note</fullName>
+        <default>false</default>
+        <label>General Case Note</label>
+    </customValue>
+    <masterLabel>R00838</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

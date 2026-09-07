@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Change_Request_Approved</fullName>
+    <columns>NAME</columns>
+    <columns>Status__c</columns>
+    <columns>CHATS_Area__c</columns>
+    <columns>Description_Steps_to_Reproduce__c</columns>
+    <columns>JIRA_ID__c</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>LAST_UPDATE</columns>
+    <columns>Support_Type__c</columns>
+    <columns>CREATEDBY_USER</columns>
+    <columns>Support_Team_Assignee__c</columns>
+    <columns>Priority__c</columns>
+    <columns>Sub_Priority__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>NAME</field>
+        <operation>notEqual</operation>
+        <value>Support - 0000003709</value>
+    </filters>
+    <filters>
+        <field>Status__c</field>
+        <operation>equals</operation>
+        <value>Change Approved</value>
+    </filters>
+    <filters>
+        <field>Root_Cause__c</field>
+        <operation>equals</operation>
+        <value>Change Request</value>
+    </filters>
+    <label>Change Request - Change Approved Items</label>
+</ListView>

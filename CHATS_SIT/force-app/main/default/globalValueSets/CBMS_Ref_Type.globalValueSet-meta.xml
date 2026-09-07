@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>New</fullName>
+        <default>false</default>
+        <label>New Referral</label>
+    </customValue>
+    <customValue>
+        <fullName>Change</fullName>
+        <default>false</default>
+        <label>Change Referral</label>
+    </customValue>
+    <customValue>
+        <fullName>Transition</fullName>
+        <default>false</default>
+        <label>Transition Referral</label>
+    </customValue>
+    <customValue>
+        <fullName>Closure</fullName>
+        <default>false</default>
+        <label>Closure Referral</label>
+    </customValue>
+    <customValue>
+        <fullName>Renewal</fullName>
+        <default>false</default>
+        <label>Renewal Referral</label>
+    </customValue>
+    <description>CBMS Referral Types</description>
+    <masterLabel>CBMS Ref Type</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

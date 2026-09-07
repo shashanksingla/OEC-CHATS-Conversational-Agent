@@ -1,0 +1,191 @@
+<aura:component extends="c:abstractComponent" controller="IncomeCalculatorApxCtrl"  implements="force:appHostable">
+    
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="county" type="User" default="{'SObjectType':'User', 'Owner_County__c':''}"/>
+    <aura:attribute name="familySize" type="Integer"/>
+    <aura:attribute name="noOfChildReqCare" type="Integer"/>
+    <aura:attribute name="index" type="Integer"/>
+    <aura:attribute name="incomeType" type="T_INDIV_OTHER_INCOME__c" default="{'SObjectType':'T_INDIV_OTHER_INCOME__c', 'CDE_SOURCE_INCOME__c':''}"/>
+    <aura:attribute name="amount" type="Integer"/>
+    <aura:attribute name="frequency" type="T_EMPLMT_INCOME__c" default="{'SObjectType':'T_EMPLMT_INCOME__c', 'CDE_FREQ_PAY_ESTMD__c':''}"/>
+    <aura:attribute name="hoursPerWeek" type="Integer"/>
+    <aura:attribute name="incomeRows" type="Object[]" 
+                    default="[{'CDE_SOURCE_INCOME__c':'', 'empNumber':'', 'amount':'', 'CDE_FREQ_PAY_ESTMD__c':'', 'hoursPerWeek':'', 'fedMinWageMet':''}, {'CDE_SOURCE_INCOME__c':'', 'empNumber':'', 'amount':'', 'CDE_FREQ_PAY_ESTMD__c':'', 'hoursPerWeek':'', 'fedMinWageMet':''},
+                             {'CDE_SOURCE_INCOME__c':'', 'empNumber':'', 'amount':'', 'CDE_FREQ_PAY_ESTMD__c':'', 'hoursPerWeek':'', 'fedMinWageMet':''}, {'CDE_SOURCE_INCOME__c':'', 'empNumber':'', 'amount':'', 'CDE_FREQ_PAY_ESTMD__c':'', 'hoursPerWeek':'', 'fedMinWageMet':''},
+                             {'CDE_SOURCE_INCOME__c':'', 'empNumber':'', 'amount':'', 'CDE_FREQ_PAY_ESTMD__c':'', 'hoursPerWeek':'', 'fedMinWageMet':''}, {'CDE_SOURCE_INCOME__c':'', 'empNumber':'', 'amount':'', 'CDE_FREQ_PAY_ESTMD__c':'', 'hoursPerWeek':'', 'fedMinWageMet':''},
+                             {'CDE_SOURCE_INCOME__c':'', 'empNumber':'', 'amount':'', 'CDE_FREQ_PAY_ESTMD__c':'', 'hoursPerWeek':'', 'fedMinWageMet':''}, {'CDE_SOURCE_INCOME__c':'', 'empNumber':'', 'amount':'', 'CDE_FREQ_PAY_ESTMD__c':'', 'hoursPerWeek':'', 'fedMinWageMet':''},
+                             {'CDE_SOURCE_INCOME__c':'', 'empNumber':'', 'amount':'', 'CDE_FREQ_PAY_ESTMD__c':'', 'hoursPerWeek':'', 'fedMinWageMet':''}, {'CDE_SOURCE_INCOME__c':'', 'empNumber':'', 'amount':'', 'CDE_FREQ_PAY_ESTMD__c':'', 'hoursPerWeek':'', 'fedMinWageMet':''},
+                             {'CDE_SOURCE_INCOME__c':'', 'empNumber':'', 'amount':'', 'CDE_FREQ_PAY_ESTMD__c':'', 'hoursPerWeek':'', 'fedMinWageMet':''}, {'CDE_SOURCE_INCOME__c':'', 'empNumber':'', 'amount':'', 'CDE_FREQ_PAY_ESTMD__c':'', 'hoursPerWeek':'', 'fedMinWageMet':''}]"/>
+    <aura:attribute name="annualIncome" type="Decimal" default="00.00"/>
+    <aura:attribute name="monthlyIncome" type="Decimal" default="00.00"/>
+    <aura:attribute name="fpg" type="Decimal"/>
+    <aura:attribute name="incomeCelling" type="Decimal"/>
+    <aura:attribute name="c1" type="Decimal"/>
+    <aura:attribute name="c2" type="Decimal"/>
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="fullTimeFee" type="Decimal" default="00.00"/>
+    <aura:attribute name="partTimeFee" type="Decimal" default="00.00"/>
+    <aura:attribute name="fullTimeFeeDiscounted" type="Decimal" default="00.00"/>
+    <aura:attribute name="partTimeFeeDiscounted" type="Decimal" default="00.00"/>
+    <aura:attribute name="fbgIncome" type="Decimal" default="00.00"/>
+    <aura:attribute name="countyMaxIncome" type="Decimal" default="00.00"/>
+    <aura:attribute name="SMI" type="Decimal" default="00.00"/>
+    <aura:attribute name="baseParentFee" type="Decimal" default="00.00"/>
+    <aura:attribute name="addOnFee" type="Decimal" default="00.00"/>
+    <aura:attribute name="pfChangeEffective" type="Boolean"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <lightning:card iconName="standard:event">
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="Income and Parent Fee Calculator">Income and Parent Fee Calculator</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        
+        <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+        
+        <aura:if isTrue="{!v.currentTabNumber==1}">
+            <lightning:layout multipleRows="true" horizontalAlign="space">
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <c:inputPicklist aura:id="input-field"
+                                     label="County"    
+                                     value="{!v.county}"
+                                     object="User"
+                                     field="Owner_County__c"
+                                     showNone="true"
+                                     required="true"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <lightning:input aura:id="input-field" type="number" name="input-name" label="Family Size" step="any"
+                                     value="{!v.familySize}" messageWhenRangeUnderflow="Must be a number greater than 0." required="true" min="1"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                    <lightning:input aura:id="input-field" type="number" name="input-name" label="Number of Children Requesting Care" step="any"
+                                     value="{!v.noOfChildReqCare}" messageWhenRangeUnderflow="Must be a number greater than 0." required="true" min="1"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" size="6" padding="around-small"/>
+            </lightning:layout>
+            
+            <div class="slds-p-around_small">
+                <table class="slds-table slds-table_bordered slds-table_col-bordered slds-border_right slds-border_left">
+                    <thead>
+                        <tr class="slds-text-title_caps">
+                            <th scope="col">
+                                <div class="slds-truncate slds-align_absolute-center" title="Income Type">Income Type</div>
+                            </th>
+                            <th scope="col"> <!-- Added for CCCAP-3236 & CCCAP-3709 by Rishav -->
+                                <div class="slds-truncate slds-align_absolute-center" title="Amount">Employer</div>
+                            </th>
+                            <th scope="col">
+                                <div class="slds-truncate slds-align_absolute-center" title="Amount">Amount</div>
+                            </th>
+                            <th scope="col">
+                                <div class="slds-truncate slds-align_absolute-center" title="Frequency">Frequency</div>
+                            </th>
+                            <th scope="col">
+                                <div class="slds-truncate slds-align_absolute-center" title="Hours Per Week">Hours Per Week</div>
+                            </th>
+                            <th scope="col"> <!-- Added for CCCAP-3790 by Rishav -->
+                                <div class="slds-truncate slds-align_absolute-center" title="Federal Minimum Wage Met?">Federal Minimum Wage Met?</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <aura:iteration items="{!v.incomeRows}" var="row" indexVar="index">
+                            <c:incomeRow incomeRow="{!row}" aura:id="incomeRowCmp"/>
+                        </aura:iteration>
+                    </tbody>
+                </table>
+            </div>  
+        </aura:if>
+        
+        <aura:set attribute="footer">
+            <lightning:button label="Add more Income" onclick="{!c.addIncomeRow}"/> <!-- Added for CCCAP-3807 by Rishav -->
+            <lightning:button label="Clear" onclick="{!c.clearFields}"/>
+            <lightning:button label="Calculate" variant="brand" onclick="{!c.calculateIncome}"/>
+            <!--
+            <c:navigationComponent totalTabs="1" 
+                                   currentTabNumber="{!v.currentTabNumber}"
+                                   onFinish="false"
+                                   hideFinish="true"
+                                   showCancel="false"
+                                   showPrevious="false"
+                                   onCancel="{!c.doCancel}"
+                                   showCustomButton="true"
+                                   customButtonLabel="Calculate"
+                                   onClickCustomButton="{!c.calculateIncome}"
+                                   />
+			-->
+        </aura:set>
+        
+        <lightning:layout multipleRows="true" horizontalAlign="space" class="slds-border_bottom">
+            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                <div class="slds-p-left_medium slds-p-around_x-small">Calculated Annual Income : ${!v.annualIncome}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                <div class="slds-p-left_medium slds-p-around_x-small">Average Monthly Income : ${!v.monthlyIncome}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                <div class="slds-p-left_medium slds-p-around_x-small">FPG % : {!v.fpg}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                <div class="slds-p-left_medium slds-p-around_x-small">County Income Celling % : {!v.incomeCelling}</div>
+            </lightning:layoutItem>
+        </lightning:layout>
+        
+        <lightning:layout multipleRows="true" horizontalAlign="space">
+            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                <div class="slds-p-left_medium slds-p-around_x-small">Full Time Parent Fee : ${!v.fullTimeFee}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                <div class="slds-p-left_medium slds-p-around_x-small">Part Time Parent Fee : ${!v.partTimeFee}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                <div class="slds-p-left_medium slds-p-around_x-small">Quality Rating Discounted Full Time Parent Fee : ${!v.fullTimeFeeDiscounted}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                <div class="slds-p-left_medium slds-p-around_x-small">Quality Rating Discounted Part Time Parent Fee : ${!v.partTimeFeeDiscounted}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                <div class="slds-p-left_medium slds-p-around_x-small">FPG Based on Countable Income % : {!v.fbgIncome}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                <div class="slds-p-left_medium slds-p-around_x-small">County Maximum Income : ${!v.countyMaxIncome}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                <div class="slds-p-left_medium slds-p-around_x-small">85% SMI : {!v.SMI}</div>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                <div class="slds-p-left_medium slds-p-around_x-small">Base Parent Fee for first child : ${!v.baseParentFee}</div>
+            </lightning:layoutItem>
+            
+            <aura:if isTrue="{!!v.pfChangeEffective}">
+                <lightning:layoutItem flexibility="auto" size="3" padding="around-small">
+                    <div class="slds-p-left_medium slds-p-around_x-small">Amount added for each additional child : ${!v.addOnFee}</div>
+                </lightning:layoutItem>
+            </aura:if>
+            <lightning:layoutItem flexibility="auto" size="9" padding="around-small"/>
+        </lightning:layout>
+        
+    </lightning:card>
+</aura:component>

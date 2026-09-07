@@ -1,0 +1,63 @@
+<aura:component >
+    <aura:attribute name="lstSelectedApplicationIndividuals" type="List"/>
+    <aura:attribute name="applicationIndividualForClearance" type="T_APPLN_INDIV__c"/>
+    <aura:attribute name="mapIndivSequenceToRelationship" type="Map"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="mapIndivToRelationship" type="Map"/>
+    <aura:attribute name="isCBMSFlow" type="Boolean" default="false"/>
+    <aura:if isTrue="{!v.isCBMSFlow}">
+        <div class="slds-text-body_regular">The case individuals already have a State ID assigned. Please verify that the information matches the referral and click next to proceed.</div>
+    </aura:if>
+    <br />
+    <table class="slds-table slds-table_bordered">
+        <thead>
+            <tr class="slds-text-title_caps">
+                <th scope="col">
+                    <div class="slds-truncate" title="action"></div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="Last Name">Last Name</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="First Name">First Name</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="MI">MI</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="DOB">DOB</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="SSN">SSN</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="Gender">Gender</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="State ID">State ID</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="Primary Caretaker">Primary Caretaker</div>
+                </th>
+                <th>
+                    <div class="slds-truncate" title="Relationship">Relationship</div>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <aura:iteration items="{!v.lstSelectedApplicationIndividuals}" var="applicationIndividual">
+                <c:individualClearanceRow individual="{!applicationIndividual}" 
+                                          individualForClearance="{!v.applicationIndividualForClearance}"
+                                          disableRadioButtonOption="{!applicationIndividual.IDN_STATE__c!=null &amp;&amp; applicationIndividual.IDN_STATE__c!='SID Req'}"
+                                          mapIndivSequenceToRelationship="{!v.mapIndivSequenceToRelationship}"
+                                          mapIndivToRelationship ="{!v.mapIndivToRelationship}"
+                                                         isCBMSFlow ="{!v.isCBMSFlow}"
+                                          />
+                
+                <!-- <c:peakApplicationIndividualClearanceRow applicationIndividual="{!applicationIndividual}" 
+                                                         applicationIndividualForClearance="{!v.applicationIndividualForClearance}"
+                                                         disableRadioButtonOption="{!applicationIndividual.IDN_STATE__c!=null}"/>-->
+            </aura:iteration>
+        </tbody>
+    </table>  
+</aura:component>

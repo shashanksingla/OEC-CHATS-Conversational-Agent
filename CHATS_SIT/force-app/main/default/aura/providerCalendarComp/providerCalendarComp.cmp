@@ -1,0 +1,88 @@
+<aura:component >
+    <aura:method name="openModal" action="{!c.handleModalButtonClick}"/>
+    <aura:method name="updateStatus" action="{!c.handleUpdateStatus}"/>
+    <aura:method name="checkForUpdate" action="{!c.handleUpdateCheck}"/>
+    <aura:attribute name="provdName" type="String"/>
+    <aura:attribute name="provdId" type="String"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    <aura:attribute name="showcomp" type="Boolean" default="false" />
+    <aura:attribute name="weeksInAMonth" type="Object" />
+    <aura:attribute name="isReadOnly" type="Boolean"/>
+    <aura:attribute name="selectedMonth" type="String"/>
+    <aura:attribute name="selectedYear" type="String"/>
+    <aura:attribute name="provClos" type="Map" />
+    <aura:attribute name="provClosList" type="object" />
+    <aura:attribute name="provClosure" type="List" default="[]"/>
+    <aura:attribute name="updatedList" type="List" default="[]" />
+    <aura:attribute name="changedList" type="List" default="[]" />
+    <aura:attribute name="ifError" type="String" />
+    <aura:attribute name="faStartDate" type="Date" />
+    <aura:attribute name="faEndDate" type="Date" />
+    <aura:attribute name="countyHolidays" type="List" default="[]" />
+    
+    <aura:if isTrue="{!v.showcomp}">       
+        <div>
+            <lightning:layout  multipleRows="true" verticalAlign="space">               
+                <aura:if isTrue="{!!empty(v.weeksInAMonth)}"> 
+                  
+                    <lightning:layoutItem flexibility="auto" padding="around-small" size="12" class="slds-align_absolute-center">
+                    </lightning:layoutItem>
+                    <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                        <!--main calendar-->
+                      
+                        <div class="slds-p-around_x-small">
+                            <div>
+                                <div class="calendarHeaderCells">
+                                    Monday
+                                </div>
+                                <div class="calendarHeaderCells">
+                                    Tuesday
+                                </div>
+                                <div class="calendarHeaderCells">
+                                    Wednesday
+                                </div>
+                                <div class="calendarHeaderCells">
+                                    Thursday
+                                </div>
+                                <div class="calendarHeaderCells">
+                                    Friday
+                                </div>
+                                <div class="calendarHeaderCells">
+                                    Saturday
+                                </div>
+                                <div class="calendarHeaderCells">
+                                    Sunday
+                                </div>
+                                <div style="clear: both;" />
+                            </div>
+                            <aura:iteration items="{!v.weeksInAMonth}" var="week" >                             
+                                <div>
+                                    <aura:iteration items="{!week.DaysInAWeek}" var="day" >
+                                        <!--<c:day day="{!day}" />-->
+                                        <div>                                           
+                                            <!--<aura:if isTrue="{!!empty(day)}">  -->
+                                            <c:provCalEdit aura:id="provCalEditCell"
+                                                              map="{!v.provClos}" day="{!day}"
+                                                           	  provClosList="{!v.provClosList}"
+                                                              isReadOnly="{!v.isReadOnly}"
+                                                              provClosure="{!v.provClosure}"
+                                                              ifError="{!v.ifError}"
+                                                              updatedList="{!v.updatedList}"
+                                                              changedList="{!v.changedList}"
+                                                              faStartDate="{!v.faStartDate}"
+                                 							  faEndDate="{!v.faEndDate}"
+                                 							  countyHolidays="{!v.countyHolidays}"
+                                                           />
+                                          
+                                            <!--  </aura:if>-->
+                                        </div>
+                                    </aura:iteration>
+                                </div>
+                            </aura:iteration>
+                        </div>
+                    </lightning:layoutItem>
+                </aura:if>                
+            </lightning:layout>
+        </div>
+    </aura:if>
+</aura:component>

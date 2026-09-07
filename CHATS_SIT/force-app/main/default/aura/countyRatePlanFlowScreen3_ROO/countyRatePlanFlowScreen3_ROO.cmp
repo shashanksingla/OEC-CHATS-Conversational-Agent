@@ -1,0 +1,301 @@
+<aura:component extends="c:abstractSection">
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:attribute name="countyRatePlanRec" type="T_COUNTY_RATE__c"
+                    default="{'sobjectType':'T_COUNTY_RATE__c'}"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:attribute name="countyId" type="String" />
+    <aura:attribute name="isCFS_Q1_4__cRequired" type="boolean" default="false"/>
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.CFS_Q1_3__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyRatePlanRec.CFS_Q1__c}" action="{!c.handleSetRequired}"/>
+    <aura:attribute name="recordError" type="String" />
+    <aura:attribute name="checkboxValue" type="String" />
+    <aura:attribute name="isNew" type="Boolean" default="true" />
+    <lightning:layout multipleRows="true">        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Qualified Exempt Providers</B></h3>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+            <p class="slds-text-body_small">1. Does your county designate authority to process the following application requirements for Qualified Exempt Provider applicants to the State, or does the county opt to complete these requirements?</p>
+            <lightning:layoutItem padding="horizontal-medium">
+                <p class="slds-text-body_small">
+                    <li>Complete Trails Legacy, Trails Mod, and Colorado Sexual Offender Registry background checks for the provider applicant and all applicable adults.</li>
+                    <li>Create the provider profile in Trails Mod (after the provider applicant and all applicable adults have cleared all of the above mentioned background checks).</li>
+                    <li>Refer the provider applicant and all applicable adults to complete their CBI/FBI fingerprinting with a state-approved CABS vendor.</li>
+                    <li>Maintain the provider profile and close the provider in Trails Mod, when necessary.</li>
+                </p>  
+            </lightning:layoutItem>               	
+            <c:inputRadioGroupForPicklist label="" aura:id="input-field"
+                                        value="{!v.countyRatePlanRec.QEP_Q1_new__c}"
+                                        object="T_COUNTY_RATE__c"
+                                        field="QEP_Q1_new__c" required="true" isfullSize="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-QEP_Q1_new__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small" >
+            <lightning:input type="text" name="input-name" label="1.1 If the county opts to complete these application requirements, please indicate the individual that will complete these requirements for Qualified Exempt Provider applicants and applicable adults in your county."
+                            value="{!v.countyRatePlanRec.QEP_Q2__c}" 
+                            required="{!v.countyRatePlanRec.QEP_Q1_new__c=='N'}"
+                            aura:id="input-field"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-QEP_Q2__c"/>
+        </lightning:layoutItem>
+    </lightning:layout>
+    <lightning:layout multipleRows="true" >
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Slot Contracts</B></h3>
+            <h1 class="slds-section__title">Please complete the following questions related to your county's policies surrounding Slot Contracts.</h1>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+            <c:inputRadioGroupForPicklist label="2. Would you like to enable the Slot Contracts option? (Current county policy/procedure must be submitted to the State Department for review and approval)" aura:id="input-field"
+                                          value="{!v.countyRatePlanRec.CFS_Q1__c}"
+                                          object="T_COUNTY_RATE__c"
+                                          field="CFS_Q1__c" required="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q1__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.countyRatePlanRec.CFS_Q1__c=='Y'}">
+            <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                <lightning:layoutItem flexibility="auto" size="6" >
+                    <lightning:input type="number" name="input-name" label="2.1 If Yes, how many providers do you have Slot Contracts with?"
+                                     value="{!v.countyRatePlanRec.CFS_Q1_1__c}" 
+                                     required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'}"
+                                     aura:id="input-field"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CFS_Q1_1__c"/>
+                </lightning:layoutItem>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                <lightning:layoutItem flexibility="auto" size="6" >
+                    <lightning:input type="number" name="input-name" label="2.2 If Yes, what is the maximum number of slot contracts per provider?"
+                                     value="{!v.countyRatePlanRec.CFS_Q1_2__c}" 
+                                     required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'}"
+                                     aura:id="input-field"/>    
+                    <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-CFS_Q1_2__c"/>
+                </lightning:layoutItem>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6" >
+                <c:inputMultiSelectCombobox label="2.3 What are the County identified Target populations and Areas for Slot Contracts?"  aura:id="input-field"
+                                            value="{!v.countyRatePlanRec.CFS_Q1_3__c}"
+                                            required="{!v.countyRatePlanRec.CFS_Q1__c=='Y'}"
+                                            width="570px;"
+                                            object="T_COUNTY_RATE__c"
+                                            field="CFS_Q1_3__c" />    
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q1_3__c"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6" >
+                <lightning:textarea name="input-name" label="Other county-identified target populations or areas (Enter other Target Population/Area):"
+                                    value="{!v.countyRatePlanRec.CFS_Q1_4__c}" required="{!v.isCFS_Q1_4__cRequired}" maxlength="1000"
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-CFS_Q1_4__c"/>
+            </lightning:layoutItem>
+        </aura:if>
+    </lightning:layout>
+    <!--
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Opting Out of State-Recommended Rates</B></h3>
+            <h1 class="slds-section__title">Please specify whether your county is paying less than the State-prescribed rates. If so, please answer the following questions for reporting purposes.</h1>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+            <c:inputRadioGroupForPicklist label="1. Does your county pay less than the State-prescribed rates?" aura:id="input-field"
+                                          value="{!v.countyRatePlanRec.ROO_Q1__c}"
+                                          object="T_COUNTY_RATE__c"
+                                          field="ROO_Q1__c" required="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h1 class="slds-section__title">1.1 Check all that apply and describe. Please include all data and facts used by the county to determine equal access.</h1>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="checkbox" name="input-name" label="Payment rates are set at the 75th percentile or higher of the most recent market rate survey." 
+                             aura:id="input-field"
+                             checked="{!v.countyRatePlanRec.ROO_Q1_1_1__c}"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_1__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <aura:if isTrue="{!v.countyRatePlanRec.ROO_Q1_1_1__c?true:false}">
+                <lightning:textarea name="input-name" label="Please specify"
+                                    value="{!v.countyRatePlanRec.ROO_Q1_1_1a__c}" 
+                                    required="{!v.countyRatePlanRec.ROO_Q1_1_1__c?true:false}" 
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_1a__c"/>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="checkbox" name="input-name" label="Using tiered rates/differential rates to increase access for targeted needs." 
+                             aura:id="input-field"
+                             checked="{!v.countyRatePlanRec.ROO_Q1_1_2__c}"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_2__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <aura:if isTrue="{!v.countyRatePlanRec.ROO_Q1_1_2__c?true:false}">
+                <lightning:textarea name="input-name" label="Please specify"
+                                    value="{!v.countyRatePlanRec.ROO_Q1_1_2a__c}" 
+                                    required="{!v.countyRatePlanRec.ROO_Q1_1_2__c?true:false}" 
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_2a__c"/>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="checkbox" name="input-name" label="Rates based on data on the cost to the provider of providing care meeting certain standards." 
+                             aura:id="input-field"
+                             checked="{!v.countyRatePlanRec.ROO_Q1_1_3__c}"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_3__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <aura:if isTrue="{!v.countyRatePlanRec.ROO_Q1_1_3__c?true:false}">
+                <lightning:textarea name="input-name" label="Please specify"
+                                    value="{!v.countyRatePlanRec.ROO_Q1_1_3a__c}" 
+                                    required="{!v.countyRatePlanRec.ROO_Q1_1_3__c?true:false}" 
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_3a__c"/>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="checkbox" name="input-name" label="Data on the size of the difference (in terms of dollars) between payment rates and the 75th percentile in the most recent survey, if rates are below the 75th percentile." 
+                             aura:id="input-field"
+                             checked="{!v.countyRatePlanRec.ROO_Q1_1_4__c}"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_4__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <aura:if isTrue="{!v.countyRatePlanRec.ROO_Q1_1_4__c?true:false}">
+                <lightning:textarea name="input-name" label="Please specify"
+                                    value="{!v.countyRatePlanRec.ROO_Q1_1_4a__c}" 
+                                    required="{!v.countyRatePlanRec.ROO_Q1_1_4__c?true:false}" 
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_4a__c"/>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="checkbox" name="input-name" label="Data on the proportion of children receiving subsidy being served by high-quality providers." 
+                             aura:id="input-field"
+                             checked="{!v.countyRatePlanRec.ROO_Q1_1_5__c}"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_5__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <aura:if isTrue="{!v.countyRatePlanRec.ROO_Q1_1_5__c?true:false}">
+                <lightning:textarea name="input-name" label="Please specify"
+                                    value="{!v.countyRatePlanRec.ROO_Q1_1_5a__c}" 
+                                    required="{!v.countyRatePlanRec.ROO_Q1_1_5__c?true:false}" 
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_5a__c"/>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="checkbox" name="input-name" label="Data on where children are being served showing access to the full range of providers." 
+                             aura:id="input-field"
+                             checked="{!v.countyRatePlanRec.ROO_Q1_1_6__c}"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_6__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <aura:if isTrue="{!v.countyRatePlanRec.ROO_Q1_1_6__c?true:false}">
+                <lightning:textarea name="input-name" label="Please specify"
+                                    value="{!v.countyRatePlanRec.ROO_Q1_1_6a__c}" 
+                                    required="{!v.countyRatePlanRec.ROO_Q1_1_6__c?true:false}" 
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_6a__c"/>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="checkbox" name="input-name" label="Data on how rates set below the 75th percentile allow families access to the same quality of care as families not receiving CCDF." 
+                             aura:id="input-field"
+                             checked="{!v.countyRatePlanRec.ROO_Q1_1_7__c}"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_7__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <aura:if isTrue="{!v.countyRatePlanRec.ROO_Q1_1_7__c?true:false}">
+                <lightning:textarea name="input-name" label="Please specify"
+                                    value="{!v.countyRatePlanRec.ROO_Q1_1_7a__c}" 
+                                    required="{!v.countyRatePlanRec.ROO_Q1_1_7__c?true:false}" 
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_7a__c"/> 
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="checkbox" name="input-name" label="Feedback from parents, including parent survey or parent complaints." 
+                             aura:id="input-field"
+                             checked="{!v.countyRatePlanRec.ROO_Q1_1_8__c}"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_8__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <aura:if isTrue="{!v.countyRatePlanRec.ROO_Q1_1_8__c?true:false}">
+                <lightning:textarea name="input-name" label="Please specify"
+                                    value="{!v.countyRatePlanRec.ROO_Q1_1_8a__c}" 
+                                    required="{!v.countyRatePlanRec.ROO_Q1_1_8__c?true:false}" 
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_8a__c"/>
+            </aura:if>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="checkbox" name="input-name" label="Other" 
+                             aura:id="input-field"
+                             checked="{!v.countyRatePlanRec.ROO_Q1_1_9__c}"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_9__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <aura:if isTrue="{!v.countyRatePlanRec.ROO_Q1_1_9__c?true:false}">
+                <lightning:textarea name="input-name" label="Please specify"
+                                    value="{!v.countyRatePlanRec.ROO_Q1_1_9a__c}" 
+                                    required="{!v.countyRatePlanRec.ROO_Q1_1_9__c?true:false}" 
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_1_9a__c"/>
+            </aura:if>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.countyRatePlanRec.ROO_Q1__c=='Y'?true:false}">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputDate aura:id="input-field" label="1.2 Please provide the date your county consulted with your local ECC:"
+                         value="{!v.countyRatePlanRec.ROO_Q1_2__c}" required="{!v.countyRatePlanRec.ROO_Q1__c=='Y'}" />
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_2__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:textarea name="input-name" label="1.3 Please provide a summary of the feedback that your county received from your local ECC:"
+                                value="{!v.countyRatePlanRec.ROO_Q1_3__c}" required="{!v.countyRatePlanRec.ROO_Q1__c=='Y'}" 
+                                aura:id="input-field"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_3__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+           <c:inputDate aura:id="input-field" 
+                         label="1.4 Please provide the date your county consulted with your local CCR and R:"
+                         value="{!v.countyRatePlanRec.ROO_Q1_4__c}" required="{!v.countyRatePlanRec.ROO_Q1__c=='Y'}" />
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_4__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:textarea name="input-name" label="1.5 Please provide a summary of the feedback that your county received from your local CCR and R:"
+                                value="{!v.countyRatePlanRec.ROO_Q1_5__c}" required="{!v.countyRatePlanRec.ROO_Q1__c=='Y'}" 
+                                aura:id="input-field"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_5__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+         <c:inputDate aura:id="input-field" label="1.6 Please provide the date your county consulted with the child care providers in your county that currently serve or want to serve CCCAP children."
+                         value="{!v.countyRatePlanRec.ROO_Q1_6__c}" required="{!v.countyRatePlanRec.ROO_Q1__c=='Y'}" />
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_6__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="number" name="input-name" label="1.7 How many licensed child care family home providers were present?"
+                             value="{!v.countyRatePlanRec.ROO_Q1_7__c}" 
+                             required="{!v.countyRatePlanRec.ROO_Q1__c=='Y'}"
+                             aura:id="input-field"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-ROO_Q1_7__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:textarea name="input-name" label="1.8 Please provide a summary of the feedback received from your licensed child care family home providers:"
+                                value="{!v.countyRatePlanRec.ROO_Q1_8__c}" required="{!v.countyRatePlanRec.ROO_Q1__c=='Y'}" 
+                                aura:id="input-field"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_8__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="number" name="input-name" label="1.9 How many licensed child care centers were present?"
+                             value="{!v.countyRatePlanRec.ROO_Q1_9__c}" 
+                             required="{!v.countyRatePlanRec.ROO_Q1__c=='Y'}"
+                             aura:id="input-field"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-ROO_Q1_9__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+            <lightning:layoutItem flexibility="auto" size="6" >
+                <lightning:textarea name="input-name" label="1.10 Please provide a summary of the feedback received from your licensed child care centers"
+                                    value="{!v.countyRatePlanRec.ROO_Q1_10__c}" required="{!v.countyRatePlanRec.ROO_Q1__c=='Y'}" 
+                                    aura:id="input-field"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_RATE__c-ROO_Q1_10__c"/>           
+            </lightning:layoutItem>
+        </lightning:layoutItem>
+        </aura:if>
+    </lightning:layout>-->
+</aura:component>

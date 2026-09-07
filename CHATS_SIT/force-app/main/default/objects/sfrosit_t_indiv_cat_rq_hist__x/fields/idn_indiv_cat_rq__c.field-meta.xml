@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_indiv_cat_rq__c</fullName>
+    <description>idn_indiv_cat_rq</description>
+    <externalDeveloperName>idn_indiv_cat_rq</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Individual category request ID</label>
+    <length>50</length>
+    <referenceTargetField>T_INDIV_CAT_RQ__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_INDIV_CAT_RQ__c</referenceTo>
+    <relationshipLabel>Child Care Request Legacy History</relationshipLabel>
+    <relationshipName>sfrosit_t_indiv_cat_rq_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

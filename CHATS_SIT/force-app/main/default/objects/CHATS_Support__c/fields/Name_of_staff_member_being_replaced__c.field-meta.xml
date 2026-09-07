@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Name_of_staff_member_being_replaced__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <inlineHelpText>Please select the staff member being replaced. Note that the system will only allow specifying an active CHATS user. If the staff member being replaced is already inactive in CHATS, select &quot;No&quot; to &quot;Is this staff member replacing another?&quot;.</inlineHelpText>
+    <label>Name of staff member being replaced</label>
+    <referenceTo>User</referenceTo>
+    <relationshipName>CHATS_Support1</relationshipName>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

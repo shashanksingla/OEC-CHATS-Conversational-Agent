@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Eff_Date_Uneditable_on_Homeless_flag_upd</fullName>
+    <active>true</active>
+    <description>Effective End Date cannot be Edited if Is Family Homeless changed from No to Yes</description>
+    <errorConditionFormula>!IDN_CASE__r.Is_Peak_Data__c &amp;&amp; !IDN_CASE__r.Is_CBMS_Data__c &amp;&amp; OR(AND(ISCHANGED(Is_family_homeless__c),ISBLANK(TEXT(PRIORVALUE(Is_family_homeless__c))),ISPICKVAL(Is_family_homeless__c,&apos;Y&apos;),ISCHANGED(DTE_END_EFFV__c)),
+AND( ISNEW(),ISPICKVAL(Is_family_homeless__c,&apos;Y&apos;),NOT(ISNULL( DTE_END_EFFV__c ))))</errorConditionFormula>
+    <errorDisplayField>DTE_END_EFFV__c</errorDisplayField>
+    <errorMessage>Effective End Date cannot be Edited if Is Family Homeless is Yes</errorMessage>
+</ValidationRule>

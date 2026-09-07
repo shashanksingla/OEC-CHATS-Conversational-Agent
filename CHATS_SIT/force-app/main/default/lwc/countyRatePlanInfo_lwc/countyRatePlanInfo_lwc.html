@@ -1,0 +1,16 @@
+<template>
+    <template if:true={showTable}>
+        <template for:each={tables} for:item="tableItem" for:index="index">
+            <template if:true={tableItem.headerTitle}>
+                <div key={tableItem.headerTitle} class="slds-card__header-title slds-align_absolute-center slds-m-around_xx-small">
+                    <h2>{tableItem.headerTitle}</h2>
+                </div>
+            </template>
+            <lightning-card key={tableItem} title={tableItem.sectionTitle}>
+                <c-feedback-datatable table-data={tableItem.data} hide-checkbox-column columns={columns}
+                    key-field="fieldName" disabled={isSupervisor} class="slds-table_cell-buffer slds-table_col-bordered"
+                    resize-column-disabled section-title={tableItem.section} screen-mode={screenMode}>
+                </c-feedback-datatable>
+            </lightning-card>
+        </template>
+    </template>

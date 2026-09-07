@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>N</fullName>
+        <default>false</default>
+        <label>Break in Eligibility</label>
+    </customValue>
+    <customValue>
+        <fullName>Y</fullName>
+        <default>false</default>
+        <label>Continuous</label>
+    </customValue>
+    <description>R00387</description>
+    <masterLabel>R00387</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

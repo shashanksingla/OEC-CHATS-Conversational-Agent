@@ -1,0 +1,244 @@
+<template>
+    <!-- Page Messages -->
+    <div aria-live="polite" aria-atomic="true">
+        <c-page-messages_lwc
+            page-messages={pageMessages}
+            message-type={messageType}>
+        </c-page-messages_lwc>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- Main Adjustment Details Table                                       -->
+    <!-- ================================================================== -->
+    <div class="table-scroll-container slds-p-around_small slds-p-bottom_medium slds-m-bottom_medium" role="region" aria-label="Main Adjustment Details Table" tabindex="0">
+        <table class="slds-table slds-table_bordered" role="grid" aria-label="Adjustment Details">
+            <thead>
+                <!-- SLOT CONTRACT MODE headers -->
+                <template if:true={slotCntcheckbox}>
+                    <tr class="slds-text-title_caps" role="row">
+                        <th scope="col" role="columnheader" aria-label="Select Row">
+                            <span class="slds-assistive-text">Select</span>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Slot Contract ID">Slot Contract ID</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Care Date">Care Date</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Care Level Paid">Care Level Paid</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Adjusted Care Level">Adjusted Care Level</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Unit Type Paid">Unit Type Paid</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Adjusted Unit Type">Adjusted Unit Type</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Rate Type Paid">Rate Type Paid</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Adjusted Rate Type">Adjusted Rate Type</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Vacant Slot Contract Amount Paid">Vacant Slot Contract Amount Paid</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="0-36 Months Enrollment Payment">0-36 Months Enrollment Payment</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Adjusted Rate Amount">Adjusted Rate Amount</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Override Standard Amount">Override Standard Amount</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Adjusted Amount">Adjusted Amount</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Existing Adjustment">Existing Adjustment</div>
+                        </th>
+                    </tr>
+                </template>
+
+                <!-- REGULAR MODE headers -->
+                <template if:false={slotCntcheckbox}>
+                    <tr class="slds-text-title_caps" role="row">
+                        <th scope="col" role="columnheader" aria-label="Select Row">
+                            <span class="slds-assistive-text">Select</span>
+                        </th>
+                        <template if:true={showCaseIdColumn}>
+                            <th scope="col" role="columnheader">
+                                <div title="Case ID">Case ID</div>
+                            </th>
+                        </template>
+                        <template if:true={showProviderIdColumn}>
+                            <th scope="col" role="columnheader">
+                                <div title="Provider ID">Provider ID</div>
+                            </th>
+                        </template>
+                        <th scope="col" role="columnheader">
+                            <div title="Name">Name</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Care Date">Care Date</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Authorized Hours">Authorized Hours</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Adjusted Authorized Hours">Adjusted Authorized Hours</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Authorized Rate Type">Authorized Rate Type</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Adjusted Rate Type">Adjusted Rate Type</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Attended Hours">Attended Hours</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Adjusted Attended Hours">Adjusted Attended Hours</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Unit Paid">Unit Paid</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Rate Paid">Rate Paid</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Parent Fee">Parent Fee</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Amount Paid">Amount Paid</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Slot Contract Amount Paid">Slot Contract Amount Paid</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="0-36 Months Enrollment Payment">0-36 Months Enrollment Payment</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Adjusted Rate Amount">Adjusted Rate Amount</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Override Standard Amount">Override Standard Amount</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Adjusted Amount">Adjusted Amount</div>
+                        </th>
+                        <th scope="col" role="columnheader">
+                            <div title="Existing Adjustment">Existing Adjustment</div>
+                        </th>
+                    </tr>
+                </template>
+            </thead>
+            <tbody>
+                <template for:each={subPaymentDetails} for:item="subPaymentDetail">
+                    <c-adjustment-flow_-adjustment-entry-row_lwc
+                        key={subPaymentDetail.ExternalId}
+                        selected-sub-payment={selectedSubPayment}
+                        adjustment={adjustment}
+                        sub-payment-detail={subPaymentDetail}
+                        exist-adj-wrap={existAdjWrap}
+                        rate-type-options={rateTypeOptions}
+                        care-unit-type-options={careUnitTypeOptions}
+                        care-level-options={careLevelOptions}
+                        adjustment-detail-list={adjustmentDetailList}
+                        care-level-options-map={careLevelOptionsMap}
+                        care-unit-type-options-map={careUnitTypeOptionsMap}
+                        rate-type-options-care-date-map={rateTypeOptionsCareDateMap}
+                        rate-type-options-map={rateTypeOptionsMap}
+                        adjust-detail-map={adjustDetailMap}
+                        adjustment-detail-id={subPaymentDetail.ExternalId}
+                        selected-adjustment-detail-rec={selectedAdjustmentDetailRec}
+                        adjustment-details-a-r-t-fee-map={adjustmentDetailsARTFeeMap}
+                        child-current-utilization={childCurrentUtilization}
+                        slot-cntcheckbox={slotCntcheckbox}
+                        disabled-a-r-t-fees={disabledARTFees}>
+                    </c-adjustment-flow_-adjustment-entry-row_lwc>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- ART Fees Table (conditional: !disabledARTFees && !slotCntcheckbox) -->
+    <!-- ================================================================== -->
+    <template if:true={showARTFeesTable}>
+        <div class="table-scroll-container slds-p-around_small slds-p-bottom_medium slds-m-bottom_medium">
+
+            <!-- ART Fees Section Header -->
+            <div class="slds-col slds-has-flexi-truncate">
+                <div class="slds-media slds-no-space slds-grow">
+                    <div class="slds-media__body">
+                        <h2 class="slds-page-header__title slds-m-right_small slds-align-middle slds-truncate"
+                            id="art-fees-heading" title="ART Fees">ART Fees</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-scroll-container slds-p-around_small slds-p-bottom_medium slds-m-bottom_medium" role="region" aria-labelledby="art-fees-heading" tabindex="0">
+                <table class="slds-table slds-table_bordered" role="grid" aria-label="ART Fees Details">
+                    <thead>
+                        <tr class="slds-text-title_caps" role="row">
+                            <th scope="col" role="columnheader" aria-label="Select Row">
+                                <span class="slds-assistive-text">Select</span>
+                            </th>
+                            <th scope="col" role="columnheader">
+                                <div title="Name">Name</div>
+                            </th>
+                            <th scope="col" role="columnheader">
+                                <div title="Care Date">Care Date</div>
+                            </th>
+                            <th scope="col" role="columnheader">
+                                <div title="Activity Fee Paid">Activity Fee Paid</div>
+                            </th>
+                            <th scope="col" role="columnheader">
+                                <div title="Registration Fee Paid">Registration Fee Paid</div>
+                            </th>
+                            <th scope="col" role="columnheader">
+                                <div title="Transportation Fee Paid">Transportation Fee Paid</div>
+                            </th>
+                            <th scope="col" role="columnheader">
+                                <div title="Adjusted Activity Fee">Adjusted Activity Fee</div>
+                            </th>
+                            <th scope="col" role="columnheader">
+                                <div title="Adjusted Registration Fee">Adjusted Registration Fee</div>
+                            </th>
+                            <th scope="col" role="columnheader">
+                                <div title="Adjusted Transportation Fee">Adjusted Transportation Fee</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template for:each={artFeeSubPaymentDetails} for:item="subPaymentDetail">
+                            <c-adjustment-flow_-adjustment-entry-row_lwc
+                                key={subPaymentDetail.artFeeKey}
+                                selected-sub-payment={selectedSubPayment}
+                                adjustment={adjustment}
+                                sub-payment-detail={subPaymentDetail}
+                                exist-adj-wrap={existAdjWrap}
+                                rate-type-options={rateTypeOptions}
+                                adjustment-detail-list={adjustmentDetailList}
+                                care-unit-type-options-map={careUnitTypeOptionsMap}
+                                rate-type-options-map={rateTypeOptionsMap}
+                                rate-type-options-care-date-map={rateTypeOptionsCareDateMap}
+                                adjust-detail-map={adjustDetailMap}
+                                art-fee-flag={booleanTrue}
+                                adjustment-details-a-r-t-fee-map={adjustmentDetailsARTFeeMap}
+                                adjustment-detail-id={subPaymentDetail.ExternalId}
+                                child-current-utilization={childCurrentUtilization}
+                                disabled-a-r-t-fees={disabledARTFees}>
+                            </c-adjustment-flow_-adjustment-entry-row_lwc>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+</template>

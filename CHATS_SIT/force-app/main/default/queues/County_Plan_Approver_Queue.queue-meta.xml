@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>County Plan Approver Queue</name>
+    <queueMembers>
+        <roles>
+            <role>County_Plan_Approver</role>
+            <role>Template_Administrator</role>
+        </roles>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>T_COUNTY_PLAN_NOTES__c</sobjectType>
+    </queueSobject>
+    <queueSobject>
+        <sobjectType>T_COUNTY_PLAN__c</sobjectType>
+    </queueSobject>
+    <queueSobject>
+        <sobjectType>T_COUNTY_RATE_NOTES__c</sobjectType>
+    </queueSobject>
+    <queueSobject>
+        <sobjectType>T_COUNTY_RATE__c</sobjectType>
+    </queueSobject>
+</Queue>

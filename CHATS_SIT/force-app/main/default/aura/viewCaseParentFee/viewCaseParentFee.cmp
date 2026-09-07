@@ -1,0 +1,106 @@
+<aura:component controller="ViewCaseParentFeeApxCtrl" extends="c:abstractComponent">
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="months" type="List" default='[{ value: "", label: "--None--" },
+                                                       { value: "1", label: "January" },
+                                                       { value: "2", label: "February" },
+                                                       { value: "3", label: "March" },
+                                                       { value: "4", label: "April" },
+                                                       { value: "5", label: "May" },
+                                                       { value: "6", label: "June" },
+                                                       { value: "7", label: "July" },
+                                                       { value: "8", label: "August" },
+                                                       { value: "9", label: "September" },
+                                                       { value: "10", label: "October" },
+                                                       { value: "11", label: "November" },
+                                                       { value: "12", label: "December" }]'/>
+    <aura:attribute name="selectedMonth" type="String"/>
+    <aura:attribute name="selectedYear" type="Integer"/>
+    <aura:attribute name="caseParentFeeDetails" type="Map"/>
+    <aura:attribute name="authParentFeeAllocationsMap" type="Map"/>
+    <aura:attribute name="caseParentFeeAllocations" type="List"/>
+    <aura:attribute name="noDataReturnedFromServer" type="Boolean" default="false"/>
+    <aura:attribute name="showCaseParentFeeData" type="Boolean" default="true"/>
+    <aura:attribute name="title" type="String" default="No Data Found"/>
+    <aura:attribute name="description" type="String" default="There is no Case Parent Fee for the selected month and year. Please select another month and year to see the Case Parent Fee Details."/>
+    <aura:attribute name="isValid" type="Boolean" default="true"/>
+    <aura:attribute name="isDeletable" type="Boolean" default="false"/>
+    <aura:attribute name="isEditable" type="Boolean" default="false"/>
+    <aura:attribute name="isAuthCopayEditable" type="Boolean" default="false"/>
+    <aura:attribute name="isNotReadOnlyUser" type="Boolean" default="false"/>
+    <aura:attribute name="parentFeeChangeMsg" type="String" default="{!$Label.c.ChangeParentFeeMsg}"/>
+
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <lightning:card iconName="standard:hierarchy">
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">
+                        <div class="slds-media__body">
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="View Parent Fee">View Parent Fee</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        <aura:set attribute="actions">
+            <c:navigationComponent totalTabs="1" 
+                                   currentTabNumber="1"
+                                   onCancel="{!c.doCancel}"
+                                   onFinish="{!c.doFinish}"
+                                   onClickCustomButton="{!c.doDeleteParentFee}"
+                                   customButtonLabel="Delete Parent Fee"
+                                   finishLabel="Save"
+                                   showCustomButton="{!and(v.isEditable==true, v.isNotReadOnlyUser==true)}"
+                                   showFinish="{!v.isAuthCopayEditable==true}"
+                                   showCancel="true"
+                                   disableCustomButton="{!v.isDeletable==false}"/>
+        </aura:set>
+        <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+        <lightning:layout multipleRows="true" horizontalAlign="space">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                <div class="slds-section__title">Enter a Month and Year to view the parent fee that was effective during that month</div>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <c:inputPicklist label="Months" 
+                                 aura:id="input-field"
+                                 value="{!v.selectedMonth}"
+                                 alreadyHasValues="true"
+                                 options="{!v.months}"
+                                 required="true"/>
+                <c:fieldLevelMessage aura:id="month"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="2" padding="around-small">
+                <lightning:input type="Number" 
+                                 name="input-name" 
+                                 label="Year"
+                                 value="{!v.selectedYear}" 
+                                 min="1000" 
+                                 max="9999"
+                                 aura:id="input-field"
+                                 required="true"
+                                 messageWhenValueMissing="Please enter a value"
+                                 messageWhenRangeOverflow="Please enter a valid year"
+                                 messageWhenRangeUnderflow="Please enter a valid year"/>
+                <c:fieldLevelMessage aura:id="year"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:button label="View" variant="brand" onclick="{!c.doGetParentFeeData}" class="slds-m-top--large"/>
+            </lightning:layoutItem>    
+            <aura:if isTrue="{!and(!empty(v.caseParentFeeDetails),v.showCaseParentFeeData)}">
+                <c:viewCaseParentFee_ParentFeeDetails caseParentFeeDetails="{!v.caseParentFeeDetails}"/>            
+                <c:viewCaseParentFee_ParentFeeAllocation aura:id="parentFeeAllocation"
+                                                         caseParentFeeAllocations="{!v.caseParentFeeAllocations}"
+                                                         isEditable="{!v.isEditable}"
+                                                         isAuthCopayEditable ="{!v.isAuthCopayEditable}"
+                                                         isNotReadOnlyUser ="{!v.isNotReadOnlyUser}" />
+                                                         <c:confirmationModal aura:id="confirmationModalOnParentFeeChange" confirmMsg="{!v.parentFeeChangeMsg}"
+                                     confirmModalYes="{!c.confirmParentFeeChangeYes}" confirmModalNo="{!c.doCancelParentFeeChange}"/>
+            </aura:if>
+            <aura:if isTrue="{!v.noDataReturnedFromServer==true}">
+                <c:viewCaseParentFeeSVG title="{!v.title}" description="{!v.description}"/>
+            </aura:if>
+        </lightning:layout>
+     </lightning:card>
+</aura:component>

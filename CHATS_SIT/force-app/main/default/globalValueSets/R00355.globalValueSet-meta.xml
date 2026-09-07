@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>HOH</fullName>
+        <default>true</default>
+        <label>Head of Household</label>
+    </customValue>
+    <customValue>
+        <fullName>LIC</fullName>
+        <default>false</default>
+        <label>Live-In-Companion (of Head of Household)</label>
+    </customValue>
+    <customValue>
+        <fullName>SPS</fullName>
+        <default>false</default>
+        <label>Spouse (of Head of Household)</label>
+    </customValue>
+    <description>R00355</description>
+    <masterLabel>R00355</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>CCCAPGeneric</members>
+        <members>CccapPortalApiV1</members>
+        <members>CccapPortalApiV1ResponseWrapper</members>
+        <members>ServicePeriodService</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

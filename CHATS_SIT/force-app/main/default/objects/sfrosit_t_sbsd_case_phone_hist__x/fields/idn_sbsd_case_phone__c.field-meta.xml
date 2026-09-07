@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_sbsd_case_phone__c</fullName>
+    <description>idn_sbsd_case_phone</description>
+    <externalDeveloperName>idn_sbsd_case_phone</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Phone Number ID</label>
+    <length>50</length>
+    <referenceTargetField>T_SBSD_CASE_PHONE__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_SBSD_CASE_PHONE__c</referenceTo>
+    <relationshipLabel>Case Phone Legacy History</relationshipLabel>
+    <relationshipName>sfrosit_t_sbsd_case_phone_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

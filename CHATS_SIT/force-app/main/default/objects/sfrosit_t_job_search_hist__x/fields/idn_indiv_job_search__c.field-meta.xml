@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_indiv_job_search__c</fullName>
+    <description>idn_indiv_job_search</description>
+    <externalDeveloperName>idn_indiv_job_search</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Individual Job Search ID</label>
+    <length>50</length>
+    <referenceTargetField>T_JOB_SEARCH__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_JOB_SEARCH__c</referenceTo>
+    <relationshipLabel>Job Search Legacy History</relationshipLabel>
+    <relationshipName>sfrosit_t_job_search_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

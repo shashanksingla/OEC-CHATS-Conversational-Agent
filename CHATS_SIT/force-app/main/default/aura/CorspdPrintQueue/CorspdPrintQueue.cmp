@@ -1,0 +1,313 @@
+<!--
+* @Component Name   : CorspdPrintQueue
+* @Developed By     : Deloitte LLC
+* @Created Date     : July 19, 2018
+* @Description      : Lightning Component for Correspondence Print Queue
+-->
+<aura:component extends="c:abstractComponent" controller="corspdPrintQueue" access="GLOBAL"
+                implements="force:lightningQuickAction,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:appHostable">
+    <aura:attribute name="param1" type="T_DOC_RQ__c[]"/>
+    <aura:attribute name="endDate" type="date"/>
+    <aura:attribute name="userInfo" type="User" default="{'sobjectType':'User'}"/>
+    <aura:attribute name="userInfoId" type="String"/>
+    <aura:attribute name="recordError" type="String" />
+    <aura:attribute name="searchResult" type="T_DOC_RQ__C[]"/>
+    <aura:attribute name="encapsulatedSearchResult" type="object[]" default ='[]'/>
+    <aura:attribute name="searchResultCount" type="Integer" default='20'/>
+    <aura:attribute name="isOpen" type="boolean" default="true"/>
+    <aura:attribute name="searchResultList" type="boolean" default="false"/>
+    <aura:attribute name="openManCorspd" type="boolean" default="false"/>
+    <aura:attribute name="confirmationModal" type="boolean" default="false"/>
+    <aura:attribute name="selectedCount" type="integer" default="0"/>
+    <aura:attribute name="toggleSpinner" type="boolean" default="false"/>
+    <aura:attribute name="numberOfPages" type="Integer" default="0" description="number of pages of search results"/>
+    <aura:attribute name="currentPageNo" type="Integer" default="0" description="current page by navigation"/>
+    <aura:attribute type="string" name="sortField" />
+    <aura:attribute type="Boolean" name="sortAsc" />
+    <aura:attribute name="selectAllCheckbox" type="Boolean"  default="false"/>
+    <aura:attribute name="retryAttempts" type="integer" default="0"/>
+    <aura:attribute name="userProfileName" type="string"/>
+    <aura:attribute name="readOnlyProfile" type="string" default="Read Only User"/>
+    <aura:attribute name="userData" type="Map"/>
+    <aura:attribute name="totalNumberOfRecordsFound" type="Decimal" default="0"/> <!-- Added by Rishav for CCCAP-7499 -->
+    <aura:attribute name="totalNumberOfRecordsDisplaying" type="Decimal" default="0"/> <!-- Added by Rishav for CCCAP-7499 -->
+    <aura:attribute name="statusOptions" type="String[]" default="['Requested', 'Failed', 'Generated', 'Deleted']"/> <!-- Added by Rishav for CCCAP-7800 -->
+    
+    <aura:handler name="eventOnYes" event="c:dynamicPicklistEvent" action="{!c.onClickYes}"/>
+    <aura:handler name="init" value="this" action="{!c.doInit}"/>
+    
+    <!-- LOADING GIF NEW CODE ADDED -->
+    <aura:if isTrue="{!v.toggleSpinner}">
+        <lightning:spinner variant="brand" size="large"/>
+    </aura:if>
+    <!-- / LOADING GIF -->
+    
+    <aura:if isTrue="{!v.isOpen}">
+        <lightning:card iconName="standard:event">
+            <aura:set attribute="title">
+                <div class="slds-grid">
+                    <div class="slds-col slds-has-flexi-truncate">
+                        <div class="slds-media slds-no-space slds-grow">
+                            <div class="slds-media__body">
+                                <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="Correspondence">Correspondence Print Queue</h1>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aura:set>
+        </lightning:card>
+        <div class="slds-modal__content slds-p-around--medium">
+            <lightning:layout multipleRows="true" horizontalAlign="space">
+                <aura:if isTrue="{!!(v.userProfileName == 'Read Only User')}">	
+                    <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="12">
+                        <div class="slds-float_right">
+                            <lightning:button variant="brand" class="slds-button slds-button--neutral" name="createManCorspd" label="Create Manual Correspondence" onclick="{!c.createCorspdMan}"/>
+                        </div>
+                    </lightning:layoutItem>
+                    <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="12">
+                        <div class="slds-float_right">
+                            <lightning:button variant="brand" class="slds-button slds-button--neutral" name="printedCorspdView" label=" Printed Correspondence View " onclick="{!c.navigate}"/>
+                        </div>
+                    </lightning:layoutItem>
+                </aura:if>
+                <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="6">
+                    <lightning:input type="integer" label="Correspondence ID" name="correspondenceId" value="{!v.param1.Name}" />
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="6">
+                    <!-- Modified by Rishav for CCCAP-7800 -->
+                    <c:inputPicklist label="Correspondence Status" aura:id="corspdStatus" value="{!v.param1.CDE_CORSPD_STATUS__c}"
+                                     object="T_DOC_RQ__c" field="CDE_CORSPD_STATUS__c" alreadyHasValues="true" options="{!v.statusOptions}"/>
+                    <!-- <c:dynamicPicklist label="Correspondence Status" aura:id="corspdStatus" value="{!v.param1.CDE_CORSPD_STATUS__c}"
+                                       objectName="T_DOC_RQ__c" fieldName="CDE_CORSPD_STATUS__c" picklistType="GlobalPicklist"/> -->
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="6">
+                    <c:dynamicPicklist label="County" aura:id="countyName" value="{!v.param1.CDE_COUNTY__c}"
+                                       picklistType="TableFetchPicklist" method="getCountyCode" userRestriction="true"/>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="6">
+                    <c:dynamicPicklist label="Correspondence Type" aura:id="corspdName" value="{!v.param1.NME_CORSPD__c}"
+                                       picklistType="TableFetchPicklist" method="getAllCorrespondences" />
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="6">
+                    <lightning:input type="string" label="Case ID" name="caseID" value="{!v.param1.IDN_CASE__c}"/>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="6">
+                    <lightning:input type="integer" label="Provider ID" name="providerId" value="{!v.param1.IDN_PROVR__C}"/>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="6">
+                    <c:inputDate aura:id="input-field" required="false" label="Date Requested Begin Date" value="{!v.param1.DTE_REQ__c}" />
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="6">
+                    <c:inputDate aura:id="input-field" required="false" label="Date Requested End Date" value="{!v.endDate}" />
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="6">
+                    <c:dynamicPicklist label="Correspondence Recipient Type" aura:id="corspdRcptType" picklistType="GlobalPicklist"
+                                       value="{!v.param1.CDE_TYPE_RCPT__c}" objectName="T_DOC_RQ__c" fieldName="CDE_TYPE_RCPT__c"/>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="6">
+                    <aura:if isTrue="{!!empty(v.userInfoId)}">
+                        {!v.recordError}
+                        <force:recordData aura:id="forceRecordCmp" recordId="{!v.userInfoId}" fields="Id, Name, Username"
+                                          mode="VIEW" targetFields="{!v.userInfo}" targetError="{!v.recordError}" />
+                    </aura:if>
+                    <c:inputLookup label="User Requested" value="{!v.userInfoId}" object="User" searchField="Name"/>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" size="12" class="slds-p-vertical_x-small slds-p-horizontal_small">
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" class="slds-p-vertical_x-small slds-p-horizontal_small" size="12">
+                    <div class="slds-float_right">
+                        <lightning:button variant="brand" name="Search" label="Search" onclick="{!c.corspdSearch}" class="slds-button slds-button--neutral"/>
+                    </div>
+                </lightning:layoutItem>
+            </lightning:layout>
+        </div>
+        <br/>
+        <aura:if isTrue="{!notequals(v.encapsulatedSearchResult.length, 0)}">
+            <!-- Modified the header by Rishav for CCCAP-7499 -->
+            <!-- <div class="slds-text-heading-medium slds-modal__header slds-border_top"><h1>Search Results</h1></div> -->
+            <article class="slds-card" style="padding: 0.3rem 0rem 0.3rem 0rem;">
+                <h2 class="slds-section__title slds-text-heading--medium" style="justify-content: center;">Search Results</h2>
+                <h5 class="slds-section__title slds-text-color_weak" style="justify-content: center; font-size: 0.9rem;">Displaying {!v.totalNumberOfRecordsDisplaying} out of {!v.totalNumberOfRecordsFound} results</h5>
+            </article>
+            <table class="slds-table slds-table_bordered slds-table--cell-buffer">
+                <thead>
+                    <tr class="slds-text-title--caps">
+                        <th style="width:3.25rem;" class="slds-text-align--right">
+                            <div class="slds-form-element">
+                                <div class="slds-form-element__control">
+                                    <label class="slds-checkbox">
+                                        <!--header checkbox for select all-->
+                                        <ui:inputCheckbox aura:id="box3" value= "{!v.selectAllCheckbox}" change="{!c.selectAll}"/>
+                                        <span class="slds-checkbox--faux"></span>
+                                        <span class="slds-form-element__label text"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </th>
+                        <th class="slds-is-sortable" scope="col" >
+                            <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="{#clm}" id="Name">Correspondence ID
+                                <aura:if isTrue="{!(v.sortField == 'Name')}">
+                                    <aura:if isTrue="{!v.sortAsc}">
+                                        <!--&#8679;--><!-- &#8593; -->
+                                        &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                        <aura:set attribute="else">
+                                            <!--&#8681;--><!--  &#8595; -->
+                                            &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                        </aura:set>
+                                    </aura:if>
+                                </aura:if>
+                            </div>
+                        </th>
+                        <th class="slds-is-sortable" scope="col" >
+                            <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="{#clm}" id="CDE_CORSPD_STATUS__c">Status
+                                <aura:if isTrue="{!(v.sortField == 'CDE_CORSPD_STATUS__c')}">
+                                    <aura:if isTrue="{!v.sortAsc}">
+                                        &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                        <aura:set attribute="else">
+                                            &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                        </aura:set>
+                                    </aura:if>
+                                </aura:if>
+                            </div>
+                        </th>
+                        <th class="slds-is-sortable" scope="col" >
+                            <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="{#clm}" id="IDN_COUNTY_F__c">County
+                                <aura:if isTrue="{!(v.sortField == 'IDN_COUNTY_F__c')}">
+                                    <aura:if isTrue="{!v.sortAsc}">
+                                        &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                        <aura:set attribute="else">
+                                            &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                        </aura:set>
+                                    </aura:if>
+                                </aura:if>
+                            </div>
+                        </th>
+                        <th class="slds-is-sortable" scope="col" >
+                            <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="{#clm}" id="IDN_CASE_F__c">Case ID
+                                <aura:if isTrue="{!(v.sortField == 'IDN_CASE_F__c')}">
+                                    <aura:if isTrue="{!v.sortAsc}">
+                                        &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                        <aura:set attribute="else">
+                                            &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                        </aura:set>
+                                    </aura:if>
+                                </aura:if>
+                            </div>
+                        </th>
+                        
+                        <th class="slds-is-sortable" scope="col" >
+                            <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="{#clm}" id="IDN_PROVR_F__c">Provider ID
+                                <aura:if isTrue="{!(v.sortField == 'IDN_PROVR_F__c')}">
+                                    <aura:if isTrue="{!v.sortAsc}">
+                                        &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                        <aura:set attribute="else">
+                                            &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                        </aura:set>
+                                    </aura:if>
+                                </aura:if>
+                            </div>
+                        </th>
+                        <th class="slds-is-sortable" scope="col" >
+                            <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="{#clm}" id="DTE_REQ__c">Date Requested
+                                <aura:if isTrue="{!(v.sortField == 'DTE_REQ__c')}">
+                                    <aura:if isTrue="{!v.sortAsc}">
+                                        &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                        <aura:set attribute="else">
+                                            &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                        </aura:set>
+                                    </aura:if>
+                                </aura:if>
+                            </div>
+                        </th>
+                        <th class="slds-is-sortable" scope="col" >
+                            <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="{#clm}" id="NME_CORSPD__c">Correspondence Name
+                                <aura:if isTrue="{!(v.sortField == 'NME_CORSPD__c')}">
+                                    <aura:if isTrue="{!v.sortAsc}">
+                                        &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                        <aura:set attribute="else">
+                                            &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                        </aura:set>
+                                    </aura:if>
+                                </aura:if>
+                            </div>
+                        </th>
+                        <th class="slds-is-sortable" scope="col" >
+                            <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="{#clm}" id="Requested_By__c">User Requested
+                                <aura:if isTrue="{!(v.sortField == 'Requested_By__c')}">
+                                    <aura:if isTrue="{!v.sortAsc}">
+                                        &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                        <aura:set attribute="else">
+                                            &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                        </aura:set>
+                                    </aura:if>
+                                </aura:if>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                
+                <tbody>
+                    <aura:iteration items="{!v.encapsulatedSearchResult}" var="res" indexVar="i">
+                        <aura:if isTrue="{!greaterthanorequal(i, mult(v.currentPageNo, v.searchResultCount))}">
+                            <aura:if isTrue="{!lessthan(i, add(mult(v.currentPageNo, v.searchResultCount), v.searchResultCount))}">
+                                <tr>
+                                    <td scope="row" class="slds-text-align--right" style="width:3.25rem;">
+                                        <div class="slds-form-element">
+                                            <div class="slds-form-element__control">
+                                                <label class="slds-checkbox">
+                                                    <ui:inputCheckbox text="{!res.payload.Id}" aura:id="boxPack" value="{!res.checked}" change = "{!c.checkboxSelect}"/>
+                                                    <span class="slds-checkbox--faux"></span>
+                                                    <span class="slds-form-element__label text"></span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td scope="row"><div><a class="slds-truncate" id= "hrefId" title="{!res.payload.Name}" corspdId="{!res.payload.Name}" value ="{!res.payload.Name}" onclick="{!c.corspdIdLink}">{!res.payload.Name}</a></div></td>
+                                    <td scope="row"><div class="slds-truncate" title="{!res.payload.CDE_CORSPD_STATUS__c}">{!res.payload.CDE_CORSPD_STATUS__c}</div></td>
+                                    <td scope="row"><div class="slds-truncate" title="{!res.payload.CDE_COUNTY__r.Name}">{!res.payload.IDN_COUNTY_F__c}</div></td>
+                                    <td scope="row"><div class="slds-truncate" title="{!res.payload.IDN_CASE__r.Name}">{!res.payload.IDN_CASE_F__c}</div></td>
+                                    <td scope="row"><div class="slds-truncate" title="{!res.payload.IDN_PROVR__r.Name}">{!res.payload.IDN_PROVR_F__c}</div></td>
+                                    <td scope="row"><div class="slds-truncate" title="{!res.payload.CDE_COUNTY__r.Name}">{!res.payload.DTE_REQ__c}</div></td>
+                                    <td scope="row"><div class="slds-truncate" title="{!res.payload.NME_CORSPD__c}">{!res.payload.NME_CORSPD__c}</div></td>
+                                    <td scope="row"><div class="slds-truncate" title="{!res.payload.Requested_By__c}">{!res.payload.Requested_By__c}</div></td>
+                                </tr>
+                            </aura:if>
+                        </aura:if>
+                    </aura:iteration>
+                </tbody>
+            </table>
+            
+            <div class="slds-modal__footer slds-align_right slds-card">
+                <div class="slds-grid">
+                    <div class="slds-align_absolute-center">
+                        <aura:if isTrue="{!greaterthan(v.encapsulatedSearchResult.length, v.searchResultCount)}">
+                            <div class="slds-align_absolute-center">
+                                <div class="slds-button-group " role="group">
+                                    <button class="slds-button slds-button_neutral" onclick="{!c.clickPrevious}">Previous</button>
+                                    <div class = "slds-align_absolute-center slds-p-left_x-small slds-p-right_x-small slds-text-body_regular">Page {!add(v.currentPageNo, 1)} of {!v.numberOfPages}</div>
+                                    <button class="slds-button slds-button_neutral" onclick="{!c.clickNext}">Next</button>
+                                </div>
+                            </div>
+                            <aura:set attribute="else">
+                                <div class="slds-col slds-size_1-of-3"/><!--empty (don't show navigation buttons if-->
+                            </aura:set>
+                        </aura:if>
+                    </div>
+                    <!-- <aura:if isTrue="{!!(v.userProfileName == 'Read Only User')}"> --> 
+                    <div class="slds-align_absolute-right">
+                        <lightning:button variant="brand" name="Print" label="Print" onclick="{!c.printCorspd}" class="slds-button slds-button--neutral"/>
+                    </div>
+                    <!--</aura:if>  -->  
+                </div>
+            </div>
+        </aura:if>
+    </aura:if>
+    
+    <aura:if isTrue="{!v.confirmationModal}">
+        <c:dialogConfirmation aura:Id="confirmationModalOnDelete" childAttr="{!v.confirmationModal}"/>
+    </aura:if>
+    
+    <aura:if isTrue="{!v.openManCorspd}">
+        <c:MAN_CORSPD childAttr="{!v.openManCorspd}"/>
+    </aura:if>
+</aura:component>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Montezuma T235 Task</name>
+    <queueMembers>
+        <users>
+            <user>dlikes@co.montezuma.co.us.chats</user>
+            <user>rsegura@co.montezuma.co.us.chats</user>
+            <user>tshores@co.montezuma.co.us.chats</user>
+        </users>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>Task</sobjectType>
+    </queueSobject>
+</Queue>

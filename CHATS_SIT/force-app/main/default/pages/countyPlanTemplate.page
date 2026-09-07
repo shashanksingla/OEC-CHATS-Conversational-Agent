@@ -1,0 +1,770 @@
+<apex:page controller="countyPlanTemplateController" renderAs="pdf">
+    <apex:form >        
+        <apex:pageBlock >
+            <apex:pageBlockSection >
+                <html>
+                    <body style="font-size: 100%;">
+                        <b><center>Colorado Child Care Assistance Program</center></b><br/>
+                        <center> County Plan - {!CountyPlan.CDE_COUNTY__r.Name}</center><br/>
+                        <center> Effective Begin Date : {!MONTH(CountyPlan.DTE_BEGIN_EFFEV__c)}/{!DAY(CountyPlan.DTE_BEGIN_EFFEV__c)}/{!YEAR(CountyPlan.DTE_BEGIN_EFFEV__c)}</center><br/>
+                    </body>
+                </html>
+            </apex:pageBlockSection>
+        </apex:pageBlock>  
+        <apex:pageBlock >
+            <apex:pageBlockSection >
+                <html>
+                    <body style= "font-size: 100%;font-weight:bold">
+                        <center>CCDF</center>    
+                    </body>
+                    <tr align="left"><td style= "font-size: 100%;" align="left">County Administration</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" style="table-layout: fixed;">
+                        <colgroup>
+                            <col width="70%" />
+                            <col width="30%" />
+                        </colgroup>
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                            <tr class="dataRow" width="100%"> <td width="70%">1. Does another county administer CCCAP for your county?.</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q1__c}</td></tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}">
+                            <tr class="dataRow" width="100%"> <td width="70%">1. Does another county administer CCCAP for your county for any area of the program including, Case Reviews, County Security,  Eligibility Determination, Fiscal Management, or Provider Management?</td>
+                            <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q1__c}</td></tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!CountyPlan.CA_Q1__c=='Yes'}">
+                            <tr class="dataRow" width="100%"> <td width="70%">1.1 If yes, select the program areas your county contracts out and which county administers it. The contract must be submitted to the State Department for review prior to executing the contract.</td>
+                                <td width="30%">{!CountyPlan.CA_Q1_1__c}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <tr class="dataRow" width="100%"> <td width="70%">Case Reviews Administering County</td><td width="30%">{!CountyPlan.CA_Q1_2_County__c}</td></tr>
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                            <tr class="dataRow" width="100%"> <td width="70%">Please describe what tasks the other county completes and how you communicate regarding the tasks being completed?</td>
+                            <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q1_3_N__c}</td></tr>                        
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}">
+                            <tr class="dataRow" width="100%"> <td width="70%">Please describe the county's plan to complete county-level reviews, including how you communicate regarding the tasks being completed?</td>
+                            <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q1_3_N__c}</td></tr>                        
+                            <tr class="dataRow" width="100%"> <td width="70%">Select methods the county will use to ensure inter-reviewer consistency.</td><td width="30%">{!CountyPlan.CA_Q2_4_new__c}</td></tr>
+                            <tr style="{!IF(ISBLANK(CountyPlan.CA_Q2_4_other__c),'display:none;','')}" class="dataRow" width="100%"> <td width="70%">If other, please specify.</td><td width="30%">{!CountyPlan.CA_Q2_4_other__c}</td></tr>
+                        </apex:outputPanel>
+                        <tr class="dataRow" width="100%"> <td width="70%">County Security Administration Administering County</td><td width="30%">{!CountyPlan.CA_Q1_22_County__c}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">Please describe how you communicate regarding the tasks being completed?</td><td width="30%">{!CountyPlan.CA_Q1_32_N__c}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">Eligibility Determination Administering County</td><td width="30%">{!CountyPlan.CA_Q1_23_County__c}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">Please describe what tasks the other county completes and how you communicate regarding the tasks being completed?</td><td width="30%">{!CountyPlan.CA_Q1_33_N__c}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">Fiscal Management Administering County</td><td width="30%">{!CountyPlan.CA_Q1_24_County__c}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">Please describe what tasks the other county completes and how you communicate regarding the tasks being completed?</td><td width="30%">{!CountyPlan.CA_Q1_34_N__c}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">Provider Management Administering County</td><td width="30%">{!CountyPlan.CA_Q1_25_County__c}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">Please describe what tasks the other county completes and how you communicate regarding the tasks being completed?</td><td width="30%">{!CountyPlan.CA_Q1_35_N__c}</td></tr>
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}">
+                            <tr class="dataRow" width="100%"> <td width="70%">2. Does your county administer CCCAP for another county for any area of the program including, Case Reviews, County Security,  Eligibility Determination, Fiscal Management, or Provider Management?</td>
+                                <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_new__c}</td></tr>
+                                <apex:outputPanel rendered="{!CountyPlan.CA_Q2_new__c == 'Yes'}" layout="none">
+                                    <tr class="dataRow" width="100%"> <td width="70%">If yes, select which program areas your county administers and which county you administer those areas for. The contract must be submitted to the State Department for review prior to executing the contract.</td>
+                                        <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_1_new__c}</td></tr>
+                                </apex:outputPanel>
+                                <apex:outputPanel rendered="{!AND(CountyPlan.CA_Q2_new__c == 'Yes', CONTAINS(CountyPlan.CA_Q2_1_new__c, 'Case Reviews'))}" layout="none">
+                                    <tr class="dataRow" width="100%"> <td width="70%">County you conduct Case Reviews for</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_2_County__c}</td></tr>
+                                    <tr class="dataRow" width="100%"> <td width="70%">Please describe the county's plan to complete county-level reviews, including how you communicate regarding the tasks being completed?</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_3_N__c}</td></tr>
+                                    <tr class="dataRow" width="100%"> <td width="70%">Select methods the county will use to ensure inter-reviewer consistency.</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_4_new__c}</td></tr>
+									<tr style="{!IF(ISBLANK(CountyPlan.CA_Q2_4_other__c),'display:none;','')}" class="dataRow" width="100%"> <td width="70%">If other, please specify.</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_4_other__c}</td></tr>                                    
+                                </apex:outputPanel>
+                                <apex:outputPanel rendered="{!AND(CountyPlan.CA_Q2_new__c == 'Yes',CONTAINS(CountyPlan.CA_Q2_1_new__c,'County Security Administration'))}" layout="none">
+                                    <tr class="dataRow" width="100%"> <td width="70%">County you conduct Security Administration tasks for</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_5_County__c}</td></tr>
+                                    <tr class="dataRow" width="100%"> <td width="70%">Please describe what tasks you complete for the other county and how you communicate regarding the tasks being completed.</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_6_N__c}</td></tr>
+                                </apex:outputPanel>
+                                <apex:outputPanel rendered="{!AND(CountyPlan.CA_Q2_new__c == 'Yes',CONTAINS(CountyPlan.CA_Q2_1_new__c,'Eligibility Determination'))}" layout="none">
+                                    <tr class="dataRow" width="100%"> <td width="70%">County you determine eligibility for</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_7_County__c}</td></tr>
+                                    <tr class="dataRow" width="100%"> <td width="70%">Please describe what tasks your county completes for the other county and how you communicate regarding the tasks being completed.</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_8_N__c}</td></tr>
+                                </apex:outputPanel>
+                                <apex:outputPanel rendered="{!AND(CountyPlan.CA_Q2_new__c == 'Yes',CONTAINS(CountyPlan.CA_Q2_1_new__c,'Fiscal Management'))}" layout="none">
+                                    <tr class="dataRow" width="100%"> <td width="70%">County you conduct Fiscal Management tasks for</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_9_County__c}</td></tr>
+                                    <tr class="dataRow" width="100%"> <td width="70%">Please describe what tasks you complete for the other county and how you communicate regarding the tasks being completed.</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_10_N__c}</td></tr>
+                                </apex:outputPanel>
+                                <apex:outputPanel rendered="{!AND(CountyPlan.CA_Q2_new__c == 'Yes',CONTAINS(CountyPlan.CA_Q2_1_new__c, 'Provider Management'))}" layout="none">
+                                    <tr class="dataRow" width="100%"> <td width="70%">County you conduct Provider Management tasks for</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_11_County__c}</td></tr>
+                                    <tr class="dataRow" width="100%"> <td width="70%">Please describe what tasks you complete for the other county and how you communicate regarding the tasks being completed.</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_12_N__c}</td></tr>                                    
+                                </apex:outputPanel>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                            <tr class="dataRow" width="100%"><td width="70%">2. Does your county have a Universal User?</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2__c}</td></tr>
+                            <apex:outputPanel rendered="{!CountyPlan.CA_Q2__c=='Yes'}"  layout="none">
+                                <tr class="dataRow" width="100%">
+                                    <td width="70%">2.1 If Yes, User's Name</td>
+                                    <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_1__c}</td>
+                                </tr>
+                                <tr class="dataRow" width="100%">
+                                    <td width="70%">2.2 Please provide a detailed explanation as to why your county needs Universal User access.</td>
+                                    <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_2__c}</td>
+                                </tr>
+                                <tr class="dataRow" width="100%">
+                                    <td width="70%">2.3 Is the access temporary or permanent?</td>
+                                    <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_3__c}</td>
+                                </tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{!CountyPlan.CA_Q2_3__c=='Temporary'}" layout="none">
+                                <tr class="dataRow" width="100%">
+                                    <td width="70%">2.4 Temporary Universal User Access End Date</td>
+                                    <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!MONTH(CountyPlan.DTE_TMP_UNI_ACC_END_DT__c)}/{!DAY(CountyPlan.DTE_TMP_UNI_ACC_END_DT__c)}/{!YEAR(CountyPlan.DTE_TMP_UNI_ACC_END_DT__c)}</td>
+                                </tr>
+                            </apex:outputPanel>                                
+                        </apex:outputPanel>
+                        
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}">
+                            <tr class="dataRow" width="100%"><td width="70%">3. Does your county have a Universal User?</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2__c}</td></tr>
+                            <apex:outputPanel rendered="{!CountyPlan.CA_Q2__c=='Yes'}" layout="none">
+                                <tr class="dataRow" width="100%">
+                                    <td width="70%">3.1 If Yes, User's Name</td>
+                                    <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_1__c}</td>
+                                </tr>
+                                <tr class="dataRow" width="100%">
+                                    <td width="70%">3.2 Please provide a detailed explanation as to why your county needs Universal User access.</td>
+                                    <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_2__c}</td>
+                                </tr>
+                                <tr class="dataRow" width="100%">
+                                    <td width="70%">3.3 Is the access temporary or permanent?</td>
+                                    <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_3__c}</td>
+                                </tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{!CountyPlan.CA_Q2_3__c=='Temporary'}" layout="none">
+                                <tr class="dataRow" width="100%">
+                                    <td width="70%">3.4 Temporary Universal User Access End Date</td>
+                                    <td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!MONTH(CountyPlan.DTE_TMP_UNI_ACC_END_DT__c)}/{!DAY(CountyPlan.DTE_TMP_UNI_ACC_END_DT__c)}/{!YEAR(CountyPlan.DTE_TMP_UNI_ACC_END_DT__c)}</td>
+                                </tr>
+                            </apex:outputPanel>  
+                            <tr class="dataRow" width="100%"> <td width="70%">Please provide a detailed explanation as to how your county will mitigate fraud and ensure that proper case and business office procedures are followed.</td><td width="30%" style="word-wrap: break-word; word-break: break-all; overflow-wrap: break-word;">{!CountyPlan.CA_Q2_4__c}</td></tr>                               
+                        </apex:outputPanel>
+                    </table>
+                </html>
+                <html>
+                    <tr align="left"><td style= "font-size: 100%;" align="left"> Referrals and Information</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <tr class="dataRow" width="100%"> <td width="70%">4. How are Colorado Works/TANF families informed of the availability of Child Care Assistance? Select all that apply.</td><td width="30%">{!CountyPlan.CCDF_Q1__c} 
+                            <BR/>{!IF(ISBLANK(CountyPlan.CCDF_Q1_OTHER__c), "", "Other: " & CountyPlan.CCDF_Q1_OTHER__c)}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">5. How are Low-Income families informed of the availability of Child Care Assistance? Select all that apply.</td><td width="30%">{!CountyPlan.CCDF_Q2__c} 
+                            <BR/>{!IF(ISBLANK(CountyPlan.CCDF_Q2_OTHER__c), "", "Other: " & CountyPlan.CCDF_Q2_OTHER__c)}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">6. How are families referred to other services? Select all that apply.</td><td width="30%">{!CountyPlan.CCDF_Q3__c} 
+                            <BR/>{!IF(ISBLANK(CountyPlan.CCDF_Q3_OTHER__c), "", "Other: " & CountyPlan.CCDF_Q3_OTHER__c)}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">7. How does a Colorado Works/TANF family apply for Child Care services? Select all that apply.</td><td width="30%">{!CountyPlan.CCDF_Q4__c} 
+                            <BR/>{!IF(ISBLANK(CountyPlan.CCDF_Q4_OTHER__c), "", "Other: " & CountyPlan.CCDF_Q4_OTHER__c)}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">8. How does a Low-Income family apply for Child Care services? Select all that apply.</td><td width="30%">{!CountyPlan.CCDF_Q5__c} 
+                            <BR/>{!IF(ISBLANK(CountyPlan.CCDF_Q5_OTHER__c), "", "Other: " & CountyPlan.CCDF_Q5_OTHER__c)}</td></tr>
+                    </table>
+                </html>
+                <html>
+                    <tr align="left"><td style= "font-size: 100%;" text-align="right" >Voter Registration for Colorado Works/TANF Families</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <tr class="dataRow" width="100%"> <td width="70%">9. How do adult caretakers from Colorado Works/TANF families receive voter registration information? Select all that apply.</td><td width="30%">{!CountyPlan.CCDF_Q6__c}
+                            <BR/>{!IF(ISBLANK(CountyPlan.CCDF_Q6_OTHER__c), "", "Other: " & CountyPlan.CCDF_Q6_OTHER__c)}
+                            </td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">10. When do you send completed voter registration information for Colorado Works/TANF families to the Secretary of State?</td><td width="30%">{!CountyPlan.CCDF_Q7__c} 
+                            <BR/>{!IF(ISBLANK(CountyPlan.CCDF_Q7_OTHER__c), "", "Other: " & CountyPlan.CCDF_Q7_OTHER__c)}
+                            </td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">11. How do you ensure voter registration information for Colorado Works/TANF families is not maintained in client files? Select all that apply.</td><td width="30%">{!CountyPlan.CCDF_Q8__c} 
+                            <BR/>{!IF(ISBLANK(CountyPlan.CCDF_Q8_OTHER__c), "", "Other: " & CountyPlan.CCDF_Q8_OTHER__c)}</td></tr>
+                    </table>    
+                </html>
+                <html>
+                    <tr align="left"><td style= "font-size: 100%;" align="left" >Voter Registration for Low-Income Families.</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <tr class="dataRow" width="100%"> <td width="70%">12. How do adult caretakers from Low-Income families receive voter registration information? Select all that apply.</td><td width="30%">{!CountyPlan.CCDF_Q9__c} 
+                            <BR/>{!IF(ISBLANK(CountyPlan.CCDF_Q9_OTHER__c), "", "Other: " & CountyPlan.CCDF_Q9_OTHER__c)}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">13. When do you send completed voter registration information for Low-Income Families to the Secretary of State?</td><td width="30%">{!CountyPlan.CCDF_Q10__c} 
+                            <BR/>{!IF(ISBLANK(CountyPlan.CCDF_Q10_OTHER__c), "", "Other: " & CountyPlan.CCDF_Q10_OTHER__c)}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">14. How do you ensure voter registration information for Low-Income families is not maintained in client files? Select all that apply.</td><td width="30%">{!CountyPlan.CCDF_Q11__c} 
+                            <BR/>{!IF(ISBLANK(CountyPlan.CCDF_Q11_OTHER__c), "", "Other: " & CountyPlan.CCDF_Q11_OTHER__c)}</td></tr>
+                    </table>
+                </html>
+            </apex:pageBlockSection>
+        </apex:pageBlock>        
+        <apex:pageBlock >
+            <apex:pageBlockSection >
+                <html>
+                    <body style= "font-size: 100%;font-weight:bold">
+                        <center> CCCAP</center>    
+                    </body>
+                    <tr align="left"><td style= "font-size: 100%;" align="left" >Applications and Referrals</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <tr class="dataRow" width="100%"> <td width="70%">1. Does your county accept other program Applications in lieu of CCCAP Applications?</td><td width="30%">{!CountyPlan.CCCAP_Q1__c}</td></tr>
+                        <apex:outputPanel rendered="{!CountyPlan.CCCAP_Q1__c=='Yes'}">
+                            <tr class="dataRow" width="100%">
+                                <td width="70%">1.1 If yes, Select all that apply.</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q1_1__c} 
+                                <BR/> {!IF(ISBLANK(CountyPlan.CCCAP_Q1_1_Other__c), "", "Other: " & CountyPlan.CCCAP_Q1_1_Other__c)}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <tr class="dataRow" width="100%"> <td width="70%">2. Does your county require a face to face interview or orientation as part of the application process?</td><td width="30%">{!CountyPlan.CCCAP_Q2__c}</td></tr>
+                        <apex:outputPanel rendered="{!CountyPlan.CCCAP_Q2__c=='Yes'}">
+                            <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}" layout="none">
+                                <tr class="dataRow" width="100%"> <td width="70%">2.1 If yes, how does your county ensure that the interview or orientation process does not present a burden to families?</td><td width="30%">{!CountyPlan.CCCAP_Q2_1__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}" layout="none">
+                                <tr class="dataRow" width="100%"> <td width="70%">2.1 If yes, which does your county offer and how does your county ensure that the interview or orientation process does not present a burden to families?</td><td width="30%">{!CountyPlan.CCCAP_Q2_1__c}</td></tr>
+                            </apex:outputPanel>
+                        </apex:outputPanel>
+                        <tr class="dataRow" width="100%"> <td width="70%">3. Typically, when do Colorado Works/TANF families receive information on child care choices?</td><td width="30%">{!CountyPlan.CCCAP_Q3__c} 
+                            <BR/> {!IF(ISBLANK(CountyPlan.CCCAP_Q3_OTHER__c), "", "Other: " & CountyPlan.CCCAP_Q3_OTHER__c)}</td></tr>
+                        <tr class="dataRow" width="100%"> 
+                            <td width="70%">4. Typically, when do Low-Income families receive information on child care choices?</td>
+                            <td width="30%">{!CountyPlan.CCCAP_Q4__c} 
+                            <BR/> {!IF(ISBLANK(CountyPlan.CCCAP_Q4_OTHER__c), "", "Other: " & CountyPlan.CCCAP_Q4_OTHER__c)}</td>
+                        </tr>
+                        <apex:outputPanel rendered="{!!TtanfRemoved}">
+                            <tr class="dataRow" width="100%"> 
+                                <td width="70%">5. Briefly describe your procedure for transitioning Colorado Works families to Low Income Child Care. (Current procedure must be submitted to the State Department for review and approval)</td>
+                                <td width="30%;">{!CountyPlan.CCCAP_Q5__c}</td>
+                            </tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">6. Provide a brief overview of how your county ensures equal access to child care for families receiving CCCAP.</td>
+                                <td width="30%;">{!CountyPlan.CCCAP_Q9__c}</td>
+                            </tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">7. Client Orientation: Is a child care group orientation required as part of your application process?</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q10__c}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!(TtanfRemoved != true && ((CountyPlan.CCCAP_Q11__c == 'Yes' && CountyPlan.CCCAP_Q10__c == 'Yes') || (CountyPlan.CCCAP_Q11__c == 'No' && CountyPlan.CCCAP_Q10__c == 'Yes')))}">
+                            <tr class="dataRow" width="100%"> <td width="70%">7.1 If yes, what is your county's policy for gathering additional information needed to complete the application process?</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q10_1__c}</td>
+                            </tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">7.2 If yes, how does the county ensure that the orientation does not present a burden to families?</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q10_2__c}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!!TtanfRemoved}">
+                            <tr class="dataRow" width="100%"> <td width="70%">8. Provider Orientation: Is a child care orientation required for providers?</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q11__c}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!(TtanfRemoved !=true && ((CountyPlan.CCCAP_Q11__c == 'Yes' && CountyPlan.CCCAP_Q10__c == 'No') || (CountyPlan.CCCAP_Q11__c == 'Yes' && CountyPlan.CCCAP_Q10__c == 'Yes')))}">
+                            <tr class="dataRow" width="100%"> <td width="70%">8.1 If yes, please check which providers must attend an orientation.</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q11_1__c}</td>
+                            </tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">8.2 What information is provided during provider orientation?</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q11_2__c}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!!TtanfRemoved}">
+                            <tr class="dataRow" width="100%"> <td width="70%">9. Check the state-prescribed forms your county has changed below, or list them in the "Other" text box. Please mail or email a copy of each changed form to State CCCAP for approval.</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q8__c}
+                                 <BR/> {!IF(ISBLANK(CountyPlan.CCCAP_Q8_OTHER__c), "", "Other: " & CountyPlan.CCCAP_Q8_OTHER__c)}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!TtanfRemoved}">
+                            <tr class="dataRow" width="100%"> <td width="70%">5. Provide a brief overview of how your county ensures equal access to child care for families receiving CCCAP.</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q9__c}</td>
+                            </tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">6. Client Orientation: Is a child care group orientation required as part of your application process?</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q10__c}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!(TtanfRemoved && ((CountyPlan.CCCAP_Q11__c == 'Yes' && CountyPlan.CCCAP_Q10__c == 'Yes') || (CountyPlan.CCCAP_Q11__c == 'No' && CountyPlan.CCCAP_Q10__c == 'Yes')))}">
+                            <tr class="dataRow" width="100%"> <td width="70%">6.1 If yes, what is your county's policy for gathering additional information needed to complete the application process?</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q10_1__c}</td>
+                            </tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">6.2 If yes, how does the county ensure that the orientation does not present a burden to families?</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q10_2__c}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!TtanfRemoved}">
+                            <tr class="dataRow" width="100%"> <td width="70%">7. Provider Orientation: Is a child care orientation required for providers?</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q11__c}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!(TtanfRemoved && ((CountyPlan.CCCAP_Q11__c == 'Yes' && CountyPlan.CCCAP_Q10__c == 'Yes') || (CountyPlan.CCCAP_Q11__c == 'Yes' && CountyPlan.CCCAP_Q10__c == 'No')))}">
+                            <tr class="dataRow" width="100%"> <td width="70%">7.1 If yes, please check which providers must attend an orientation.</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q11_1__c}</td>
+                            </tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">7.2 What information is provided during provider orientation?</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q11_2__c}</td>
+                            </tr>
+                        </apex:outputPanel> 
+                        <apex:outputPanel rendered="{!TtanfRemoved}">
+                            <tr class="dataRow" width="100%">
+                                <td width="70%">8. Check the state-prescribed forms your county has changed below, or list them in the "Other" text box. Please mail or email a copy of each changed form to State CCCAP for approval.</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q8__c} 
+                                <BR/> {!IF(ISBLANK(CountyPlan.CCCAP_Q8_OTHER__c), "", "Other: " & CountyPlan.CCCAP_Q8_OTHER__c)}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!AND(TtanfRemoved, isDateAfter_15June2025 == true)}">
+                            <tr class="dataRow" width="100%">
+                                <td width="70%">9. List all County forms that are not State prescribed forms.</td>
+                                <td width="30%">{!CountyPlan.CCCAP_Q14__c} </td>
+                            </tr>
+                        </apex:outputPanel>
+                    </table>    
+                </html>
+            </apex:pageBlockSection>
+        </apex:pageBlock>        
+        <apex:pageBlock >
+            <apex:pageBlockSection >
+                <html>
+                    <body style= "font-size: 100%;font-weight:bold">
+                        <center>Program Integrity</center>    
+                    </body>
+                    <tr align="left"><td style= "font-size: 100%;" align="left" >&nbsp;</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                            <tr class="dataRow" width="100%"> <td width="70%">1. How does the county define “questionable information”/”erroneous” reporting?</td><td width="30%">{!CountyPlan.PI_Q1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">2. Please list circumstances that would require follow up by the county for both client and provider payments.</td><td width="30%">{!CountyPlan.PI_Q2__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td colspan="2" width="100%">3. Please identify the staff (titles/positions of staff) responsible for researching potential Client erroneous payments.</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Eligibility Title/Position:</td> <td width="30%">{!CountyPlan.PI_Q3_ET__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Name:</td> <td width="30%">{!CountyPlan.PI_Q3_FN__c} &nbsp; {!CountyPlan.PI_Q3_LN__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Business Office Title/Position:</td><td width="30%">{!CountyPlan.PI_Q3_BO__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Name:</td> <td width="30%">{!CountyPlan.PI_Q3_BOFN__c} &nbsp; {!CountyPlan.PI_Q3_BOLN__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td colspan="2" width="100%">3.1 Please identify the methods used to identify questionable information.</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Eligibility:</td><td width="30%">{!CountyPlan.PI_Q3_1_EL__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Business Office:</td><td width="30%">{!CountyPlan.PI_Q3_1_BO__c}</td></tr>                        
+                            <tr class="dataRow" width="100%"> <td colspan="2" width="100%">3.2. Please identify the process used by the county to ensure supervisory reviews of questionable information is conducted.</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Eligibility:</td><td width="30%">{!CountyPlan.PI_Q3_2_EL__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Business Office:</td><td width="30%">{!CountyPlan.PI_Q3_2_BO__c}</td></tr>                                                
+                            <tr class="dataRow" width="100%"> <td colspan="2" width="100%">4. Please identify the staff (titles/positions of staff) responsible for researching potential Provider erroneous payments.</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Eligibility Title/Position:</td><td width="30%">{!CountyPlan.PI_Q4_ET__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Name:</td><td width="30%">{!CountyPlan.PI_Q4_FN__c} &nbsp; {!CountyPlan.PI_Q4_LN__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Business Office Title/Position:</td><td width="30%">{!CountyPlan.PI_Q4_BO__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Name:</td><td width="30%">{!CountyPlan.PI_Q4_BOFN__c} &nbsp; {!CountyPlan.PI_Q4_BOLN__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td colspan="2" width="100%">4.1 Please identify the methods used to identify questionable information.</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Eligibility:</td><td width="30%">{!CountyPlan.PI_Q4_1_EL__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Business Office:</td><td width="30%">{!CountyPlan.PI_Q4_1_BO__c}</td></tr>                        
+                            <tr class="dataRow" width="100%"> <td colspan="2" width="100%">4.2. Please identify the process used by the county to ensure supervisory reviews of questionable information is conducted.</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Eligibility:</td><td width="30%">{!CountyPlan.PI_Q4_2_EL__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Business Office:</td><td width="30%">{!CountyPlan.PI_Q4_2_BO__c}</td></tr>                        
+                            <tr class="dataRow" width="100%"> <td width="70%">5. Please identify how your county ensures questionable information will be reported to other programs as applicable.</td><td width="30%">{!CountyPlan.PI_Q5__c}</td></tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}">
+                            <tr class="dataRow" width="100%"> <td width="70%">1. Please identify the staff (titles/positions of staff) responsible for researching potential erroneous client payments.</td><td width="30%">{!CountyPlan.PI_Q3_new__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">1.1. Please identify the methods used to identify questionable client information.</td><td width="30%">{!CountyPlan.PI_Q3_1_new__c}</td></tr>
+                            <apex:outputPanel rendered="{!CountyPlan.PI_Q3_1_new__c == 'Other'}" layout="none">
+                                <tr style="{!IF(ISBLANK(CountyPlan.PI_Q3_1_other__c),'display:none;','')}" class="dataRow" width="100%"> <td width="70%">If other, please specify.</td><td width="30%">{!CountyPlan.PI_Q3_1_other__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"> <td width="70%">2. Please identify the staff (titles/positions of staff) responsible for researching potential provider erroneous payments.</td><td width="30%">{!CountyPlan.PI_Q4_new__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">2.1 Please identify all of the methods used to identify questionable provider information.</td><td width="30%">{!CountyPlan.PI_Q4_1_new__c}</td></tr>
+                            <apex:outputPanel rendered="{!CountyPlan.PI_Q4_1_new__c == 'Other'}" layout="none">
+                                <tr style="{!IF(ISBLANK(CountyPlan.PI_Q4_1_other__c),'display:none;','')}" class="dataRow" width="100%"> <td width="70%">If other, please specify.</td><td width="30%">{!CountyPlan.PI_Q4_1_other__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"> <td width="70%">3. Please identify how your county ensures questionable information will be reported to other programs as applicable.</td><td width="30%">{!CountyPlan.PI_Q5_new__c}</td></tr>
+                            <apex:outputPanel rendered="{!CountyPlan.PI_Q5_new__c == 'Other'}" layout="none">
+                                <tr style="{!IF(ISBLANK(CountyPlan.PI_Q5_other__c),'display:none;','')}" class="dataRow" width="100%"> <td width="70%">If other, please specify.</td><td width="30%">{!CountyPlan.PI_Q5_other__c}</td></tr>
+                            </apex:outputPanel>
+                        </apex:outputPanel>
+                    </table>    
+                </html>
+                <html>
+                    <tr align="left"><td style= "font-size: 100%;" align="left" >Fraud Prevention</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                            <tr class="dataRow" width="100%"><td width="70%">6. Please identify the policy your county follows to prevent and identify potential fraud.</td><td width="30%">{!CountyPlan.PI_Q6__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">7. The county utilizes the following methods to ensure staff are made aware of the county's fraud prevention policies and procedures to mitigate fraud:</td><td width="30%">{!CountyPlan.PI_Q7__c}</td></tr>
+                            <apex:outputPanel rendered="{!(CountyPlan.PI_Q7__c == 'Other')}" layout="none">
+                                <tr class="dataRow" width="100%"><td width="70%">7.1 Please describe the other methods your county is using.</td><td width="30%">{!CountyPlan.PI_Q7_1__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"><td width="70%">8. How does your county ensure staff knows how to report suspected program fraud, waste, or abuse? Eg how do you make them aware of the CDHS Fraud Prevention Hotline?</td><td width="30%">{!CountyPlan.PI_Q8__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">9. How are the county's fraud prevention policies/expectations communicated with CCCAP applicants/recipients?</td><td width="30%">{!CountyPlan.PI_Q9__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">10. How are the county's fraud prevention policies/expectations communicated with providers?</td><td width="30%">{!CountyPlan.PI_Q10__c}</td></tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}">
+                            <tr class="dataRow" width="100%"><td width="70%">4. Please explain the process your county follows to prevent and identify potential client and provider fraud:</td><td width="30%">{!CountyPlan.PI_Q6_new__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">5. The county utilizes the following methods to ensure staff are made aware of the county's fraud prevention policies and procedures to mitigate fraud:</td><td width="30%">{!CountyPlan.PI_Q7_new__c}</td></tr>
+                            <apex:outputPanel rendered="{!(CountyPlan.PI_Q7_new__c == 'Other')}" layout="none">
+                                <tr class="dataRow" width="100%"><td width="70%">Please describe the other methods your county is using.</td><td width="30%">{!CountyPlan.PI_Q7_1__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"><td width="70%">6. How are the county's fraud prevention policies/expectations communicated with CCCAP applicants/recipients?</td><td width="30%">{!CountyPlan.PI_Q9_new__c}</td></tr>
+                            <apex:outputPanel rendered="{!(CountyPlan.PI_Q9_new__c == 'Other')}" layout="none">
+                                <tr style="{!IF(ISBLANK(CountyPlan.PI_Q9_other__c),'display:none;','')}" class="dataRow" width="100%"><td width="70%">If other, please specify.</td><td width="30%">{!CountyPlan.PI_Q9_other__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"><td width="70%">7. How are the county's fraud prevention policies/expectations communicated with providers?</td><td width="30%">{!CountyPlan.PI_Q10_new__c}</td></tr>
+                            <apex:outputPanel rendered="{!(CountyPlan.PI_Q10_new__c == 'Other')}" layout="none">
+                                <tr style="{!IF(ISBLANK(CountyPlan.PI_Q10_other__c),'display:none;','')}" class="dataRow" width="100%"><td width="70%">If other, please specify.</td><td width="30%">{!CountyPlan.PI_Q10_other__c}</td></tr>
+                            </apex:outputPanel>
+                        </apex:outputPanel>                        
+                    </table>
+                </html>
+                <html>
+                    <tr align="left"><td style= "font-size: 100%;" align="left" >Fraud Detection</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                            <tr class="dataRow" width="100%"> <td width="70%">11. The county utilizes the following methods to identify potential fraud:</td><td width="30%">{!CountyPlan.PI_Q11__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Please identify the titles of the staff that conduct the investigation:</td><td width="30%">{!CountyPlan.PI_Q11_2__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Please identify the systems used as part of the review:</td><td width="30%">{!CountyPlan.PI_Q11_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Please identify the name of the report(s):</td><td width="30%">{!CountyPlan.PI_Q11_3__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Please identify the other methods:</td><td width="30%">{!CountyPlan.PI_Q11_4__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">12. Please identify how your county coordinates investigations for CCCAP with other public assistance programs (Adult Financial, Colorado Works, SNAP) in your county:</td><td width="30%">{!CountyPlan.PI_Q12__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">13. Providers- Please describe the process your county uses to monitor provider attendance records and payments. This includes regular reviews/monitoring and random or targeted reviews of provider records suspected of submitting inaccurate information:</td><td width="30%">{!CountyPlan.PI_Q13__c}</td></tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}">
+                            <tr class="dataRow" width="100%"> <td width="70%">8. The county utilizes the following methods to identify potential fraud:</td><td width="30%">{!CountyPlan.PI_Q11__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Please identify the titles of the staff that conduct the investigation:</td><td width="30%">{!CountyPlan.PI_Q11_2__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Please identify the systems used as part of the review:</td><td width="30%">{!CountyPlan.PI_Q11_1_new__c}</td></tr>
+                            <apex:outputPanel rendered="{!(CountyPlan.PI_Q11_1_new__c == 'Other')}" layout="none">
+                                <tr style="{!IF(ISBLANK(CountyPlan.PI_Q11_1_other__c),'display:none;','')}" class="dataRow" width="100%"><td width="70%">If other, please specify.</td><td width="30%">{!CountyPlan.PI_Q11_1_other__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"> <td width="70%">9. Please identify how your county coordinates investigations for CCCAP with other public assistance programs (Adult Financial, Colorado Works, SNAP) to ensure that CCCAP-relevant information is obtained and how the county ensures that CCCAP is included in applicable IPV/fraud investigations:</td>
+                                <td width="30%">{!CountyPlan.PI_Q12__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">10. Please describe the process your county uses to monitor provider attendance records and payments. This includes regular reviews/monitoring and random or targeted reviews of provider records suspected of submitting inaccurate information:</td><td width="30%">{!CountyPlan.PI_Q13_new__c}</td></tr>
+                            <apex:outputPanel rendered="{!(CountyPlan.PI_Q13_new__c == 'Other')}" layout="none">
+                                <tr style="{!IF(ISBLANK(CountyPlan.PI_Q13_other__c),'display:none;','')}" class="dataRow" width="100%"><td width="70%">If other, please specify.</td><td width="30%">{!CountyPlan.PI_Q13_other__c}</td></tr>
+                            </apex:outputPanel>
+                        </apex:outputPanel>
+                    </table>
+                </html>
+                <html>
+                    <tr align="left"><td style= "font-size: 100%;" align="left" >Determining Intentional Program Violations and/or Fraud</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                            <tr class="dataRow" width="100%"> <td width="70%">14. Please identify who is responsible for reviewing the allegation and investigation details to authorize the county to pursue an IPV/fraud in your county:</td><td width="30%">{!CountyPlan.PI_Q14__c}</td></tr>
+                            <apex:outputPanel rendered="{!CountyPlan.PI_Q14__c == 'Other'}" layout="none">
+                                <tr class="dataRow" width="100%"> <td width="70%">Please identity the title of the position</td><td width="30%">{!CountyPlan.PI_Q14_1__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"> <td width="70%">15. Please identify the criteria used by the county to determine if the circumstances associated with the investigation warrants civil or criminal prosecution:</td><td width="30%">{!CountyPlan.PI_Q15__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">16. If facts do not warrant civil or criminal prosecution and documentary evidence exists to show an individual committed an IPV/Fraud and the client did not sign a waiver, please identify the process used by the county to conduct the administrative disqualification process:</td><td width="30%">{!CountyPlan.PI_Q16__c}</td></tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}">
+                            <tr class="dataRow" width="100%"> <td width="70%">11. Please identify who is responsible for reviewing the allegation and investigation details to authorize the county to pursue an IPV/fraud in your county:</td><td width="30%">{!CountyPlan.PI_Q14__c}</td></tr>
+                            <apex:outputPanel rendered="{!CountyPlan.PI_Q14__c == 'Other'}" layout="none">
+                                <tr class="dataRow" width="100%"> <td width="70%">Please identity the title of the position</td><td width="30%">{!CountyPlan.PI_Q14_1__c}</td></tr>
+                            </apex:outputPanel>
+                        </apex:outputPanel>
+                    </table>
+                </html>
+                <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                    <html>
+                        <tr align="left"><td style= "font-size: 100%;" align="left" >Administering Recoveries</td></tr>
+                        <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                            <tr class="dataRow" width="100%"> <td colspan="2" width="100%">17. Please identify how the county establishes the recovery based on the following:</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">17.1 Error Type:</td><td width="30%">{!CountyPlan.PI_Q17_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">17.2 Time Frame:</td><td width="30%">{!CountyPlan.PI_Q17_2__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">17.3 Amount:</td><td width="30%">{!CountyPlan.PI_Q17_3__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">18. Please outline the criteria used by the county to determine if a recovery will be pursued.</td><td width="30%">{!CountyPlan.PI_Q18__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td colspan="2" width="100%">Please identify how the county determines the cause of the error</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">19. Client Error:</td><td width="30%">{!CountyPlan.PI_Q19__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">19.1 Administrative Error:</td><td width="30%">{!CountyPlan.PI_Q19_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">19.2 Provider Error:</td><td width="30%">{!CountyPlan.PI_Q19_2__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">19.3 IPV/Fraud:</td><td width="30%">{!CountyPlan.PI_Q19_3__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">20. Please identify the process used by the county to determine to pursue/not pursue the recovery.</td><td width="30%">{!CountyPlan.PI_Q20__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">21. Please identify how the county confirms the error was caused by an administrative action.</td><td width="30%">{!CountyPlan.PI_Q21__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">22. Please identify the process used by the county to request administrative action if the determination is made not to pursue a recovery.</td><td width="30%">{!CountyPlan.PI_Q22__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">23. Please identify who is responsible for requesting administrative action for eligibility.</td><td width="30%">{!CountyPlan.PI_Q23_FN__c}&nbsp;{!CountyPlan.PI_Q23_LN__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">23.1 Select Position Title</td><td width="30%">{!CountyPlan.PI_Q23__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">If Other Position Title, please specify</td><td width="30%">{!CountyPlan.PI_Q23_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">24. Please identify who is responsible for requesting administrative action for the business office.</td><td width="30%">{!CountyPlan.PI_Q24_FN__c}&nbsp;{!CountyPlan.PI_Q24_LN__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">24.1 Select Position Title</td><td width="30%">{!CountyPlan.PI_Q24__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">If Other Position Title, please specify</td><td width="30%">{!CountyPlan.PI_Q24_1__c}</td></tr>                            
+                            <tr class="dataRow" width="100%"> <td colspan="2">25. For all other recoveries, please identify the county’s process to establish the recovery.</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Eligibility:</td><td width="30%">{!CountyPlan.PI_Q25_EL__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">Business Office:</td><td width="30%">{!CountyPlan.PI_Q25_BO__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">25.1 Please identify who completes the recovery.</td><td width="30%">{!CountyPlan.PI_Q25_FN__c}&nbsp;{!CountyPlan.PI_Q25_LN__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">25.1.1 Select Position Title</td><td width="30%">{!CountyPlan.PI_Q25__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">If Other Position Title, please specify</td><td width="30%">{!CountyPlan.PI_Q25_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">26. Please identify who monitors the recovery to ensure payments are received.</td><td width="30%">{!CountyPlan.PI_Q26_FN__c}&nbsp;{!CountyPlan.PI_Q26_LN__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">26.1 Select Position Title</td><td width="30%">{!CountyPlan.PI_Q26__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">If Other Position Title, please specify</td><td width="30%">{!CountyPlan.PI_Q26_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">27. How does the county ensure timely notice of adverse action?</td><td width="30%">{!CountyPlan.PI_Q27__c}</td></tr>
+                        </table>
+                    </html>
+                </apex:outputPanel>
+            </apex:pageBlockSection>
+        </apex:pageBlock>
+        <apex:pageBlock >
+            <apex:pageBlockSection >
+                <html>
+                    <body style = "font-size: 100%;font-weight:bold">
+                        <center>Eligibility Risk Based Reviews Policy</center>    
+                    </body>
+                    <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                        <tr align="left"><td style= "font-size: 100%;" align="left">Sampling Decisions</td></tr>
+                        <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%">
+                            <tr class="dataRow" width="100%"> <td width="70%">1. Selection of Cases </td><td width="30%">{!CountyPlan.RBRP_Q1__c}<BR/>{!CountyPlan.RBRP_Q1_1__c}</td></tr>
+                            <apex:outputPanel rendered="{! CountyPlan.RBRP_Q1_1__c == 'Cluster'}" layout="none">
+                                <tr class="dataRow" width="100%"> <td width="70%">Clearly describe the population sampled:</td><td width="30%">{!CountyPlan.RBRP_Q1_1D__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! CountyPlan.RBRP_Q1_1__c == 'Stratified'}" layout="none">
+                                <tr class="dataRow" width="100%"> <td width="70%">Clearly describe the group within the population sampled and if the sample will be random or systematic: </td><td width="30%">{!CountyPlan.RBRP_Q1_1D__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! CountyPlan.RBRP_Q1_1__c == 'Systematic'}" layout="none">
+                                <tr class="dataRow" width="100%"> <td width="70%">Clearly describe the process the County will use to establish the systematic sample (selecting every ___ element):</td><td width="30%">{!CountyPlan.RBRP_Q1_1D__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{! CountyPlan.RBRP_Q1__c == 'The County will establish its own random sample report based on the following: (choose one)'}" layout="none">
+                                <tr class="dataRow" width="100%"> <td colspan="2" width="100%">1.1 Ensure the sample meets the state-defined case review standards.</td></tr>
+                                <tr class="dataRow" width="100%"> <td width="70%">Ensure a sufficient number of CCCAP cases and/or provider files are reviewed on a monthly basis.</td><td width="30%">Acknowledged</td></tr>
+                                <tr class="dataRow" width="100%"> <td width="70%">Maintain a list of the monthly sample of cases/providers in an approved, automated format that is accessible as needed by CCCAP.</td><td width="30%">Acknowledged</td></tr>
+                            </apex:outputPanel>
+                        </table>
+                    </apex:outputPanel>
+                </html>
+                <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                    <html>
+                        <tr align="left"><td style= "font-size: 100%;" align="left">Assurances and Certifications</td></tr>
+                        <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%">
+                            <tr class="dataRow" width="100%"> <td width="70%">
+                                The County assures that it will abide by the instructions contained in the CCCAP County Review Framework and CCCAP Instruction Guide for County Reviews.<BR/>
+                                The data collection process, to include case and provider reviews, adhered to all CCCAP regulations outlined in 8 CCR 1403-1 and applicable state memos and CCCAP training documents that direct program administration.<BR/>
+                                The reviews were not conducted by persons who make or approve eligibility determinations or who are under the supervision of persons responsible for eligibility determinations.<BR/>
+                                All reviewers have been trained to ensure that the review process is consistent with CCCAP policies and that there is consistency within the county in the interpretation of what is an error as defined by CCCAP.<BR/>
+                                The County agrees to retain County Record Review Worksheets, the CCCAP County Review Performance Report and any revisions, and any other records pertinent to the case reviews and submission of error rate reports for three years.<BR/>
+                                The County understands that this information, including the sampled case records and calculations, is subject to state review.
+                                </td><td width="30%">Acknowledged</td>
+                            </tr>
+                        </table>
+                    </html>                    
+                </apex:outputPanel>
+                <html>
+                    <tr align="left"><td style= "font-size: 100%;" align="left">County Review Plan</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%">
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                            <tr class="dataRow" width="100%"> <td colspan="2" width="100%">2. Identification of Review Leadership<BR/>Review leaders have the authority to ensure timelines are met. The level of authority should be comparable to that of the leader who is responsible for the oversight of eligibility determinations or provider payments. The leaders identified below do not need to be CHATS users but must understand the Program. Please include the name(s) and job title(s), of each staff member identified in your County that are responsible for leading the following county-level review roles:</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Leader: Monitors timelines and directs county activities and responses in alignment with state and county policies.</td><td width="30%">{!CountyPlan.RBRP_Q3_1_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Team Coordination Lead: Understands the program, monitors timelines, ensures inter-reviewer consistency, and directs case review process and standards to ensure alignment with state and county policies.</td><td width="30%">{!CountyPlan.RBRP_Q3_1_2__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Review Certification Lead: Confirms the accuracy and completeness of the reviews and submits the sampled reviews monthly.</td><td width="30%">{!CountyPlan.RBRP_Q3_1_3__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td colspan="2" width="100%">2.1 Inter-Reviewer Consistency</td></tr>
+                            <tr class="dataRow" width="100%"><td colspan="2" width="100%">The County will be asked to identify the actions taken to resolve errors identified during the county-level review process as well as the actions taken to prevent future errors. The County will have (20) business days from the date the CCCAP County Review Performance Report is provided to the County to resolve errors identified as part of the review process. If the action to correct the case results in a benefit to the client and/or a decrease to the parent fee) or at the next re-determination. If the action to correct the case does not benefit the client, the information related to the error must be documented in CHATS Case Notes for review at the next re-determination of eligibility. This includes errors that occurred outside of the sample month which were identified as part of the review but did not result in a finding. Documentation of follow up on findings identified during the review by the County must be included in the CCCAP County Review Performance Report submitted by each county.
+                                <BR/>
+                                Select and describe methods the county will use to ensure inter-reviewer consistency.</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">2.1.1 Re-review of cases to ensure inter-reviewer consistency. Describe:</td><td width="30%">{!CountyPlan.RBRP_Q3_2_1D__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">2.1.2 Group discussion of case review findings. Describe:</td><td width="30%">{!CountyPlan.RBRP_Q3_2_2D__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">2.1.3 Other, describe:</td><td width="30%">{!CountyPlan.RBRP_Q3_2_3D__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">2.2 Review Team Composition</td><td width="30%">{!CountyPlan.RBRP_Q3_3__c}</td></tr>
+                            <apex:outputPanel rendered="{!(CountyPlan.RBRP_Q3_3__c == 'The County will be conducting its own reviews and will not partner with another county to complete peer reviews.')}" layout="none">
+                                <tr class="dataRow" width="100%"><td width="70%">If the county will be conducting their own reviews as checked above, please describe the review team by providing information about the following:</td><td width="30%">Size:{!CountyPlan.RBRP_Q3_3_1__c}<BR/>Composition:{!CountyPlan.RBRP_Q3_3_2__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{!(CountyPlan.RBRP_Q3_3__c == 'The County will coordinate with another county to conduct reviews based on county size and/or conflicts in the review process.')}" layout="none">
+                                <tr class="dataRow" width="100%"><td width="70%">Please identify the other county(ies) the County will coordinate with to conduct case reviews:</td><td width="30%">{!CountyPlan.RBRP_Q3_3_3__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"><td colspan="2" width="100%">2.3 Plan for Review of State Policies/Procedures and Processes</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">2.3.1 The County will NOT customize the County Record Review Worksheet for the county-level case and provider reviews.</td><td width="30%">Acknowledged</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">2.3.2 The County would like to customize the County Record Review Worksheet as follows:</td><td width="30%">Acknowledged</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Describe the County’s plan to ensure that customization of the County Record Review Worksheet will follow the CCCAP County Review Framework and CCCAP policy in effect during the sample month:</td><td width="30%">{!CountyPlan.RBRP_Q3_4_2D__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">2.3.3 The County will NOT customize the elements, questions, or standards on the County Record Review Worksheet.
+                                <BR/>Describe the County’s plan to ensure that reviewers consistently interpret errors as defined by CCCAP: The County is expected to utilize CCCAP standards and training to provide instruction to reviewers so that there is a consistent interpretation of an error. CCCAP has established the state definitions for errors, improper payment errors, and administrative errors as follows:</td><td width="30%">Acknowledged</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Error- any variance that results in inaccurate eligibility based on policy or regulation, which may or may not affect the child care authorization or subsidy paid to the provider.</td><td width="30%">{!CountyPlan.RBRP_Q3_4_31D__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Improper Payment Error- any variance that results in inaccurate eligibility based on policy or regulation, which causes a difference in the subsidy payment that is greater than $0.99. The impact could be positive or negative.</td><td width="30%">{!CountyPlan.RBRP_Q3_4_32D__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Administrative (Non-payment) Error- any variance that results in inaccurate eligibility based on policy or regulation, which does not affect the child care authorization or subsidy paid to the provider.</td><td width="30%">{!CountyPlan.RBRP_Q3_4_33D__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td colspan="2" width="100%">2.4 Case Review Logistics</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Describe details of review logistics to include the following: whether electronic or physical record is reviewed, how the records (especially the physical records) are handled, where the record reading occurs (on-site, centrally, regionally, a mixture), the organization and maintenance of the review files:</td><td width="30%">{!CountyPlan.RBRP_Q3_5__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td colspan="2" width="100%">2.5 Plan for Follow Up on Findings</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Describe the County’s plan to ensure that cases with errors are corrected: The County will create reports based on the data collected in the CCCAP County Review Performance Report and include statewide and county level performance indicators and top error trends. The data will be compiled into reports to address the primary cause of the top error trends, identify if the county needs additional technical assistance and/or support, and identify future training needs.</td><td width="30%">{!CountyPlan.RBRP_Q3_6__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td colspan="2" width="100%">2.5.1 If findings result in the creation of new policies and procedures, describe the County’s plan to:</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Incorporate the changes:</td><td width="30%">{!CountyPlan.RBRP_Q3_6_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Train staff regarding the changes:</td><td width="30%">{!CountyPlan.RBRP_Q3_6_2__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Evaluate the changes to determine if they were effective:</td><td width="30%">{!CountyPlan.RBRP_Q3_6_3__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Monitor to ensure the changes are integrated into the County’s business processes:</td><td width="30%">{!CountyPlan.RBRP_Q3_6_4__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td colspan="2" width="100%">2.6 Plan for Data Collection (Monthly Submission of County Review Results</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Describe the County’s plan to ensure that the data entered in the CCCAP County Review Performance Report is accurate, the data has been validated, and the coding is correct based on the instructions and standards outlined in the CCCAP County Review Framework and CCCAP Instruction Guide for County Reviews:</td><td width="30%">{!CountyPlan.RBRP_Q3_7__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">2.6.1 Name, job title, and email of the person who will certify and submit the monthly CCCAP County Review Performance Report:</td><td width="30%">Name: {!CountyPlan.RBRP_Q3_7_1__c}<br/>Title: {!CountyPlan.RBRP_Q3_7_2__c}<br/>Email: {!CountyPlan.RBRP_Q3_7_3__c}</td></tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}">
+                            <tr class="dataRow" width="100%"><td colspan="2" width="100%">1. Inter-Reviewer Consistency</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Select the methods the county will use to ensure inter-reviewer consistency.</td><td width="30%">{!CountyPlan.RBRP_Q1_new__c}</td></tr>
+                            <apex:outputPanel rendered="{!CountyPlan.RBRP_Q1_new__c == 'Other'}" layout="none">
+                                <tr style="{!IF(ISBLANK(CountyPlan.RBRP_Q1_other__c),'display:none;','')}" class="dataRow" width="100%"><td width="70%">If other, please specify.</td><td width="30%">{!CountyPlan.RBRP_Q1_other__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"><td colspan="2" width="100%">1.1 Case Review Logistics</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Does the county have electronic or physical records?</td><td width="30%">{!CountyPlan.RBRP_Q1_1_new__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Where does the record review occur?</td><td width="30%">{!CountyPlan.RBRP_Q1_2_new__c}</td></tr>
+                            <apex:outputPanel rendered="{!CountyPlan.RBRP_Q1_2_new__c == 'Offsite'}" layout="none">
+                                <tr class="dataRow" width="100%"><td width="70%">Describe how the county ensures that the physical records remain secure during transport to the offsite location before the are reviewed.</td><td width="30%">{!CountyPlan.RBRP_Q1_2_other__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"><td colspan="2" width="100%">2. Plan for Follow Up on Findings</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">Describe the County’s plan to ensure that cases with errors are corrected: The County must create reports based on the data collected in the CCCAP County Review Performance Report and include statewide and county level performance indicators and top error trends. Indicate the number of business days in which the county will correct the errors.</td>
+                                <td width="30%">{!CountyPlan.RBRP_Q2_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"><td width="70%">If findings result in the creation of new policies and procedures, describe the County’s plan to incorporate the changes, including training staff, evaluating the effectiveness of the changes, and ensuring that staff consistently apply the new policies and procedures.</td><td width="30%">{!CountyPlan.RBRP_Q2_2__c}</td></tr>
+                        </apex:outputPanel>
+                    </table>
+                </html>
+            </apex:pageBlockSection>
+        </apex:pageBlock>
+        <apex:pageBlock >
+            <apex:pageBlockSection >
+                <html>
+                    <body style = "font-size: 100%;font-weight:bold">
+                        <center>Eligibility</center>    
+                    </body>
+                    <tr align="left"><td style= "font-size: 100%;" align="left" >Approved Activities And Benefits</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <tr class="dataRow" width="100%"> <td colspan="2" width="100%">1. County's Income Eligibility Level:</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">% of poverty level at application (entry level)</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q1_1__c}</td></tr>                     
+                        <apex:outputPanel rendered="{!isDateAfter_16Feb2025== false}">
+                            <tr class="dataRow" width="100%">
+                                <td width="70%">2. Does your county support Post Secondary Education for a first Bachelor's Degree or Vocational/Job skill training?</td>
+                                <td width="30%">{!CountyPlan.ELIGIBILITY_Q2__c}</td>
+                            </tr>
+                            
+                            <apex:outputPanel rendered="{!CountyPlan.ELIGIBILITY_Q2__c == 'Yes'}" layout="none">
+                                <tr class="dataRow" width="100%">
+                                    <td width="70%">2.1 If yes, how many weeks of training are approved? (Minimum is 104 weeks, Maximum is 208 weeks)</td>
+                                    <td width="30%">{!CountyPlan.ELIGIBILITY_Q2_1__c}</td>
+                                </tr>
+                            </apex:outputPanel>
+                            
+                              <tr class="dataRow" width="100%">
+                                <td width="70%">3. Does your county support GED, high school diploma, adult basic education?</td>
+                                <td width="30%">{!CountyPlan.ELIGIBILITY_Q3__c}</td>
+                            </tr>
+                            
+                            <apex:outputPanel rendered="{!CountyPlan.ELIGIBILITY_Q2__c == 'Yes'}" layout="none">
+                                <tr class="dataRow" width="100%">
+                                    <td width="70%">3.1 If yes, how many weeks of training are approved? (Maximum is 52 weeks)</td>
+                                    <td width="30%">{!CountyPlan.ELIGIBILITY_Q3_1__c}</td>
+                                </tr>
+                            </apex:outputPanel>
+                        </apex:outputPanel>
+                        
+                        <apex:outputPanel rendered="{!isDateAfter_16Feb2025}">
+                            <tr class="dataRow" width="100%">
+                                <td width="70%">2. How many weeks of training are approved for Post Secondary Education for a first bachelor's degree or Vocational/Job skill training? (Minimum is 104 weeks, Maximum is 208 weeks)</td>
+                                <td width="30%">{!CountyPlan.ELIGIBILITY_Q2_1__c}</td>
+                            </tr>
+                            
+                             <tr class="dataRow" width="100%">
+                                <td width="70%">3.  How many weeks of training are approved for GED, high school diploma, and adult basic education? (Maximum is 52 weeks)</td>
+                                <td width="30%">{!CountyPlan.ELIGIBILITY_Q3_1__c}</td>
+                            </tr>
+                        </apex:outputPanel>
+
+                        <!--end CCCAP-11851-->
+                        
+                        <tr class="dataRow" width="100%"> <td width="70%">4. How many weeks are allowed for job search activity? (Minimum is 13 weeks)</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q4__c}</td></tr>
+                        <tr class="dataRow" width="100%"> <td width="70%">5. How many weeks is your stabilization period for families experiencing homelessness? (Minimum is 9 weeks).</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q6__c}</td></tr>
+                    </table>    
+                </html>
+                <html>
+                        <tr align="left"><td style= "font-size: 100%;" align="Center">Attendance Tracking System - Family Policies</td></tr>
+                        <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                            <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                                <tr class="dataRow" width="100%"> <td width="70%">1. Briefly describe your county policy regarding non-cooperation of the Attendance Tracking System (ATS) for families?</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q7__c}</td></tr>
+                                <tr class="dataRow" width="100%"> <td width="70%">2. Does your county close cases at re-determination for non-cooperation of ATS?</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q7_1__c}</td></tr>
+                                <tr class="dataRow" width="100%"> <td width="70%">3. What actions does your county take to support families prior to determining non-cooperation of ATS has occurred?</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q7_2__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}">
+                                <tr class="dataRow" width="100%"> <td width="70%">1. What ATS information/ resources are provided to CCCAP families?</td><td width="30%">{!CountyPlan.ELG_ATS_Q1__c}</td></tr>
+                                <tr class="dataRow" width="100%"> <td width="70%">2. What actions does your county take to support families prior to determining non-cooperation of ATS has occurred?</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q7_2__c}</td></tr>
+                                <tr class="dataRow" width="100%"> <td width="70%">3. Does your county close cases at re-determination for non-cooperation of ATS?</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q7_1__c}</td></tr>
+                                <apex:outputPanel rendered="{!(CountyPlan.ELIGIBILITY_Q7_1__c == 'No')}" layout="none">
+                                    <tr class="dataRow" width="100%"> <td width="70%">If no, what action is taken if family non-cooperation (refusal to use ATS at all) continues?</td><td width="30%">{!CountyPlan.ELG_ATS_Q2__c}</td></tr>
+                                </apex:outputPanel>
+                            </apex:outputPanel>                            
+                        </table>
+                    </html>
+                <html>
+                    <tr align="left"><td style= "font-size: 100%;" align="left" >Parent Fees</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >                   
+                        <tr class="dataRow" width="100%"> <td width="70%">4. Does your county offer Parent Fee hardships?</td><td width="30%">{!CountyPlan.PF_Q1__c}</td></tr>
+                        <apex:outputPanel rendered="{!(CountyPlan.PF_Q1__c == 'Yes')}">
+                            <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}" layout="none">
+                                <tr class="dataRow" width="100%"> <td width="70%">5. What is the process for establishing a parent fee hardship for a family receiving Colorado Works/TANF?</td><td width="30%">{!CountyPlan.PF_Q2__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}" layout="none">
+                                <tr class="dataRow" width="100%"> <td width="70%">5. How does a family receiving Colorado Works/TANF request a parent fee hardship?</td><td width="30%">{!CountyPlan.PF_Q7_new__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"> <td width="70%">6. Who makes the final determination for a parent fee hardship for a family receiving Colorado Works/TANF?</td><td width="30%">{!CountyPlan.PF_Q3__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">7. How many months are allowed per occurrence for a parent fee hardship for a family receiving Colorado Works/TANF?</td><td width="30%">{!CountyPlan.PF_Q4__c}</td></tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!AND(CountyPlan.PF_Q4__c == 'Other: Case by case determination (not to exceed 6 months)', isDateAfter_15June2025 == false)}">
+                            <tr class="dataRow" width="100%"> <td width="70%">Please describe how the county determines the number of months that are allowed per occurrence for a parent fee hardship if determined on a case by case basis.</td><td width="30%">{!CountyPlan.PF_Q4_1__c}</td></tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!(CountyPlan.PF_Q1__c == 'Yes')}">
+                            <tr class="dataRow" width="100%"> <td width="70%">8. What is the process for establishing a parent fee hardship for a family receiving Low Income CCCAP?</td><td width="30%">{!CountyPlan.PF_Q5__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">9. Who makes the final determination for a parent fee hardship for a family receiving Low Income CCCAP?</td><td width="30%">{!CountyPlan.PF_Q6__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">10. How many months are allowed per occurrence for a parent fee hardship for a family receiving Low Income CCCAP?</td><td width="30%">{!CountyPlan.PF_Q7__c}</td></tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!AND(CountyPlan.PF_Q7__c == 'Other: Case by case determination (not to exceed 6 months)', isDateAfter_15June2025 == false)}">
+                            <tr class="dataRow" width="100%"> <td width="70%">Please describe how the county determines the number of months that are allowed per occurrence for a parent fee hardship if determined on a case by case basis.</td><td width="30%">{!CountyPlan.PF_Q7_1__c}</td></tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!(CountyPlan.PF_Q1__c == 'Yes')}">
+                            <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}" layout="none">
+                                <tr class="dataRow" width="100%"> <td width="70%">11. Does your county require that a Parent Fee Hardship Form be submitted? (If Yes, current form must be submitted to the State Department for review and approval.)</td><td width="30%">{!CountyPlan.PF_Q8__c}</td></tr>
+                            </apex:outputPanel>
+                            <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}" layout="none">
+                                <tr class="dataRow" width="100%"> <td width="70%">11. Does your county require a Parent Fee Hardship Application?</td><td width="30%">{!CountyPlan.PF_Q8__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"> <td width="70%">12. Does your county allow for a Parent Fee hardship extension with supporting justification?</td><td width="30%">{!CountyPlan.PF_Q9__c}</td></tr>
+                        </apex:outputPanel>
+                        <tr class="dataRow" width="100%"> <td width="70%">13. Does your county require that Child care providers shall report nonpayment of parent fees earlier than (60) calendar-days after the end of the month following the month the parent fees are due?</td><td width="30%">{!CountyPlan.PF_Q10__c}</td></tr>
+                        <apex:outputPanel rendered="{!CountyPlan.PF_Q10__c=='Yes'}">
+                            <tr class="dataRow" width="100%"> <td width="70%">If yes, what is the county's reporting timeframe requirements?</td><td width="30%">{!CountyPlan.PF_Q10_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">If yes, how is it communicated to providers?</td><td width="30%">{!CountyPlan.PF_Q10_2__c}</td></tr>
+                        </apex:outputPanel>
+                        <tr class="dataRow" width="100%"> <td width="70%">14. Does your county waive the parent fee for a household that has a child that is dually enrolled in a head start or early head start program?</td><td width="30%">{!CountyPlan.PF_Q11__c}</td></tr>
+                        <apex:outputPanel rendered="{!AND(CountyPlan.PF_Q11__c=='Yes', isDateAfter_15June2025 == false)}">
+                            <tr class="dataRow" width="100%"> <td width="70%">14.1 If yes, what verification is required to have the parent fee waived?</td><td width="30%">{!CountyPlan.PF_Q11_1__c}</td></tr>
+                        </apex:outputPanel>
+                    </table>
+                </html>
+                <html>
+                    <tr align="left"><td style= "font-size: 100%;" align="left" >Waitlist</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <tr class="dataRow" width="100%"> <td width="70%">{!$Label.CP_ELIGIBILITY_Q9_Label_JS}</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q9__c}</td></tr>
+                        
+                        <apex:outputPanel rendered="{! (CountyPlan.ELIGIBILITY_Q9__c == 'YES' || CountyPlan.ELIGIBILITY_Q9__c == 'Yes')}">
+                            <tr class="dataRow" width="100%"> <td width="70%">{!$Label.CP_ELIGIBILITY_Q9_1_Label_JS}</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q9_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">{!$Label.CP_ELIGIBILITY_Q9_3_Label_JS}</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q9_3__c} </td></tr>
+                            <tr class="dataRow" width="100%"> 
+                                <td width="70%">
+                                    15.3 In addition to Child Welfare which target populations will not go on to the waitlist? (Target populations selected here will automatically bypass the waitlist. All three Federal Target Populations must be selected before selecting a county identified target population.)
+                                </td><td width="30%">{!CountyPlan.ELIGIBILITY_Q9_2_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">{!$Label.CP_ELIGIBILITY_Q9_2_2_Label_JS}</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q9_2_2__c}</td></tr>
+                            <tr class="dataRow" width="100%"> 
+                                <td width="70%">
+                                    15.4 If all of the Federal Target Populations were not selected to bypass the wait list in question 15.3, how will the county ensure that these populations are prioritized while the waitlist is enabled and once it is lifted?
+                                </td><td width="30%">{!CountyPlan.ELIGIBILITY_Q9_5__c}</td></tr>
+                            <tr class="dataRow" width="100%"> 
+                                <td width="70%">
+                                    15.5 Once the county is serving all of the Federal Populations, how will your county determine the order in which cases are added to the program while the county has a waitlist enabled and once it is lifted? Select all that apply.
+                            </td><td width="30%">{!CountyPlan.ELIGIBILITY_Q9_4__c}</td></tr>
+                            <tr class="dataRow" width="100%"> 
+                                <td width="70%">
+                                    If other, please specify
+                                </td><td width="30%">{!CountyPlan.ELIGIBILITY_Q9_4_2__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">16. Do you require any forms for the waitlist?</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q12__c}</td></tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!(CountyPlan.ELIGIBILITY_Q12__c=='Yes')}">
+                            <tr class="dataRow" width="100%"> <td width="70%">Please list all of the forms accepted and submit them to State CCCAP for approval.</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q12_1__c}</td></tr>
+                        </apex:outputPanel>
+                    </table>
+                </html>
+                <html>
+                    <tr align="left"><td style= "font-size: 100%;" align="left" >Enrollment Freeze</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <tr class="dataRow" width="100%"> <td width="70%">{!$Label.CP_ELIGIBILITY_Q10_Label_JS}</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q10__c}</td></tr>
+                        <apex:outputPanel rendered="{! (CountyPlan.ELIGIBILITY_Q10__c == 'YES' || CountyPlan.ELIGIBILITY_Q10__c == 'Yes')}">
+                            <tr class="dataRow" width="100%"> <td width="70%">{!$Label.CP_ELIGIBILITY_Q10_1_Label_JS}</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q10_1__c}</td></tr>
+                            <tr class="dataRow" width="100%"> <td width="70%">{!$Label.CP_ELIGIBILITY_Q10_2_Label_JS}</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q10_2__c} </td></tr>
+                        </apex:outputPanel> 
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == false}">
+                            <tr class="dataRow" width="100%"> <td width="70%">18. Do you require any forms for the freeze? If yes, these forms must be submitted to State CCCAP.</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q13__c}</td></tr>
+                            <apex:outputPanel rendered="{!(CountyPlan.ELIGIBILITY_Q13__c == 'YES' || CountyPlan.ELIGIBILITY_Q13__c == 'Yes')}" layout="none">
+                                <tr class="dataRow" width="100%">
+                                    <td width="70%">18.1 Please list all of the forms accepted and submit them to State CCCAP for approval.</td>
+                                    <td width="30%"> {!CountyPlan.ELIGIBILITY_Q13_1__c}</td>
+                                </tr>
+                            </apex:outputPanel>
+                        </apex:outputPanel>   
+                        <apex:outputPanel rendered="{!isDateAfter_15June2025 == true}">
+                            <tr class="dataRow" width="100%"> <td width="70%">18. In addition to the State-approved abbreviated application and/or redetermination forms, please list all of the forms and submit them to State CCCAP for approval.</td>
+                                <td width="30%">{!CountyPlan.ELIGIBILITY_Q20_new__c}</td></tr>
+                            <apex:outputPanel rendered="{!CONTAINS(CountyPlan.ELIGIBILITY_Q20_new__c, 'Other')}" layout="none">
+                                <tr style="{!IF(ISBLANK(CountyPlan.ELIGIBILITY_Q20_other__c),'display:none;','')}" class="dataRow" width="100%"> <td width="70%">If other, please specify.</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q20_other__c}</td></tr>
+                            </apex:outputPanel>
+                            <tr class="dataRow" width="100%"> <td width="70%">18.1 Will your county have families reinstate their intent to remain on the freeze list every twelve (12) months?</td>
+                                <td width="30%">{!CountyPlan.ELIGIBILITY_Q20_1__c}</td></tr>
+                        </apex:outputPanel>
+                    </table>
+                </html>
+                <html> 
+                    <tr align="left"><td style= "font-size: 100%;" align="left" >Protective Services</td></tr>
+                    <table border="1" class="list" cellspacing="0" cellpadding="0" width="100%" >
+                        <tr class="dataRow" width="100%"> <td width="70%">19. Does your county elect to cover the cost of Child Welfare Child Care under Protective Services Child Care? (Current county policy/procedure must be submitted to the State Department for review and approval)</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q11__c}</td></tr>
+                        <apex:outputPanel rendered="{!(CountyPlan.ELIGIBILITY_Q11__c == 'YES' || CountyPlan.ELIGIBILITY_Q11__c == 'Yes')}">
+                            <tr class="dataRow" width="100%">
+                                <td width="70%">If yes, does your county waive the child's countable income on a case-by-case basis?</td>
+                                <td width="30%">{!CountyPlan.ELIGIBILITY_Q11_1__c}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <apex:outputPanel rendered="{!(CountyPlan.ELIGIBILITY_Q11_1__c == 'YES' || CountyPlan.ELIGIBILITY_Q11_1__c == 'Yes')}">
+                            <tr class="dataRow" width="100%">
+                                <td width="70%">If yes, please explain when income is waived.</td>
+                                <td width="30%">{!CountyPlan.ELIGIBILITY_Q11_1D__c}</td>
+                            </tr>
+                        </apex:outputPanel>
+                        <tr class="dataRow" width="100%"> <td width="70%">20. What population will the county cover with PSCC?</td><td width="30%">{!CountyPlan.ELIGIBILITY_Q14__c}</td></tr>
+                    </table>
+                </html>
+            </apex:pageBlockSection>
+        </apex:pageBlock>
+    </apex:form>
+</apex:page>

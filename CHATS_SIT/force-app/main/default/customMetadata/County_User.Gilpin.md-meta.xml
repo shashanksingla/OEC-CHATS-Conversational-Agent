@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Gilpin</label>
+    <protected>false</protected>
+    <values>
+        <field>County_Code__c</field>
+        <value xsi:type="xsd:string">24</value>
+    </values>
+    <values>
+        <field>County_Label__c</field>
+        <value xsi:type="xsd:string">Gilpin</value>
+    </values>
+    <values>
+        <field>Primary_Owner__c</field>
+        <value xsi:type="xsd:string">00541000007MUelAAG</value>
+    </values>
+    <values>
+        <field>Secondary_Owner__c</field>
+        <value xsi:type="xsd:string">00541000007SvzDAAS</value>
+    </values>
+</CustomMetadata>

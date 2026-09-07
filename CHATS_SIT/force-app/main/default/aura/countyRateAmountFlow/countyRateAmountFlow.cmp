@@ -1,0 +1,150 @@
+<aura:component extends="c:abstractComponent" controller="APXCreateCountyRatesController">
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="countyRatePlan" type="T_COUNTY_RATE__c" description="stores the county rate plan detail displayed in header."/>
+    <aura:attribute name="careUnit" type="String" default="3" description="stores the careUnit."/>
+    <aura:attribute name="providerType" type="String" default="HOM" description="stores the providerType api name, used to map it with backend picklist value."/>
+    
+    <aura:attribute name="providerTypeLabel" type="String" default="Home" description="stores the providerType label, used to show the current tab name above the table."/>
+    <aura:attribute name="lstProviderType" type="List" default="['HOM','CEN','EXE']" description="stores the list of provider type."/>
+    <aura:attribute name="mapProviderType" type="Map" default="{'HOM':'Home','CEN':'Center','EXE':'Exempt'}" description="stores the mapping of provider type as backend picklist values."/>
+    <aura:attribute name="mapCountyRateAmount" type="map" default="{}" description="stores the list of CountyRateAmount records to be upserted as map."/>
+    <aura:attribute name="mapExistingCountyRateAmount" type="map" default="{}" description="stores the list of existing CountyRateAmount records."/>
+    <aura:attribute name="status" type="String"/>
+    <aura:attribute name="mapStatus" type="Map" 
+                    default="{'PEN':'Draft','SUB':'Submitted','APV':'Approved',
+                             'NRV':'Need Revision'}"
+                    description="stores the mapping of County rate plan status as backend picklist values."/>
+    <aura:attribute name="recordId" type="String"/>
+    <aura:handler event="c:createCountyRateEvent" action="{!c.updateMapCountyRateAmount}"/>
+    <aura:attribute name="customButtonLabel" type="String" default="Save As Draft"/>
+    <aura:attribute name="showCustomButton" type="Boolean" default="true"/>
+    <aura:attribute name="showCustomButton2" type="Boolean" default="false"/>
+    <aura:attribute name="showFeedback" type="Boolean" default="false"/>
+    <aura:attribute name="countyRateAmount" type="T_COUNTY_RATE_AMT__c"
+                    						default="{'sobjectType':'T_COUNTY_RATE_AMT__c',
+                                                      'NBR_AMOUNT__c':'',
+                                                      'CDE_UNIT__c':'',
+                                                      'CDE_RATE_TYPE__c':'',
+                                                      'IDN_COUNTY_RATE__c':'',
+                                                      'CDE_AGE_GROUP__c':'',
+                                                      'CDE_TIER__c':'',
+                                                      'CDE_RATE_TEMPLT__c':''
+                                                     }"    
+                    description="stores the new SObject T_COUNTY_RATE_AMT__c."/>
+    <aura:attribute name="lstAgeGroup" type="List" default="[{'ageGroupLabel':'0-6 Months',
+                                                              'ageGroupValue':'1'},
+                                                            {'ageGroupLabel':'6-12 Months',
+                                                              'ageGroupValue':'2'},
+                                                            {'ageGroupLabel':'12-18 Months',
+                                                              'ageGroupValue':'3'},
+                                                            {'ageGroupLabel':'18-24 Months',
+                                                              'ageGroupValue':'4'},
+                                                            {'ageGroupLabel':'24-30 Months',
+                                                              'ageGroupValue':'5'},
+                                                            {'ageGroupLabel':'30-36 Months',
+                                                              'ageGroupValue':'6'},
+                                                            {'ageGroupLabel':'36 - School Age',
+                                                              'ageGroupValue':'7'},
+                                                            {'ageGroupLabel':'School Age',
+                                                              'ageGroupValue':'8'}]"
+                    description="stores the mapping of ageGroup picklist values."/>
+    <aura:attribute name="lstCareUnit" type="List" default="[{'careUnitLabel':'PT',
+                                                            'careUnitValue':'2'},
+                                                            {'careUnitLabel':'FT',
+                                                            'careUnitValue':'3'},
+                                                            {'careUnitLabel':'FTPT',
+                                                            'careUnitValue':'4'},
+                                                            {'careUnitLabel':'FTFT',
+                                                            'careUnitValue':'5'}]"/>
+    <aura:attribute name="mapRateTypes" type="Map" 
+                    default="{'1':'Regular','7':'School Age','13':'Before School','19':'After School','25':'B and A School','31':'Overnight','37':'Weekend','43':'Evening','55':'Additonal Needs','91':'Out-of-County','73':'Sick Care','85':'Experience FCCH'}"
+                    description="stores the mapping of rate type as backend picklist values."/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:if isTrue="{!v.showFeedback}">
+        <c:cP_CRP_Feedback recordId="{!v.recordId}" loadpopup="true" userFlow="view" oncloseModal="{!c.toggleFeedback}"></c:cP_CRP_Feedback>
+    </aura:if>
+    <lightning:card iconName="standard:event">
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="County Rate Plan">County Rate Plan</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        <aura:set attribute="actions">
+            <c:navigationComponent totalTabs="3" 
+                                   currentTabNumber="{!v.currentTabNumber}"
+                                   onNext="{!c.doNext}"
+                                   onFinish="{!c.doFinish}"
+                                   onPrevious="{!c.doPrevious}"
+                                   onClickCustomButton="{!c.doHandleCustomButton}"
+                                   customButtonLabel="{!v.customButtonLabel}"
+                                   showCustomButton="{!v.showCustomButton}"
+                                   customButtonLabel2="Revisions Needed"
+                                   showCustomButton2="{!v.showCustomButton2}"
+                                   onClickCustomButton2="{!c.toggleFeedback}"
+                                   showCancel="false"
+                                   showPreviousAlways="true"
+                                   />
+        </aura:set>
+        <div class="slds-card__body slds-card__body_inner">
+            <c:countyRatePlanHeader countyRatePlan="{!v.countyRatePlan}" status="{!v.status}"/>
+        </div>
+        <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+        
+        <div class="slds-card__header slds-grid">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__body">
+                    <h2>
+                        <a href="javascript:void(0);" class="slds-card__header-link slds-truncate" title="[object Object]">
+                            <span class="slds-text-heading_small">County Base Rate Ceilings : {!v.providerTypeLabel}</span>
+                        </a>
+                    </h2>
+                    <div class="slds-text-body_small">Please enter your county's Full-Time rate ceilings for {!v.providerTypeLabel} care facilities</div>
+                    <div class="slds-text-body_small">Note: System calculated percentages are not editable</div>
+                </div>
+            </header>
+        </div>
+        <div class="slds-card__body slds-card__body_inner">
+            <aura:if isTrue="{!v.currentTabNumber==1}">
+                <aura:if isTrue="{!v.countyRatePlan!=null}">            
+                    <c:countyRateTable countyRatePlan="{!v.countyRatePlan}" 
+                                       careUnit="{!v.careUnit}" 
+                                       providerType="HOM" 
+                                       mapExistingCountyRateAmount="{!v.mapExistingCountyRateAmount}"
+                                       lstAgeGroup="{!v.lstAgeGroup}"
+                                       mapRateTypes="{!v.mapRateTypes}"
+                                       lstCareUnit="{!v.lstCareUnit}"
+                                       mapCountyRateAmount="{#v.mapCountyRateAmount}"
+                                       />
+                </aura:if>
+            </aura:if>
+            <aura:if isTrue="{!v.currentTabNumber==2}">
+                <c:countyRateTable countyRatePlan="{!v.countyRatePlan}" 
+                                   careUnit="{!v.careUnit}" 
+                                   providerType="CEN" 
+                                   mapExistingCountyRateAmount="{!v.mapExistingCountyRateAmount}"
+                                   lstAgeGroup="{!v.lstAgeGroup}"
+                                   mapRateTypes="{!v.mapRateTypes}"
+                                   mapCountyRateAmount="{#v.mapCountyRateAmount}"
+                                   />
+            </aura:if>
+            <aura:if isTrue="{!v.currentTabNumber==3}">
+                <c:countyRateTable countyRatePlan="{!v.countyRatePlan}" 
+                                   careUnit="{!v.careUnit}" 
+                                   providerType="EXE" 
+                                   mapExistingCountyRateAmount="{!v.mapExistingCountyRateAmount}"
+                                   lstAgeGroup="{!v.lstAgeGroup}"
+                                   mapRateTypes="{!v.mapRateTypes}"
+                                   mapCountyRateAmount="{#v.mapCountyRateAmount}"
+                                   />
+            </aura:if>
+        </div>
+    </lightning:card>
+    
+</aura:component>

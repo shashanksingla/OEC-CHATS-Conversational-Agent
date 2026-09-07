@@ -1,0 +1,49 @@
+<apex:page showHeader="false" standardStylesheets="false" sidebar="false" applyHtmlTag="false" applyBodyTag="false" docType="html-5.0"
+    controller="ContinuationController">
+    <html>
+
+    <body>
+
+        <script>
+
+            var hostname = window.location.hostname;
+            var mydomain = hostname.substr(0, hostname.indexOf("."));
+            if (mydomain.lastIndexOf('--c') > -1) {
+                mydomain = mydomain.substr(0, mydomain.lastIndexOf('--c'));
+            }
+            var lexBaseURL;
+            if (hostname.includes("sandbox")) {
+                lexBaseURL = "https://" + mydomain + ".sandbox.lightning.force.com";
+            } else {
+                lexBaseURL = "https://" + mydomain + ".lightning.force.com";
+            }
+
+            window.addEventListener("message", function (event) {
+                if (event.origin !== lexBaseURL) {
+                    // Not the expected origin: reject message
+                    return;
+                }
+
+                // Only handle messages we are interested in            
+                if (event.data.topic === "com.deloitte.chats") {
+                    var methodName = event.data.methodName;
+                    var methodParams = event.data.methodParams;
+                    Visualforce.remoting.Manager.invokeAction('{!$RemoteAction.ContinuationController.invoke}', methodName, methodParams, function (result) {
+
+
+                        var message = {
+                            invocationId: event.data.invocationId,
+                            topic: "com.deloitte.chats",
+                            result: result
+                        };
+                        parent.postMessage(message, lexBaseURL);
+                    }, { buffer: true, escape: true, timeout: 120000 });
+                }
+            }, false);
+        </script>
+
+    </body>
+
+    </html>
+
+</apex:page>

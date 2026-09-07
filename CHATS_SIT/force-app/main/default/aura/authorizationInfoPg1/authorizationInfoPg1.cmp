@@ -1,0 +1,882 @@
+<aura:component controller="AuthorizationFlowApxCtrl" extends="c:abstractSection">
+    
+    <aura:attribute name="authRec" type="T_AUTH__c" default="{'sobjectType':'T_AUTH__c','DTE_BEGIN_EFFV_AUTH__c':'','DTE_BEGIN_SLOT__c':'','IDN_SLOT_CONTRACT__c':'','Contract_for_Slots_indicator__c':false,'Protective_Services_Indicator__c':false,'Do_we_need_to_allow_drop_in_days_for__c':false}"/> 
+    <aura:attribute name="authRecClone" type="T_AUTH__c" default="{'sobjectType':'T_AUTH__c','DTE_BEGIN_EFFV_AUTH__c':'','Contract_for_Slots_indicator__c':false,'Protective_Services_Indicator__c':false,'Do_we_need_to_allow_drop_in_days_for__c':false}"/>
+    <aura:attribute name="authProviderRec" type="T_CHATS_PROVR_STATUS__c" default="{'sobjectType':'T_CHATS_PROVR_STATUS__c'}"/>
+    <aura:attribute name="caseRec" type="T_SBSD_CASE__c" default="{'sobjectType':'T_SBSD_CASE__c'}"/>
+    <aura:attribute name="rateTypeOptions" type="List" />
+    <aura:attribute name="fieldValidationErrors" type="List"/>    
+    <aura:attribute name="childStateOptions" type="List" />
+    <aura:attribute name="isCreate" type="Boolean"/>
+    <aura:attribute name="authBeginDateMin" type="Date" />
+    <aura:attribute name="authBeginDate" type="Date" />
+    <aura:attribute name="authEndDate" type="Date" />
+    <aura:attribute name="scheduleRecurr" type="Auth_Schedule_Recurrence__c[]" />
+    <aura:attribute name="scheduleRecurrObj" type="Auth_Schedule_Recurrence__c" default="{'sobjectType':'Auth_Schedule_Recurrence__c','Recur_Type__c':'','RecurDay__c':'','DTE_Begin_Date__c':'','DTE_End_Date__c':'','Sun__c':'',
+                                                                                         'Mon__c':'', 'Tue__c':'', 'Wed__c':'', 'Thur__c':'', 'Fri__c':'', 'Sat__c':'', 'WeekDays__c':'','DaysOfMonth__c':''}" />
+    <aura:attribute name="hoursPerWeekDay" type="batchsit_t_auth_encmbr__x[]" />
+    <aura:attribute name="lookupFilter" type="String" />
+    <aura:attribute name="recordError" type="String" />
+    <aura:attribute name="providerIdVal" type="String" />
+    <aura:attribute name="isCountyRateSCQ" type="Boolean" default="false" />
+    <aura:attribute name="mandatory" type="Boolean" default="false" />
+    <aura:attribute name="slotContractIdVal" type="String"/>
+    <aura:attribute name="slotContractOptions" type="List"/>
+    <aura:attribute name="isInvalidProvider" type="Boolean" default="false" />
+    <aura:attribute name="providerFiscalAgreementId" type="String" />
+    <aura:attribute name="isReadOnly" type="Boolean" default="false" />
+    <aura:attribute name="selectedLookUpRecord" type="sObject" default="{}"/>
+    <aura:attribute name="providerFiscalAgreementRec" type="T_CHATS_PROVR_STATUS__c" default="{'sobjectType':'T_CHATS_PROVR_STATUS__c'}"/>
+    <aura:attribute name="SCAssociationRec" type="T_SLOT_CONTRACT__c" default="{'sobjectType':'T_SLOT_CONTRACT__c','IDN_AUTH__c':'','DTE_BEGIN_SLOT__c':'','DTE_END_SLOT__c':'','CDE_CARE_LEVEL__c':'','SLOT_CONTRACT_DESCRIPTION__c':''}"/>
+    <aura:attribute name="isShowContractToIndicator" type="Boolean" default="false" />
+    <aura:attribute name="isProtectiveServiceIndicator" type="Boolean" default="false" />
+    <aura:attribute name="findProviderName" type="String" />
+    <aura:attribute name="isChildWefareCare" type="Boolean" default="false" />
+    <aura:attribute name="isChildDisable" type="Boolean" default="false" />
+    <aura:attribute name="validatedChild" type="Boolean" default="false"/> 
+    <aura:attribute name="isFirstRecurrenceEntered" type="Boolean" default="false"/>
+    <aura:attribute name="enterRecurrence" type="Boolean" default="false" />
+    <aura:attribute name="isEncumbrnceCreated" type="Boolean" default="false" />
+    <aura:attribute name="isAuthFlowFirstTime" type="Boolean" default="false"/> 
+    <aura:attribute name="isModifiedAfterChange" type="Boolean" default="false"/>
+    <aura:attribute name="isAuthUpdatedInCreateFlow" type="Boolean" default="false"/>
+    <aura:attribute name="cmpValidated" type="Boolean" default="false"/> 
+    <aura:attribute name="isEnterRecurrence" type="Boolean" default="false"/> 
+    <aura:attribute name="isAuthFirstTime" type="Boolean" default="false"/> 
+    <aura:attribute name="isAuthUpdated" type="Boolean" default="false"/>
+    <aura:attribute name="numberOfDaysDrop" type="Integer" default="0" />
+    <aura:attribute name="authDropInDays" type="Integer" default="0" />
+    <aura:attribute name="isDropInDaysIndicator" type="Boolean" default="false" />
+    <aura:attribute name="isReqProviderLocation" type="Boolean" default="false" />
+    <aura:attribute name="showTransFeeRestriction" type="Boolean" default="false"/> <!-- Added by Rishav for CCCAP-2618 -->
+    <aura:attribute name="isProviderExempt" type="Boolean" default="false"/> <!-- Added by Rishav for CCCAP-2618 -->
+    <aura:attribute name="authRecId" type="String" />
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/> 
+    <aura:handler name="change" value="{!v.providerFiscalAgreementId}" action="{!c.populateRateTypes}"/>
+    <aura:handler name="change" value="{!v.isCreate}" action="{!c.populateRateTypes}"/>
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:handler name="change" value="{!v.providerRec}" action="{!c.populateProviderId}"/>
+    <aura:handler name="change" value="{!v.providerIdVal}" action="{!c.validateProviderId}"/>
+    <aura:handler name="change" value="{!v.authRec.DTE_BEGIN_EFFV_AUTH__c}" action="{!c.getRateTypes}"/>
+    <aura:handler name="change" value="{!v.authRec.IDN_CLIENT__c}" action="{!c.getRateTypesBasedOnChild}"/>
+    <aura:handler name="change" value="{!v.authRec.CDE_REL_PROVR__c}" action="{!c.chkRelativeStatus}"/>
+    <aura:handler name="change" value="{!v.authRec.CDE_PRO_REL_CHLD__c}" action="{!c.getProviderRelationship}"/>
+
+    
+    <aura:registerEvent name="reccurenceEvt" type="c:RecurrenceEvent"/>
+    
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:method name="childRecurrenceMethod" action="{!c.scheduleRecurrence}" access="public">
+        <aura:attribute name="cmpValidated" type="Boolean" default="false"/> 
+        <aura:attribute name="isEnterRecurrence" type="Boolean" default="false"/> 
+        <aura:attribute name="isAuthFirstTime" type="Boolean" default="false"/> 
+        <aura:attribute name="isAuthUpdated" type="Boolean" default="false"/> 
+    </aura:method> 
+    <aura:method name="childDisabilityMethod" action="{!c.checkChildDisabilityCtr}" access="PUBLIC"/> 
+    
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">General Information</h3>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <aura:if isTrue="{!v.isCreate}">
+                <lightning:select aura:id="input-field" 
+                                  required="true"
+                                  name="childState" label="Child Name/State ID" 
+                                  value="{!v.authRec.IDN_CLIENT__c}"  >
+                    <option value="">choose one...</option>
+                    <aura:iteration items="{!v.childStateOptions}" var="item">
+                        <option text="{!item.label}" value="{!item.value}" selected="{!item.selected}"/>
+                    </aura:iteration>
+                </lightning:select>  
+                <aura:set attribute="else">       
+                    <label class="slds-form-element__label" for="input-id-01">Child Name/State ID</label><br />
+                    {!v.authRec.IDN_CLIENT__r.NAM_FIRST__c}&nbsp; {!v.authRec.IDN_CLIENT__r.NAM_LAST__c}&nbsp;/ {!v.authRec.IDN_CLIENT__r.IDN_STATE__c}
+                    <!--
+                    <lightning:recordViewForm recordId="{!v.authRec.Id}" objectApiName="T_AUTH__c">
+                        <lightning:outputField fieldName="IDN_CLIENT__c"/>
+                    </lightning:recordViewForm> 
+					-->
+                </aura:set> 
+            </aura:if>
+            <c:fieldLevelMessage aura:id="T_AUTH__c-IDN_CLIENT__c"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <aura:if isTrue="{!v.isCreate}">
+                <lightning:layout multipleRows="true" horizontalAlign="space">
+                    
+                    <lightning:layoutItem flexibility="auto" size="6" class="slds-is-relative">
+                        <c:inputDate aura:id="input-field"
+                                     required="true"
+                                     label="Authorization Begin Date" 
+                                     value="{!v.authRec.DTE_BEGIN_EFFV_AUTH__c}"
+                                     />
+                        <!--
+                        <lightning:input aura:id="input-field"
+                                         required="true"
+                                         type="date" label="Authorization Begin Date" 
+                                         name="date" value="{!v.authRec.DTE_BEGIN_EFFV_AUTH__c}"
+                                         format="MM/DD/YYYY" />
+                        <ui:inputDate  displayDatePicker="true"  label="Authorization Begin Date" value="{!v.authRec.DTE_BEGIN_EFFV_AUTH__c}" format="MM/DD/YYYY" />
+                                      max="{!v.caseRec.DTE_REDET_CASE__c}"
+                                      messageWhenRangeOverflow="Authorization Begin Date cannot be greater than the Case Redetermination Date on the case"
+                                      min="{!v.authBeginDateMin}"
+                                      messageWhenRangeUnderflow="test"/>
+                        -->
+                    </lightning:layoutItem>
+                    
+                    <lightning:layoutItem flexibility="auto" size="6">
+                        <lightning:helptext content="Begin Date has to be the first of a month and greater than the current system date (can't be equal)
+                                                     Authorization Begin Date cannot be greater than the Case Redetermination Date on the case
+                                                     Authorization Begin Date cannot be earlier than the child's eligibility begin date.
+                                                     Cannot create record if another record exists for the same case, child and provider and begin and end dates overlap" >
+                        </lightning:helptext>
+                    </lightning:layoutItem>
+                </lightning:layout>
+                
+                <aura:set attribute="else">                            
+                    <lightning:recordViewForm recordId="{!v.authRec.Id}" objectApiName="T_AUTH__c">
+                        <lightning:outputField fieldName="DTE_BEGIN_EFFV_AUTH__c"/>
+                    </lightning:recordViewForm>
+                </aura:set>
+            </aura:if>
+            <c:fieldLevelMessage aura:id="T_AUTH__c-DTE_BEGIN_EFFV_AUTH__c"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Provider Information</h3>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <!--
+            <lightning:input aura:id="input-field" required="true" type="text" name="input-name" 
+                             label="Provider ID" value="{!v.authRec.unknown_custom_field}"/>
+			-->
+            <aura:if isTrue="{!!empty(v.providerIdVal)}">
+                {!v.recordError}
+                <force:recordData aura:id="forceRecordCmp"
+                                  recordId="{!v.providerIdVal}"
+                                  fields="Id,NAM_FACILITY__c"
+                                  mode="VIEW"
+                                  targetFields="{!v.providerFiscalAgreementRec}"
+                                  targetError="{!v.recordError}" />
+            </aura:if>
+            <!--<aura:if isTrue="{!!v.isCreate}">
+             <aura:if isTrue="{!!empty(v.authRec.IDN_SLOT_CONTRACT__c)}">
+                {!v.recordError}
+                <force:recordData aura:id="forceRecordCmp"
+                                  recordId="{!v.authRec.IDN_SLOT_CONTRACT__c}"
+                                  fields="Id,DTE_BEGIN_SLOT__c,DTE_END_SLOT__c,CDE_CARE_LEVEL__c,SLOT_CONTRACT_DESCRIPTION__c"
+                                  mode="EDIT"
+                                  targetRecord="{!v.fullRecord}"
+                                  targetFields="{!v.SCAssociationRec}"
+                                  targetError="{!v.recordError}" />
+                </aura:if>
+            </aura:if> -->
+            <aura:if isTrue="{!v.isCreate}">
+                <aura:set attribute="else">                            
+                    <label class="slds-form-element__label" for="input-id-01"> Provider Id</label><br />
+                    {!v.authProviderRec.Name}
+                </aura:set>
+                <!--
+                <aura:if isTrue="{!!empty(v.lookupFilter)}"> 
+                    <c:inputLookup label="Provider ID" aura:id="input-field"
+                                   value="{!v.providerFiscalAgreementId}"
+                                   object="T_PROVR_FISCAL_AGREMENT__c"
+                                   searchField="ID_SERVICE__r.Name"
+                                   filter="{!v.lookupFilter}"
+                                   IdFldName="ID_SERVICE__c" />
+                </aura:if>
+                --><!--
+                <c:inputLookup label="Provider ID" aura:id="input-field"
+                               value="{!v.providerIdVal}"
+                               object="T_CHATS_PROVR_STATUS__c"
+                               searchField="Name"
+                               required="true"
+                               limit="500"
+                               disabled="{!v.isReadOnly}"
+                               showRecentRecords="true"/>
+            -->
+                
+                <c:customLookup aura:id="input-field"
+                                value="{!v.providerIdVal}"
+                                objectAPIName="T_CHATS_PROVR_STATUS__c" 
+                                label="Provider ID"
+                                required="true"
+                                selectedRecord="{!v.selectedLookUpRecord}"
+                                showRecentRecords="true"/>
+                <c:fieldLevelMessage aura:id="ProviderILkUpId"/> 
+            </aura:if>
+            <!--Provider Name T_AUTH NAM_FACILITY Y Read Only. Provider Name will populate from V_CHATS_PROVR_STATUS, NAM_FACILITY -->
+            <c:fieldLevelMessage aura:id="T_AUTH__c-IDN_PROVR__c"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <aura:if isTrue="{!v.isCreate}">
+                <aura:set attribute="else">                            
+                    <label class="slds-form-element__label" for="input-id-01"><abbr class="slds-required" title="required">*</abbr> Provider Name</label><br />
+                    {!v.authProviderRec.NAM_FACILITY__c}
+                </aura:set>
+                <label class="slds-form-element__label" for="input-id-01"><abbr class="slds-required" title="required">*</abbr> Provider Name</label><br />
+                {!v.providerFiscalAgreementRec.NAM_FACILITY__c}
+                <c:fieldLevelMessage aura:id="T_AUTH__c-AMT_ACTV_AUTH__c"/>  
+            </aura:if> 
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <aura:if isTrue="{!v.isCreate}">
+                <c:inputPicklist aura:id="input-field" 
+                                 label="Provider Location/Relative Status" 
+                                 value="{!v.authRec.CDE_REL_PROVR__c}"
+                                 object="T_AUTH__c"
+                                 field="CDE_REL_PROVR__c"
+                                 disabled="{!v.isReadOnly}"
+                                 required="{!v.isReqProviderLocation}"/>
+                <aura:set attribute="else"> 
+                    <aura:if isTrue="{!v.isReadOnly}">
+                        <c:inputPicklist aura:id="input-field" 
+                                         label="Provider Location/Relative Status" 
+                                         value="{!v.authRec.CDE_REL_PROVR__c}"
+                                         object="T_AUTH__c"
+                                         field="CDE_REL_PROVR__c"
+                                         disabled="{!v.isReadOnly}"
+                                         />
+                        <aura:set attribute="else"> 
+                            <c:inputPicklist aura:id="input-field" 
+                                             label="Provider Location/Relative Status" 
+                                             value="{!v.authRec.CDE_REL_PROVR__c}"
+                                             object="T_AUTH__c"
+                                             field="CDE_REL_PROVR__c"
+                                             disabled="{!v.isReadOnly}"
+                                             required="{!v.authProviderRec.CDE_TYPE_PROVR__c == 'EFACH'?true:false}"/>
+                        </aura:set>
+                    </aura:if>  
+                </aura:set>
+            </aura:if>
+            <c:fieldLevelMessage aura:id="T_AUTH__c-CDE_REL_PROVR__c"/>            
+        </lightning:layoutItem>
+
+        <aura:if isTrue="{!(v.authRec.CDE_REL_PROVR__c == '2' || v.authRec.CDE_REL_PROVR__c == '4')}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <aura:if isTrue="{!v.isCreate}">
+                    <c:inputPicklist aura:id="input-field" 
+                                    label="Provider Relationship to Child in Care" 
+                                    value="{!v.authRec.CDE_PRO_REL_CHLD__c}"
+                                    object="T_AUTH__c"
+                                    field="CDE_PRO_REL_CHLD__c"
+                                    disabled="{!v.isReadOnly}"
+				    showNone="true"
+                                    required="{!v.isProviderRelative}"/>
+                    <aura:set attribute="else"> 
+                        <aura:if isTrue="{!v.isReadOnly}">
+                            <c:inputPicklist aura:id="input-field" 
+                                            label="Provider Relationship to Child in Care" 
+                                            value="{!v.authRec.CDE_PRO_REL_CHLD__c}"
+                                            object="T_AUTH__c"
+                                            field="CDE_PRO_REL_CHLD__c"
+                                            disabled="{!v.isReadOnly}"
+                                            />
+                            <aura:set attribute="else"> 
+                                <c:inputPicklist aura:id="input-field" 
+                                                label="Provider Relationship to Child in Care" 
+                                                value="{!v.authRec.CDE_PRO_REL_CHLD__c}"
+                                                object="T_AUTH__c"
+                                                field="CDE_PRO_REL_CHLD__c"
+                                                disabled="{!v.isReadOnly}"
+						showNone="true"
+                                                required="{!(v.authRec.CDE_REL_PROVR__c == '2' || v.authRec.CDE_REL_PROVR__c == '4')?true:false}"/>
+                            </aura:set>
+                        </aura:if>  
+                    </aura:set>
+                </aura:if>
+                <c:fieldLevelMessage aura:id="T_AUTH__c-CDE_PRO_REL_CHLD__c"/>            
+            </lightning:layoutItem>
+        </aura:if>
+        
+
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+        </lightning:layoutItem>
+
+        <aura:if isTrue="{!(v.authRec.CDE_REL_PROVR__c == '2' || v.authRec.CDE_REL_PROVR__c == '4')}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <aura:if isTrue="{!v.isCreate}">
+                    <c:inputPicklist aura:id="input-field" 
+                                    label="Provider lives in different residence?" 
+                                    value="{!v.authRec.CDE_PROV_DIFF_RESI__c}"
+                                    object="T_AUTH__c"
+                                    field="CDE_PROV_DIFF_RESI__c"
+                                    disabled="{!v.isReadOnly}"
+                                    showNone="True"
+                                    required="{!(v.authRec.CDE_PRO_REL_CHLD__c == 'B' || v.authRec.CDE_PRO_REL_CHLD__c == 'S')?true:false}"/>
+                    <aura:set attribute="else"> 
+                        <aura:if isTrue="{!v.isReadOnly}">
+                            <c:inputPicklist aura:id="input-field" 
+                                            label="Provider lives in different residence?" 
+                                            value="{!v.authRec.CDE_PROV_DIFF_RESI__c}"
+                                            object="T_AUTH__c"
+                                            field="CDE_PROV_DIFF_RESI__c"
+                                            disabled="{!v.isReadOnly}"
+                                            />
+                            <aura:set attribute="else"> 
+                                <c:inputPicklist aura:id="input-field" 
+                                                label="Provider lives in different residence?" 
+                                                value="{!v.authRec.CDE_PROV_DIFF_RESI__c}"
+                                                object="T_AUTH__c"
+                                                field="CDE_PROV_DIFF_RESI__c"
+                                                disabled="{!v.isReadOnly}"
+						showNone="True"
+                                                required="{!(v.authRec.CDE_PRO_REL_CHLD__c == 'B' || v.authRec.CDE_PRO_REL_CHLD__c == 'S')?true:false}"/>
+                            </aura:set>
+                        </aura:if>   
+                    </aura:set>
+                </aura:if>
+                <c:fieldLevelMessage aura:id="T_AUTH__c-CDE_PROV_DIFF_RESI__c"/>            
+            </lightning:layoutItem>
+        </aura:if>
+
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+        </lightning:layoutItem>
+
+        <aura:if isTrue="{!v.isCountyRateSCQ}">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Slot Contract Information</h3>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:select aura:id="input-field" 
+                                  required="false"
+                                  name="slotContract" label="Slot Contract ID" 
+                                  value="{!v.authRec.IDN_SLOT_CONTRACT__c}"
+                                  disabled="{!v.isReadOnly}" 
+                                  onchange="{!c.populateSCAssId}">
+                <option value="">Choose One...</option>
+                <aura:iteration items="{!v.slotContractOptions}" var="item">
+                    <option text="{!item.label}" value="{!item.value}" selected="{!item.value==v.authRec.IDN_SLOT_CONTRACT__c}"/>
+                </aura:iteration>
+            </lightning:select>
+         </lightning:layoutItem>
+        
+        
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <label class="slds-form-element__label" for="input-id-01"> Slot Contract Description</label><br />
+                    {!v.SCAssociationRec.SLOT_CONTRACT_DESCRIPTION__c}
+                    <c:fieldLevelMessage aura:id="SlotContractDescription"/>  
+            </lightning:layoutItem>
+            
+             <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:layoutItem flexibility="auto" size="6" class="slds-is-relative">
+                            <c:inputDate aura:id="input-field"
+                                         required="{!v.mandatory}"
+                                         disabled="{!v.isReadOnly}"
+                                         label="Authorization Slot Begin Date" 
+                                         value="{!v.authRec.DTE_BEGIN_SLOT__c}"
+                                         />
+                    <c:fieldLevelMessage aura:id="AuthSlotBeginDate"/> 
+                </lightning:layoutItem>
+            </lightning:layoutItem>
+            
+              <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <label class="slds-form-element__label" for="input-id-01"> Slot Contract Begin Date</label><br />
+                    {!v.SCAssociationRec.DTE_BEGIN_SLOT__c}
+                    <c:fieldLevelMessage aura:id="T_SLOT_CONTRACT__c-DTE_BEGIN_CONTRACT__c"/>  
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <label class="slds-form-element__label" for="input-id-01"> Slot Contract End Date</label><br />
+                    {!v.SCAssociationRec.DTE_END_SLOT__c}
+                    <c:fieldLevelMessage aura:id="T_SLOT_CONTRACT__c-DTE_END_CONTRACT__c"/>  
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            </lightning:layoutItem>
+            
+    
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <label class="slds-form-element__label" for="input-id-01"> Care Level</label><br />
+                    {!v.SCAssociationRec.CDE_CARE_LEVEL__c}
+                    <c:fieldLevelMessage aura:id="T_SLOT_CONTRACT__c-CDE_CARE_LEVEL__c"/>  
+            </lightning:layoutItem>
+                        
+               
+       </aura:if>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Immunization Information</h3>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist aura:id="input-field"
+                             label="Age Appropriate Immunization"
+                             value="{!v.authRec.CDE_IMM__c}"
+                             object="T_AUTH__c"
+                             field="CDE_IMM__c"
+                             disabled="{!v.isReadOnly}"/>
+            <c:fieldLevelMessage aura:id="T_AUTH__c-CDE_IMM__c"/>            
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist aura:id="input-field"
+                             label="Verified"
+                             value="{!v.authRec.CDE_TYPE_VERIF__c}"
+                             object="T_AUTH__c"
+                             field="CDE_TYPE_VERIF__c"
+                             disabled="{!v.isReadOnly}"/>
+            <c:fieldLevelMessage aura:id="T_AUTH__c-CDE_TYPE_VERIF__c"/>   
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist aura:id="input-field"
+                             label="How Verified"
+                             value="{!v.authRec.CDE_SOURCE_VRFYD_IMMU__c}"
+                             object="T_AUTH__c"
+                             field="CDE_SOURCE_VRFYD_IMMU__c"
+                             disabled="{!v.isReadOnly}"/>
+            <c:fieldLevelMessage aura:id="T_AUTH__c-CDE_SOURCE_VRFYD_IMMU__c"/>   
+        </lightning:layoutItem>
+        
+        <aura:if isTrue="{!v.isCreate}">
+            <aura:set attribute="else"> 
+                <aura:if isTrue="{!v.isReadOnly}">
+                    
+                    <!-- <aura:if isTrue ="{!v.authRec.Contract_for_Slots_indicator__c}">
+                        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                            <label class="slds-form-element__label" >Contract For Slots Indicator</label><br />
+                            <lightning:input  type="checkbox"  checked ="{!v.authRec.Contract_for_Slots_indicator__c}" disabled="true"  />
+                        </lightning:layoutItem>
+                        
+                        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                        </lightning:layoutItem>
+                    </aura:if> -->
+                    
+                    <aura:if isTrue ="{!v.authRec.Protective_Services_Indicator__c}">
+                        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                            <label class="slds-form-element__label" >Protective Services Indicator</label><br />
+                            <lightning:input  type="checkbox"  checked ="{!v.authRec.Protective_Services_Indicator__c}" disabled="true" />
+                        </lightning:layoutItem>
+                        
+                        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                        </lightning:layoutItem>
+                    </aura:if>
+                    
+                </aura:if>
+            </aura:set>
+            
+            <!-- <aura:if isTrue ="{!v.isShowContractToIndicator}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <label class="slds-form-element__label" >Contract For Slots Indicator</label><br />
+                    <lightning:input  type="checkbox"  checked ="{!v.authRec.Contract_for_Slots_indicator__c}"  />
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                </lightning:layoutItem>
+            </aura:if> -->
+            
+            <aura:if isTrue ="{!and(v.isProtectiveServiceIndicator, v.isChildWefareCare)}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <label class="slds-form-element__label" >Protective Services Indicator</label><br />
+                    <lightning:input  type="checkbox"  checked ="{!v.authRec.Protective_Services_Indicator__c}" />
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                </lightning:layoutItem>
+            </aura:if>
+        </aura:if>
+        
+        <aura:if isTrue="{!v.isReadOnly}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                <h3 class="slds-section__title">Drop In Days</h3>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input aura:id="input-field"
+                                 label="Number of Drop-in Days allowed per month for the authorization"
+                                 type="number" name="test" step="any"
+                                 min="0" max="{!v.numberOfDaysDrop}"
+                                 value="{!v.authRec.Number_of_Drop_in_Days__c}"
+                                 disabled="true"
+                                 messageWhenRangeOverflow ="The value cannot exceed the County Plan’s Drop-in Days."/>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            </lightning:layoutItem>
+            
+            <aura:set attribute="else"> 
+                <aura:if isTrue ="{!v.isDropInDaysIndicator}">
+                    <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                        <h3 class="slds-section__title">Drop In Days</h3>
+                    </lightning:layoutItem>
+                    
+                    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                        <aura:if isTrue="{!v.isCreate}">
+                            <lightning:input aura:id="input-field"
+                                             label="Number of Drop-in Days allowed per month for the authorization"
+                                             type="number" name="test1" step="any"
+                                             min="0" max="{!v.numberOfDaysDrop}"
+                                             value="{!v.authDropInDays}"
+                                             required="true"
+                                             messageWhenRangeOverflow ="The value cannot exceed the County Plan’s Drop-in Days."/>
+                            
+                            <aura:set attribute="else"> 
+                                <lightning:input aura:id="input-field"
+                                                 label="Number of Drop-in Days allowed per month for the authorization"
+                                                 type="number" name="Monday" step="any"
+                                                 min="0" max="{!v.numberOfDaysDrop}"
+                                                 value="{!v.authDropInDays}"
+                                                 required="true"
+                                                 messageWhenRangeOverflow ="The value cannot exceed the County Plan’s Drop-in Days."/>
+                            </aura:set>
+                        </aura:if>
+                        <c:fieldLevelMessage aura:id="T_AUTH__c-Number_of_Drop_in_Days__c"/>
+                    </lightning:layoutItem>
+                    
+                    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    </lightning:layoutItem>
+                    
+                </aura:if>
+            </aura:set>
+        </aura:if>
+        
+        <!-- Start: Added by Rishav for CCCAP-2618 -->
+        <aura:if isTrue="{!!v.isProviderExempt}">
+            <aura:if isTrue="{!v.showTransFeeRestriction}">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                    <h3 class="slds-section__title">Transportation Fee Restriction</h3>
+                    <c:inputRadioGroupForPicklist label="{!$Label.c.authorization_question_transFee}"
+                                                  aura:id="input-field"
+                                                  value="{!v.authRec.CDE_TRANS_FEE__c}"
+                                                  object="T_AUTH__c"
+                                                  field="CDE_TRANS_FEE__c" 
+                                                  required="{!v.showTransFeeRestriction}"
+                                                  disabled="{!v.isReadOnly}"
+                                                  showConditionallyRenderedComponent="false"
+                                                  showSpinnerComponent="false"/>
+                    <c:fieldLevelMessage aura:id="T_AUTH__c-CDE_TRANS_FEE__c"/>
+                </lightning:layoutItem>
+            </aura:if>
+        </aura:if>
+        <!-- End: CCCAP-2618 -->
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">ART Fees</h3>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input aura:id="input-field"
+                             type="number"
+                             name="input-name" label="Activity" value="{!v.authRec.AMT_ACTV_AUTH__c}"
+                             disabled="{!v.isReadOnly}"
+                             min="0"/>
+            <c:fieldLevelMessage aura:id="T_AUTH__c-AMT_ACTV_AUTH__c"/>   
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input aura:id="input-field" 
+                             type="number"
+                             name="input-name" label="Registration" value="{!v.authRec.AMT_RGSTR_AUTH__c}"
+                             disabled="{!v.isReadOnly}"
+                             min="0"/>
+            <c:fieldLevelMessage aura:id="T_AUTH__c-AMT_RGSTR_AUTH__c"/>   
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input aura:id="input-field" 
+                             type="number" name="input-name" label="Transportation" value="{!v.authRec.AMT_TRANSP_AUTH__c}"
+                             disabled="{!v.isReadOnly}"
+                             min="0"/>
+            <c:fieldLevelMessage aura:id="T_AUTH__c-AMT_TRANSP_AUTH__c"/>   
+        </lightning:layoutItem> 
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6"/>
+        
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <aura:if isTrue="{!v.isCreate}">
+                <lightning:button label="Schedule" variant="brand" onclick="{!c.doSchedule}"/>                
+                <aura:set attribute="else">
+                  <!--
+                      <aura:if isTrue="{!!empty(v.scheduleRecurr)}"> -->   
+                        <lightning:button label="Schedule" variant="brand" onclick="{!c.doSchedule}"/>                     
+                   <!--  </aura:if>
+                  -->  
+                </aura:set>                
+            </aura:if>           
+        </lightning:layoutItem>		
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6"/>
+        
+        <aura:if isTrue="{!v.enterRecurrence}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                <c:scheduleEncumbrance scheduleRecurrObj="{!v.scheduleRecurrObj}" recordId="{!v.authRecId}" scheduleRecurr="{!v.scheduleRecurr}" enterRecurrence="{!v.enterRecurrence}" authBeginDate="{!v.authBeginDate}" authEndDate="{!v.authEndDate}" isCreate="{!v.isCreate}" isEncumbrnceCreated="{!v.isEncumbrnceCreated}" isAuthUpdatedInCreateFlow="{!v.isAuthUpdatedInCreateFlow}" isAuthFlowFirstTime="{!v.isAuthFlowFirstTime}" isModifiedAfterChange="{!v.isModifiedAfterChange}" isReadOnly="{!v.isReadOnly}"/>
+            </lightning:layoutItem>
+        </aura:if>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Standard Schedule</h3>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <table class="slds-table slds-table_bordered slds-table--fixed-layout">
+                <thead>
+                    <tr class="slds-text-title_caps">
+                        <th scope="col">
+                            <div class="slds-truncate"></div>
+                        </th>
+                        <th scope="col">
+                            <div class="slds-truncate" title="Monday">Monday</div>
+                        </th>
+                        <th scope="col">
+                            <div class="slds-truncate" title="Tuesday">Tuesday</div>
+                        </th>
+                        <th scope="col">
+                            <div class="slds-truncate" title="Wednesday">Wednesday</div>
+                        </th>
+                        <th scope="col">
+                            <div class="slds-truncate" title="Thursday">Thursday</div>
+                        </th>
+                        <th scope="col">
+                            <div class="slds-truncate" title="Friday">Friday</div>
+                        </th>
+                        <th scope="col">
+                            <div class="slds-truncate" title="Saturday">Saturday</div>
+                        </th>
+                        <th scope="col">
+                            <div class="slds-truncate" title="Sunday">Sunday</div>
+                        </th>
+                    </tr>
+                </thead>
+                
+                <tbody>
+                    <tr>
+                        <th scope="row" data-label="Monday">
+                            Hours
+                        </th>
+                        <th scope="row" data-label="Monday">
+                            <lightning:input aura:id="input-field"
+                                             required="{!v.isCreate == 'true'?true:false}" 
+                                             type="number" name="Monday" step="1"
+                                             min="0" max="24"
+                                             value="{!v.hoursPerWeekDay[1].CNT_HOUR_CARE__c}" label=""
+                                             disabled="{!v.isReadOnly}"/>
+                        </th>
+                        <th scope="row" data-label="Tuesday">
+                            <lightning:input aura:id="input-field" 
+                                             required="{!v.isCreate == 'true'?true:false}" 
+                                             type="number" name="Tuesday" step="1"
+                                             min="0" max="24"
+                                             value="{!v.hoursPerWeekDay[2].CNT_HOUR_CARE__c}"
+                                             label=""
+                                             disabled="{!v.isReadOnly}"/>
+                        </th>
+                        <th scope="row" data-label="Wednesday">
+                            <lightning:input aura:id="input-field"
+                                             required="{!v.isCreate == 'true'?true:false}" 
+                                             type="number" name="Wednesday" step="1"
+                                             min="0" max="24"
+                                             value="{!v.hoursPerWeekDay[3].CNT_HOUR_CARE__c}" label=""
+                                             disabled="{!v.isReadOnly}"/>
+                        </th>
+                        <th scope="row" data-label="Thursday">
+                            <lightning:input aura:id="input-field"
+                                             required="{!v.isCreate == 'true'?true:false}"
+                                             type="number" name="Thursday" step="1"
+                                             min="0" max="24"
+                                             value="{!v.hoursPerWeekDay[4].CNT_HOUR_CARE__c}" label=""
+                                             disabled="{!v.isReadOnly}"/>
+                        </th>
+                        <th scope="row" data-label="Friday">
+                            <lightning:input aura:id="input-field"
+                                             required="{!v.isCreate == 'true'?true:false}"
+                                             type="number" name="Friday" step="1"
+                                             min="0" max="24"
+                                             value="{!v.hoursPerWeekDay[5].CNT_HOUR_CARE__c}" label=""
+                                             disabled="{!v.isReadOnly}"/>
+                        </th>
+                        <th scope="row" data-label="Saturday">
+                            <lightning:input aura:id="input-field"
+                                             required="{!v.isCreate == 'true'?true:false}"
+                                             type="number" name="Saturday" step="1"
+                                             min="0" max="24"
+                                             value="{!v.hoursPerWeekDay[6].CNT_HOUR_CARE__c}" label=""
+                                             disabled="{!v.isReadOnly}"/>
+                        </th>
+                        <th scope="row" data-label="Sunday">
+                            <lightning:input aura:id="input-field"
+                                             required="{!v.isCreate == 'true'?true:false}"
+                                             type="number" name="Sunday" step="1"
+                                             min="0" max="24"
+                                             value="{!v.hoursPerWeekDay[0].CNT_HOUR_CARE__c}" label=""
+                                             disabled="{!v.isReadOnly}"/>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th scope="row" data-label="Monday">
+                            Rate Types
+                        </th>
+                        <th scope="row" data-label="Monday">
+                            <!--
+                            <aura:if isTrue="{!v.isCreate}">
+                                <aura:set attribute="else"> 
+                            -->
+                            <lightning:select aura:id="rate2" name="select" label="" required="{!v.isCreate == 'true'?true:false}" value="{!v.hoursPerWeekDay[1].CDE_TYPE_UNIT_CARE__c}" messageWhenValueMissing="Did you forget to select a rate type?" disabled="{!v.isReadOnly}">
+                                <option value="--None--" text="--None--"></option>
+                                <aura:iteration items="{!v.rateTypeOptions}" var="rate">
+                                    <option value="{!rate.value}" text="{!rate.label}"></option>
+                                </aura:iteration>
+                            </lightning:select>
+                                <!--    
+                                </aura:set>
+                                <c:inputPicklist required="{!v.isCreate == 'true'?true:false}"
+                                                 label=""
+                                                 value="{!v.hoursPerWeekDay[0].CDE_TYPE_UNIT_CARE__c}"
+                                                 object="T_AUTH_ENCMBR__c"
+                                                 field="CDE_TYPE_UNIT_CARE__c"/> 
+                            </aura:if>
+                            -->
+                        </th>
+                        <th scope="row" data-label="Tuesday">
+                            <!--
+                            <aura:if isTrue="{!v.isCreate}">
+                                <c:inputPicklist required="{!v.isCreate == 'true'?true:false}"
+                                                 label=""
+                                                 value="{!v.hoursPerWeekDay[1].CDE_TYPE_UNIT_CARE__c}"
+                                                 object="T_AUTH_ENCMBR__c"
+                                                 field="CDE_TYPE_UNIT_CARE__c"/>
+                                <aura:set attribute="else">
+                            -->
+                            <lightning:select aura:id="rate3" name="select" label="" required="{!v.isCreate == 'true'?true:false}" value="{!v.hoursPerWeekDay[2].CDE_TYPE_UNIT_CARE__c}" messageWhenValueMissing="Did you forget to select a rate type?"
+                                              disabled="{!v.isReadOnly}">
+                                <option value="--None--" text="--None--"></option>
+                                <aura:iteration items="{!v.rateTypeOptions}" var="rate">
+                                    <option value="{!rate.value}" text="{!rate.label}"></option>
+                                </aura:iteration>
+                            </lightning:select>
+                        <!--    
+                        </aura:set>
+                        </aura:if>
+						-->
+                        </th>
+                        <th scope="row" data-label="Wednesday">
+                            <!--
+                            <aura:if isTrue="{!v.isCreate}">
+                                <c:inputPicklist required="{!v.isCreate == 'true'?true:false}"
+                                                 label=""
+                                                 value="{!v.hoursPerWeekDay[2].CDE_TYPE_UNIT_CARE__c}"
+                                                 object="T_AUTH_ENCMBR__c"
+                                                 field="CDE_TYPE_UNIT_CARE__c"/>
+                                <aura:set attribute="else">
+							-->
+                            <lightning:select aura:id="rate4" name="select" label="" required="{!v.isCreate == 'true'?true:false}" value="{!v.hoursPerWeekDay[3].CDE_TYPE_UNIT_CARE__c}" messageWhenValueMissing="Did you forget to select a rate type?" disabled="{!v.isReadOnly}">
+                                <option value="--None--" text="--None--"></option>
+                                <aura:iteration items="{!v.rateTypeOptions}" var="rate">
+                                    <option value="{!rate.value}" text="{!rate.label}"></option>
+                                </aura:iteration>
+                            </lightning:select>
+                            <!--   
+							</aura:set>
+                            </aura:if> 
+							-->
+                        </th>
+                        <th scope="row" data-label="Thursday">
+                            <!--
+							<aura:if isTrue="{!v.isCreate}">
+                            <c:inputPicklist required="{!v.isCreate == 'true'?true:false}"
+                                             label=""
+                                             value="{!v.hoursPerWeekDay[3].CDE_TYPE_UNIT_CARE__c}"
+                                             object="T_AUTH_ENCMBR__c"
+                                             field="CDE_TYPE_UNIT_CARE__c"/>
+                                <aura:set attribute="else">
+							-->
+                            <lightning:select aura:id="rate5" name="select" label="" required="{!v.isCreate == 'true'?true:false}" value="{!v.hoursPerWeekDay[4].CDE_TYPE_UNIT_CARE__c}" messageWhenValueMissing="Did you forget to select a rate type?" disabled="{!v.isReadOnly}">
+                                <option value="--None--" text="--None--"></option>
+                                <aura:iteration items="{!v.rateTypeOptions}" var="rate">
+                                    <option value="{!rate.value}" text="{!rate.label}"></option>
+                                </aura:iteration>
+                            </lightning:select>
+                            <!--    
+							</aura:set>
+                            </aura:if>
+							-->
+                        </th>
+                        <th scope="row" data-label="Friday">
+                            <!--
+							<aura:if isTrue="{!v.isCreate}">
+                            <c:inputPicklist required="{!v.isCreate == 'true'?true:false}"
+                                             label=""
+                                             value="{!v.hoursPerWeekDay[4].CDE_TYPE_UNIT_CARE__c}"
+                                             object="T_AUTH_ENCMBR__c"
+                                             field="CDE_TYPE_UNIT_CARE__c"/>
+                                <aura:set attribute="else">
+							-->
+                            <lightning:select aura:id="rate6" name="select" label="" required="{!v.isCreate == 'true'?true:false}" value="{!v.hoursPerWeekDay[5].CDE_TYPE_UNIT_CARE__c}" messageWhenValueMissing="Did you forget to select a rate type?" disabled="{!v.isReadOnly}">
+                                <option value="--None--" text="--None--"></option>
+                                <aura:iteration items="{!v.rateTypeOptions}" var="rate">
+                                    <option value="{!rate.value}" text="{!rate.label}"></option>
+                                </aura:iteration>
+                            </lightning:select>
+                            <!--   
+							</aura:set>
+                            </aura:if>
+							-->
+                        </th>
+                        <th scope="row" data-label="Saturday">
+                            <!--   
+							<aura:if isTrue="{!v.isCreate}">
+                            <c:inputPicklist required="{!v.isCreate == 'true'?true:false}"
+                                             label=""
+                                             value="{!v.hoursPerWeekDay[5].CDE_TYPE_UNIT_CARE__c}"
+                                             object="T_AUTH_ENCMBR__c"
+                                             field="CDE_TYPE_UNIT_CARE__c"/>
+                                <aura:set attribute="else">
+							-->
+                            <lightning:select aura:id="rate7" name="select" label="" required="{!v.isCreate == 'true'?true:false}" value="{!v.hoursPerWeekDay[6].CDE_TYPE_UNIT_CARE__c}" messageWhenValueMissing="Did you forget to select a rate type?" disabled="{!v.isReadOnly}">
+                                <option value="--None--" text="--None--"></option>
+                                <aura:iteration items="{!v.rateTypeOptions}" var="rate">
+                                    <option value="{!rate.value}" text="{!rate.label}"></option>
+                                </aura:iteration>
+                            </lightning:select>
+                            <!--    
+							</aura:set>
+                            </aura:if> 
+							-->
+                        </th>
+                        <th scope="row" data-label="Sunday">
+                            <!--  
+							<aura:if isTrue="{!v.isCreate}">
+                            <c:inputPicklist required="{!v.isCreate == 'true'?true:false}"
+                                             label=""
+                                             value="{!v.hoursPerWeekDay[6].CDE_TYPE_UNIT_CARE__c}"
+                                             object="T_AUTH_ENCMBR__c"
+                                             field="CDE_TYPE_UNIT_CARE__c"/>
+                                <aura:set attribute="else"> 
+							-->
+                            <lightning:select aura:id="rate8" name="select" label="" required="{!v.isCreate == 'true'?true:false}" value="{!v.hoursPerWeekDay[0].CDE_TYPE_UNIT_CARE__c}" messageWhenValueMissing="Did you forget to select a rate type?"
+                                              disabled="{!v.isReadOnly}">
+                                <option value="--None--" text="--None--"></option>
+                                <aura:iteration items="{!v.rateTypeOptions}" var="rate">
+                                    <option value="{!rate.value}" text="{!rate.label}"></option>
+                                </aura:iteration>
+                            </lightning:select>
+                            <!-- 
+							</aura:set>
+                            </aura:if>
+							-->
+                        </th>
+                    </tr>
+                </tbody>
+            </table>
+        </lightning:layoutItem>
+        
+    </lightning:layout>
+</aura:component>

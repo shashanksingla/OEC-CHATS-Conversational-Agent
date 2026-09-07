@@ -1,0 +1,45 @@
+<aura:component extends="c:genericUtilities" controller="GenericDataSaverApxCtrl" >
+    <aura:attribute name="nonAdjustmentDetailRec" type="T_NON_ADJMT_DETAIL__c"/>
+    <aura:attribute name="nonAdjustmentDetailAssocIndiv" type="T_SBSD_INDIV__c"/>
+    <aura:attribute name="adjustmentEntryEditMode" type="Boolean"/>
+    <aura:attribute name="nonAdjustmentDetailLst" type="T_NON_ADJMT_DETAIL__c[]"/>
+    <aura:attribute name="currentTabNumber" type="Integer"/>
+    <aura:attribute name="nonAdjustmentDetail" type="T_NON_ADJMT_DETAIL__c"/>
+    <aura:attribute name="deleteAdjustment" type="String" />
+    <aura:attribute name="selectedMenuItemValue" type="String" />
+    <aura:attribute name="adjustmentObj" type="T_ADJMT__c"/>
+    <aura:attribute name="pageMode" type="String" default="view"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <lightning:overlayLibrary aura:id="overlayLib"/>
+    <tr>
+        <td>
+            <lightning:formattedText value="{!v.nonAdjustmentDetailRec.IDN_AUTH__r.Name}"/> 
+        </td>
+        <td>
+            <lightning:formattedText value="{!v.nonAdjustmentDetailRec.IDN_AUTH__r.IDN_CLIENT__r.NAM_LAST__c + ', ' + v.nonAdjustmentDetailRec.IDN_AUTH__r.IDN_CLIENT__r.NAM_FIRST__c }"/>
+        </td>
+        <td>
+            <ui:outputCurrency aura:id="curr" value="{!v.nonAdjustmentDetailRec.AMT_DETAIL_ADJMT__c}" />
+        </td>
+        <td>
+            <c:inputPicklist label="Adjustment Funding Program"
+                             value="{!v.nonAdjustmentDetailRec.IDN_PROG_FNDG__c}"
+                             object="T_NON_ADJMT_DETAIL__c"
+                             field="IDN_PROG_FNDG__c"
+                             type="ReadOnly"
+                             hideLabel="true"/>
+        </td> 
+        <aura:if isTrue="{!!(v.adjustmentObj &amp;&amp; v.pageMode=='view')}">
+            <td>
+                <lightning:buttonMenu alternativeText="Action" onselect="{! c.handleMenuSelect }">
+                    <lightning:menuItem aura:id="actionMenuItems" label="Edit" value="{!v.nonAdjustmentDetailRec.Id + '_edit'}"/>
+                    <lightning:menuItem aura:id="actionMenuItems" label="Delete" value="{!v.nonAdjustmentDetailRec.Id + '_delete'}"/>
+                </lightning:buttonMenu>
+            </td>
+        </aura:if>
+    </tr>
+    <c:confirmationModal aura:id="confirmationModalOnDelete" confirmMsg="{!v.deleteAdjustment}"
+                         confirmModalYes="{!c.confirmDelete}"/>
+</aura:component>

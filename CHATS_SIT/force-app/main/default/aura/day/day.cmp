@@ -1,0 +1,6 @@
+<aura:component >
+    <aura:attribute name="day" type="Object" />    
+	<div class="day">
+        {!v.day.Day}
+    </div>
+</aura:component>

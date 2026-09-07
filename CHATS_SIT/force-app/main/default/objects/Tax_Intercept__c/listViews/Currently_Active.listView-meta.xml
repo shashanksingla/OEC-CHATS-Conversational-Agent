@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Currently_Active</fullName>
+    <columns>NAME</columns>
+    <columns>Intercept_Status__c</columns>
+    <columns>Current_Balance__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Current_Balance__c</field>
+        <operation>notEqual</operation>
+        <value>0</value>
+    </filters>
+    <filters>
+        <field>Tax_Year__c</field>
+        <operation>equals</operation>
+        <value>2024</value>
+    </filters>
+    <filters>
+        <field>Intercept_Status__c</field>
+        <operation>notEqual</operation>
+        <value>Removed</value>
+    </filters>
+    <label>Currently Active</label>
+</ListView>

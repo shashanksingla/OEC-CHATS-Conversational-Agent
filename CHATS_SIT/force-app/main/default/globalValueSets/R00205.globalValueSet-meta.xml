@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>PRV</fullName>
+        <default>false</default>
+        <label>Provider</label>
+    </customValue>
+    <customValue>
+        <fullName>CTY</fullName>
+        <default>false</default>
+        <label>County</label>
+    </customValue>
+    <customValue>
+        <fullName>CLT</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>CLT</label>
+    </customValue>
+    <customValue>
+        <fullName>ITC</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>ITC</label>
+    </customValue>
+    <description>R00205</description>
+    <masterLabel>R00205</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

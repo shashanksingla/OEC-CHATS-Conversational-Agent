@@ -1,0 +1,11 @@
+<design:component>
+	<design:attribute name="relatedListHeader" label="Component Attribute for Related List Header"/>
+    <design:attribute name="childApiName" label="Child Object Api Name "/>
+    <design:attribute name="parentObjIdentifier" label="Parent Object External ID Field Api Name "/>
+    <design:attribute name="componentAttributesTypes" label="Component Attributes(For Multiple, put separated by ;)"/>
+    <design:attribute name="pickListTypeFields" label="Component Picklist Attributes Separate by comma (For Multiple, put separated by ;)"/>
+    <design:attribute name="orderByField" label="Order By Field API Name"/>
+    <design:attribute name="recordsLimit" label="Limit for Number of Records"/>
+    <design:attribute name="sortAscDsc" label="Sort Ascending or Descending?" 
+                      datasource="ASC, DESC"/>
+</design:component>

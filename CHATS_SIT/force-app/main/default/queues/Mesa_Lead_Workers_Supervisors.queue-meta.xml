@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Mesa Lead Workers / Supervisors</name>
+    <queueMembers>
+        <users>
+            <user>carlie.reed@mesacounty.us.chats</user>
+            <user>chelby.flick@mesacounty.us.chats</user>
+            <user>erica.castillo@mesacounty.us.chats</user>
+            <user>josh.page@mesacounty.us.chats</user>
+            <user>matt.furphy@mesacounty.us.chats</user>
+            <user>melissa.schierland@mesacounty.us.chats</user>
+        </users>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>Case_Review__c</sobjectType>
+    </queueSobject>
+    <queueSobject>
+        <sobjectType>Task</sobjectType>
+    </queueSobject>
+</Queue>

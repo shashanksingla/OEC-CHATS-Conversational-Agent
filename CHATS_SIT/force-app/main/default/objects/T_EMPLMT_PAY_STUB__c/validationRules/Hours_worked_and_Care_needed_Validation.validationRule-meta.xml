@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Hours_worked_and_Care_needed_Validation</fullName>
+    <active>true</active>
+    <description>Hours Worked and Care Needed cannot be less than 0.</description>
+    <errorConditionFormula>CNT_WORKED_HOURS_STUB_PAY__c &lt; 0</errorConditionFormula>
+    <errorDisplayField>CNT_WORKED_HOURS_STUB_PAY__c</errorDisplayField>
+    <errorMessage>Hours Worked and Care Needed cannot be less than 0.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>dte_redet_prpsd__c</fullName>
+    <description>dte_redet_prpsd</description>
+    <externalDeveloperName>dte_redet_prpsd</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Redetermination  Proposed Date</label>
+    <required>false</required>
+    <type>Date</type>
+</CustomField>

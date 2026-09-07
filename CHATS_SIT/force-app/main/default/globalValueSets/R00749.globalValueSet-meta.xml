@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>ATP</fullName>
+        <default>false</default>
+        <label>Added to program</label>
+    </customValue>
+    <customValue>
+        <fullName>NAA</fullName>
+        <default>false</default>
+        <label>Not allowed for authorization</label>
+    </customValue>
+    <customValue>
+        <fullName>NER</fullName>
+        <default>false</default>
+        <label>Agency Error</label>
+    </customValue>
+    <customValue>
+        <fullName>UTL</fullName>
+        <default>false</default>
+        <label>Unable to locate</label>
+    </customValue>
+    <customValue>
+        <fullName>VOW</fullName>
+        <default>false</default>
+        <label>Voluntary withdrawal</label>
+    </customValue>
+    <customValue>
+        <fullName>MOC</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Moved out of county</label>
+    </customValue>
+    <customValue>
+        <fullName>NEC</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>No eligible child</label>
+    </customValue>
+    <customValue>
+        <fullName>OVI</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Over Income</label>
+    </customValue>
+    <customValue>
+        <fullName>NNC</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>No need for care</label>
+    </customValue>
+    <customValue>
+        <fullName>RIL</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>No response to invitation letter</label>
+    </customValue>
+    <customValue>
+        <fullName>RIR</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>No response to information request</label>
+    </customValue>
+    <customValue>
+        <fullName>MOS</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Moved out of state</label>
+    </customValue>
+    <description>R00749</description>
+    <masterLabel>R00749</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

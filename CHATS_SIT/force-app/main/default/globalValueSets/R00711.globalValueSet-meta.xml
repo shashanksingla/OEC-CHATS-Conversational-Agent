@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>EBT</fullName>
+        <default>false</default>
+        <label>EBT - Quest</label>
+    </customValue>
+    <customValue>
+        <fullName>EFT</fullName>
+        <default>false</default>
+        <label>Deposit - EFT</label>
+    </customValue>
+    <description>R00711</description>
+    <masterLabel>R00711</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

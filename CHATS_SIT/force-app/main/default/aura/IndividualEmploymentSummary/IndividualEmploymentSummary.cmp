@@ -1,0 +1,70 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:lightningQuickAction" access="global" 
+                extends="c:abstractComponent" controller="IndividualEmployment">
+    
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="columns" type="List"/>
+    <aura:attribute name="EmploymentList" type="IndivEmploymeentWrapper[]"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <lightning:navigation aura:id="navService"/>
+    
+    <div class="slds-p-horizontal_small slds-m-top--large">
+        <table class="slds-table slds-table_bordered slds-table_resizable-cols slds-table_fixed-layout slds-border_right slds-border_left slds-table_col-bordered" padding="around-medium">
+            <thead>
+                <tr class="slds-text-title_caps">
+                    <th scope="col">
+                        <div class="slds-cell-wrap slds-p-around--x-small slds-text-align--left" title="Individual Name">Individual Name</div>
+                    </th>
+                    
+                    <th scope="col">
+                        <div class="slds-cell-wrap slds-p-around--x-small slds-text-align--left" title="Client Id">Client Id</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-cell-wrap slds-p-around--x-small slds-text-align--left" title="Effective Begin Date">Effective Begin Date</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-cell-wrap slds-p-around--x-small slds-text-align--left" title="Record Type Name">Record Type Name</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-cell-wrap slds-p-around--x-small slds-text-align--left" title="Employer/Business Name">Employer/Business Name</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-cell-wrap slds-p-around--x-small slds-text-align--left" title="Address">Address</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-cell-wrap slds-p-around--x-small slds-text-align--left" title="Employer/Business phone numbers">Employer/Business phone numbers</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-cell-wrap slds-p-around--x-small slds-text-align--left" title="Estimated Income">Estimated Monthly Income</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-cell-wrap slds-p-around--x-small slds-text-align--left" title="Gross Monthly Income">Actual Monthly Income</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-cell-wrap slds-p-around--x-small slds-text-align--left" title="Employment Expense">Employment Expense</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-cell-wrap slds-p-around--x-small slds-text-align--left" title="Employment ID">Employment ID</div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <aura:iteration var="Employment" items="{!v.EmploymentList}">
+                    <tr>
+                        <td><div class="slds-cell-wrap slds-text-align--left">{!Employment.indivName}</div></td>
+                    	<td><div class="slds-cell-wrap slds-text-align--left"><a href="" data-item="{!Employment.indivSfid}" onclick="{!c.onClick}">{!Employment.clientId}</a></div></td>
+                        <td><div class="slds-cell-wrap slds-text-align--left">{!Employment.effectiveBeginDate}</div></td>
+                        <td><div class="slds-cell-wrap slds-text-align--left">{!Employment.recordTypeName}</div></td>
+                        <td><div class="slds-cell-wrap slds-text-align--left">{!Employment.employer}</div></td>
+                        <td><div class="slds-cell-wrap slds-text-align--left">{!Employment.address}</div></td>
+                        <td><div class="slds-cell-wrap slds-text-align--left">{!Employment.employerPhone}</div></td>
+                        <td><div class="slds-cell-wrap slds-text-align--left">{!Employment.estimatedIncome}</div></td>
+                        <td><div class="slds-cell-wrap slds-text-align--left">{!Employment.grossMonthlyIncome}</div></td>
+                        <td><div class="slds-cell-wrap slds-text-align--left">{!Employment.employmentExpense}</div></td>
+                        <td><div class="slds-cell-wrap slds-text-align--left"><a href="" data-item="{!Employment.employmentSfid}" onclick="{!c.onClick}">{!Employment.eploymentId}</a></div></td>
+                    </tr>
+                </aura:iteration>
+            </tbody>
+        </table>
+    </div>
+    
+</aura:component>

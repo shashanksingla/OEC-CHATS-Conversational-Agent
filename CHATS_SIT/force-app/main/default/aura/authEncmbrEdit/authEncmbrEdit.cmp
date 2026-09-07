@@ -1,0 +1,80 @@
+<aura:component extends="c:abstractComponent" controller="AuthorizationFlowApxCtrl">
+    <aura:attribute name="map" type="map"/>
+    <aura:attribute name="day" type="Object"/>
+    <aura:attribute name="key" type="String"/>
+    <aura:attribute name="provClosDteOptions" type="Object"/>
+    <aura:attribute name="originalHours" type="Integer" default="0"/>
+    <aura:attribute name="originalRateType" type="String"/>
+    <aura:attribute name="dayInCalendar" type="String"/>
+    <aura:attribute name="isDirty" type="String"/>
+    <aura:attribute name="isRateTypeReadOnly" type="boolean" default="false"/>
+    <aura:attribute name="isCntHrReadOnly" type="boolean" default="false"/>
+    <aura:attribute name="updatedSuccessfully" type="String" />
+    <!--aura:attribute name="providerIdValtwo" type="String" /-->
+    <aura:attribute name="authEncmbrId" type="String"/>
+    <aura:attribute name="rateTypeOptions" type="List" />
+    <aura:attribute name="anAuthEncmbr" type="batchsit_t_auth_encmbr__x" 
+                    default="{'sobjectType':'batchsit_t_auth_encmbr__x'}"/>
+    <aura:attribute name="authTerminated" type="Boolean" default="false" />
+    <aura:attribute name="isReadOnly" type="Boolean" />
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <!--<aura:handler event="c:updateAuthEncmbrEvent"
+                  action="{!c.updateAuthEncmbr}"/>-->
+    <aura:method name="updateMe" action="{!c.updateAuthEncmbr}"/>
+    
+    <aura:attribute name="recordError" type="String"/>
+    <div class="{!v.updatedSuccessfully == 'true'?'day successCell' :
+                  v.updatedSuccessfully == 'false'?'dayFailure errorCell':
+                  v.isDirty == 'true'?'day dirtyCell':'day'}">
+        <aura:if isTrue="{!!empty(v.dayInCalendar)}">
+        <lightning:layout multipleRows="true" verticalAlign="space" >
+            <lightning:layoutItem flexibility="auto" size="6">
+                <h2 class="slds-section__title">{!v.dayInCalendar}</h2>
+            </lightning:layoutItem>
+            <!-- Display Lightning Data Service errors, if any -->
+            <lightning:layoutItem flexibility="auto" size="9">                
+                <lightning:input aura:id="input-field" type="number" 
+                                 name="{!v.key}" step="1"  label="Hours: "
+                                 min="0" max="24"
+                                 value="{!v.anAuthEncmbr.cnt_hour_care__c}"
+                                 onchange="{!c.markItDirty}"
+                                 disabled="{!v.isCntHrReadOnly}"
+                                 required="true"
+                                 />
+                <aura:if isTrue="{!not(empty(v.recordError))}">
+                    <span class="slds-has-error slds-form-element__help">
+                        {!v.recordError}
+                    </span>   
+                </aura:if>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="9">
+                Unit:
+                <lightning:formattedText value="{!lessthan(v.anAuthEncmbr.cnt_hour_care__c, 0.1)?'' :
+                                      lessthanorequal(v.anAuthEncmbr.cnt_hour_care__c, 5)?'PT' :
+                                      lessthanorequal(v.anAuthEncmbr.cnt_hour_care__c, 12)?'FT' :
+                                      lessthanorequal(v.anAuthEncmbr.cnt_hour_care__c, 17)?'FT/PT' :
+                                      lessthanorequal(v.anAuthEncmbr.cnt_hour_care__c, 24)?'FT/FT':''}" />
+                <!--<lightning:formattedText value="{!lessthanorequal(v.anAuthEncmbr.cnt_hour_care__c, 5)?'PT' :
+                                      lessthanorequal(v.anAuthEncmbr.cnt_hour_care__c, 12)?'FT' :
+                                      lessthanorequal(v.anAuthEncmbr.cnt_hour_care__c, 17)?'FT/PT' :
+                                      lessthanorequal(v.anAuthEncmbr.cnt_hour_care__c, 24)?'FT/FT':''}" />-->
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="9">
+                <c:inputPicklistWithLightningSelect aura:id="input-field"
+                                                    required="{!!empty(v.anAuthEncmbr.cnt_hour_care__c)?'true':'false'}"
+                                                    label="Rate Type"
+                                                    value="{!v.anAuthEncmbr.cde_type_unit_care__c}"
+                                                    onChange="{!c.markItDirty}"
+                                                    options="{!v.rateTypeOptions}"
+                                                    disabled="{!v.isRateTypeReadOnly}"
+                                                    showNone="true"
+                                                    /> 
+                
+            </lightning:layoutItem>
+        </lightning:layout>
+            </aura:if>
+    </div>
+</aura:component>

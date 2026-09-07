@@ -1,0 +1,11 @@
+<aura:component implements="force:hasRecordId,lightning:actionOverride" access="global">
+    <lightning:navigation aura:id="navService"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <force:recordData aura:id="recordLoader" recordId="{!v.recordId}" fields="Case__c"
+        targetFields="{!v.caseReviewFields}" recordUpdated="{!c.onRecordLoaded}" mode="VIEW"/>
+    <aura:attribute name="caseReviewFields" type="Object"/>
+    <aura:attribute name="caseId" type="String"/>
+    <aura:if isTrue="{!v.caseId}">
+        <c:caseReviewFlow_lwc recordId="{!v.recordId}" screenMode="EDIT" sourceRecord="Case" caseId="{!v.caseId}"/>
+    </aura:if>
+</aura:component>

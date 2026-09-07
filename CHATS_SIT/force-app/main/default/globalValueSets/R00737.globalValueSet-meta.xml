@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>AB</fullName>
+        <default>false</default>
+        <label>Agency&apos;s Compensation</label>
+    </customValue>
+    <customValue>
+        <fullName>AM</fullName>
+        <default>false</default>
+        <label>Alimony/Maintenance</label>
+    </customValue>
+    <customValue>
+        <fullName>AN</fullName>
+        <default>false</default>
+        <label>Annuity</label>
+    </customValue>
+    <customValue>
+        <fullName>CA</fullName>
+        <default>false</default>
+        <label>Child Support</label>
+    </customValue>
+    <customValue>
+        <fullName>CC</fullName>
+        <default>false</default>
+        <label>Cash Contributions</label>
+    </customValue>
+    <customValue>
+        <fullName>DI</fullName>
+        <default>false</default>
+        <label>Dividends from Stocks/Bonds</label>
+    </customValue>
+    <customValue>
+        <fullName>IL</fullName>
+        <default>false</default>
+        <label>Insurance/Lawsuit Settlement/Proceeds</label>
+    </customValue>
+    <customValue>
+        <fullName>IS</fullName>
+        <default>false</default>
+        <label>Interest from Savings, CD, IRA or 401K</label>
+    </customValue>
+    <customValue>
+        <fullName>KC</fullName>
+        <default>false</default>
+        <label>In-kind Income for Child Support</label>
+    </customValue>
+    <customValue>
+        <fullName>KE</fullName>
+        <default>false</default>
+        <label>In-kind Income from Employment</label>
+    </customValue>
+    <customValue>
+        <fullName>KO</fullName>
+        <default>false</default>
+        <label>In-kind Income Other</label>
+    </customValue>
+    <customValue>
+        <fullName>LB</fullName>
+        <default>false</default>
+        <label>Lease Bonus/Royalty</label>
+    </customValue>
+    <customValue>
+        <fullName>LS</fullName>
+        <default>false</default>
+        <label>Gifts</label>
+    </customValue>
+    <customValue>
+        <fullName>MA</fullName>
+        <default>false</default>
+        <label>Military Allotment</label>
+    </customValue>
+    <customValue>
+        <fullName>O</fullName>
+        <default>false</default>
+        <label>Other</label>
+    </customValue>
+    <customValue>
+        <fullName>O2</fullName>
+        <default>false</default>
+        <label>Other Vendor Payments</label>
+    </customValue>
+    <customValue>
+        <fullName>OF</fullName>
+        <default>false</default>
+        <label>Other Federal Cash Income</label>
+    </customValue>
+    <customValue>
+        <fullName>PC</fullName>
+        <default>false</default>
+        <label>Refugee Cash Assistance</label>
+    </customValue>
+    <customValue>
+        <fullName>PR</fullName>
+        <default>false</default>
+        <label>Retirement or Pension</label>
+    </customValue>
+    <customValue>
+        <fullName>RI</fullName>
+        <default>false</default>
+        <label>Railroad Retirement Benefit</label>
+    </customValue>
+    <customValue>
+        <fullName>SI</fullName>
+        <default>false</default>
+        <label>Strike Benefit</label>
+    </customValue>
+    <customValue>
+        <fullName>SS</fullName>
+        <default>false</default>
+        <label>Social Security</label>
+    </customValue>
+    <customValue>
+        <fullName>UB</fullName>
+        <default>false</default>
+        <label>Unemployment Compensation</label>
+    </customValue>
+    <customValue>
+        <fullName>VB</fullName>
+        <default>false</default>
+        <label>Veteran&apos;s Benefits</label>
+    </customValue>
+    <customValue>
+        <fullName>VE</fullName>
+        <default>false</default>
+        <label>Vendor Payments from Employment</label>
+    </customValue>
+    <customValue>
+        <fullName>WC</fullName>
+        <default>false</default>
+        <label>Trust Income</label>
+    </customValue>
+    <description>R00737</description>
+    <masterLabel>R00737</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

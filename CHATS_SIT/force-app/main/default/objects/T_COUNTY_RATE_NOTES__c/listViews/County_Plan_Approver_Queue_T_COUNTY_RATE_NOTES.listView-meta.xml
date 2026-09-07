@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>County_Plan_Approver_Queue_T_COUNTY_RATE_NOTES</fullName>
+    <filterScope>Queue</filterScope>
+    <label>County Plan Approver Queue</label>
+    <queue>County_Plan_Approver_Queue</queue>
+    <sharedTo>
+        <allInternalUsers></allInternalUsers>
+    </sharedTo>
+</ListView>

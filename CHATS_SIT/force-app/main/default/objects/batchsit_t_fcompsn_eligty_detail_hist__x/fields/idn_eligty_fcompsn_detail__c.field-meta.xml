@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_eligty_fcompsn_detail__c</fullName>
+    <description>idn_eligty_fcompsn_detail</description>
+    <externalDeveloperName>idn_eligty_fcompsn_detail</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Eligibility Family Composition Detail ID</label>
+    <length>50</length>
+    <referenceTo>batchsit_t_fcompsn_eligty_detail__x</referenceTo>
+    <relationshipLabel>Household Eligibility Detail Legacy History</relationshipLabel>
+    <relationshipName>batchsit_t_fcompsn_eligty_detail_hist</relationshipName>
+    <type>ExternalLookup</type>
+</CustomField>

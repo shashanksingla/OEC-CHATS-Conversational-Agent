@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_notes__c</fullName>
+    <description>idn_notes</description>
+    <externalDeveloperName>idn_notes</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>note id</label>
+    <length>50</length>
+    <referenceTargetField>T_PROVR_NOTES__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_PROVR_NOTES__c</referenceTo>
+    <relationshipLabel>Provider Notes Legacy History</relationshipLabel>
+    <relationshipName>sfrosit_t_provr_notes_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

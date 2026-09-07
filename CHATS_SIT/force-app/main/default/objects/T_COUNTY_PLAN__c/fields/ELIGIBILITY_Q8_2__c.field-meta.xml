@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ELIGIBILITY_Q8_2__c</fullName>
+    <description>ELIGIBILITY_Q8_2</description>
+    <label>ELIGIBILITY_Q8_2</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetName>RT_ELIGIBILITY_Q8_2</valueSetName>
+    </valueSet>
+</CustomField>

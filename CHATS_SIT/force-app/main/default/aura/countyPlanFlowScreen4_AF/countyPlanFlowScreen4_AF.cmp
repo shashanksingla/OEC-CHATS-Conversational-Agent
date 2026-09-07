@@ -1,0 +1,358 @@
+<aura:component extends="c:abstractSection">
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:attribute name="countyPlanRec" type="T_COUNTY_PLAN__c"
+                    default="{'sobjectType':'T_COUNTY_PLAN__c'}"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:attribute name="countyId" type="String" />
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:attribute name="recordError" type="String" />
+    <aura:handler name="change" value="{!v.countyPlanRec.PI_Q7__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.PI_Q14__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.PI_Q11__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.PI_Q3_1_new__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.PI_Q4_1_new__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.PI_Q5_new__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.PI_Q7_new__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.PI_Q9_new__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.PI_Q10_new__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.PI_Q11_1_new__c}" action="{!c.handleSetRequired}"/>
+    <aura:handler name="change" value="{!v.countyPlanRec.PI_Q13_new__c}" action="{!c.handleSetRequired}"/>
+
+    <aura:attribute name="isQ23Required" type="boolean" default="false"/>
+    <aura:attribute name="isQ24Required" type="boolean" default="false"/>
+    <aura:attribute name="isQ25Required" type="boolean" default="false"/>
+    <aura:attribute name="isQ26Required" type="boolean" default="false"/>
+    <aura:attribute name="isQ11_1Required" type="boolean" default="false"/>
+    <aura:attribute name="isQ11_2Required" type="boolean" default="false"/>
+    <aura:attribute name="isQ11_3Required" type="boolean" default="false"/>
+    <aura:attribute name="isQ11_4Required" type="boolean" default="false"/>
+    <aura:attribute name="isQ3OtherReq" type="boolean" default="false"/>
+    <aura:attribute name="isQ4OtherReq" type="boolean" default="false"/>
+    <aura:attribute name="isQ5OtherReq" type="boolean" default="false"/>
+    <aura:attribute name="isQ7OtherReq" type="boolean" default="false"/>
+    <aura:attribute name="isQ9OtherReq" type="boolean" default="false"/>
+    <aura:attribute name="isQ10OtherReq" type="boolean" default="false"/>
+    <aura:attribute name="isQ11OtherRequired" type="boolean" default="false"/>
+    <aura:attribute name="isQ13OtherRequired" type="boolean" default="false"/>
+
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <!--RY: Commented below section as part of CCCAP-7693 -->
+ <!--   <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Audit</B></h3>
+            <h1 class="slds-section__title">Please complete the following questions related to auditing process.</h1>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:textarea name="input-name" label="1. What is your county's policy/procedure for performing risk-based reviews on case files? (Current county policy/procedure must be submitted to the State Department for review and approval)"
+                                value="{!v.countyPlanRec.AF_Q1__c}" required="true" aura:id="input-field"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q1__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="1.1 List the full name and position title for the individuals responsible within the organization to perform reviews."
+                             value="{!v.countyPlanRec.AF_Q1_1__c}" 
+                             required="true"
+                             aura:id="input-field"
+                             length="1000"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q1_1__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputRadioGroupForPicklist label="1.2 How often are case file reviews performed?" aura:id="input-field"
+                                          value="{!v.countyPlanRec.AF_Q1_2__c}"
+                                          object="T_COUNTY_PLAN__c"
+                                          field="AF_Q1_2__c" required="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q1_2__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="1.3 How many or what percentage are reviewed?"
+                             value="{!v.countyPlanRec.AF_Q1_3__c}" 
+                             required="true" aura:id="input-field"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q1_3__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputRadioGroupForPicklist label="1.4 What method is used for choosing cases to be reviewed?" aura:id="input-field"
+                                          value="{!v.countyPlanRec.AF_Q1_4__c}"
+                                          object="T_COUNTY_PLAN__c"
+                                          field="AF_Q1_4__c" required="true"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q1_4__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="If Random Sampling by Other Method, Please Specify"
+                             value="{!v.countyPlanRec.AF_Q1_4_OTHER__c}" 
+                             required="{!v.countyPlanRec.AF_Q1_4__c=='3'?true:false}"
+                             aura:id="input-field"
+                             length="255"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q1_4_OTHER__c"/>
+        </lightning:layoutItem>
+    </lightning:layout> -->
+    <!--RY: Commented below section as part of CCCAP-7693 -->
+
+ <!--   <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Erroneous Reporting and Fraud Detection</B></h3>
+            <h1 class="slds-section__title">Please complete the following questions related to erroneous reporting and fraud detection.</h1>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:textarea name="input-name" label="2. What is your county's policy/procedure for identifying erroneous reporting by clients? (Current county policy/procedure must be submitted to the State Department for review and approval)"
+                                value="{!v.countyPlanRec.AF_Q2__c}" required="true" aura:id="input-field"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q2__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:textarea name="input-name" label="2.1 What is your county's policy/procedure for identifying erroneous reporting by providers? (Current county policy/procedure must be submitted to the State Department for review and approval)"
+                                value="{!v.countyPlanRec.AF_Q2_1__c}" required="true" aura:id="input-field"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q2_1__c"/>           
+        </lightning:layoutItem>
+
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:textarea name="input-name" label="2.2 If an error is discovered, what does your agency do with the information?"
+                                value="{!v.countyPlanRec.AF_Q2_2__c}" required="true" aura:id="input-field"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q2_2__c"/>           
+        </lightning:layoutItem>
+ 
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:textarea name="input-name" label="3. What is your county's policy/procedure for administering recoveries? (Current county policy/procedure must be submitted to the State Department for review and approval)"
+                                value="{!v.countyPlanRec.AF_Q3__c}" required="true" aura:id="input-field"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q3__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputMultiSelectCombobox label="3.1 What is your county's policy/procedure for collection of unpaid recoveries? (Current county policy/procedure must be submitted to the State Department for review and approval) Select all that apply." aura:id="input-field"
+                                        value="{!v.countyPlanRec.AF_Q3_1__c}"
+                                        object="T_COUNTY_PLAN__c"
+                                        field="AF_Q3_1__c" />
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q3_1__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:input type="text" name="input-name" label="If other method, please specify" aura:id="input-field"
+                             value="{!v.countyPlanRec.AF_Q3_1_OTHER__c}" 
+                             required="{!empty(v.countyPlanRec.AF_Q3_1__c)?true:false}"
+                             length="255"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q3_1_OTHER__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <br></br>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+            <br></br>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:textarea name="input-name" label="4.What is your county's policy/procedure for fraud identification and referral to local authorities? (Current county policy/procedure must be submitted to the State Department for review and approval)"
+                                value="{!v.countyPlanRec.AF_Q4__c}" required="true" aura:id="input-field" length="1000"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q4__c"/>           
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <lightning:textarea name="input-name" label="5. Provide a brief description of how your county ensures separation of duties between CCCAP authorization and provider payment. (If your county has a Universal User, a current policy/procedure must be submitted to the State for review and approval.)"
+                                value="{!v.countyPlanRec.AF_Q5__c}" required="true" aura:id="input-field"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-AF_Q5__c"/>           
+        </lightning:layoutItem>
+    </lightning:layout> -->
+
+    <lightning:layout multipleRows="true">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Program Integrity</B></h3>
+            <h1 class="slds-section__title">Please complete the following questions related to Program Integrity.</h1>
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:textarea name="input-name" label="1. Please identify the staff (titles/positions of staff) responsible for researching potential erroneous client payments."
+                                aura:id="input-field" value="{!v.countyPlanRec.PI_Q3_new__c}" 
+                                required="true" length="255"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q3_new__c"/>
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6"> 
+            <c:inputMultiSelectCombobox label="1.1. Please identify the methods used to identify questionable client information." 
+                                aura:id="input-field" value="{!v.countyPlanRec.PI_Q3_1_new__c}" 
+                                object="T_COUNTY_PLAN__c" field="PI_Q3_1_new__c" required="true"/>  
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q3_1_new__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.isQ3OtherReq}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:textarea name="input-name" label="If other, please specify."
+                                    aura:id="input-field" value="{!v.countyPlanRec.PI_Q3_1_other__c}" 
+                                    required="true" length="255"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q3_1_other__c"/> 
+            </lightning:layoutItem> 
+        </aura:if>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:textarea name="input-name" label="2. Please identify the staff (titles/positions of staff) responsible for researching potential provider erroneous payments."
+                                    aura:id="input-field" value="{!v.countyPlanRec.PI_Q4_new__c}" 
+                                    required="true" length="255"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q4_new__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputMultiSelectCombobox label="2.1 Please identify all of the methods used to identify questionable provider information." 
+                                aura:id="input-field" value="{!v.countyPlanRec.PI_Q4_1_new__c}" 
+                                object="T_COUNTY_PLAN__c" field="PI_Q4_1_new__c" required="true"/>  
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q4_1_new__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.isQ4OtherReq}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:textarea name="input-name" label="If other, please specify."
+                                    aura:id="input-field" value="{!v.countyPlanRec.PI_Q4_1_other__c}" 
+                                    required="true" length="255"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q4_1_other__c"/> 
+            </lightning:layoutItem> 
+        </aura:if>
+        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputMultiSelectCombobox label="3. Please identify how your county ensures questionable information will be reported to other programs as applicable." 
+                                aura:id="input-field" value="{!v.countyPlanRec.PI_Q5_new__c}" 
+                                object="T_COUNTY_PLAN__c" field="PI_Q5_new__c" required="true"/>  
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q5_new__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.isQ5OtherReq}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:textarea name="input-name" label="If other, please specify."
+                                    aura:id="input-field" value="{!v.countyPlanRec.PI_Q5_other__c}" 
+                                    required="true" length="255"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q5_other__c"/> 
+            </lightning:layoutItem> 
+        </aura:if>
+    </lightning:layout>
+
+    <lightning:layout multipleRows="true">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Fraud Prevention</B></h3>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:textarea name="input-name" label="4. Please explain the process your county follows to prevent and identify potential client and provider fraud:"
+                                    aura:id="input-field" value="{!v.countyPlanRec.PI_Q6_new__c}" 
+                                    required="true" length="2000"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q6_new__c"/>  
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputMultiSelectCombobox label="5. The county utilizes the following methods to ensure staff are made aware of the county's fraud prevention policies and procedures to mitigate fraud:" 
+                        aura:id="input-field" value="{!v.countyPlanRec.PI_Q7_new__c}" 
+                        object="T_COUNTY_PLAN__c" field="PI_Q7_new__c" required="true"/>  
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q7_new__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.isQ7OtherReq}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:textarea name="input-name" label="Please describe the other methods your county is using." aura:id="input-field"
+                                 value="{!v.countyPlanRec.PI_Q7_1__c}" 
+                                 required="true"
+                             	 length="2000"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q7_1__c"/>
+        </lightning:layoutItem>
+        </aura:if>                
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputMultiSelectCombobox label="6. How are the county's fraud prevention policies/expectations communicated with CCCAP applicants/recipients?" 
+                        aura:id="input-field" value="{!v.countyPlanRec.PI_Q9_new__c}" 
+                        object="T_COUNTY_PLAN__c" field="PI_Q9_new__c" required="true"/>  
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q9_new__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.isQ9OtherReq}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:textarea name="input-name" label="If other, please specify." aura:id="input-field"
+                                 value="{!v.countyPlanRec.PI_Q9_other__c}" 
+                                 required="true"
+                             	 length="255"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q9_other__c"/>
+        </lightning:layoutItem>
+        </aura:if>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputMultiSelectCombobox label="7. How are the county's fraud prevention policies/expectations communicated with providers?" 
+                        aura:id="input-field" value="{!v.countyPlanRec.PI_Q10_new__c}" 
+                        object="T_COUNTY_PLAN__c" field="PI_Q10_new__c" required="true"/>  
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q10_new__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.isQ10OtherReq}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:textarea name="input-name" label="If other, please specify." aura:id="input-field"
+                                 value="{!v.countyPlanRec.PI_Q10_other__c}" 
+                                 required="true"
+                             	 length="255"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q10_other__c"/>
+        </lightning:layoutItem>
+        </aura:if>
+    </lightning:layout>
+    <lightning:layout multipleRows="true">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Fraud Detection</B></h3>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist type="Checkbox" label="8. The county utilizes the following methods to identify potential fraud:" 
+                                            aura:id="input-field"
+                                            value="{!v.countyPlanRec.PI_Q11__c}" 
+                                            object="T_COUNTY_PLAN__c" 
+                                            field="PI_Q11__c"
+                             				required="true"
+                             				class="slds-text-body_small"/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q11__c"/>
+        </lightning:layoutItem>
+        
+        <aura:if isTrue="{!v.isQ11_2Required}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:textarea name="input-name" label="Please identify the titles of the staff that conduct the investigation:" aura:id="input-field"
+                                     value="{!v.countyPlanRec.PI_Q11_2__c}" 
+                                     required="{!v.isQ11_2Required}"
+                                     length="1000"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q11_2__c"/>
+            </lightning:layoutItem>
+        </aura:if>        
+        <aura:if isTrue="{!v.isQ11_1Required}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <c:inputMultiSelectCombobox label=" Please identify the systems used as part of the review:" 
+                        aura:id="input-field" value="{!v.countyPlanRec.PI_Q11_1_new__c}" 
+                        object="T_COUNTY_PLAN__c" field="PI_Q11_1_new__c" required="true"/>  
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q11_1_new__c"/>
+            </lightning:layoutItem>
+        </aura:if>
+        <aura:if isTrue="{!v.isQ11OtherRequired}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:textarea name="input-name" label="If other, please specify." aura:id="input-field"
+                                     value="{!v.countyPlanRec.PI_Q11_1_other__c}" 
+                                     required="true" length="255"/>    
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q11_1_other__c"/>
+            </lightning:layoutItem>
+        </aura:if>  
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <lightning:textarea name="input-name" label="9. Please identify how your county coordinates investigations for CCCAP with other public assistance programs (Adult Financial, Colorado Works, SNAP) to ensure that CCCAP-relevant information is obtained and how the county ensures that CCCAP is included in applicable IPV/fraud investigations:"
+                                 aura:id="input-field"
+                                 value="{!v.countyPlanRec.PI_Q12__c}" 
+                                 required="true"
+                             	 length="1000"/>    
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q12__c"/>
+        </lightning:layoutItem>
+
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputMultiSelectCombobox label="10. Please describe the process your county uses to monitor provider attendance records and payments. This includes regular reviews/monitoring and random or targeted reviews of provider records suspected of submitting inaccurate information:" 
+                        aura:id="input-field" value="{!v.countyPlanRec.PI_Q13_new__c}" 
+                        object="T_COUNTY_PLAN__c" field="PI_Q13_new__c" required="true"/>  
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q13_new__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.isQ13OtherRequired}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:textarea name="input-name" label="If other, please specify." aura:id="input-field"
+                                    value="{!v.countyPlanRec.PI_Q13_other__c}" 
+                                    required="true"
+                                    length="255"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q13_other__c"/>
+            </lightning:layoutItem>
+        </aura:if>
+    </lightning:layout>
+
+    <lightning:layout multipleRows="true">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title"><B>Determining Intentional Program Violations and/or Fraud</B></h3>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputPicklist label="11. Please identify who is responsible for reviewing the allegation and investigation details to authorize the county to pursue an IPV/fraud in your county:" 
+                                            aura:id="input-field"
+                                            value="{!v.countyPlanRec.PI_Q14__c}" 
+                                            object="T_COUNTY_PLAN__c" 
+                                            field="PI_Q14__c"
+                                            required="true"
+                                            showNone="true" 
+                             				inputPickListCustomWarningMsg="Complete this field."/>
+            <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q14__c"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.countyPlanRec.PI_Q14__c=='4'}">
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="text" name="input-name" label="Please identity the title of the position" aura:id="input-field"
+                                    value="{!v.countyPlanRec.PI_Q14_1__c}" 
+                                    required="{!v.countyPlanRec.PI_Q14__c=='4'?true:false}"
+                                    length="255"/>
+                <c:fieldLevelMessage aura:id="T_COUNTY_PLAN__c-PI_Q14_1__c"/>
+            </lightning:layoutItem>
+        </aura:if>
+    </lightning:layout>    
+</aura:component>

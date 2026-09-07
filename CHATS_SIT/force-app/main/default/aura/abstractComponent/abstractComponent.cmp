@@ -1,0 +1,12 @@
+<aura:component extensible="true" controller="GenericDataSaverApxCtrl" extends="c:genericUtilities">
+    <aura:attribute name="pageMessages" type="List"/>
+    <aura:attribute name="messageType" type="String"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:attribute name="missingPageMessages" type="List"/>
+    <aura:attribute name="isCurrentPageValid" type="Boolean" default="true"/>
+    <aura:attribute name="finishLocation" type="String"/>
+    <aura:attribute name='detail' type='Aura.Component[]' default=''/>
+    <aura:handler name="change" value="{!v.isCurrentPageValid}" action="{!c.doChangeCurrentPageValid}"/>
+    {!v.body}
+    <!-- Sample Component Msg -->
+</aura:component>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>dte_verif_ssn__c</fullName>
+    <description>dte_verif_ssn</description>
+    <externalDeveloperName>dte_verif_ssn</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>SSN verification date</label>
+    <required>false</required>
+    <type>Date</type>
+</CustomField>

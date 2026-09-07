@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Case_Reopen_Reason__c</fullName>
+    <label>Case Reopen Reason</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>true</sorted>
+            <value>
+                <fullName>WER</fullName>
+                <default>false</default>
+                <label>Agency Error</label>
+            </value>
+            <value>
+                <fullName>APL</fullName>
+                <default>false</default>
+                <label>Appeal</label>
+            </value>
+            <value>
+                <fullName>VER</fullName>
+                <default>false</default>
+                <label>Application Verification Returned</label>
+            </value>
+            <value>
+                <fullName>CWR</fullName>
+                <default>false</default>
+                <label>Child Welfare Referral</label>
+            </value>
+            <value>
+                <fullName>TAN</fullName>
+                <default>false</default>
+                <label>Colorado Works Referral</label>
+            </value>
+            <value>
+                <fullName>TFR</fullName>
+                <default>false</default>
+                <label>County Transfer at Redetermination</label>
+            </value>
+            <value>
+                <fullName>RAP</fullName>
+                <default>false</default>
+                <label>Reapply</label>
+            </value>
+            <value>
+                <fullName>AAR</fullName>
+                <default>false</default>
+                <label>Redetermination &amp; Verification Returned</label>
+            </value>
+            <value>
+                <fullName>RP</fullName>
+                <default>false</default>
+                <label>Reinstatement Period</label>
+            </value>
+            <value>
+                <fullName>WEP</fullName>
+                <default>false</default>
+                <label>Withdrawal within 12 month Eligibility Period</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

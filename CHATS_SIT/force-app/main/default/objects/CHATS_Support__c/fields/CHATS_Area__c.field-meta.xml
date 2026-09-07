@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CHATS_Area__c</fullName>
+    <inlineHelpText>Choose the area in CAPS you are experiencing the issue with, or have a request for, etc.</inlineHelpText>
+    <label>CHATS/Policy Area</label>
+    <required>false</required>
+    <trackFeedHistory>true</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>true</sorted>
+            <value>
+                <fullName>Application Process Queue</fullName>
+                <default>false</default>
+                <isActive>false</isActive>
+                <label>Application Process Queue</label>
+            </value>
+            <value>
+                <fullName>ATS</fullName>
+                <default>false</default>
+                <label>ATS</label>
+            </value>
+            <value>
+                <fullName>Authorization &amp; Parent Fee</fullName>
+                <default>false</default>
+                <label>Authorization &amp; Parent Fee</label>
+            </value>
+            <value>
+                <fullName>Case</fullName>
+                <default>false</default>
+                <label>Case</label>
+            </value>
+            <value>
+                <fullName>CHATS Canned Reports</fullName>
+                <default>false</default>
+                <label>CHATS Canned Reports</label>
+            </value>
+            <value>
+                <fullName>Colorado Works Referral</fullName>
+                <default>false</default>
+                <label>Colorado Works Referral</label>
+            </value>
+            <value>
+                <fullName>Correspondence</fullName>
+                <default>false</default>
+                <label>Correspondence</label>
+            </value>
+            <value>
+                <fullName>County</fullName>
+                <default>false</default>
+                <label>County</label>
+            </value>
+            <value>
+                <fullName>County Level Case Reviews</fullName>
+                <default>false</default>
+                <label>County Level Case Reviews</label>
+            </value>
+            <value>
+                <fullName>County Plan</fullName>
+                <default>false</default>
+                <label>County Plan</label>
+            </value>
+            <value>
+                <fullName>County Rate Plan</fullName>
+                <default>false</default>
+                <label>County Rate Plan</label>
+            </value>
+            <value>
+                <fullName>Dashboards &amp; Reports</fullName>
+                <default>false</default>
+                <label>Dashboards &amp; Reports</label>
+            </value>
+            <value>
+                <fullName>Eligibility</fullName>
+                <default>false</default>
+                <label>Eligibility</label>
+            </value>
+            <value>
+                <fullName>Fiscal Agreement for Licensed</fullName>
+                <default>false</default>
+                <label>Fiscal Agreement for Licensed</label>
+            </value>
+            <value>
+                <fullName>Fiscal Agreement for QE</fullName>
+                <default>false</default>
+                <label>Fiscal Agreement for QE</label>
+            </value>
+            <value>
+                <fullName>Fraud/IPV</fullName>
+                <default>false</default>
+                <label>Fraud/IPV</label>
+            </value>
+            <value>
+                <fullName>Individual</fullName>
+                <default>false</default>
+                <label>Individual</label>
+            </value>
+            <value>
+                <fullName>Manual Claim</fullName>
+                <default>false</default>
+                <label>Manual Claim</label>
+            </value>
+            <value>
+                <fullName>Monitoring Reports</fullName>
+                <default>false</default>
+                <label>Monitoring Reports</label>
+            </value>
+            <value>
+                <fullName>Payment</fullName>
+                <default>false</default>
+                <label>Payment</label>
+            </value>
+            <value>
+                <fullName>Adjustment</fullName>
+                <default>false</default>
+                <label>Payment Adjustment</label>
+            </value>
+            <value>
+                <fullName>PEAK</fullName>
+                <default>false</default>
+                <label>PEAK</label>
+            </value>
+            <value>
+                <fullName>Provider</fullName>
+                <default>false</default>
+                <label>Provider</label>
+            </value>
+            <value>
+                <fullName>Quality Assurance Case Reviews</fullName>
+                <default>false</default>
+                <label>Quality Assurance Case Reviews</label>
+            </value>
+            <value>
+                <fullName>Recovery</fullName>
+                <default>false</default>
+                <label>Recovery</label>
+            </value>
+            <value>
+                <fullName>Security</fullName>
+                <default>false</default>
+                <label>Security</label>
+            </value>
+            <value>
+                <fullName>SIDMOD</fullName>
+                <default>false</default>
+                <label>SIDMOD</label>
+            </value>
+            <value>
+                <fullName>Sub Payment</fullName>
+                <default>false</default>
+                <isActive>false</isActive>
+                <label>Sub Payment</label>
+            </value>
+            <value>
+                <fullName>Task</fullName>
+                <default>false</default>
+                <label>Task</label>
+            </value>
+            <value>
+                <fullName>Wait list</fullName>
+                <default>false</default>
+                <label>Wait list</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

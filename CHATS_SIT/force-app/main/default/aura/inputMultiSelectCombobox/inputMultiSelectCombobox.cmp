@@ -1,0 +1,108 @@
+<!--  
+Description :	New generic/re-usable component to implement multi-select picklist with pill display feature
+Author      :	Rishav Maji
+-->
+<aura:component controller="APXInputPicklistCtrl">
+    
+    <!-- Mandetory attributes that needs to be set while component calling (either first two or last two) -->
+    <aura:attribute name="object" type="String" required="true" description="API Name of the Object"/>
+    <aura:attribute name="field" type="String" required="true" description="API Name of the field"/>
+    <!-- OR -->
+    <aura:attribute name="alreadyHasValues" type="Boolean" default="false" description="if true, picklist options will be shown from 'options' attribute"/>
+    <aura:attribute name="options" type="List" default="[]" description="These options will be used if 'alreadyHasValues' = true"/>
+    
+    <!-- Optional UI config attributes that can be set while component calling -->
+    <aura:attribute name="name" type="String" default="" description="Can be used to identify specific component if aura:id is being used somewhere else"/>
+    <aura:attribute name="label" type="String" default="" description="Label will be displayed above input box"/>
+    <aura:attribute name="showNone" type="Boolean" default="true" description="If TRUE, adds a '-- None --' value in picklist"/>
+    <aura:attribute name="showPill" type="Boolean" default="true" description="If TRUE, shows selected options as pill below input field"/>
+    <aura:attribute name="errorMessage" type="String" default="" description="Red error text to show below field"/>
+    <aura:attribute name="placeholder" type="String" default="-- None --" description="Placeholder text when no value selected"/>
+    <aura:attribute name="minChar" type="Integer" default="1" description="Minimum character to type for search"/>
+    <aura:attribute name="disabled" type="Boolean" default="false" description="Disable the combobox"/>
+    <aura:attribute name="required" type="Boolean" default="false" description="Specifies whether the field is mandatory or not"/>
+    <aura:attribute name="displayCount" type="Integer" default="6" description="Number of options to display at a time"/>
+    <aura:attribute name="openUpward" type="Boolean" default="false" description="Options will show above input field insted of below"/>
+    <aura:attribute name="width" type="String" default="100%" description="Overrides field width in UI, supported input format: px, rem, %"/>
+    <aura:attribute name="doLabelMatch" type="Boolean" default="false" description="Specific logic for adjustmentFlow_AdjustmentInformation.cmp"/>
+    
+    <!-- Attributes that will be returned to parent component -->
+    <aura:attribute name="value" type="String" default="" description="Selected values in a string seperated by ';' can be used in direct DML"/>
+    <aura:attribute name="valueList" type="List" default="" description="Selected values in list/array, can be used by 'IN' clause in SOQL query"/>
+    <aura:attribute name="mustValues" type="List" description="Predefaulted mandatory values"/>
+    <aura:attribute name="hiddenValues" type="List" description="values to stay hiddden"/>
+    
+    <!-- Internal Use Attributes -->
+    <aura:attribute name="searchString" type="String" access="private" default="" description="String to search"/>
+    <aura:attribute name="message" type="String" access="private" default=""/>
+    <aura:attribute name="placeholderHelpText" type="String" default="Type to search..."/>
+    <aura:attribute name="placeholderInitialText" type="String" default="Type to search..."/>
+    <aura:attribute name="validity" type="Object"/>
+    <aura:attribute name="onChange" type="Aura.Action" default="{!c.doNothing}"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:method name="showHelpMessageIfInvalid" action="{!c.highlightError}" access="PUBLIC"/>
+    <aura:method name="resetOptions" action="{!c.resetOptions}" access="PUBLIC"/>
+    
+    <!-- Component Markup -->
+    <div style="{!'width:' + v.width}">
+        <!-- Field label section -->
+        <aura:if isTrue="{!!empty(v.label)}">
+            <label class="slds-form-element__label">
+                <aura:if isTrue="{!v.required}">
+                    <label class='required' style="font-weight: normal;">*</label>   
+                </aura:if>
+                {!v.label}
+            </label>
+        </aura:if>
+        
+        <!-- Picklist dropdown and input section -->
+        <div class="slds-combobox_container">
+            <div class="slds-combobox slds-dropdown-trigger slds-dropdown-trigger_click slds-is-open" aura:id="resultsDiv" aria-expanded="true" aria-haspopup="listbox" role="combobox">
+                
+                <!-- Input Search -->
+                <div class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right" role="none">
+                    <lightning:icon class="slds-input__icon" iconName="utility:down" size="x-small" />
+                    <lightning:input disabled="{!v.disabled}" aura:id="inputMultiSelectCombobox" class="inputBox" 
+                                     placeholder="{!v.placeholder}" onblur="{!c.blurEvent}" onclick="{!c.showOptions}" 
+                                     onkeyup="{!c.filterOptions}" value="{!v.searchString}" autoComplete="off" 
+                                     variant="label-hidden" id="combobox-id-1" />
+                </div>
+                
+                <!-- Dropdown List -->
+                <div id="listbox-id-1" class="{!'slds-dropdown slds-dropdown_length-5 slds-dropdown_fluid' + if(v.openUpward,' slds-dropdown_bottom','')}" style="{!'max-height:' + (v.displayCount * 2.05) + 'rem'}">
+                    <ul class="slds-listbox slds-listbox_vertical recordListBox" role="presentation">
+                        <aura:if isTrue="{!empty(v.message)}" >
+                            <!-- To display Drop down List -->
+                            <aura:iteration items="{!v.options}" var="option" >
+                                <div class="{!if(option.required,' no_pointer slds-listbox__option ',' slds-listbox__option ')}" aria-disabled="{!option.required}">
+                                    <li  id="{!option.value}" class="{!'slds-listbox__item eachItem' + if(option.isVisible,'',' slds-hide')}" onmousedown="{!c.selectItem}">
+                                        <lightning:icon class="{!if(option.selected,'','slds-hide')}" iconName="utility:check" size="x-small" alternativeText="icon" />
+                                        <span class="slds-media slds-listbox__option_entity verticalAlign slds-truncate" title="{!option.label}">{!option.label}</span>
+                                    </li>
+                                </div>
+                            </aura:iteration>
+                            <!-- Error message when no result -->
+                            <aura:set attribute="else">
+                                <li class="slds-listbox__item">
+                                    <span class="slds-media slds-listbox__option_entity verticalAlign slds-truncate">{!v.message}</span>
+                                </li>
+                            </aura:set>
+                        </aura:if>
+                    </ul>
+                </div>
+                
+            </div>
+        </div>
+        
+        <!-- Selected option Pill display section -->
+        <aura:if isTrue="{!v.showPill}">
+            <aura:iteration items="{!v.options}" var="option">
+                <aura:if isTrue="{!option.selected}">
+                    <lightning:pill class="{!option.required?'slds-m-around_xx-small removeCross ':'slds-m-around_xx-small'}" name="{!option.value}" label="{!option.label}" onremove="{!c.removePill}"/>
+                </aura:if>
+            </aura:iteration>
+        </aura:if>
+    </div>
+    
+</aura:component>

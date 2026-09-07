@@ -1,0 +1,176 @@
+<template>
+
+    <!-- ============================================================
+         Spinner Overlay — shown while async operations are in flight
+         ============================================================ -->
+    <template if:true={showSpinner}>
+        <div class="slds-spinner_container">
+            <lightning-spinner alternative-text="Loading, please wait" size="medium" variant="brand">
+            </lightning-spinner>
+        </div>
+    </template>
+
+    <!-- ============================================================
+         Main Content — rendered only after init data is loaded
+         ============================================================ -->
+    <template if:true={initLoaded}>
+        <lightning-card icon-name="custom:custom67" role="main" aria-label="Adjustment Flow">
+
+            <!-- ── Card Title ──────────────────────────────────────── -->
+            <div slot="title">
+                <div class="slds-grid">
+                    <div class="slds-col slds-has-flexi-truncate">
+                        <div class="slds-media slds-no-space slds-grow">
+                            <div class="slds-media__body">
+                                <h1 id="adjustment-flow-title"
+                                    class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate"
+                                    title={currentTabInfo}>
+                                    {currentTabTitle}
+                                </h1>
+                                <p class="slds-text-title">{currentTabInfo}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Header Navigation Buttons (actions slot) ───────── -->
+            <div slot="actions" role="navigation" aria-label="Primary navigation">
+                <c-navigation-component_lwc total-tabs="2" current-tab-number={currentTabNumber}
+                    finish-label={finishLabel} cancel-label={cancelLabel} previous-label={previousLabel}
+                    show-cancel={showCancel} show-custom-button={showAddAdjDetail} custom-button-label={addAdjDetailLabel}
+                    custom-button-variant="brand" show-custom-button2={showSaveAsDraft}
+                    custom-button-label2={saveAsDraftLabel} do-next-enabled={doNextEnabled} onnext={handleNext}
+                    onprevious={handlePrevious} onfinish={handleFinish} oncancel={handleCancel}
+                    oncustombutton={handleCreateAdjustDetails} oncustombutton2={handleSaveAsDraft}>
+                </c-navigation-component_lwc>
+            </div>
+
+            <!-- ── Adjustment Progress Path ───────────────────────── -->
+            <div class="slds-m-left_large slds-m-right_large slds-m-top_large" role="region"
+                aria-label="Adjustment Progress">
+                <c-adjustment-path_lwc current-tab-number={currentTabNumber} tab-names={tabNames}>
+                </c-adjustment-path_lwc>
+            </div>
+
+            <!-- ── Page Messages (errors / success) ──────────────── -->
+            <div class="page-messages-container" role="region" aria-label="Page messages" aria-live="polite"
+                aria-atomic="true">
+                <c-page-messages_lwc page-messages={pageMessages} message-type={messageType}>
+                </c-page-messages_lwc>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════
+                 TAB 1 — Adjustment Information
+                 Shared by both Sub-Payment and Non Sub-Payment flows
+                 Two-way binding handled via event handlers
+                 ══════════════════════════════════════════════════════ -->
+            <template if:true={isTab1}>
+                <div class="tab-content" role="tabpanel" aria-label="Adjustment Information"
+                    aria-labelledby="adjustment-flow-title">
+                    <c-adjustment-flow_-adjustment-information_lwc record-id={recordId}
+                        responsible-parties={responsibleParties} adjustment={adjustment} address={address}
+                        adjustment-reason-options={adjustmentReasonOptions}
+                        responsible-party-list={responsiblePartyList}
+                        responsible-parties-address-list={responsiblePartiesAddressList}
+                        responsible-parties-address-list-clone={responsiblePartiesAddressListClone}
+                        is-editable-address={isEditableAddress} page-messages={pageMessages} message-type={messageType}
+                        record-error={recordError} page-mode={pageMode} onadjustmentchange={handleAdjustmentChange}
+                        onaddresschange={handleAddressChange}
+                        onresponsiblepartylistchange={handleResponsiblePartyListChange}
+                        onselect={handlePicklistOptionsLoaded}>
+                    </c-adjustment-flow_-adjustment-information_lwc>
+                </div>
+            </template>
+
+            <!-- ══════════════════════════════════════════════════════
+                 TAB 2 — Sub-Payment Flow: Adjustment Summary
+                 Two-way binding handled via event handlers
+                 ══════════════════════════════════════════════════════ -->
+            <template if:true={isTab2SubPayment}>
+                <div class="tab-content" role="tabpanel" aria-label="Adjustment Summary - Sub-Payment"
+                    aria-labelledby="adjustment-flow-title">
+                    <c-adjustment-flow_-adjustment-summary_lwc record-id={recordId} adjustment-obj={adjustment}
+                        adjustment-dtl-warp={adjustmentDtlWarp} individual-obj={individualObj}
+                        adjustment-entry-edit-mode={adjustmentEntryEditMode} current-tab-number={currentTabNumber}
+                        rate-type-options={rateTypeOptions} rate-type-options-map={rateTypeOptionsMap}
+                        rate-type-options-care-date-map={rateTypeOptionsCareDateMap}
+                        care-unit-type-options-map={careUnitTypeOptionsMap} adjust-detail-map={adjustDetailMap}
+                        child-current-utilization={childCurrentUtilization} disabled-a-r-t-fees={disabledARTFees}
+                        page-mode={pageMode} onadjustmentobjchange={handleAdjustmentObjChange}
+                        onadjustmentdetailsummary={handleAdjustmentDetailSummary}
+                        oncreateadjustdetails={handleCreateAdjustDetails}
+                        onadjustdetailmapchange={handleAdjustDetailMapChange}>
+                    </c-adjustment-flow_-adjustment-summary_lwc>
+                </div>
+            </template>
+
+            <!-- ══════════════════════════════════════════════════════
+                 TAB 2 — Non Sub-Payment Flow (PLACEHOLDER)
+                 TODO: Implement Non Sub-Payment summary component
+                       when the Non Sub-Payment LWC migration is complete.
+                 ══════════════════════════════════════════════════════ -->
+            <template if:true={isTab2NonSubPayment}>
+                <div class="tab-content slds-p-around_medium" role="tabpanel"
+                    aria-label="Adjustment Summary - Non Sub-Payment" aria-labelledby="adjustment-flow-title">
+                    <!-- NON SUB-PAYMENT FLOW — PLACEHOLDER FOR FUTURE IMPLEMENTATION -->
+                    <div class="slds-box slds-theme_shade slds-text-align_center" role="status">
+                        <lightning-icon icon-name="utility:info" size="large" class="slds-m-bottom_small"
+                            aria-hidden="true"></lightning-icon>
+                        <h2 class="slds-text-heading_medium slds-m-bottom_small">Non Sub-Payment Flow</h2>
+                        <p class="slds-text-body_regular">
+                            This flow is not yet implemented. Please use the Sub-Payment flow for now.
+                        </p>
+                    </div>
+                </div>
+            </template>
+
+            <!-- ── Footer Navigation Buttons ─────────────────────── -->
+            <div class="slds-grid slds-grid_align-end slds-m-right_medium slds-m-top_medium" role="navigation"
+                aria-label="Footer navigation">
+                <c-navigation-component_lwc total-tabs="2" current-tab-number={currentTabNumber}
+                    finish-label={finishLabel} cancel-label={cancelLabel} previous-label={previousLabel}
+                    show-cancel={showCancel} show-custom-button={showAddAdjDetail} custom-button-label={addAdjDetailLabel}
+                    custom-button-variant="brand" show-custom-button2={showSaveAsDraft}
+                    custom-button-label2={saveAsDraftLabel} do-next-enabled={doNextEnabled} onnext={handleNext}
+                    onprevious={handlePrevious} onfinish={handleFinish} oncancel={handleCancel}
+                    oncustombutton={handleCreateAdjustDetails} oncustombutton2={handleSaveAsDraft}>
+                </c-navigation-component_lwc>
+            </div>
+
+        </lightning-card>
+    </template>
+
+    <!-- ============================================================
+         Confirmation Modals
+         Rendered conditionally; each dispatches 'yes' or 'no' events
+         ============================================================ -->
+
+
+
+    <!-- Finish confirmation — Sub-Payment flow (Tab 2) -->
+    <template if:true={showFinishModal}>
+        <c-confirmation-modal_-l-w-c confirm-msg={finishMsg} onyes={handleConfirmFinish} onno={handleCloseFinishModal}>
+        </c-confirmation-modal_-l-w-c>
+    </template>
+
+    <!-- Save as Draft confirmation — Sub-Payment flow (Tab 2) -->
+    <template if:true={showSaveAsDraftModal}>
+        <c-confirmation-modal_-l-w-c confirm-msg={saveAsDraftMsg} onyes={handleConfirmSaveAsDraft}
+            onno={handleCloseSaveAsDraftModal}>
+        </c-confirmation-modal_-l-w-c>
+    </template>
+    <!-- Cancel confirmation — Tab 1 (both flows) -->
+    <template if:true={showCancelModal}>
+        <c-confirmation-modal_-l-w-c confirm-msg={cancelAdjustment} onyes={handleConfirmCancel}
+            onno={handleCloseCancelModal}>
+        </c-confirmation-modal_-l-w-c>
+    </template>
+    <!-- Adjustment Note confirmation — shown when no note exists -->
+    <template if:true={showAdjNoteModal}>
+        <c-confirmation-modal_-l-w-c confirm-msg={adjNoteMsg} onyes={handleConfirmAdjNote}
+            onno={handleCloseAdjNoteModal}>
+        </c-confirmation-modal_-l-w-c>
+    </template>
+
+</template>

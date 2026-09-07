@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>CEN</fullName>
+        <default>false</default>
+        <label>Center</label>
+    </customValue>
+    <customValue>
+        <fullName>HOM</fullName>
+        <default>false</default>
+        <label>Home</label>
+    </customValue>
+    <customValue>
+        <fullName>EXE</fullName>
+        <default>false</default>
+        <label>Exempt</label>
+    </customValue>
+    <masterLabel>RT_FAC_TYPE</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <name>Create_Task_T208_on_Authorization</name>
+        <label>Create Task T208 on Authorization</label>
+        <locationX>50</locationX>
+        <locationY>455</locationY>
+        <actionName>NewTask</actionName>
+        <actionType>quickAction</actionType>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>OwnerId</name>
+            <value>
+                <elementReference>$Label.qe_provider_task_asignee</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>Description</name>
+            <value>
+                <elementReference>TaskDescription</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>WhatId</name>
+            <value>
+                <elementReference>$Record.Id</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>Status</name>
+            <value>
+                <stringValue>Not Started</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>Subject</name>
+            <value>
+                <stringValue>T208 - Provider&apos;s Location/Relation has been changed on the authorization</stringValue>
+            </value>
+        </inputParameters>
+        <nameSegment>NewTask</nameSegment>
+    </actionCalls>
+    <apiVersion>57.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <decisions>
+        <name>Quality_exempt_provider_and_change_of_location</name>
+        <label>Quality exempt provider and change of location</label>
+        <locationX>182</locationX>
+        <locationY>335</locationY>
+        <defaultConnectorLabel>Default Outcome</defaultConnectorLabel>
+        <rules>
+            <name>True</name>
+            <conditionLogic>1 AND 2 AND 3</conditionLogic>
+            <conditions>
+                <leftValueReference>$Record.IDN_PROVR__r.CDE_TYPE_PROVR__c</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue>
+                    <stringValue>EFACH</stringValue>
+                </rightValue>
+            </conditions>
+            <conditions>
+                <leftValueReference>$Record.CDE_REL_PROVR__c</leftValueReference>
+                <operator>IsChanged</operator>
+                <rightValue>
+                    <booleanValue>true</booleanValue>
+                </rightValue>
+            </conditions>
+            <conditions>
+                <leftValueReference>$Record.CDE_REL_PROVR__c</leftValueReference>
+                <operator>IsNull</operator>
+                <rightValue>
+                    <booleanValue>false</booleanValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>Create_Task_T208_on_Authorization</targetReference>
+            </connector>
+            <label>True</label>
+        </rules>
+    </decisions>
+    <environments>Default</environments>
+    <formulas>
+        <name>TaskDescription</name>
+        <dataType>String</dataType>
+        <expression>&quot;The authorization &quot; + {!$Record.Name} + &quot; has been changed from &quot;+ CASE(TEXT(PRIORVALUE({!$Record.CDE_REL_PROVR__c})),
+&quot;1&quot;, &quot;Out of home non-relative&quot;,
+&quot;2&quot;, &quot;Out of home relative&quot;,
+&quot;3&quot;, &quot;In home non-relative&quot;, 
+&quot;4&quot;, &quot;In home relative&quot;, 
+&quot;5&quot;, &quot;None&quot;,
+&quot;UnKnown&quot;)  + &quot; to &quot; + CASE(TEXT({!$Record.CDE_REL_PROVR__c}),
+&quot;1&quot;, &quot;Out of home non-relative&quot;,
+&quot;2&quot;, &quot;Out of home relative&quot;,
+&quot;3&quot;, &quot;In home non-relative&quot;, 
+&quot;4&quot;, &quot;In home relative&quot;, 
+&quot;5&quot;, &quot;None&quot;,
+&quot;UnKnown&quot;) + &quot;. Please review the authorization and take necessary action with the client/provider.&quot;</expression>
+    </formulas>
+    <interviewLabel>Authorization Process Flow {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Authorization Process Flow</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value>
+            <stringValue>AUTO_LAYOUT_CANVAS</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>OriginBuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>56</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Quality_exempt_provider_and_change_of_location</targetReference>
+        </connector>
+        <object>T_AUTH__c</object>
+        <recordTriggerType>CreateAndUpdate</recordTriggerType>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Active</status>
+</Flow>

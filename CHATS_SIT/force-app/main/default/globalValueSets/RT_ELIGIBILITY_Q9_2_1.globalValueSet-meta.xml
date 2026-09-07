@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>4</fullName>
+        <default>false</default>
+        <label>Children of teen parents</label>
+    </customValue>
+    <customValue>
+        <fullName>6</fullName>
+        <default>false</default>
+        <label>Children who are in foster care</label>
+    </customValue>
+    <customValue>
+        <fullName>11</fullName>
+        <default>false</default>
+        <label>Families experiencing homelessness (Federal)</label>
+    </customValue>
+    <customValue>
+        <fullName>1</fullName>
+        <default>false</default>
+        <label>Families under 130% of the Federal Poverty Guidelines (Federal)</label>
+    </customValue>
+    <customValue>
+        <fullName>7</fullName>
+        <default>false</default>
+        <label>Families with at least one child who has additional care needs (Federal)</label>
+    </customValue>
+    <customValue>
+        <fullName>13</fullName>
+        <default>false</default>
+        <label>TANF Cases</label>
+    </customValue>
+    <customValue>
+        <fullName>12</fullName>
+        <default>false</default>
+        <label>Other</label>
+    </customValue>
+    <customValue>
+        <fullName>3</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Families who are transitioning from Colorado Works/TANF to Low Income</label>
+    </customValue>
+    <customValue>
+        <fullName>5</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Families who are homeless</label>
+    </customValue>
+    <customValue>
+        <fullName>8</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Teen Parents</label>
+    </customValue>
+    <customValue>
+        <fullName>10</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Foster children</label>
+    </customValue>
+    <customValue>
+        <fullName>9</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Transitional TANF families</label>
+    </customValue>
+    <customValue>
+        <fullName>2</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Families who receive Colorado Works/TANF</label>
+    </customValue>
+    <description>RT_ELIGIBILITY_Q9_2_1</description>
+    <masterLabel>RT_ELIGIBILITY_Q9_2_1</masterLabel>
+    <sorted>true</sorted>
+</GlobalValueSet>

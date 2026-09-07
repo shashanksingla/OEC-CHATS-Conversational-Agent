@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Require_RsltionRsn_if_RsltionDate_NtBlnc</fullName>
+    <active>true</active>
+    <description>Require Resolution Reason if Delinquency Resolution Date is not blank</description>
+    <errorConditionFormula>AND( NOT( ISBLANK(DTE_RESOLN_DELINQC__c) ),
+    ISBLANK( TEXT(CDE_REASON_RESOLN__c) )  
+)</errorConditionFormula>
+    <errorDisplayField>CDE_REASON_RESOLN__c</errorDisplayField>
+    <errorMessage>Require Resolution Reason if Delinquency Resolution Date is not blank</errorMessage>
+</ValidationRule>

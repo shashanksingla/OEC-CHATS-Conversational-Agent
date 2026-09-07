@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IDN_DETAIL_ADJMT_NON__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>Non Adjustment Detail</description>
+    <label>Non Adjustment Detail</label>
+    <referenceTo>T_NON_ADJMT_DETAIL__c</referenceTo>
+    <relationshipLabel>Non Adjustment details</relationshipLabel>
+    <relationshipName>Non_Adjustment_details</relationshipName>
+    <required>false</required>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

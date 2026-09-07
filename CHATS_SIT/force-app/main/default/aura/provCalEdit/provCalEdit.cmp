@@ -1,0 +1,63 @@
+<aura:component >
+    <aura:attribute name="map" type="map"/>
+    <aura:attribute name="day" type="Object"/>
+    <aura:attribute name="key" type="String"/>
+	<aura:attribute name="provClosList" type="object" />
+    <aura:attribute name="provClosListClone" type="object" />
+    <aura:attribute name="dayInCalendar" type="String"/>
+    <aura:attribute name="isDirty" type="String"/>
+    <aura:attribute name="isPastDate" type="Boolean"/>
+    <aura:attribute name="isCheckReadonly" type="boolean" default="false"/>
+    <aura:attribute name="updatedSuccessfully" type="String" />
+    <aura:attribute name="commVal" type="String"/>
+    <aura:attribute name="cbValue" type="Boolean" default="false"/>
+    <aura:attribute name="isReadOnly" type="Boolean" />
+    <aura:attribute name="updatedList" type="List" default="[]" />
+    <aura:attribute name="provClosure" type="List" default="[]"/>
+    <aura:attribute name="changedList" type="List" default="[]" />
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="ifError" type="String" />
+    <aura:attribute name="faStartDate" type="Date" />
+    <aura:attribute name="faEndDate" type="Date" />
+    <aura:attribute name="countyHolidays" type="List" default="[]" />
+    <!--<aura:handler event="c:updateAuthEncmbrEvent"
+                  action="{!c.updateAuthEncmbr}"/>-->
+    <aura:method name="updateMe" action="{!c.updateAuthEncmbr}"/>
+    
+    <aura:attribute name="recordError" type="String"/>
+    <div class="{!v.updatedSuccessfully == 'true'?'day successCell' :
+                  v.updatedSuccessfully == 'false'?'dayFailure errorCell':
+                  v.isDirty == 'true'?'day dirtyCell':'day'}">
+        <aura:if isTrue="{!!empty(v.dayInCalendar)}">
+        <lightning:layout multipleRows="true" verticalAlign="space" >
+            <lightning:layoutItem flexibility="auto" size="6">
+                <h2 class="slds-section__title">{!v.dayInCalendar}</h2>
+            </lightning:layoutItem>
+            <!-- Display Lightning Data Service errors, if any -->
+            <lightning:layoutItem flexibility="auto" size="9" class="slds-m-top_x-small">                
+               
+                  <lightning:input aura:id="input-field" type="checkbox" 
+                                   label="Care Not Offered" 
+                                   onchange="{!c.markItDirty}"
+                                   disabled="{!v.isCheckReadonly}" 
+                                   checked="{!v.cbValue}"/>
+               
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="9" class="slds-m-top_small">
+            <div class="slds-m-left_x-large">Comment</div>  
+               <lightning:input aura:id="input-field" variant="label-hidden" onchange="{!c.markItDirty}"
+                                   disabled="{!v.isCheckReadonly}" value="{!v.commVal}" maxlength='30'/>
+                <aura:if isTrue="{!not(empty(v.recordError))}">
+                    <span class="slds-has-error slds-form-element__help">
+                        {!v.recordError}
+                    </span>   
+                </aura:if>
+                
+            </lightning:layoutItem>
+            
+   
+        </lightning:layout>
+            </aura:if>
+    </div>
+</aura:component>

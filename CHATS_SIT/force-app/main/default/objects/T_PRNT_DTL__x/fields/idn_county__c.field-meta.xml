@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_county__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>idn_county</description>
+    <externalDeveloperName>idn_county</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>County</label>
+    <referenceTo>T_COUNTY__c</referenceTo>
+    <relationshipLabel>Printed Correspondence</relationshipLabel>
+    <relationshipName>batchsit_t_prnt_dtl</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

@@ -1,0 +1,51 @@
+<aura:component >
+    
+    <aura:attribute name="incomeTypesLIRefInfo" type="T_APPLN_OTHER_INCOME__c[]"/>
+	
+    <div><h3 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate">Other Income</h3><br/></div>
+    <div class="slds-grid slds-wrap slds-p-around--large">
+        <table class="slds-table slds-table_bordered">
+            <thead>
+                <tr class="slds-text-title_caps">
+                    <!--th scope="col">
+                        <div class="slds-truncate" title="Type">Type</div>
+                    </th-->
+                    <th scope="col">
+                        <div class="slds-truncate" title="Begin Date">Begin Date</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="End Date">End Date</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="Frequency">Frequency</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="Hours">Hours</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="Verified">Verified</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="Amount">Amount</div>
+                    </th>
+                </tr>            
+            </thead>
+            
+            <tbody>
+                <aura:iteration items="{!v.incomeTypesLIRefInfo}" var="res" indexVar="i">
+                    <tr>
+                        <!--td scope="row"><div class="slds-truncate" title="{!res.CDE_CBMS_SOURCE_INCOME__c}">{!res.CDE_CBMS_SOURCE_INCOME__c}</div></td-->
+                        <td scope="row"><div class="slds-truncate" title="{!res.DTE_BEGIN_EFFV__c}">{!res.DTE_BEGIN_EFFV__c}</div></td>
+                        <td scope="row"><div class="slds-truncate" title="{!res.DTE_END_EFFV__c}">{!res.DTE_END_EFFV__c}</div></td>
+                        <td scope="row"><div class="slds-truncate" title="{!res.CDE_FREQ_INCOME__c}">{!res.CDE_FREQ_INCOME__c}</div></td>
+                        <td scope="row"><div class="slds-truncate" title="{!res.CNT_HOURS_WORKED__c}">{!res.CNT_HOURS_WORKED__c}</div></td>
+                        <td scope="row"><div class="slds-truncate" title="{!res.CDE_TYPE_VERIF__c}">{!res.CDE_TYPE_VERIF__c}</div></td>
+                        <td scope="row"><div class="slds-truncate" title="{!res.AMT_INCOME_OTHER_GROSS__c}">{!res.AMT_INCOME_OTHER_GROSS__c}</div></td>
+                    </tr>
+                </aura:iteration>
+            </tbody>
+            
+        </table>
+    </div>
+    
+</aura:component>

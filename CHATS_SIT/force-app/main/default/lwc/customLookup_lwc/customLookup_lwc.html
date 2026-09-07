@@ -1,0 +1,111 @@
+<template>
+    <div class="slds-form-element">
+        <template if:false={isDisabled}>
+            <template if:false={isValueSelected}>
+                <label lwc:if={label} class="slds-form-element__label" for="validate">
+                    <abbr lwc:if={required} title="required" class="slds-required">*</abbr>
+                    {label}
+                </label>
+            </template>
+            <div class="slds-form-element__control">
+                <div class='slds-combobox_container' if:false={isValueSelected}>
+                    <div class="slds-combobox slds-dropdown-trigger slds-dropdown-trigger_click slds-is-open">
+                        <div class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right"
+                            role="none">
+                            <lightning-input id="customInput" class="c_customLookup" onchange={handleChange}
+                                onfocus={showoptions} type="search" autocomplete="off" label={label}
+                                field-level-help={helpText} placeholder={placeholder} onblur={handleInputBlur}
+                                value={selectedRecordName} variant="label-hidden" is-loading={showSpinner}
+                                disabled={isDisabled}>
+                            </lightning-input>
+                        </div>
+                    </div>
+                </div>
+                <template if:true={isValueSelected}>
+                    <template if:true={required}>
+                        <span style="color:red">*&nbsp;</span>
+                    </template>
+                    <label class="slds-form-element__label" for="combobox-id-5"
+                        id="combobox-label-id-35">{label}</label>
+                    <div tabindex="0" class="slds-combobox_container slds-has-selection">
+                        <div class="slds-combobox slds-dropdown-trigger slds-dropdown-trigger_click">
+                            <div class={selectedInputClass} role="none">
+                                <template if:true={selectedIconName}>
+                                    <span class="slds-icon_container slds-combobox__input-entity-icon">
+                                        <lightning-icon icon-name={selectedIconName} alternative-text={selectedIconName}
+                                            size="x-small"></lightning-icon>
+                                    </span>
+                                </template>
+                                <button type="button"
+                                    class="slds-input_faux slds-combobox__input slds-combobox__input-value"
+                                    aria-labelledby="combobox-label-id-34 combobox-id-5-selected-value"
+                                    id="combobox-id-5-selected-value" aria-controls="listbox-id-5" aria-expanded="false"
+                                    aria-haspopup="listbox">
+                                    <span class="slds-truncate" id="combobox-value-id-19">{selectedRecordName}</span>
+                                </button>
+                                <button class="slds-button slds-button_icon slds-input__icon slds-input__icon_right"
+                                    title="Remove selected option" onclick={handleCommit} disabled={isDisabled}>
+                                    <lightning-icon icon-name="utility:close" alternative-text="Remove selected option"
+                                        size="x-small"></lightning-icon>
+                                </button>
+                            </div>
+                            <!-- Errors start -->
+                            <template lwc:if={customErrorMessage}>
+                                <div role="alert" class="slds-form-element__label slds-var-m-top_xx-small form-error">
+                                    {customErrorMessage}
+                                </div>
+                            </template>
+                            <!-- Errors End -->
+                        </div>
+                    </div>
+
+                </template>
+                <template if:true={showList}>
+                    <div id="listbox-id-4" tabindex="0" onmousedown={handleDivClick} class={resultCss} role="listbox">
+                        <ul class="slds-listbox slds-listbox_vertical" role="presentation">
+                            <template for:each={recordsList} for:item="rec" lwc:if={recordsList}>
+                                <li role="presentation" key={rec.Id} class="slds-listbox__item">
+                                    <div onmousedown={handleSelect} data-id={rec.Id}
+                                        class="slds-media slds-listbox__option slds-listbox__option_entity slds-listbox__option_has-meta"
+                                        role="option">
+                                        <span class="slds-media__figure slds-listbox__option-icon">
+                                            <lightning-icon icon-name={selectedIconName}
+                                                alternative-text={selectedIconName} size="small"></lightning-icon>
+                                        </span>
+                                        <span class="slds-media__body">
+                                            <span class="slds-listbox__option-meta slds-listbox__option-meta_entity">
+                                                {rec.showVal}
+                                            </span>
+                                        </span>
+                                    </div>
+                                </li>
+                            </template>
+                            <!-- No results start -->
+                            <template lwc:if={Message}>
+                                <li role="presentation" style="text-align: center; font-weight: bold;">
+                                    <span class="slds-media slds-listbox__option_entity" role="option">
+                                        <span lwc:if={Message} class="slds-media__body">{Message}</span>
+                                    </span>
+                                </li>
+                            </template>
+                            <!-- No results end -->
+                        </ul>
+                    </div>
+                </template>
+            </div>
+        </template>
+        <template if:true={isDisabled}>
+            <div class="slds-form-element__control">
+                <div class="slds-combobox_container">
+                    <div class="slds-combobox slds-dropdown-trigger slds-dropdown-trigger_click">
+                        <div class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right" role="none">
+                            <lightning-input type="search" label={label} value={selectedRecordName}
+                                variant="standard" disabled>
+                            </lightning-input>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+</template>

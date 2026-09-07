@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Estimated_Hours_per_Week_Greater_than_0</fullName>
+    <active>true</active>
+    <description>Estimated Hours per Week cannot be less than 0.</description>
+    <errorConditionFormula>NOT( IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_Peak_Data__c ) &amp;&amp; CNT_WEEK_PER_HOURS_ESTMD__c&lt;0</errorConditionFormula>
+    <errorDisplayField>CNT_WEEK_PER_HOURS_ESTMD__c</errorDisplayField>
+    <errorMessage>Estimated Hours per Week cannot be less than 0.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,111 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId" access="global">
+    <aura:attribute name="recCount" type="Integer" default="0"/>
+    <aura:attribute name="relatedListHeader" type="String" default=""/> 
+    <aura:attribute name="childApiName" type="String" default=""/> 
+    <aura:attribute name="showTable" type="Boolean" default="true"/>
+    <aura:attribute name="listRecordsToDisplay" type="List" default=""/>
+    <article class="slds-card">
+	  <div class="slds-card__header slds-grid previewMode MEDIUM forceRelatedListPreview">
+            <header class="slds-media slds-media--center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <div class="extraSmall forceEntityIcon" style="background-color: #e9af67" data-aura-class="forceEntityIcon">
+                        <span class="uiImage" data-aura-class="uiImage">
+                            <img src="/img/icon/t4v35/custom/custom16_120.png" class="icon " alt="batchsit$t_sub_pmt" title="batchsit$t_sub_pmt" />
+                        </span>
+                    </div>
+                </div>
+                <div class="slds-media__body">
+                    <h2 id="header">
+                        <span class="slds-card__header-link baseCard__header-title-container">
+                            <span class="slds-text-heading--small slds-truncate slds-m-right--xx-small" title="Sub Payments">
+                                {!v.relatedListHeader}
+                            </span>
+                            <span class="slds-text-heading--small slds-shrink-none slds-m-right--xx-small" title="{!v.recCount}"> ({!v.recCount})</span>
+                        </span>
+                    </h2>
+                </div>
+            </header>
+            <div class="slds-no-flex">
+                <div class="actionsContainer"></div>
+            </div>
+        </div>
+        <div class="slds-card__body">
+            <div class="">
+                <div class="previewMode MEDIUM forceRelatedListPreview" data-aura-class="forceRelatedListPreview">
+                    <div class="">
+                        <div class="useHeaderBarFix forceBaseListView forceRelatedListPreviewGrid" data-aura-class="forceBaseListView forceRelatedListPreviewGrid">
+                            <div class="spinnerWrapper hideSpinner hideEl forceComponentSpinner" data-aura-class="forceComponentSpinner">
+                                <div class="indicator  hideEl forceInlineSpinner" aria-hidden="true" role="alert" data-aura-class="forceInlineSpinner">
+                                </div>
+                            </div>
+                                <div class="listViewContent">
+                                    <div class="scrollable uiScroller scroller-wrapper scroll-bidirectional native" tabindex="-1" style="" data-aura-class="uiScroller">
+                                        <div class="scroller actionBarPlugin fixedHeaderPlugin">
+                                            <table class="forceRecordLayout slds-table slds-table_bordered slds-table_fixed-layout slds-no-row-hover slds-table_cell-buffer uiVirtualDataGrid--default uiVirtualDataGrid" data-aura-class="uiVirtualDataGrid--default uiVirtualDataGrid">
+                                                <thead>
+                                                    <tr>
+                                                        <aura:iteration items="{!v.listRecordsToDisplay}" var="record" indexVar="i">
+                                                            <aura:if isTrue ="{! (i eq 0)}"> 
+                                                                <aura:iteration items="{!record.fldDefList}" var="obj" indexVar="j">
+                                                                    <th class="initialSortAsc " scope="col" style="" title="ID">
+                                                                        {!obj.fieldLabel}
+                                                                        <span class="assistiveText"></span>
+                                                                    </th>
+                                                                </aura:iteration>
+                                                            </aura:if> 
+                                                        </aura:iteration>
+                                                    </tr>
+                                                </thead>
+                                                <tfoot></tfoot>
+                                                <tbody>
+                                                    <aura:iteration items="{!v.listRecordsToDisplay}" var="record" indexVar="i">
+                                                        <tr>
+                                                            <aura:iteration items="{!record.fldDefList}" var="obj">
+                                                                <td>
+                                                                    <aura:if isTrue="{!obj.dataType == 'DATE'}">
+                                                                        <span >
+                                                                        <ui:outputDate value="{!obj.fieldValueDate}" format="MM/dd/yyyy"/>
+                                                                          <!-- <lightning:formattedDateTime value="{!obj.fieldValueDate}" year="numeric" month="numeric" day="numeric"/> -->  
+                                                                        </span>
+                                                                        <aura:set attribute="else">
+                                                                            <aura:if isTrue="{!obj.fieldAPIName == 'ExternalId'}">
+                                                                                <div class="outputLookupContainer forceOutputLookupWithPreview" data-aura-class="forceOutputLookupWithPreview">
+                                                                                    <a class="textUnderline outputLookupLink slds-truncate forceOutputLookup" data-refid="recordId" data-recordid="{!obj.childRecordId}" data-special-link="true" href="{!'/one/one.app?source=aloha#/sObject/'+obj.childRecordId+'/view'}" target="_blank" rel="noreferrer" title="" data-aura-class="forceOutputLookup">
+                                                                                        {!obj.fieldValue}
+                                                                                    </a>
+                                                                                </div>
+                                                                                <aura:set attribute="else">
+                                                                                    <aura:if isTrue="{!obj.dataType == 'DOUBLE'}">
+                                                                                        <lightning:formattedNumber value="{!obj.fieldValue}" />
+                                                                                         <aura:set attribute="else">
+                                                                                             <span class="uiOutputText" data-aura-class="uiOutputText">
+                                                                                        {!obj.fieldValue}
+                                                                                    </span>
+                                                                                        </aura:set>
+                                                                                    </aura:if>
+                                                                                    
+                                                                                </aura:set>
+                                                                            </aura:if>
+                                                                            
+                                                                        </aura:set>
+                                                                    </aura:if>
+                                                                </td>
+                                                            </aura:iteration>
+                                                        </tr>
+                                                    </aura:iteration>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            <div class="emptyContent hidden">
+                                <div class="emptyContentInner">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </article>
+</aura:component>

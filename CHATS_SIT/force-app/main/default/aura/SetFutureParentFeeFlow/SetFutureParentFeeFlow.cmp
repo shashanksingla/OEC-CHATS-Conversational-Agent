@@ -1,0 +1,121 @@
+<aura:component controller="UpdateParentFeeApxCtrl" extends="c:abstractComponent">
+    <aura:attribute name="caseCopayRec" type="batchsit_t_sbsd_case_copay__x" default="{'sobjectType':'batchsit_t_sbsd_case_copay__x',
+                             'cde_rec_copay__c':'NA',
+                             'ind_qlty__c' :'N',
+                             'dte_begin_effv__c':'',
+                             'cde_reason_ovrd__c':'',
+                             'dte_end_effv__c':'',
+                             'amt_copay_case_assesd__c':''}"/>
+    <aura:attribute name="newCaseCopayRec" type="batchsit_t_sbsd_case_copay__x"
+                    default="{'sobjectType':'batchsit_t_sbsd_case_copay__x',
+                             'cde_rec_copay__c':'NA',
+                             'ind_qlty__c' :'',
+                             'amt_copay_case_pt__c':0,
+                             'amt_copay_case_ft__c':0,
+                             'dte_begin_effv__c':'',
+                             'cde_reason_ovrd__c':'',
+                             'amt_copay_case_assesd__c':''}"/>
+    <aura:attribute name="eligRunDate" type="String"/>
+    <aura:attribute name="recordId" type="String"/> <!--CaseID-->
+    <aura:attribute name="recordError" type="String"/>
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="showPrevButton" type="Boolean" default="true"/>
+    <aura:attribute name="showCancelFlag" type="Boolean" default="true"/>
+    <aura:attribute name="updateParFee" type="Boolean" default="false"/>
+    <aura:attribute name="noDataReturnedFromServer" type="Boolean" default="false"/>
+    <aura:attribute name="title" type="Boolean" default="String"/>
+    <aura:attribute name="description" type="Boolean" default="String"/>
+    <aura:attribute name="caseCopayRecExtIdCreated" type="String" />
+    <aura:attribute name="isFirstCaseCopayRec" type="Boolean" default="false"/>
+    <aura:attribute name="isOverrideReasonRequired" type="Boolean" default="false"/>
+    <aura:attribute name="isReadOnlyUser" type="Boolean" default="false"/>
+    <aura:attribute name="isExistingCaseParentFee" type="Boolean" default="false"/>
+    <aura:attribute name="qltyRtdPrvdrFullORPartMessage" type="String"/>
+    <!-- CCCAP-4767 Changes-->
+    <aura:attribute name="authCopayWrapListCopy" type="List"/>
+    <aura:attribute name="parentFeeChangeMsg" type="String" default="{!$Label.c.ChangeParentFeeMsg}"/>
+    <aura:attribute name="parentFeeExceedPrvPayMsg" type="String" default=""/>
+    <aura:attribute name="showPrivatePayAmtMsg" type="Boolean" default="false"/>
+    <aura:attribute name="disablecConfirmationModalYesButton" type="Boolean" default="false"/>
+    <aura:attribute name="isAdamCounty" type="Boolean" default="false"/> <!--CCCAP-10537-->
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:set attribute="pageMessages" value="{!v.recordError}" />
+    <aura:set attribute="messageType" value="{!v.message}" />
+    
+    <lightning:card iconName="standard:hierarchy">
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">
+                        <div class="slds-media__body">
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="Set Future Parent Fee">
+                                <aura:if isTrue="{!v.currentTabNumber==1}">
+                                    <aura:set attribute="else">
+                                        Parent Fee
+                                    </aura:set>
+                                    Set Future Parent Fee
+                                </aura:if>
+                            </h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        <aura:set attribute="actions">
+            <c:navigationComponent totalTabs="2" 
+                                   currentTabNumber="{!v.currentTabNumber}"
+                                   onNext="{!c.doNext}"
+                                   onFinish="{!c.doFinish}"
+                                   onPrevious="{!c.doPrevious}"
+                                   onCancel="{!c.doCancel}"
+                                   showCancel="{!(v.currentTabNumber==1) || (v.currentTabNumber==2)}"
+                                   showPrevious="{!v.currentTabNumber!=1}"
+                                   showFinish="{!v.currentTabNumber==2 }"
+                                   finishLabel="Finish"
+                                   disableFinishButton="{!v.showSpinner}"/>
+        </aura:set>
+        
+        <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+        
+        <c:confirmationModal aura:id="cfrmtnModalOnQltyRtdProvider" title="WARNING!" confirmMsg="{!v.qltyRtdPrvdrFullORPartMessage}" confirmModalYes="{!c.confirmYes}"/>
+        
+        <aura:if isTrue="{!!empty(v.newCaseCopayRec)}">
+            <aura:if isTrue="{!v.currentTabNumber==1}">
+                <c:setFutureParentFeePg1 aura:id="setFutureParentFeePg1"
+                                         caseCopayRec="{!v.caseCopayRec}"
+                                         isCurrentPageValid="{!v.isCurrentPageValid}"
+                                         newCaseCopayRec="{!v.newCaseCopayRec}"
+                                         isFirstCaseCopayRec ="{!v.isFirstCaseCopayRec}" 
+                                         recordId ="{!v.recordId}"
+                                         isOverrideReasonRequired ="{!v.isOverrideReasonRequired}" 
+                                         isReadOnlyUser ="{!v.isReadOnlyUser}"
+                                         isExistingCaseParentFee ="{!v.isExistingCaseParentFee}"
+                                         isAdamCounty="{!v.isAdamCounty}"/>
+                <c:confirmationModal aura:id="confirmationModalOnExistingCopay" confirmMsg="{!v.existingCopayError}"
+                                     confirmModalYes="{!c.returnToRecord}" yesLabel="Cancel" showNoButton="false"
+                                     showCloseButton="false"/>
+            </aura:if>
+            
+            <aura:if isTrue="{!v.currentTabNumber==2}">
+                <c:setFutureParentFeePg2 aura:id="setFutureParentFeePg2"
+                                         caseCopayRec="{!v.caseCopayRec}"
+                                         isCurrentPageValid="{!v.isCurrentPageValid}"
+                                         pageMessages="{!v.pageMessages}" 
+                                         messageType="{!v.messageType}"
+                                         newCaseCopayRec="{!v.newCaseCopayRec}"
+                                         noDataReturnedFromServer ="{!v.noDataReturnedFromServer}"
+                                         title ="{!v.title}"
+                                         description ="{!v.description}"
+                                         authCopayWrapListCopy ="{!v.authCopayWrapListCopy}"
+                                         showPrivatePayAmtMsg ="{!v.showPrivatePayAmtMsg}"/>
+                
+                <c:confirmationModal aura:id="confirmationModalOnParentFeeChange" confirmMsg="{!v.parentFeeChangeMsg}" disableYesButton="{!v.disablecConfirmationModalYesButton}"
+                                     confirmModalYes="{!c.confirmParentFeeChangeYes}" confirmModalNo="{!c.doCancelParentFeeChange}" showCloseButton="false"/>
+                
+                <c:confirmationModal aura:id="confirmationModalOnParentFeeExceedPrvPay" confirmMsg="{!v.parentFeeExceedPrvPayMsg}" disableYesButton="{!v.disablecConfirmationModalYesButton}"
+                                     confirmModalYes="{!c.confirmParentFeeExceedPrvPayYes}" confirmModalNo="{!c.doCancelParentFeeExceedChange}" showCloseButton="false"/>
+            </aura:if> 
+        </aura:if>
+    </lightning:card>
+    
+</aura:component>

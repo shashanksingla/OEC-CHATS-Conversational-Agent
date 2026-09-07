@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>ACS</fullName>
+        <default>false</default>
+        <label>ACSES Printout</label>
+    </customValue>
+    <customValue>
+        <fullName>CLD</fullName>
+        <default>false</default>
+        <label>Cancelled Checks</label>
+    </customValue>
+    <customValue>
+        <fullName>FSR</fullName>
+        <default>false</default>
+        <label>FSR Printout</label>
+    </customValue>
+    <customValue>
+        <fullName>OTH</fullName>
+        <default>false</default>
+        <label>Other</label>
+    </customValue>
+    <customValue>
+        <fullName>PST</fullName>
+        <default>false</default>
+        <label>Paystubs</label>
+    </customValue>
+    <customValue>
+        <fullName>WSC</fullName>
+        <default>false</default>
+        <label>Written statement from custodial parent</label>
+    </customValue>
+    <customValue>
+        <fullName>TF</fullName>
+        <default>false</default>
+        <label>TANF File</label>
+    </customValue>
+    <description>R00696</description>
+    <masterLabel>R00696</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

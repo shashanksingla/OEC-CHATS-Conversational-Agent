@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Schedule_Type_c__c</fullName>
+    <externalDeveloperName>Schedule_Type__c</externalDeveloperName>
+    <inlineHelpText>PT - 0hrs,0min, 1sec  through five 5hrs 0min, 0sec
+FT - 5hrs, 0min, 1sec through 12hrs, 0min, 0sec
+FT/PT -12hrs, 0min, 1sec through 17hrs, 0min, 0sec
+FTFT -17hrs, 0min, 1sec through 24hrs, 0min, 0sec</inlineHelpText>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Schedule Type</label>
+    <length>1300</length>
+    <readOnlyProxy>true</readOnlyProxy>
+    <type>LongTextArea</type>
+    <visibleLines>10</visibleLines>
+</CustomField>

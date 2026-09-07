@@ -1,0 +1,19 @@
+.slds-modal__container {
+    max-width: 30rem;
+}
+
+.slds-modal__content {
+    border-top-right-radius: 0.25rem;
+    border-top-left-radius: 0.25rem;
+}
+
+.slds-form-element__label {
+    color: #3e3e3c;
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
+.slds-form-element__static {
+    font-size: 0.8125rem;
+    color: #080707;
+}

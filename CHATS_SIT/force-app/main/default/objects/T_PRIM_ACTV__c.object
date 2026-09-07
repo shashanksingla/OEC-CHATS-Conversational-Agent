@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <comment>Action override created by Lightning App Builder during activation.</comment>
+        <content>Primary_Activity_Record_Page</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>Flexipage</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Case-Individual Activity</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>CDE_TYPE_ACTV__c</fullName>
+        <description>Primary Activity</description>
+        <externalId>false</externalId>
+        <label>Primary Activity</label>
+        <required>true</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00738</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>DTE_BEGIN_ACTV_PRIM__c</fullName>
+        <description>Effective Begin Date</description>
+        <externalId>false</externalId>
+        <label>Effective Begin Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_END_ACTV_PRIM__c</fullName>
+        <description>Effective End Date</description>
+        <externalId>false</externalId>
+        <label>Effective End Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>IDN_CASE__c</fullName>
+        <deleteConstraint>Restrict</deleteConstraint>
+        <description>Case ID</description>
+        <externalId>false</externalId>
+        <label>Case ID</label>
+        <referenceTo>T_SBSD_CASE__c</referenceTo>
+        <relationshipLabel>Primary Activity</relationshipLabel>
+        <relationshipName>T_SBSD_CASE12</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_CLIENT__c</fullName>
+        <deleteConstraint>Restrict</deleteConstraint>
+        <description>Client ID</description>
+        <externalId>false</externalId>
+        <label>Client ID</label>
+        <referenceTo>T_SBSD_INDIV__c</referenceTo>
+        <relationshipLabel>Primary Activity</relationshipLabel>
+        <relationshipName>T_SBSD_INDIV22</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>External ID</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <fields>
+        <fullName>Ignore__c</fullName>
+        <defaultValue>false</defaultValue>
+        <externalId>false</externalId>
+        <label>Ignore</label>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <fields>
+        <fullName>Is_CBMS_Data__c</fullName>
+        <defaultValue>false</defaultValue>
+        <externalId>false</externalId>
+        <label>Is CBMS Data</label>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Checkbox</type>
+    </fields>
+    <label>Primary Activity</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All1</fullName>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>Primary Activity ID</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Primary Activity</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ReadWrite</sharingModel>
+    <validationRules>
+        <fullName>CDE_TYPE_ACTV_Cannot_be_edited</fullName>
+        <active>true</active>
+        <description>CDE_TYPE_ACTV Cannot be edited after record creation</description>
+        <errorConditionFormula>AND(ISCHANGED(CDE_TYPE_ACTV__c),NOT(Is_CBMS_Data__c))</errorConditionFormula>
+        <errorDisplayField>CDE_TYPE_ACTV__c</errorDisplayField>
+        <errorMessage>Primary Activity cannot be updated</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Cannot_Update_IDN_CLIENT</fullName>
+        <active>true</active>
+        <errorConditionFormula>ISCHANGED(IDN_CLIENT__c )</errorConditionFormula>
+        <errorDisplayField>IDN_CLIENT__c</errorDisplayField>
+        <errorMessage>Cannot Update Client ID</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Cannot_Update_IDN_Case</fullName>
+        <active>true</active>
+        <errorConditionFormula>ISCHANGED( IDN_CASE__c )</errorConditionFormula>
+        <errorDisplayField>IDN_CASE__c</errorDisplayField>
+        <errorMessage>Cannot Update Case ID</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Effective_End_Date_Validation</fullName>
+        <active>true</active>
+        <description>Effective End Date must be greater than Effective Begin Date.</description>
+        <errorConditionFormula>DTE_BEGIN_ACTV_PRIM__c &gt;= DTE_END_ACTV_PRIM__c</errorConditionFormula>
+        <errorDisplayField>DTE_END_ACTV_PRIM__c</errorDisplayField>
+        <errorMessage>Effective End Date must be greater than Effective Begin Date.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Warning_Message_before_saving_the_record</fullName>
+        <active>true</active>
+        <description>This record may not be appropriate for this individual based on their age and/or relationship to the primary caretaker of this case(to continue saving please tick Ignore checkbox)</description>
+        <errorConditionFormula>AND(NOT(IDN_CLIENT__r.Is_Primary_Parent_Caretaker__c),IDN_CLIENT__r.Age__c &lt; VALUE( $Label.Teen_Parent_Age_Limit ),NOT(IDN_CLIENT__r.Has_Allowed_Relationship__c),NOT(Ignore__c))</errorConditionFormula>
+        <errorMessage>This record may not be appropriate for this individual based on their age and/or relationship to the primary caretaker of this case(to continue saving please tick Ignore checkbox)</errorMessage>
+    </validationRules>
+    <validationRules>
+    	<fullName>BeginDateWithin31DaysFuture</fullName>
+   	    <active>true</active>
+    	<description>Begin Date cannot be more than 31 days in the future</description>
+    	<errorConditionFormula>DTE_BEGIN_ACTV_PRIM__c &gt;  TODAY() +31</errorConditionFormula>
+    	<errorDisplayField>DTE_BEGIN_ACTV_PRIM__c</errorDisplayField>
+    	<errorMessage>Begin Date cannot be more than 31 days in the future</errorMessage>
+     </validationRules>	
+    <visibility>Public</visibility>
+</CustomObject>

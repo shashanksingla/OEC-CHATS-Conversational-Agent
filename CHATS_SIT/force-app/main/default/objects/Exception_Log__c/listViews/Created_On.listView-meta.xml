@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Created_On</fullName>
+    <columns>NAME</columns>
+    <columns>Exception_Message__c</columns>
+    <columns>CREATEDBY_USER</columns>
+    <columns>Request__c</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>Exception_Type__c</columns>
+    <columns>Class__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>CREATED_DATE</field>
+        <operation>equals</operation>
+        <value>1/29/2020 12:00 AM</value>
+    </filters>
+    <filters>
+        <field>CREATEDBY_USER</field>
+        <operation>equals</operation>
+        <value>CARLIE REED</value>
+    </filters>
+    <label>Created On</label>
+</ListView>

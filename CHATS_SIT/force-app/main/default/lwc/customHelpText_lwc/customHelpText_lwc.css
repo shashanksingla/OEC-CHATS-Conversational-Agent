@@ -1,0 +1,55 @@
+/* Styles migrated from Aura customHelpText component */
+
+/* Container for positioning */
+.slds-form-element__icon {
+  position: relative;
+  display: inline-block;
+}
+
+/* Icon styling */
+.slds-icon {
+  width: 1.1rem !important;
+}
+
+/* Help icon specific styling */
+.ms-help-icon {
+  cursor: pointer;
+}
+
+/* Tooltip popup positioning - matches Aura ms-help-popup-in-header */
+.ms-help-popup-in-header {
+  display: inline-block;
+  position: absolute !important;
+  top: -10px !important;
+  left: 30px !important;
+  margin-left: 0 !important;
+  max-width: 50rem !important;
+  overflow: visible !important;
+  text-transform: none !important;
+  z-index: 9001;
+  pointer-events: none; /* Prevents tooltip from interfering with hover */
+}
+
+/* Nubbin (arrow) styling - positioned near the top close to the icon */
+.ms-help-popup-in-header::before,
+.ms-help-popup-in-header::after {
+  width: 0.8rem !important;
+  height: 0.8rem !important;
+  position: absolute;
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
+  content: "";
+  background-color: inherit;
+  top: 18px !important; /* Fixed position near the icon */
+  left: -0.4rem !important;
+  margin-top: 0 !important;
+}
+
+/* Tooltip body styling - matches Aura ms-help-popup-body */
+.ms-help-popup-body {
+  white-space: unset !important;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  width: 500px;
+}

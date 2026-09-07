@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>CPV</fullName>
+        <default>false</default>
+        <label>County Policy Violation</label>
+    </customValue>
+    <customValue>
+        <fullName>DEC</fullName>
+        <default>false</default>
+        <label>Deceased</label>
+    </customValue>
+    <customValue>
+        <fullName>MTA</fullName>
+        <default>false</default>
+        <label>Qualified Exempt Child Care Provider is no longer eligible to provide child care</label>
+    </customValue>
+    <customValue>
+        <fullName>NLO</fullName>
+        <default>false</default>
+        <label>No longer a slot contract</label>
+    </customValue>
+    <customValue>
+        <fullName>NUE</fullName>
+        <default>false</default>
+        <label>Non-Use</label>
+    </customValue>
+    <customValue>
+        <fullName>PRT</fullName>
+        <default>false</default>
+        <label>Provider Request</label>
+    </customValue>
+    <customValue>
+        <fullName>EXP</fullName>
+        <default>false</default>
+        <label>License Expired/Closed</label>
+    </customValue>
+    <customValue>
+        <fullName>NCH</fullName>
+        <default>false</default>
+        <label>License Number Changed</label>
+    </customValue>
+    <customValue>
+        <fullName>NEW</fullName>
+        <default>false</default>
+        <label>New Fiscal Agreement has been put in place</label>
+    </customValue>
+    <customValue>
+        <fullName>WAR</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Warning! License is pending</label>
+    </customValue>
+    <customValue>
+        <fullName>RFT</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>No Provider Record Found in Trails</label>
+    </customValue>
+    <customValue>
+        <fullName>HAR</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Authorization rates are higher than the Fiscal Agreement rates</label>
+    </customValue>
+    <customValue>
+        <fullName>IPT</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Invalid Provider Type</label>
+    </customValue>
+    <customValue>
+        <fullName>FHP</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Fiscal agreement rates are higher than the private pay rates.</label>
+    </customValue>
+    <customValue>
+        <fullName>NOR</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Fiscal Agreement does not have appropriate rates for child</label>
+    </customValue>
+    <customValue>
+        <fullName>IPV</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>Intentional Program Violation</label>
+    </customValue>
+    <description>R00712</description>
+    <masterLabel>R00712</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

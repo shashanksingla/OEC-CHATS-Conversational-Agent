@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Provide access to uninstalled connected Apps</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>ConnectedAppsAccess</label>
+    <userPermissions>
+        <enabled>true</enabled>
+        <name>CanApproveUninstalledApps</name>
+    </userPermissions>
+</PermissionSet>

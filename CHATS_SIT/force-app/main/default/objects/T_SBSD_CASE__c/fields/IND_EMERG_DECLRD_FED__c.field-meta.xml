@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IND_EMERG_DECLRD_FED__c</fullName>
+    <formula>OR(TEXT(IND_LEAP__c)==&apos;Y&apos;, TEXT(IND_SSI__c)== &apos;Y&apos;, TEXT(IND_PENSION__c)==&apos;Y&apos;, TEXT(IND_REFUGEE__c)==&apos;Y&apos;)</formula>
+    <label>LEAP/SSI/OAP/Refugee Medical Assistance</label>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

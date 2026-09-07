@@ -1,0 +1,26 @@
+<aura:component >
+    <aura:attribute name="caseStatus" type="T_SBSD_CASE_STATUS_MODE__c"/>
+    <aura:attribute name="caseRec" type="T_SBSD_CASE__c"/>
+	
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <!--<lightning:input type="text" name="input-name" label="Case"
+                                 value="{!v.caseRec.Name}" disabled="true"/>-->
+                <c:outputField label="Case" value="{!v.caseRec.Name}"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <!--<c:inputPicklist label="Status" object="T_SBSD_CASE_STATUS_MODE__c" field="CDE_STATUS_CASE__c"
+                             value="{!v.caseStatus.CDE_STATUS_CASE__c}" aura:id="input-field" disabled="true"/>-->
+                <c:outputField label="Status" value="{!v.caseStatus.CDE_STATUS_CASE__c}"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <!--<c:inputPicklist label="Mode" object="T_SBSD_CASE_STATUS_MODE__c" field="CDE_MODE_CASE__c"
+                             value="{!v.caseStatus.CDE_MODE_CASE__c}" aura:id="input-field" disabled="true"/>-->
+                <c:outputField label="Mode" value="{!v.caseStatus.CDE_MODE_CASE__c}"/>
+            </lightning:layoutItem>
+        	<lightning:layoutItem flexibility="auto" size="6" padding="around-small"></lightning:layoutItem>
+        	
+        
+    </lightning:layout>	
+    
+</aura:component>

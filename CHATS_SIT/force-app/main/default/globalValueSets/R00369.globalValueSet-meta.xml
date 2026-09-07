@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>DV</fullName>
+        <default>false</default>
+        <label>Waiver</label>
+    </customValue>
+    <customValue>
+        <fullName>DM</fullName>
+        <default>false</default>
+        <label>Head Start</label>
+    </customValue>
+    <customValue>
+        <fullName>WER</fullName>
+        <default>false</default>
+        <label>Client Error Prone</label>
+    </customValue>
+    <customValue>
+        <fullName>ECN</fullName>
+        <default>false</default>
+        <label>Redet date converted incorrectly, county correction.</label>
+    </customValue>
+    <customValue>
+        <fullName>HB</fullName>
+        <default>false</default>
+        <label>Redetermination/Application prior to HB1035</label>
+    </customValue>
+    <customValue>
+        <fullName>CAC</fullName>
+        <default>false</default>
+        <label>Child Added to Case</label>
+    </customValue>
+    <description>R00369</description>
+    <masterLabel>R00369</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

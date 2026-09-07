@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Adm_Action_Not_Deletable</fullName>
+    <active>true</active>
+    <description>Record once created , Action Admin cannot be changed</description>
+    <errorConditionFormula>AND( NOT( ISNEW() ) ,
+    ISCHANGED( CDE_ACTION_ADMIN__c )
+)</errorConditionFormula>
+    <errorDisplayField>CDE_ACTION_ADMIN__c</errorDisplayField>
+    <errorMessage>Record once created , Action Admin cannot be changed</errorMessage>
+</ValidationRule>

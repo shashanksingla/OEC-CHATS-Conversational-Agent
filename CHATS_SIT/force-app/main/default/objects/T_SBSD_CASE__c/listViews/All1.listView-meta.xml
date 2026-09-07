@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All1</fullName>
+    <columns>NAME</columns>
+    <columns>CDE_LANG_CORR__c</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>CDE_COUNTY__c</columns>
+    <columns>CLOSED_CASES_STATUS__c</columns>
+    <columns>CDE_STATUS_WTLST__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>CLOSED_CASES_STATUS__c</field>
+        <operation>equals</operation>
+        <value>0</value>
+    </filters>
+    <filters>
+        <field>CDE_COUNTY__c</field>
+        <operation>equals</operation>
+        <value>Jefferson</value>
+    </filters>
+    <filters>
+        <field>CDE_LANG_CORR__c</field>
+        <operation>equals</operation>
+        <value>ENG</value>
+    </filters>
+    <label>All</label>
+</ListView>

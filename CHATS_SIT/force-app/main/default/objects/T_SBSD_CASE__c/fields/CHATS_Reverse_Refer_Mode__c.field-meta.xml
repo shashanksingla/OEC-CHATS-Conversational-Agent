@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CHATS_Reverse_Refer_Mode__c</fullName>
+    <description>This field is used for maintaining information about the triggers point for which Case and related information will be shared with CBMS.</description>
+    <label>CHATS Reverse Refer Mode</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>MultiselectPicklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Case Closure</fullName>
+                <default>false</default>
+                <label>Case Closure</label>
+            </value>
+            <value>
+                <fullName>Pending Case</fullName>
+                <default>false</default>
+                <label>Pending Case</label>
+            </value>
+            <value>
+                <fullName>Parent Fee Creation</fullName>
+                <default>false</default>
+                <label>Parent Fee Creation</label>
+            </value>
+            <value>
+                <fullName>Parent Fee Update</fullName>
+                <default>false</default>
+                <label>Parent Fee Update</label>
+            </value>
+            <value>
+                <fullName>Auth Creation</fullName>
+                <default>false</default>
+                <label>Auth Creation</label>
+            </value>
+            <value>
+                <fullName>Auth Termination</fullName>
+                <default>false</default>
+                <label>Auth Termination</label>
+            </value>
+            <value>
+                <fullName>Auth Schedules Update</fullName>
+                <default>false</default>
+                <label>Auth Schedules Update</label>
+            </value>
+            <value>
+                <fullName>Parent Fee Delinquency Creation</fullName>
+                <default>false</default>
+                <label>Parent Fee Delinquency Creation</label>
+            </value>
+            <value>
+                <fullName>Parent Fee Delinquency Resolution Update</fullName>
+                <default>false</default>
+                <label>Parent Fee Delinquency Resolution Update</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+    <visibleLines>4</visibleLines>
+</CustomField>

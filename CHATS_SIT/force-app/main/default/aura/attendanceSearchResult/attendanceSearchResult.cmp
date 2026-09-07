@@ -1,0 +1,235 @@
+<!-- Redesigned the component to support Header sorting by Rishav for CCCAP-5186 -->
+<aura:component extends="c:abstractSection">
+    
+    <aura:attribute name="searchResults1" type="Object[]"/>
+    <aura:attribute name="searchResults2" type="Object[]"/>
+    <aura:attribute type="string" name="sortField"/>
+    <aura:attribute type="Boolean" name="sortAsc"/>
+    <aura:attribute type="Boolean" name="showSpinner"/>
+    
+    <aura:if isTrue="{!or(v.searchResults1.length>0,v.searchResults2.length>0)}">
+        <c:LoadingSpinnerComp spinner="{!v.showSpinner}"/>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <div style="overflow-x: auto;">
+                <table class="slds-table slds-table_bordered slds-table--cell-buffer searchResult">
+                    <thead>
+                        <tr class="slds-text-title_caps">
+                            <th class="slds-is-sortable" scope="col">
+                                <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="Case Number" id="Reporting_Case_Id_c__c">Case Number
+                                    <aura:if isTrue="{!(v.sortField == 'Reporting_Case_Id_c__c')}">
+                                        <aura:if isTrue="{!v.sortAsc}">
+                                            &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                            <aura:set attribute="else">
+                                                &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                            </aura:set>
+                                        </aura:if>
+                                    </aura:if>
+                                </div>
+                            </th>
+                            <th class="slds-is-sortable" scope="col">
+                                <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="Parent / Care Taker" id="Reporting_Parent_Caretaker_Name_c__c">Parent / Care Taker
+                                    <aura:if isTrue="{!(v.sortField == 'Reporting_Parent_Caretaker_Name_c__c')}">
+                                        <aura:if isTrue="{!v.sortAsc}">
+                                            &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                            <aura:set attribute="else">
+                                                &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                            </aura:set>
+                                        </aura:if>
+                                    </aura:if>
+                                </div>
+                            </th>
+                            <th class="slds-is-sortable" scope="col">
+                                <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="Child Name" id="Reporting_Child_Name_c__c">Child Name
+                                    <aura:if isTrue="{!(v.sortField == 'Reporting_Child_Name_c__c')}">
+                                        <aura:if isTrue="{!v.sortAsc}">
+                                            &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                            <aura:set attribute="else">
+                                                &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                            </aura:set>
+                                        </aura:if>
+                                    </aura:if>
+                                </div>
+                            </th>
+                            <th class="slds-is-sortable" scope="col">
+                                <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="Transaction" id="Reporting_Transaction_Type_c__c">Transaction
+                                    <aura:if isTrue="{!(v.sortField == 'Reporting_Transaction_Type_c__c')}">
+                                        <aura:if isTrue="{!v.sortAsc}">
+                                            &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                            <aura:set attribute="else">
+                                                &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                            </aura:set>
+                                        </aura:if>
+                                    </aura:if>
+                                </div>
+                            </th>
+                            <th class="slds-is-sortable" scope="col">
+                                <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="Care Date and Time" id="CI_Transaction_Time_c__c">Care Date and Time
+                                    <aura:if isTrue="{!(v.sortField == 'CI_Transaction_Time_c__c')}">
+                                        <aura:if isTrue="{!v.sortAsc}">
+                                            &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                            <aura:set attribute="else">
+                                                &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                            </aura:set>
+                                        </aura:if>
+                                    </aura:if>
+                                </div>
+                            </th>
+                            <th class="slds-is-sortable" scope="col">
+                                <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="Transaction Status" id="Reporting_Transaction_Result_c__c">Transaction Status
+                                    <aura:if isTrue="{!(v.sortField == 'Reporting_Transaction_Result_c__c')}">
+                                        <aura:if isTrue="{!v.sortAsc}">
+                                            &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                            <aura:set attribute="else">
+                                                &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                            </aura:set>
+                                        </aura:if>
+                                    </aura:if>
+                                </div>
+                            </th>
+                            <th class="slds-is-sortable" scope="col">
+                                <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="CCCAP Approval Status" id="Reporting_Denial_Reason_Code_c__c">CCCAP Approval Status
+                                    <aura:if isTrue="{!(v.sortField == 'Reporting_Denial_Reason_Code_c__c')}">
+                                        <aura:if isTrue="{!v.sortAsc}">
+                                            &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                            <aura:set attribute="else">
+                                                &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                            </aura:set>
+                                        </aura:if>
+                                    </aura:if>
+                                </div>
+                            </th>
+                            <th class="slds-is-sortable" scope="col">
+                                <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="Transaction Recorded Date and Time" id="CreatedDate__c">Transaction Recorded Date and Time
+                                    <aura:if isTrue="{!(v.sortField == 'CreatedDate__c')}">
+                                        <aura:if isTrue="{!v.sortAsc}">
+                                            &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                            <aura:set attribute="else">
+                                                &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                            </aura:set>
+                                        </aura:if>
+                                    </aura:if>
+                                </div>
+                            </th>
+                            <th class="slds-is-sortable" scope="col">
+                                <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="SAF" id="Reporting_SAF_Indicator_c__c">SAF
+                                    <aura:if isTrue="{!(v.sortField == 'Reporting_SAF_Indicator_c__c')}">
+                                        <aura:if isTrue="{!v.sortAsc}">
+                                            &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                            <aura:set attribute="else">
+                                                &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                            </aura:set>
+                                        </aura:if>
+                                    </aura:if>
+                                </div>
+                            </th>
+                            <th class="slds-is-sortable" scope="col">
+                                <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="API Transaction" id="Reporting_Card_Number_c__c">API Transaction
+                                    <aura:if isTrue="{!(v.sortField == 'Reporting_Card_Number_c__c')}">
+                                        <aura:if isTrue="{!v.sortAsc}">
+                                            &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                            <aura:set attribute="else">
+                                                &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                            </aura:set>
+                                        </aura:if>
+                                    </aura:if>
+                                </div>
+                            </th>
+                            <th class="slds-is-sortable" scope="col">
+                                <div class="slds-truncate" onclick="{!c.sortbyColumn}" title="Transaction ID" id="Name__c">Transaction ID
+                                    <aura:if isTrue="{!(v.sortField == 'Name__c')}">
+                                        <aura:if isTrue="{!v.sortAsc}">
+                                            &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                            <aura:set attribute="else">
+                                                &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                            </aura:set>
+                                        </aura:if>
+                                    </aura:if>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <aura:if isTrue="{!v.searchResults1.length>0}">
+                            <aura:iteration items="{!v.searchResults1}" var="eachResult">
+                                <tr>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.Reporting_Case_Id_c__c}">{!eachResult.Reporting_Case_Id_c__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.Reporting_Parent_Caretaker_Name_c__c}">{!eachResult.Reporting_Parent_Caretaker_Name_c__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.Reporting_Child_Name_c__c}">{!eachResult.Reporting_Child_Name_c__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.Reporting_Transaction_Type_c__c}">{!eachResult.Reporting_Transaction_Type_c__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.CI_Transaction_Time_c__c}"><ui:outputDateTime value="{!eachResult.CI_Transaction_Time_c__c}" format="MM/dd/yyyy hh:mm a " timezone="America/Denver"/></div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.Reporting_Transaction_Result_c__c}">{!eachResult.Reporting_Transaction_Result_c__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.Reporting_Denial_Reason_Code_c__c}">{!eachResult.Reporting_Denial_Reason_Code_c__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.CreatedDate__c}"><ui:outputDateTime value="{!eachResult.CreatedDate__c}" format="MM/dd/yyyy hh:mm a " timezone="America/Denver"/></div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.Reporting_SAF_Indicator_c__c}">{!eachResult.Reporting_SAF_Indicator_c__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.Reporting_Card_Number_c__c}">{!eachResult.Reporting_Card_Number_c__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.Name__c}">{!eachResult.Name__c}</div>
+                                    </td>
+                                </tr>
+                            </aura:iteration>
+                        </aura:if>
+                        <aura:if isTrue="{!v.searchResults2.length>0}">
+                            <aura:iteration items="{!v.searchResults2}" var="eachResult">
+                                <tr>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.reporting_Case_Id__c}">{!eachResult.reporting_Case_Id__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.reporting_Parent_Caretaker_Name__c}">{!eachResult.reporting_Parent_Caretaker_Name__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.reporting_Child_Name__c}">{!eachResult.reporting_Child_Name__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.reporting_Transaction_Type__c}">{!eachResult.reporting_Transaction_Type__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.ci_Transaction_Time__c}"><ui:outputDateTime value="{!eachResult.ci_Transaction_Time__c}" format="MM/dd/yyyy hh:mm a " timezone="America/Denver"/></div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.reporting_Transaction_Result__c}">{!eachResult.reporting_Transaction_Result__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.reporting_Denial_Reason_Code__c}">{!eachResult.reporting_Denial_Reason_Code__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.createdDate}"><ui:outputDateTime value="{!eachResult.createdDate}" format="MM/dd/yyyy hh:mm a " timezone="America/Denver"/></div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.reporting_SAF_Indicator__c}">{!eachResult.reporting_SAF_Indicator__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.reporting_Card_Number__c}">{!eachResult.reporting_Card_Number__c}</div>
+                                    </td>
+                                    <td scope="row">
+                                        <div class="slds-truncate" title="{!eachResult.name}">{!eachResult.name}</div>
+                                    </td>
+                                </tr>
+                            </aura:iteration>
+                        </aura:if>
+                    </tbody>
+                </table>
+            </div>
+        </lightning:layoutItem>
+    </aura:if>
+</aura:component>

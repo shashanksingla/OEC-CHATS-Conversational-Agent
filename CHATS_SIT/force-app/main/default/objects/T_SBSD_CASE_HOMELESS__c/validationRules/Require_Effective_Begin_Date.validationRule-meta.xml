@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Require_Effective_Begin_Date</fullName>
+    <active>true</active>
+    <description>Please provide Effective Begin Date.</description>
+    <errorConditionFormula>AND(!IDN_CASE__r.Is_Peak_Data__c, !IDN_CASE__r.Is_CBMS_Data__c,NOT(ISCHANGED(bypassValidations__c)),ISBLANK(DTE_BEGIN_EFFV__c))</errorConditionFormula>
+    <errorDisplayField>DTE_BEGIN_EFFV__c</errorDisplayField>
+    <errorMessage>Please provide Effective Begin Date.</errorMessage>
+</ValidationRule>

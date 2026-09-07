@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_enrlmt__c</fullName>
+    <description>idn_enrlmt</description>
+    <externalDeveloperName>idn_enrlmt</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Authorization Parent Fee ID</label>
+    <length>80</length>
+    <referenceTargetField>T_AUTH__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_AUTH__c</referenceTo>
+    <relationshipLabel>Parent Fee Delinquency Legacy History</relationshipLabel>
+    <relationshipName>sfrosit_t_copay_delinqc_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

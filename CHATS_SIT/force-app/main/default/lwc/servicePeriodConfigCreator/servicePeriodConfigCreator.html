@@ -1,0 +1,74 @@
+<template>
+    <lightning-card title="Service Period Configuration" icon-name="standard:custom">
+        <div class="slds-p-horizontal_medium">
+            <div class="slds-grid slds-wrap">
+                <template if:true={existingConfig.Name}>
+                    <!-- Service Period Start Date -->
+                    <div class="slds-p-left_small slds-col slds-size_1-of-2">
+                        <p>Configuration Record
+                            <br/>
+                            <lightning-formatted-url value={configUrl} label={existingConfig.Name} target="_blank">
+                            </lightning-formatted-url>
+                        </p>
+
+                    </div>
+                </template>
+                <!-- Service Period Start Date -->
+                <div class="slds-p-left_small slds-col slds-size_1-of-2">
+                    <lightning-input type="date" label="First Service Period Start Date" value={periodStartDate}
+                        date-style="medium" disabled>
+                    </lightning-input>
+                </div>
+                <!-- Payment Release Day Field -->
+                <div class="slds-p-left_small slds-col slds-size_1-of-2">
+                    <c-multiselect-combobox label="Payment Release Day" object="Service_Period_Config__c"
+                        field="Payment_Release_Day__c" value={existingConfig.Payment_Release_Day__c}
+                        onselect={handlePickselect} behavior-type="picklist" required show-none data-id="input-field"
+                        data-name="paymentReleaseDay" class="slds-m-bottom_small" disabled={disableEdit}>
+                    </c-multiselect-combobox>
+                </div>
+
+                <!-- Service Period Frequency Field -->
+                <div class="slds-p-left_small slds-col slds-size_1-of-2">
+                    <c-multiselect-combobox label="Service Period Frequency" object="Service_Period_Config__c"
+                        field="Service_Period_Frequency__c" value={existingConfig.Service_Period_Frequency__c}
+                        onselect={handlePickselect} behavior-type="picklist" required show-none data-id="input-field"
+                        data-name="servicePeriodFrequency" class="slds-m-bottom_small" disabled={disableEdit}>
+                    </c-multiselect-combobox>
+                </div>
+                <!--commented for CCCAP-14743 
+                    Payment Calculation Day 
+                <div class="slds-p-left_small slds-col slds-size_1-of-2">
+                    <c-multiselect-combobox label="Payment Calculation Day" object="Service_Period_Config__c"
+                        field="Payment_Calculation_Day__c" value={existingConfig.Payment_Calculation_Day__c}
+                        onselect={handlePickselect} behavior-type="picklist" required show-none data-id="input-field"
+                        data-name="servicePeriodFrequency" class="slds-m-bottom_small" disabled={disableEdit}>
+                    </c-multiselect-combobox>
+                </div> -->
+                <!-- Future Payment? -->
+                <div class="slds-p-left_small slds-col slds-size_1-of-2">
+                    <c-multiselect-combobox label="Future Payment?" object="Service_Period_Config__c"
+                        field="Future_Payment__c" value={existingConfig.Future_Payment__c} onselect={handlePickselect}
+                        behavior-type="picklist" required show-none data-id="input-field" data-name="futurePayment"
+                        class="slds-m-bottom_small" disabled={disableEdit}>
+                    </c-multiselect-combobox>
+                </div>
+            </div>
+            <div slot="footer">
+                <!-- Action Buttons -->
+                <div class="slds-m-top_medium slds-text-align_center">
+                    <lightning-button variant="brand" label="Save" onclick={handleSave} disabled={isFormDisabled}
+                        class="slds-m-left_small">
+                    </lightning-button>
+                </div>
+            </div>
+            <!-- Loading Spinner -->
+            <template if:true={isLoading}>
+                <div class="slds-is-relative slds-m-top_medium">
+                    <lightning-spinner alternative-text="Processing..." size="medium">
+                    </lightning-spinner>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

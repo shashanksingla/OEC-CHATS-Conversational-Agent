@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>dte_suppressed__c</fullName>
+    <description>dte_suppressed</description>
+    <externalDeveloperName>dte_suppressed</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Dte_suppressed</label>
+    <required>false</required>
+    <type>Date</type>
+</CustomField>

@@ -1,0 +1,91 @@
+<template>
+    <div class="slds-p-around_small">
+        <table class="slds-table slds-table_bordered slds-table_col-bordered slds-border_right slds-border_left">
+            <thead>
+                <tr class="slds-text-title_caps">
+                    <th scope="col">
+                        <div class="slds-truncate slds-align_absolute-center" title="Income Type">Income Type
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate slds-align_absolute-center" title="Amount">Employer</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate slds-align_absolute-center" title="Amount">Amount</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate slds-align_absolute-center" title="Frequency">Frequency</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate slds-align_absolute-center" title="Hours Per Week">Hours Per
+                            Week</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate slds-align_absolute-center" title="Federal Minimum Wage Met?">
+                            Federal Minimum Wage Met?</div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <template if:true={_incomeRows}>
+                    <template for:each={localRows} for:item="incomeRow" for:index="rindex">
+                        <tr key={incomeRow.uniqueId} data-index={rindex}>
+                            <td>
+                                <!-- Income Source Picklist -->
+                                <c-multiselect-combobox label="" onselect={handleFieldChange}
+                                    value={incomeRow.CDE_SOURCE_INCOME__c} name="incomeSource" behavior-type="picklist"
+                                    object="T_INDIV_OTHER_INCOME__c" field="CDE_SOURCE_INCOME__c" data-id="input-field"
+                                    show-none></c-multiselect-combobox>
+                            </td>
+                            <td>
+                                <!-- Employment Number Picklist -->
+                                <div class="hide-label">
+                                    <lightning-combobox name="empNumber" variant="label-hidden"
+                                        value={incomeRow.empNumber} options={empNumberOptions}
+                                        onchange={handleFieldChange} required={incomeRow.isEmpNumberRequired}
+                                        data-id="input-field">
+                                    </lightning-combobox>
+                                </div>
+                            </td>
+                            <td>
+                                <!-- Amount Input -->
+                                <div class="hide-label">
+                                    <lightning-input type="number" name="amount" variant="label-hidden"
+                                        value={incomeRow.amount} min="1"
+                                        message-when-range-underflow="Amount must be greater than 0"
+                                        message-when-value-missing="Please provide Amount"
+                                        required={incomeRow.isSourceOrFrequencyRequired} formatter="currency" step="any"
+                                        onchange={handleFieldChange} data-id="input-field">
+                                    </lightning-input>
+                                </div>
+                            </td>
+                            <td>
+                                <!-- Frequency Picklist -->
+                                <c-multiselect-combobox label="" onselect={handleFieldChange}
+                                    value={incomeRow.CDE_FREQ_PAY_ESTMD__c} name="incomeFrequency"
+                                    behavior-type="picklist" object="T_EMPLMT_INCOME__c" field="CDE_FREQ_PAY_ESTMD__c"
+                                    data-id="input-field" show-none
+                                    required={incomeRow.isSourceOrFrequencyRequired}>
+                                </c-multiselect-combobox>                                
+                            </td>
+                            <td>
+                                <!-- Hours Per Week Input -->
+                                <div class="hide-label">
+                                    <lightning-input type="number" name="hoursPerWeek" variant="label-hidden"
+                                        value={incomeRow.hoursPerWeek} required={incomeRow.isHoursRequired}
+                                        message-when-value-missing="Please enter hours per week" step="any"
+                                        onblur={roundOffHours} data-id="input-field">
+                                    </lightning-input>
+                                </div>
+                            </td>
+                            <td>
+                                <!-- Federal Minimum Wage Met Output -->
+                                <div>{incomeRow.fedMinWageMet}</div>
+                            </td>
+                        </tr>
+                    </template>
+                </template>
+            </tbody>
+        </table>
+    </div>
+</template>

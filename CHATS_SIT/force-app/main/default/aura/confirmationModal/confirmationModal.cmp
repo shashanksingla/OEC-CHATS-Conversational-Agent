@@ -1,0 +1,75 @@
+<aura:component implements="flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickAction,force:hasSObjectName" access="global">
+    
+    <aura:attribute name="title" type="String" default="CONFIRM"/>
+    <aura:attribute name="confirmMsg" type="String"/>
+    <aura:attribute name="confirmMsgLst" type="String[]"/>
+    <aura:attribute name="confirmModalYes" type="Aura.Action"/>
+    <aura:attribute name="confirmModalNo" type="Aura.Action"/>
+    <aura:attribute name="confirmModalClose" type="Aura.Action"/><!--CCCAP-13611-->
+    <aura:attribute name="showYesButton" type="Boolean" default="true"/>
+    <aura:attribute name="showNoButton" type="Boolean" default="true"/>
+    <aura:attribute name="showCloseButton" type="Boolean" default="true"/>
+    <aura:attribute name="yesLabel" type="String" default="Yes"/>
+    <aura:attribute name="noLabel" type="String" default="No"/>
+    <aura:attribute name="disableYesButton" type="Boolean" default="false"/>
+    <aura:attribute name="modalWidth" type="String"/>
+    
+    <aura:method name="openModal" action="{!c.handleModalButtonClick}"/>    
+    <aura:method name="hideConfirmModal" action="{!c.hideConfirmModal}" access="PUBLIC"/>
+    
+    <aura:handler name="change" value="{!v.closeConfirmModal}" action="{!c.hideConfirmModal}"/>
+    
+    <div class="slds-backdrop " aura:id="backDrop"></div>
+    <div role="dialog" tabindex="-1" aura:id="confirmMsgModal" aria-labelledby="header43" class="slds-modal ">
+        <div class="slds-modal__container" style="{!(v.modalWidth?'width:'+v.modalWidth+'!important':'')}">
+            <div class="slds-modal__header">
+                <aura:if isTrue="{!v.showCloseButton}">
+                    <!--Added if else as part of CCCAP-13611-->
+                    <aura:if isTrue="{!!empty(v.confirmModalClose)}">
+                        <lightning:buttonIcon iconName="utility:close" variant="bare-inverse" alternativeText="Close"
+                                              class="slds-modal__close" size="large" onclick="{!v.confirmModalClose}"/>
+                        <aura:set attribute="else">
+                            <lightning:buttonIcon iconName="utility:close" variant="bare-inverse" alternativeText="Close"
+                                                  class="slds-modal__close" size="large" onclick="{!c.hideConfirmModal}"/>
+                        </aura:set>
+                    </aura:if>
+                </aura:if>
+                <h2 class="slds-text-heading--medium">{!v.title}</h2>
+            </div>
+            <aura:if isTrue="{!v.title != 'ERROR!'}">
+                <aura:if isTrue="{!!empty(v.confirmMsgLst)}">
+                    <div class="slds-modal__content slds-p-around--medium">
+                        <aura:iteration items="{!v.confirmMsgLst}" var="msg">
+                            <div>{!msg}</div><br/>
+                        </aura:iteration>
+                    </div>
+                    <aura:set attribute="else">
+                        <div class="slds-modal__content slds-p-around--medium" >
+                            {!v.confirmMsg}
+                        </div>  
+                    </aura:set>    
+                </aura:if>
+            </aura:if>
+            <aura:if isTrue="{!v.title == 'ERROR!'}">
+                <div class="slds-notify slds-notify_alert slds-theme_error" role="alert">
+                    <span class="slds-icon_container slds-icon-utility-ban slds-m-right_x-small" title="Description of icon when needed"/>
+                    <ul><h2><li>{!v.confirmMsg}</li></h2></ul>
+                </div> 
+            </aura:if>
+            <div class="slds-modal__footer">
+                <aura:if isTrue="{!v.showNoButton}">
+                    <aura:if isTrue="{!!empty(v.confirmModalNo)}">
+                        <button class="slds-button slds-button--neutral " onclick="{!v.confirmModalNo}">{!v.noLabel}</button>
+                        <aura:set attribute="else">
+                            <button class="slds-button slds-button--neutral " onclick="{!c.hideConfirmModal}">{!v.noLabel}</button>  
+                        </aura:set>
+                    </aura:if>
+                </aura:if>
+                <aura:if isTrue="{!v.showYesButton}">
+                    <button class="slds-button slds-button--brand " disabled="{!v.disableYesButton}" onclick="{!v.confirmModalYes}">{!v.yesLabel}</button>
+                </aura:if>
+            </div>
+        </div>
+    </div>
+    
+</aura:component>

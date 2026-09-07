@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>B_CBMS_Filter</fullName>
+    <columns>NAME</columns>
+    <columns>CBMS_CASE_NUM__c</columns>
+    <columns>IDN_CBMS_REF__c</columns>
+    <columns>CDE_CBMS_REF_TYP__c</columns>
+    <columns>CBMS_REF_REASON__c</columns>
+    <columns>CDE_COUNTY__c</columns>
+    <columns>CREATED_DATE</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>IDN_CBMS_REF__c</field>
+        <operation>equals</operation>
+        <value>7340</value>
+    </filters>
+    <label>B_CBMS_Filter</label>
+</ListView>

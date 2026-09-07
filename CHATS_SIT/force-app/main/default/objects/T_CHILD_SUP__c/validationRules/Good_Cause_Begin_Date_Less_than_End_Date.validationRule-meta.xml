@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Good_Cause_Begin_Date_Less_than_End_Date</fullName>
+    <active>true</active>
+    <description>Good Cause Effective End Date must be greater than Good Cause Effective Begin Date.</description>
+    <errorConditionFormula>AND(NOT( IDN_CLIENT__r.Is_Peak_Data__c ),OR((DTE_BEGIN_GDC__c &gt; DTE_END_GDC__c),
+AND(ISBLANK( DTE_BEGIN_GDC__c ),NOT(ISBLANK( DTE_END_GDC__c )))))</errorConditionFormula>
+    <errorDisplayField>DTE_END_GDC__c</errorDisplayField>
+    <errorMessage>Good Cause Effective End Date must be greater than Good Cause Effective Begin Date or cannot be filled when Good Cause Begin Date is Blank.</errorMessage>
+</ValidationRule>

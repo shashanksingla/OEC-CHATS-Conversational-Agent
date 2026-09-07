@@ -1,0 +1,17 @@
+<!--  
+Author      :	Rishav Maji
+Description :	Component for 'Submit for State Reversal' button in Case Review details screen
+Requirement	:	Project 425, JIRA CCCAP-4771
+-->
+<aura:component Controller="caseReviewApexController" extends="c:abstractSection" implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickAction,lightning:actionOverride" access="global">
+    
+    <aura:attribute name="taskComment" type="String"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <div style="height: 10rem">
+        <lightning:textarea aura:id="input-field" label="Comment" value="{!v.taskComment}" required="true"/>
+        <div style="padding: 0.8rem 0rem 0rem 0rem; text-align: center;">
+            <lightning:button label="Complete" onclick="{!c.doComplete}" variant="brand"/>
+        </div>
+    </div>
+</aura:component>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Danielle_s_Filter</fullName>
+    <columns>IDN_CASE__c</columns>
+    <columns>CDE_COUNTY__c</columns>
+    <columns>NAME</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>CDE_AGNST_ADJMT__c</columns>
+    <columns>CDE_STATUS_ADJMT__c</columns>
+    <columns>CDE_REASON__c</columns>
+    <columns>IDN_PROVR__c</columns>
+    <columns>DTE_END_ADJMT__c</columns>
+    <columns>AMT_ADJMT__c</columns>
+    <columns>CDE_TYPE_ADJMT__c</columns>
+    <columns>CDE_TYPE_CLSFN__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>CDE_TYPE_ADJMT__c</field>
+        <operation>equals</operation>
+        <value>2</value>
+    </filters>
+    <filters>
+        <field>CDE_TYPE_CLSFN__c</field>
+        <operation>equals</operation>
+        <value>2</value>
+    </filters>
+    <filters>
+        <field>CREATED_DATE</field>
+        <operation>greaterThan</operation>
+        <value>8/31/2018 12:00 AM</value>
+    </filters>
+    <label>IPV/Fraud Filter</label>
+</ListView>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Required_Verified_for_ML</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(NOT(IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_Peak_Data__c),NOT(IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_CBMS_Data__c),OR( TEXT(CDE_TYPE_INFO_EMPLMT__c )=&apos;ML&apos;, TEXT(CDE_TYPE_INFO_EMPLMT__c )=&apos;MPL&apos;), ISBLANK(TEXT( CDE_TYPE_VERIF__c )))</errorConditionFormula>
+    <errorDisplayField>CDE_TYPE_VERIF__c</errorDisplayField>
+    <errorMessage>When Temporary Break Type is medical or maternity/paternity, verified is a required field</errorMessage>
+</ValidationRule>

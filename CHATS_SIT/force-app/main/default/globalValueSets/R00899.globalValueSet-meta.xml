@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>ATS</fullName>
+        <default>false</default>
+        <label>ATS</label>
+    </customValue>
+    <customValue>
+        <fullName>Authorization</fullName>
+        <default>false</default>
+        <label>Authorization</label>
+    </customValue>
+    <customValue>
+        <fullName>Case Determination</fullName>
+        <default>false</default>
+        <label>Case Determination</label>
+    </customValue>
+    <customValue>
+        <fullName>Customer Service</fullName>
+        <default>false</default>
+        <label>Customer Service</label>
+    </customValue>
+    <customValue>
+        <fullName>Discrimination</fullName>
+        <default>false</default>
+        <label>Discrimination</label>
+    </customValue>
+    <customValue>
+        <fullName>Parent Fee</fullName>
+        <default>false</default>
+        <label>Parent Fee</label>
+    </customValue>
+    <customValue>
+        <fullName>Provider</fullName>
+        <default>false</default>
+        <label>Provider</label>
+    </customValue>
+    <customValue>
+        <fullName>Timeliness</fullName>
+        <default>false</default>
+        <label>Timeliness</label>
+    </customValue>
+    <description>CCCAP-15359</description>
+    <masterLabel>R00899</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

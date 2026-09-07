@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Status__c</fullName>
+    <description>Default is &quot;new&quot;. State CCCAP Staff/Helpdesk update status.</description>
+    <label>Status</label>
+    <required>false</required>
+    <trackFeedHistory>true</trackFeedHistory>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>New</fullName>
+                <default>true</default>
+                <label>New</label>
+            </value>
+            <value>
+                <fullName>In Progress</fullName>
+                <default>false</default>
+                <label>In Progress</label>
+            </value>
+            <value>
+                <fullName>Awaiting User</fullName>
+                <default>false</default>
+                <label>Awaiting User</label>
+            </value>
+            <value>
+                <fullName>Elevated</fullName>
+                <default>false</default>
+                <label>Elevated</label>
+            </value>
+            <value>
+                <fullName>Fixed/Completed</fullName>
+                <default>false</default>
+                <label>Fixed/Completed</label>
+            </value>
+            <value>
+                <fullName>Change Pending</fullName>
+                <default>false</default>
+                <label>Change Pending</label>
+            </value>
+            <value>
+                <fullName>Change Approved</fullName>
+                <default>false</default>
+                <label>Change Approved</label>
+            </value>
+            <value>
+                <fullName>Change Denied</fullName>
+                <default>false</default>
+                <label>Change Denied</label>
+            </value>
+            <value>
+                <fullName>Change Implemented</fullName>
+                <default>false</default>
+                <label>Change Implemented</label>
+            </value>
+            <value>
+                <fullName>Reopened</fullName>
+                <default>false</default>
+                <label>Reopened</label>
+            </value>
+            <value>
+                <fullName>Pending Research</fullName>
+                <default>false</default>
+                <label>Pending Research</label>
+            </value>
+            <value>
+                <fullName>Pending Leadership Review</fullName>
+                <default>false</default>
+                <label>Pending Leadership Review</label>
+            </value>
+            <value>
+                <fullName>Pending CCCAP Team Review</fullName>
+                <default>false</default>
+                <label>Pending CCCAP Team Review</label>
+            </value>
+            <value>
+                <fullName>Pending CCMTG Review</fullName>
+                <default>false</default>
+                <label>Pending CCMTG Review</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

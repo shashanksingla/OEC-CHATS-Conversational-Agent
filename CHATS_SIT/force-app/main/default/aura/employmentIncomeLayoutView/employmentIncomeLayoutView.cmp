@@ -1,0 +1,34 @@
+<!--  
+Author      :	Rishav Maji
+Description :	Component to show specific fields in a seperate section in Employment Income detail page
+JIRA Id		:	CCCAP-3041
+Note		:	Component no longer being used as of June 2021 release requirement update
+-->
+<aura:component Controller="employmentIncomeApexController" implements="force:hasrecordId,force:hasSObjectName,flexipage:availableForRecordHome" access="global" >
+    
+    <aura:attribute name="empIncomeRecord" type="T_EMPLMT_INCOME__c" default="{'sobjectType':'T_EMPLMT_INCOME__c',
+                                                                              'CDE_TYPE_VERIF__c':'',
+                                                                              'CDE_SOURCE_VRFYD_PAY__c':''}"/>
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="recordError" type="String"/>
+    
+    <force:recordData aura:id="forceRecordCmp"
+                      recordId="{!v.recordId}"
+                      layoutType="FULL"
+                      fields="CDE_TYPE_VERIF__c,CDE_SOURCE_VRFYD_PAY__c"
+                      targetFields="{!v.empIncomeRecord}"
+                      mode="VIEW"
+                      targetError="{!v.recordError}" />
+    
+    <lightning:recordViewForm recordId="{!v.recordId}" objectApiName="T_EMPLMT_INCOME__c">
+        <lightning:layout multipleRows="true">
+            <lightning:layoutItem size="6" padding="around-small">
+                <lightning:outputField fieldName="CDE_TYPE_VERIF__c" class="slds-form-element_readonly"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem size="6" padding="around-small">
+                <lightning:outputField fieldName="CDE_SOURCE_VRFYD_PAY__c" class="slds-form-element_readonly"/>
+            </lightning:layoutItem>
+        </lightning:layout>
+    </lightning:recordViewForm>  
+    
+</aura:component>

@@ -1,0 +1,79 @@
+<aura:component >
+    <aura:attribute name="corrReq1" type="T_DOC_RQ__c" default="{'sobjectType':'T_DOC_RQ__c'}"/>
+    <aura:attribute name="corrReq2" type="T_DOC_RQ__c" default="{'sobjectType':'T_DOC_RQ__c'}"/>
+    <aura:attribute name="corrReq3" type="T_DOC_RQ__c" default="{'sobjectType':'T_DOC_RQ__c'}"/>
+    <aura:attribute name="corrReq4" type="T_DOC_RQ__c" default="{'sobjectType':'T_DOC_RQ__c'}"/>
+    <aura:attribute name="corrReq5" type="T_DOC_RQ__c" default="{'sobjectType':'T_DOC_RQ__c'}"/>
+    <aura:attribute name="corrReq6" type="T_DOC_RQ__c" default="{'sobjectType':'T_DOC_RQ__c'}"/>
+    <aura:attribute name="cidboolean" type="boolean" default=""/>
+    <aura:handler name="eventOnchange" event="c:dynamicPicklistEvent" action="{!c.handleEvent}"/>
+    <div>
+        <lightning:layout multipleRows="true" horizontalAlign="space">
+        	<p>Global -Correspondence Name</p>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            	<c:dynamicPicklist label="Correspondence Name1" aura:id="mySelect1"
+                       value="{!v.corrReq1.NME_CORSPD__c}"
+                       objectName="T_DOC_RQ__c"
+                       fieldName="NME_CORSPD__c"
+                       picklistType="GlobalPicklist"/>
+        	</lightning:layoutItem>
+            <br/>
+        	<p>Global -Correspondence Status</p>    
+        	<lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            	<c:dynamicPicklist label="Correspondence Status" aura:id="mySelect2"
+                	       value="{!v.corrReq1.CORR_STAT__c}"
+                    	   objectName="T_DOC_RQ__c"
+                     	   fieldName="CORR_STAT__c"
+                       	   picklistType="GlobalPicklist"/>            
+        	</lightning:layoutItem>
+        	<br/>
+        	<p>Table Picklist -ManualCorrespondence Name</p>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            	<c:dynamicPicklist label="Correspondence Name2" aura:id="mySelect3"
+                			       value="{!v.corrReq2.NME_CORSPD__c}"
+                       				picklistType="TableFetchPicklist"
+                       				method="getManualCorrespondences"/>	
+        	</lightning:layoutItem>
+        	<br/>
+            <p>Table Picklist -System Correspondence Names</p>
+        	<lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            	<c:dynamicPicklist label="Correspondence Name3" aura:id="mySelect4"
+                			       value="{!v.corrReq3.NME_CORSPD__c}"
+                       				picklistType="TableFetchPicklist"
+                       				method="getSystemCorrespondences"/>
+        	</lightning:layoutItem>
+        	<br/>
+            <p>Table Picklist -All Correspondence Names</p>
+        	<lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            	<c:dynamicPicklist label="Correspondence Name4" aura:id="mySelect5"
+                       value="{!v.corrReq4.NME_CORSPD__c}"
+                       picklistType="TableFetchPicklist"
+                       method="getAllCorrespondences"/>
+        	</lightning:layoutItem>
+        	<br/>
+            <p>Table Picklist -All Correspondence Names</p>
+        	<lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            	<c:dynamicPicklist label="Correspondence Name5" aura:id="mySelect6"
+                       value="{!v.corrReq5.NME_CORSPD__c}"
+                       picklistType="TableFetchPicklist"
+                       method="getAllCorrespondences"
+                       keyColName="Name"
+                       valueColName="Id"/>
+        	</lightning:layoutItem>
+        	<br/>
+            <p>Table Picklist -All Correspondence Names</p>
+        	<lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            	<c:dynamicPicklist label="Correspondence Name6" aura:id="mySelect7"
+                       value="{!v.corrReq6.NME_CORSPD__c}"
+                       picklistType="TableFetchPicklist"
+                       method="getAllCorrespondences"
+                       keyColName="NME_CORSPD__c"
+                       valueColName="Name"/>
+        	</lightning:layoutItem>
+        	<br/>
+            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                <lightning:input type="integer" label="Case ID" name="caseID" value="{!v.corrReq1.IDN_CASE__c}" disabled="{!v.cidboolean }"/>
+        	</lightning:layoutItem>
+        </lightning:layout>    
+    </div>
+</aura:component>

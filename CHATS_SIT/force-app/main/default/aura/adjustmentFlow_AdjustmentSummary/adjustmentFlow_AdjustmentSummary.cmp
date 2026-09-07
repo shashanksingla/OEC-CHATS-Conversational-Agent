@@ -1,0 +1,331 @@
+<aura:component extends="c:abstractSection" controller="AdjustmentFlowApxCtrl">
+    <aura:attribute name="currentTabNumber" type="Integer"/>
+    <aura:attribute name="adjustmentObj" type="T_ADJMT__c"/>
+    <aura:attribute name="individualObj" type="T_SBSD_INDIV__c"/>
+    <aura:attribute name="adjustmentDetailLst" type="T_ADJMT_DETAIL__c[]"/>
+    <aura:attribute name="adjustmentEntryEditMode" type="Boolean"/>
+    <aura:attribute name="adjustmentDetail" type="T_ADJMT_DETAIL__c"/>
+    <aura:attribute name="subPaymentDetail" type="SObject"/>
+    <aura:attribute name="rateTypeOptionsMap" type="Map"/>
+    <aura:attribute name="rateTypeOptionsCareDateMap" type="Map" />
+    <aura:attribute name="adjustDetailMap" type="Map" />
+    <aura:attribute name="rateTypeOptions" type="List"/>
+    <aura:attribute name="careUnitTypeOptions" type="List"/>
+    <aura:attribute name="careLevelOptions" type="List"/>
+    <aura:attribute name="selectedSubPayment" type="Object"/>
+    <aura:attribute name="adjustmentDtlWarp" type="adjustmentWrapper[]" access="public"/>
+    <aura:attribute name="childCurrentUtilization" type="Map" />
+    <aura:attribute type="string" name="sortField" />
+    <aura:attribute type="Boolean" name="sortAsc" />
+    <aura:attribute name="disabledARTFees" type="Boolean" default="false"/>
+    <!-- Bug fix 2929 -->
+    <aura:attribute name="careUnitTypeOptionsMap" type="Map"/>
+    <aura:attribute name="careLevelOptionsMap" type="Map"/>
+    <aura:attribute name="pageMode" type="String" default="view"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.adjustmentDtlWarp}" action="{!c.updateTotalAmount}"/>
+    <aura:handler event="c:adjustmentDetailSummaryEvent" action="{!c.handleAdjustmentDetailSummaryEvent}"/>
+    
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <c:outputField label="Adjustment ID" value="{!v.adjustmentObj.Name}"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <c:outputField label="Adjustment Type" value="{!v.adjustmentObj.CDE_TYPE_ADJMT__c}"/>
+        </lightning:layoutItem>
+        
+        <aura:if isTrue="{!!empty(v.adjustmentObj.IDN_PROVR__c)}">
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <c:outputField label="Provider ID" value="{!v.adjustmentObj.IDN_PROVR__r.Name}"/>
+            </lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <c:outputField label="Provider Name" value="{!v.adjustmentObj.IDN_PROVR__r.NAM_FACILITY__c}"/>
+            </lightning:layoutItem>
+        </aura:if>
+        
+        <aura:if isTrue="{!!empty(v.adjustmentObj.IDN_CASE__c)}">
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <c:outputField label="Case ID" value="{!v.adjustmentObj.IDN_CASE__r.Name}"/>
+            </lightning:layoutItem> 
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <aura:if isTrue="{!!empty(v.individualObj)}">
+                    <c:outputField label="Primary Caretaker" value="{!v.individualObj.NAM_FIRST__c+', '+v.individualObj.NAM_LAST__c}"/>
+                </aura:if>
+            </lightning:layoutItem> 
+        </aura:if>
+        
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <c:outputField label="Status" value="{!v.adjustmentObj.CDE_STATUS_ADJMT__c}"/>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+            <label class="slds-form-element__label" for="input-id-01">Adjustment Amount</label><br />
+            <aura:if isTrue="{!v.adjustmentObj.AMT_ADJMT__c!=0 &amp;&amp; v.adjustmentObj.CDE_TYPE_ADJMT__c == 'Recovery'}">
+                <ui:outputCurrency aura:id="curr" value="{!-v.adjustmentObj.AMT_ADJMT__c}"/>
+                <aura:set attribute="else">
+                    <ui:outputCurrency aura:id="curr" value="{!v.adjustmentObj.AMT_ADJMT__c}"/>
+                </aura:set>
+            </aura:if>
+        </lightning:layoutItem>
+    </lightning:layout>
+    <!-- Bug fix 3553 - removing slds-grid class to enable scrolling-->
+    <div class="slds-wrap slds-p-around--small slds-scrollable">
+        <table class="slds-table slds-table_bordered">
+            <thead>
+                <tr class="slds-text-title_caps">
+                    <aura:if isTrue="{!!empty(v.adjustmentObj.IDN_CASE__c)}">
+                        <th scope="col">
+                            <div onclick="{!c.sortbyColumn}" title="Provider ID" id="subPaymentDetails.idn_pmt_sub__r.idn_auth__r.IDN_PROVR__r.Name">Provider ID
+                                <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.idn_pmt_sub__r.idn_auth__r.IDN_PROVR__r.Name')}">
+                                    <aura:if isTrue="{!v.sortAsc}">
+                                        &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                        <aura:set attribute="else">
+                                            &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                        </aura:set>
+                                    </aura:if>
+                                </aura:if>
+                            </div>
+                        </th>
+                        <th scope="col">
+                            <div onclick="{!c.sortbyColumn}" title="Provider Name" id="subPaymentDetails.idn_pmt_sub__r.idn_auth__r.NAM_FACILITY__c">Provider Name
+                                <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.idn_pmt_sub__r.idn_auth__r.NAM_FACILITY__c')}">
+                                    <aura:if isTrue="{!v.sortAsc}">
+                                        &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                        <aura:set attribute="else">
+                                            &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                        </aura:set>
+                                    </aura:if>
+                                </aura:if>
+                            </div>
+                        </th>
+                    </aura:if>
+                    <aura:if isTrue="{!!empty(v.adjustmentObj.IDN_PROVR__c)}">
+                        <th scope="col">
+                            <div onclick="{!c.sortbyColumn}" title="Case ID" id="subPaymentDetails.idn_pmt_sub__r.idn_auth__r.IDN_CASE__r.Name">Case ID
+                                <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.idn_pmt_sub__r.idn_auth__r.IDN_CASE__r.Name')}">
+                                    <aura:if isTrue="{!v.sortAsc}">
+                                        &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                        <aura:set attribute="else">
+                                            &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                        </aura:set>
+                                    </aura:if>
+                                </aura:if>
+                            </div>
+                        </th>
+                    </aura:if>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Child First Name" id="subPaymentDetails.idn_pmt_sub__r.idn_auth__r.NAM_FIRST__c">Child First Name
+                            <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.idn_pmt_sub__r.idn_auth__r.NAM_FIRST__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp;<lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp;<lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Child Last Name" id="subPaymentDetails.idn_pmt_sub__r.idn_auth__r.NAM_LAST__c">Child Last Name
+                            <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.idn_pmt_sub__r.idn_auth__r.NAM_LAST__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Care Date" id="subPaymentDetails.dte_care__c">Care Date
+                            <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.dte_care__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Authorized Hours" id="subPaymentDetails.cde_unit_care_exptd__c">Authorized Hours
+                            <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.cde_unit_care_exptd__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Authorized Rate Type" id="subPaymentDetails.cde_type_unit_care__c">Authorized Rate Type
+                            <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.cde_type_unit_care__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Attended Hours" id="subPaymentDetails.cde_unit_care_actual__c">Attended Hours
+                            <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.cde_unit_care_actual__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Unit Paid" id="subPaymentDetails.cde_time_trdnl__c">Unit Paid
+                            <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.cde_time_trdnl__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Rate Paid" id="subPaymentDetails.amt_rate__c">Rate Paid
+                            <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.amt_rate__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Parent Fee" id="subPaymentDetails.amt_copay__c">Parent Fee
+                            <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.amt_copay__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Amount Paid" id="subPaymentDetails.amt_total__c">Amount Paid
+                            <aura:if isTrue="{!(v.sortField == 'subPaymentDetails.amt_total__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Adjusted Authorized Hours" id="ajustmentDetails.NBR_HOURS_AUTH_ADJD__c">Adjusted Authorized Hours
+                            <aura:if isTrue="{!(v.sortField == 'ajustmentDetails.NBR_HOURS_AUTH_ADJD__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Adjusted Attended Hours" id="ajustmentDetails.NBR_HOURS_ATTND_ADJD__c">Adjusted Attended Hours
+                            <aura:if isTrue="{!(v.sortField == 'ajustmentDetails.NBR_HOURS_ATTND_ADJD__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Adjusted Rate Type" id="ajustmentDetails.CDE_TYPE_RATE_ADJD__c">Adjusted Rate Type
+                            <aura:if isTrue="{!(v.sortField == 'ajustmentDetails.CDE_TYPE_RATE_ADJD__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Adjusted Rate Paid" id="ajustmentDetails.AMT_PAID_RATE_ADJD__c">Adjusted Rate Paid
+                            <aura:if isTrue="{!(v.sortField == 'ajustmentDetails.AMT_PAID_RATE_ADJD__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <th scope="col">
+                        <div onclick="{!c.sortbyColumn}" title="Adjusted Amount" id="ajustmentDetails.AMT_DETAIL_ADJMT__c">Adjusted Amount
+                            <aura:if isTrue="{!(v.sortField == 'ajustmentDetails.AMT_DETAIL_ADJMT__c')}">
+                                <aura:if isTrue="{!v.sortAsc}">
+                                    &nbsp; <lightning:icon iconName="utility:arrowup" alternativeText="ASC" size="xx-small"/>
+                                    <aura:set attribute="else">
+                                        &nbsp; <lightning:icon iconName="utility:arrowdown" alternativeText="DESC" size="xx-small"/>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:if>
+                        </div>
+                    </th>
+                    <aura:if isTrue="{!!(v.adjustmentObj &amp;&amp; v.pageMode=='view')}">
+                        <th scope="col">
+                            <div class="slds-truncate" title="userAction"></div>
+                        </th>
+                    </aura:if>
+                </tr>
+            </thead>
+            <tbody>
+                <aura:iteration items="{!v.adjustmentDtlWarp}" var="adjDetailWrap" indexVar="index">
+                    <c:adjustmentDetailRow currentTabNumber="{!v.currentTabNumber}"
+                                           adjustmentDtlWarp="{!adjDetailWrap}"
+                                           adjustment="{!v.adjustmentObj}"
+                                           rateTypeOptionsMap="{!v.rateTypeOptionsMap}"
+                                           subPaymentDetail="{!v.subPaymentDetail}"
+                                           selectedSubPayment="{!v.selectedSubPayment}"
+                                           rateTypeOptions="{!v.rateTypeOptions}"
+                                           adjustmentDtlWarpArr="{!v.adjustmentDtlWarp}"
+                                           rowIndex="{!index}"
+                                           adjustDetailMap ="{!v.adjustDetailMap}"
+                                           careUnitTypeOptionsMap="{!v.careUnitTypeOptionsMap}"
+                                           careLevelOptionsMap="{!v.careLevelOptionsMap}"
+                                           careUnitTypeOptions="{!v.careUnitTypeOptions}"
+                                           careLevelOptions="{!v.careLevelOptions}"
+                                           childCurrentUtilization ="{!v.childCurrentUtilization}"
+                                           disabledARTFees ="{!v.disabledARTFees}"
+                                           pageMode="{!v.pageMode}"/>
+                </aura:iteration>
+            </tbody>
+        </table>
+    </div>
+    
+</aura:component>

@@ -1,0 +1,33 @@
+<aura:component >
+    <aura:attribute name="countyRatePlan" type="T_COUNTY_RATE__c"/>
+    <aura:attribute name="status" type="String"/>
+    
+    <div class="slds-form slds-form_stacked">
+        <div class="slds-grid">
+            <div class="slds-col">
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label" for="countyName">County</label>
+                    <div class="slds-form-element__control">
+                        <lightning:formattedText value="{!v.countyRatePlan.IDN_COUNTY__r.Name}" aura:id="countyName"/>
+                    </div>
+                </div>
+            </div>
+            <div class="slds-col">
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label" for="effectiveDate">Effective Date</label>
+                    <div class="slds-form-element__control">
+                        <lightning:formattedText value="{!v.countyRatePlan.DTE_BEGIN_EFFV_RATE__c}" aura:id="effectiveDate"/>
+                    </div>
+                </div>
+            </div>
+            <div class="slds-col">
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label" for="status">Status</label>
+                    <div class="slds-form-element__control">
+                        <lightning:formattedText value="{!v.status}" aura:id="status"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</aura:component>

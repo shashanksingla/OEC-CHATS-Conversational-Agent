@@ -1,0 +1,19 @@
+<aura:component implements="force:hasRecordId,lightning:actionOverride" access="global">
+    <lightning:navigation aura:id="navService"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <force:recordData aura:id="recordLoader"
+        recordId="{!v.recordId}"
+        fields="Id,IDN_CASE__c"
+        targetFields="{!v.complaintFields}"
+        recordUpdated="{!c.onRecordLoaded}"
+        mode="VIEW"/>
+    <aura:attribute name="complaintFields" type="Object"/>
+    <aura:attribute name="recordLoaded" type="Boolean" default="false"/>
+    <aura:if isTrue="{!v.recordLoaded}">
+        <c:newClientComplaint_lwc
+            recordId="{!v.recordId}"
+            screenMode="EDIT"
+            oncancel="{!c.handleCancel}"
+            oncomplaintsaved="{!c.handleSaved}"/>
+    </aura:if>
+</aura:component>

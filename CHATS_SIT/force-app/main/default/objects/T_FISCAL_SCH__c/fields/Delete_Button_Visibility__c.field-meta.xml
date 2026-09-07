@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Delete_Button_Visibility__c</fullName>
+    <formula>AND(
+            OR( Is_Flow_Completed__c == false, RecordType.Name == &apos;Future&apos;),
+            OR(
+                TEXT(IDN_AGRMT_FISCAL__r.CDE_COUNTY__r.CDE_COUNTY__c) == TEXT($User.Owner_County__c),
+                CONTAINS(&apos;;&apos; &amp; $User.Common_County_Text__c &amp; &apos;;&apos;, &apos;;&apos; &amp; TEXT(IDN_AGRMT_FISCAL__r.CDE_COUNTY__r.CDE_COUNTY__c) &amp; &apos;;&apos;) ,         
+                $Permission.System_Administrator
+            )
+            )</formula>
+    <label>Delete Button Visibility</label>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>

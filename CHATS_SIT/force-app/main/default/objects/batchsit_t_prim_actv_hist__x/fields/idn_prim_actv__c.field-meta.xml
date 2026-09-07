@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_prim_actv__c</fullName>
+    <description>idn_prim_actv</description>
+    <externalDeveloperName>idn_prim_actv</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Primary Activity ID</label>
+    <length>50</length>
+    <referenceTargetField>T_PRIM_ACTV__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_PRIM_ACTV__c</referenceTo>
+    <relationshipLabel>Primary Activity Legacy History</relationshipLabel>
+    <relationshipName>Primary_Activity_History</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

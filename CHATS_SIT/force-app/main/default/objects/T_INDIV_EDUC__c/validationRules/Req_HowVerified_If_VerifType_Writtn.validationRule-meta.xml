@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Req_HowVerified_If_VerifType_Writtn</fullName>
+    <active>true</active>
+    <description>Require How Verified field for Verified Type is &quot;Written Verification&quot;</description>
+    <errorConditionFormula>AND(AND(NOT(IDN_CLIENT__r.Is_Peak_Data__c),NOT(IDN_CLIENT__r.Is_CBMS_Data__c)), ISPICKVAL(CDE_TYPE_VERIF__c, &quot;V&quot;) , 
+    ISBLANK(TEXT(CDE_SOURCE_VRFD_EDUC__c) ) 
+)</errorConditionFormula>
+    <errorDisplayField>CDE_SOURCE_VRFD_EDUC__c</errorDisplayField>
+    <errorMessage>Require How Verified field for Verified Type is &quot;Written Verification&quot;</errorMessage>
+</ValidationRule>

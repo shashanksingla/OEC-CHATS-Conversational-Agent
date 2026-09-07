@@ -1,0 +1,61 @@
+<template>
+    <template lwc:if={showSpinner}>
+        <lightning-spinner alternative-text="Loading" variant="base"></lightning-spinner>
+    </template>
+    <div style="background:white">
+        <lightning-card title="" style="border:0px;">
+            <template if:true={initDone}>
+                <template if:false={isvalidCompare}>
+                    <h3> NO APPROVED COUNTY PLAN RECORD FOUND FOR COMPARISON!! </h3>
+                </template>
+                <template if:true={isvalidCompare}>
+                    <template if:false={isReadonly}>
+                        <div slot="actions">
+                            <lightning-badge label="For best results, print with landscape orientation."
+                                class="slds-m-bottom_small slds-m-right_xx-small slds-float_right slds-no-print"></lightning-badge>
+                            <br />
+                            <lightning-button-group class="slds-float_right">
+                                <lightning-button label="Return to County Plan" class="slds-no-print"
+                                    onclick={navigateBackToRecord}></lightning-button>
+                                <lightning-button label="Save Feedback" class="slds-no-print" onclick={handleSave}
+                                    variant="brand"></lightning-button>
+                                <lightning-button label="Print" class="slds-no-print"
+                                    onclick={handlePrint}></lightning-button>
+                            </lightning-button-group>
+                        </div>
+                        <div slot="footer">
+                            <lightning-badge label="For best results, print with landscape orientation."
+                                class="slds-align_center slds-no-print"></lightning-badge>
+                                <br/>
+                            <lightning-button-group class="slds-m-top_x-small">
+                                <lightning-button label="Return to County Plan" class="slds-no-print"
+                                    onclick={navigateBackToRecord}></lightning-button>
+                                <lightning-button label="Save Feedback" variant="brand" class="slds-no-print"
+                                    onclick={handleSave}></lightning-button>
+                                <lightning-button label="Print" class="slds-no-print"
+                                    onclick={handlePrint}></lightning-button>
+                            </lightning-button-group>
+                        </div>
+                    </template>
+                    <template if:true={submitted_cp}>
+                        <div class="slds-card__header-title slds-align_absolute-center" style="font-size:x-large">
+                            <h3>Colorado Child Care Assistance Program</h3>
+                        </div><br />
+                        <div class="slds-align_absolute-center" style="font-size:large"> County Plan -
+                            {submitted_cp.CDE_COUNTY__r.Name}
+                        </div>
+                        <br />
+                        <div class="slds-align_absolute-center" style="font-size:medium"> Effective Begin Date :
+                            {CP_Month}</div><br />
+                    </template>
+
+                    <!-- CP Level Questions components with all respective tables Start-->
+                    <c-county-plan-info_lwc compare-list={compareList} is-supervisor={isSupervisor}
+                        over-all-feedback={overAllFeedback} screen-mode={screenMode}
+                        has-prior-submissions={hasPriorSubmissions}>
+                    </c-county-plan-info_lwc>
+                </template>
+            </template>
+        </lightning-card>
+    </div>
+</template>

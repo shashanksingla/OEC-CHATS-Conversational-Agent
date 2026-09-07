@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Parent_Fee_Delinqc_Amt_Zero</fullName>
+    <active>true</active>
+    <description>Parent Fee Delinquency amount must be more than 0.00</description>
+    <errorConditionFormula>OR(
+ ISBLANK(AMT_DELINQC_COPAY_ENRLMT__c),
+ AMT_DELINQC_COPAY_ENRLMT__c = 0.0
+)</errorConditionFormula>
+    <errorDisplayField>AMT_DELINQC_COPAY_ENRLMT__c</errorDisplayField>
+    <errorMessage>Parent Fee Delinquency amount must be more than 0.00</errorMessage>
+</ValidationRule>

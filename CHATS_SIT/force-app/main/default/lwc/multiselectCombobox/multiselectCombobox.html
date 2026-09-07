@@ -1,0 +1,107 @@
+<template>
+    <!-- Label section - supports hideLabel and labelClass (from Aura inputPicklist) -->
+    <template lwc:if={shouldShowLabel}>
+        <label class={computedLabelClass} style={labelStyle}>
+            <template lwc:if={required}>
+                <abbr class="slds-required" title="required">*</abbr>
+            </template>
+            {label}
+        </label>
+    </template>
+    <div style={mainStyle}>
+        <template lwc:if={isPicklist}>
+            <!--  <lightning-combobox
+            class="c_multiCombobox" variant="label-hidden" value={value} options={optionData}
+                onchange={handleSelect} disabled={isDisabled}
+             ></lightning-combobox> -->
+            <lightning-select class="c_multiCombobox" variant="label-hidden" value={value} options={optionData}
+                onchange={handleSelect} disabled={isDisabled}></lightning-select>
+        </template>
+        <template lwc:elseif={isDynamic}>
+            <!--  <lightning-combobox
+            class="c_multiCombobox" variant="label-hidden" value={value} options={optionData}
+                onchange={handleSelect} disabled={isDisabled}
+             ></lightning-combobox>
+             -->
+            <lightning-select class="c_multiCombobox" variant="label-hidden" value={value} options={optionData}
+                onchange={handleSelect} disabled={isDisabled}></lightning-select>
+        </template>
+        <template lwc:elseif={isCheckbox}>
+            <lightning-checkbox-group class="c_multiCombobox" options={optionData} value={value} onchange={handleSelect}
+                disabled={isDisabled}></lightning-checkbox-group>
+            <!--field-level-message_lwc message={fieldLevelErrorMessage}></field-level-message_lwc-->
+        </template>
+        <template lwc:elseif={isCheckboxPicklist}>
+            <lightning-combobox class="c_multiCombobox" name="select" value={selectedValue}
+                placeholder="Select an option" options={optionData} onchange={handleSelect} hide-label>
+            </lightning-combobox>
+        </template>
+        <template lwc:elseif={isReadOnly}>
+            <c-output-field_lwc value={valueLabel} use-plain-value hide-label></c-output-field_lwc>
+        </template>
+        <template lwc:elseif={isRadioGroup}>
+            <lightning-radio-group class="c_multiCombobox" options={optionData} value={value} onchange={handleSelect}
+                disabled={isDisabled}>
+            </lightning-radio-group>
+        </template>
+        <template lwc:else>
+            <div class="slds-combobox_container">
+                <div class="slds-combobox slds-dropdown-trigger slds-dropdown-trigger_click slds-is-open"
+                    aria-expanded="true" aria-haspopup="listbox" role="combobox">
+                    <div class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right" role="none">
+                        <lightning-input class="c_multiCombobox" disabled={isDisabled} placeholder={inputPlaceHolder}
+                            onblur={blurEvent} onclick={showOptions} onkeyup={filterOptions} value={searchString}
+                            auto-complete="off" variant="label-hidden" id="combobox-id-1"></lightning-input>
+                        <lightning-icon class="slds-input__icon" icon-name="utility:down" size="x-small"
+                            alternative-text="search"></lightning-icon>
+                    </div>
+                    <template if:true={showDropdown}>
+                        <div id="listbox-id-1" class="slds-dropdown slds-dropdown_length-5 slds-dropdown_fluid">
+                            <ul class="slds-listbox slds-listbox_vertical recordListBox" role="presentation">
+                                <template if:false={message}>
+                                    <template for:each={optionData} for:item="option">
+                                        <div key={option.value} class={option.optionClass}
+                                            aria-disabled={option.required}>
+                                            <template if:true={option.isVisible}>
+                                                <li key={option.value} data-id={option.value} onmousedown={selectItem}
+                                                    class="slds-listbox__item eachItem">
+                                                    <template if:true={option.selected}>
+                                                        <lightning-icon icon-name="utility:check" size="x-small"
+                                                            alternative-text="icon"></lightning-icon>
+                                                    </template>
+                                                    <span
+                                                        class="slds-media slds-listbox__option_entity verticalAlign slds-truncate">{option.label}</span>
+                                                </li>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </template>
+                                <template if:true={message}>
+                                    <li class="slds-listbox__item">
+                                        <span
+                                            class="slds-media slds-listbox__option_entity verticalAlign slds-truncate">{message}</span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+
+                </div>
+            </div>
+        </template>
+        <template if:true={arevaluesSelected}>
+            <template for:each={selectedItems} for:item="option">
+                <span key={option.value} class="slds-pill slds-pill_link slds-m-around_xx-small">
+                    <span class="slds-pill__action" title="Full pill label verbiage mirrored here">
+                        <span class="slds-pill__label">{option.label}</span>
+                    </span>
+                    <template if:false={option.required}>
+                        <lightning-button-icon class="slds-button slds-button_icon slds-button_icon slds-pill__remove"
+                            icon-name="utility:close" size="x-small" alternative-text="Remove"
+                            onclick={handleItemRemove} variant="bare" data-name={option.value}></lightning-button-icon>
+                    </template>
+                </span>
+            </template>
+        </template>
+    </div>
+</template>

@@ -1,0 +1,143 @@
+<template>
+    <!-- role="region" + aria-labelledby ties the entire component region to its visible heading -->
+    <lightning-layout multiple-rows="true" role="region" aria-labelledby="adjustment-address-section-title">
+        <!-- Section Title (from Aura component) -->
+        <lightning-layout-item flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title" id="adjustment-address-section-title">Adjustment Address</h3>
+        </lightning-layout-item>
+
+        <!-- ═══════════════════════════════════════════════════════════════════════
+         VIEW MODE  (pageMode === 'view' && !provEditableAddress)
+     ════════════════════════════════════════════════════════════════════════ -->
+        <template lwc:if={isViewMode}>
+            <!-- Address Line 1 -->
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <!-- role="group" + aria-label groups the label/value pair for screen readers -->
+                <div class="view-field" role="group" aria-label="Address Line 1">
+                    <c-output-field_lwc label="Address Line 1" value={address.ADR_LINE_1__c}>
+                    </c-output-field_lwc>
+                </div>
+            </lightning-layout-item>
+
+            <!-- Address Line 2 -->
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="view-field" role="group" aria-label="Address Line 2">
+                    <c-output-field_lwc label="Address Line 2" value={address.ADR_LINE_2__c}>
+                    </c-output-field_lwc>
+                </div>
+            </lightning-layout-item>
+
+            <!-- City -->
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="view-field" role="group" aria-label="City">
+                    <c-output-field_lwc label="City" value={address.ADR_CITY__c}>
+                    </c-output-field_lwc>
+                </div>
+            </lightning-layout-item>
+
+            <!-- State -->
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="view-field" role="group" aria-label="State">
+                    <c-output-field_lwc label="State" value={address.ADR_STATE__c}>
+                    </c-output-field_lwc>
+                </div>
+            </lightning-layout-item>
+
+            <!-- Zip Code (Main + Extension) -->
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="view-field" role="group" aria-label="Zip Code">
+                    <c-output-field_lwc label="Zip Code" value={address.ADR_ZIP_MAIN__c}>
+                    </c-output-field_lwc>
+                </div>
+            </lightning-layout-item>
+
+            <!-- Zip Code Extension -->
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="view-field" role="group" aria-label="Zip Code Extension">
+                    <c-output-field_lwc label="Zip Code Extension" value={address.ADR_ZIP_EXTN__c}>
+                    </c-output-field_lwc>
+                </div>
+            </lightning-layout-item>
+
+        </template>
+
+        <!-- ═══════════════════════════════════════════════════════════════════════
+         EDIT MODE  (all other cases)
+     ════════════════════════════════════════════════════════════════════════ -->
+        <!-- role="form" + aria-label identifies this block as a named form landmark -->
+        <template lwc:else>
+            <!-- Address Line 1 (required) -->
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="form-field required-field">
+                    <!-- aria-required="true" explicitly signals required state to assistive technology -->
+                    <lightning-input type="text" label="Address Line 1" aria-label="Address Line 1" name="ADR_LINE_1__c"
+                        value={address.ADR_LINE_1__c} required aria-required="true" data-id="input-field"
+                        data-field="ADR_LINE_1__c" onchange={handleAddressChange}>
+                    </lightning-input>
+                </div>
+            </lightning-layout-item>
+
+            <!-- Address Line 2 (optional) -->
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="form-field">
+                    <lightning-input type="text" label="Address Line 2" aria-label="Address Line 2" name="ADR_LINE_2__c"
+                        value={address.ADR_LINE_2__c} data-id="input-field" data-field="ADR_LINE_2__c"
+                        onchange={handleAddressChange}>
+                    </lightning-input>
+                </div>
+            </lightning-layout-item>
+
+            <!-- City (required) -->
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="form-field required-field">
+                    <!-- aria-required="true" explicitly signals required state to assistive technology -->
+                    <lightning-input type="text" label="City" aria-label="City" name="ADR_CITY__c"
+                        value={address.ADR_CITY__c} required aria-required="true" data-id="input-field"
+                        data-field="ADR_CITY__c" onchange={handleAddressChange}>
+                    </lightning-input>
+                </div>
+            </lightning-layout-item>
+
+            <!-- State (picklist, required) - matchWithLabel from Aura inputPicklist -->
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                <div class="form-field required-field">
+                    <!-- aria-required="true" explicitly signals required state to assistive technology -->
+                    <c-multiselect-combobox label="State" aria-label="State" name="ADR_STATE__c"
+                        value={address.ADR_STATE__c} behavior-type="picklist" object="T_ADJMT_ADDR__c"
+                        field="ADR_STATE__c" required aria-required="true" show-none match-with-label
+                        unique-key={address.Id} data-id="input-field" data-field="ADR_STATE__c"
+                        onselect={handleStateChange}>
+                    </c-multiselect-combobox>
+                </div>
+            </lightning-layout-item>
+
+            <!-- Zip Code Main (required) + Zip Code Extension (optional) -->
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <!-- Zip Code Main -->
+                    <div class="form-field required-field zip-main">
+                        <!-- aria-required="true" explicitly signals required state to assistive technology -->
+                        <lightning-input type="text" label="Zip Code" aria-label="Zip Code" name="ADR_ZIP_MAIN__c"
+                            value={address.ADR_ZIP_MAIN__c} required aria-required="true" maxlength="9"
+                            data-id="input-field" data-field="ADR_ZIP_MAIN__c" onchange={handleAddressChange}
+                            onblur={handleZipBlur}>
+                        </lightning-input>
+                    </div>
+            </lightning-layout-item>        
+
+            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <!-- Zip Code Extension -->
+                    <div class="form-field zip-extension">
+                        <lightning-input type="text" label="Zip Ext." aria-label="Zip Code Extension"
+                            name="ADR_ZIP_EXTN__c" value={address.ADR_ZIP_EXTN__c} maxlength="4" data-id="input-field"
+                            data-field="ADR_ZIP_EXTN__c" onchange={handleAddressChange}>
+                        </lightning-input>
+                        <!-- aria-live="polite" + aria-atomic="true" ensures screen readers announce the error message -->
+                        <div aria-live="polite" aria-atomic="true">
+                            <c-field-level-message_lwc data-id="zipExtensionError" message={zipExtErrorMessage}>
+                            </c-field-level-message_lwc>
+                        </div>
+                    </div>
+            </lightning-layout-item>
+        </template>
+    </lightning-layout>
+</template>

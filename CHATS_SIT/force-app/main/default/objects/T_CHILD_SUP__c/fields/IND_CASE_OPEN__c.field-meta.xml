@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>IND_CASE_OPEN__c</fullName>
+    <description>Do you have an open child support case?</description>
+    <label>Do you have an open child support case?</label>
+    <required>false</required>
+    <trackHistory>true</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetName>R00619</valueSetName>
+    </valueSet>
+</CustomField>

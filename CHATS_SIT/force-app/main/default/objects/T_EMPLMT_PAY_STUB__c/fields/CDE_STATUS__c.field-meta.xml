@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CDE_STATUS__c</fullName>
+    <description>JIRA CHAT-2779 and 2778
+2. added new columns T_EMPLMT_PAY_STUB.CDE_STATUS and T_EMPLMT_INCOME.CDE_STATUS</description>
+    <label>Status</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetName>R00848</valueSetName>
+    </valueSet>
+</CustomField>

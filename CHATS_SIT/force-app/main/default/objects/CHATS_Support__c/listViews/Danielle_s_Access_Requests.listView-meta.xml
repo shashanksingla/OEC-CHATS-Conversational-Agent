@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Danielle_s_Access_Requests</fullName>
+    <columns>NAME</columns>
+    <columns>Status__c</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>Root_Cause__c</columns>
+    <columns>Access_Request_Type__c</columns>
+    <columns>CREATEDBY_USER</columns>
+    <columns>UPDATEDBY_USER</columns>
+    <columns>LAST_UPDATE</columns>
+    <columns>Access_Level_Requested__c</columns>
+    <columns>Support_Team_Assignee__c</columns>
+    <columns>County__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Status__c</field>
+        <operation>equals</operation>
+        <value>New,In Progress,Awaiting User,Elevated,Reopened,Pending Research</value>
+    </filters>
+    <filters>
+        <field>Root_Cause__c</field>
+        <operation>equals</operation>
+        <value>Access Request</value>
+    </filters>
+    <label>State Team Access Requests</label>
+</ListView>

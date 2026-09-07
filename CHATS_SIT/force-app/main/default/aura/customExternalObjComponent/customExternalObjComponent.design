@@ -1,0 +1,4 @@
+<design:component>	
+    <design:attribute name="componentAttributesTypes" label="Component Attributes(For Multiple, put separated by semicolon)"/>
+    <design:attribute name="pickListTypeFields" label="Component Picklist Attributes Separate by semicolon"/>
+</design:component>

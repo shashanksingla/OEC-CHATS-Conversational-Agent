@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Activity_End_Date_Validation</fullName>
+    <active>true</active>
+    <errorConditionFormula>AND(IDN_EMPLMT_INDIV__r.DTE_END_EFFV__c &lt; DTE_END_EFFV__c, NOT(ISBLANK(IDN_EMPLMT_INDIV__r.DTE_END_EFFV__c) ))</errorConditionFormula>
+    <errorDisplayField>DTE_END_EFFV__c</errorDisplayField>
+    <errorMessage>Effective End Date cannot be after the Activity Effective End Date</errorMessage>
+</ValidationRule>

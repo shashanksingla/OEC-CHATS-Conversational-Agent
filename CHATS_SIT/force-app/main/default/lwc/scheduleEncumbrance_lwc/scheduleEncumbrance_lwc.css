@@ -1,0 +1,8 @@
+.slds-modal__container {
+    max-width: 60rem !important;
+    width: 50% !important;
+}
+
+.customIcon div {
+    vertical-align: top !important;
+}

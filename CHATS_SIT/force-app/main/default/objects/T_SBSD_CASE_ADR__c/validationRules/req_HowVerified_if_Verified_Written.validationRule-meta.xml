@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>req_HowVerified_if_Verified_Written</fullName>
+    <active>true</active>
+    <description>Require How Verified Field if Verified field is &quot;Written Verification&quot;</description>
+    <errorConditionFormula>AND( !IDN_CASE__r.Is_Peak_Data__c,!IDN_CASE__r.Is_CBMS_Data__c, TEXT(CDE_TYPE_VERIF__c) = &apos;V&apos; , ISBLANK(TEXT(CDE_SOURCE_VRFD_ADR__c) ) )</errorConditionFormula>
+    <errorDisplayField>CDE_SOURCE_VRFD_ADR__c</errorDisplayField>
+    <errorMessage>&quot;How Verified&quot; is required if Verified is &quot;Written Verification&quot;.</errorMessage>
+</ValidationRule>

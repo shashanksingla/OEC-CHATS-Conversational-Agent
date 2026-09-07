@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Employment type information</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+   <!-- <enableChangeDataCapture>false</enableChangeDataCapture>-->
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>CDE_TYPE_INFO_EMPLMT__c</fullName>
+        <description>Employment Information Type</description>
+        <externalId>false</externalId>
+        <label>Temporary Break Type</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00337</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_TYPE_VERIF__c</fullName>
+        <description>Verified</description>
+        <externalId>false</externalId>
+        <label>Verified</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00367</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>DTE_BEGIN_EFFV__c</fullName>
+        <description>Effective Begin Date</description>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Effective Begin Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_END_EFFV__c</fullName>
+        <description>Effective End Date</description>
+        <encryptionScheme>None</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Effective End Date</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EMPLMT_INDIV__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <description>Employment ID</description>
+        <externalId>false</externalId>
+        <label>Employment ID</label>
+        <referenceTo>T_SBSD_INDIV_EMPLMT__c</referenceTo>
+        <relationshipLabel>Employment Temporary Break Information</relationshipLabel>
+        <relationshipName>Employment_Information</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>External ID</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <label>Employment Temporary Break</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All1</fullName>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>Employment Temporary Break ID</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Employment Temporary Break Information</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ReadWrite</sharingModel>
+    <validationRules>
+        <fullName>Activity_Begin_Date_Validation</fullName>
+        <active>true</active>
+        <errorConditionFormula>IDN_EMPLMT_INDIV__r.DTE_BEGIN_EFFV__c &gt; DTE_BEGIN_EFFV__c</errorConditionFormula>
+        <errorDisplayField>DTE_BEGIN_EFFV__c</errorDisplayField>
+        <errorMessage>Effective Begin Date cannot be before the Activity Effective Begin Date</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Activity_End_Date_Validation</fullName>
+        <active>true</active>
+        <errorConditionFormula>AND(IDN_EMPLMT_INDIV__r.DTE_END_EFFV__c &lt; DTE_END_EFFV__c, NOT(ISBLANK(IDN_EMPLMT_INDIV__r.DTE_END_EFFV__c) ))</errorConditionFormula>
+        <errorDisplayField>DTE_END_EFFV__c</errorDisplayField>
+        <errorMessage>Effective End Date cannot be after the Activity Effective End Date</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Begin_Date_Future_validation</fullName>
+        <active>true</active>
+        <description>Begin Date can not be more than 31 days in future.</description>
+        <errorConditionFormula>DTE_BEGIN_EFFV__c &gt; Today()+31</errorConditionFormula>
+        <errorDisplayField>DTE_BEGIN_EFFV__c</errorDisplayField>
+        <errorMessage>Begin Date can not be more than 31 days in future</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>End_Date_Later_Than_Begin_Date</fullName>
+        <active>true</active>
+        <errorConditionFormula>NOT(IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_Peak_Data__c) &amp;&amp; NOT(IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_CBMS_Data__c) &amp;&amp; DTE_BEGIN_EFFV__c &gt; DTE_END_EFFV__c</errorConditionFormula>
+        <errorDisplayField>DTE_END_EFFV__c</errorDisplayField>
+        <errorMessage>Effective End Date must be greater than Effective Begin Date</errorMessage>
+    </validationRules>
+   <!--Commented as part of CCCAP-10798-->
+       <!--validationRules>
+        <fullName>MaternityMedicalLeaveNotGreaterThanToday</fullName>
+        <active>false</active>
+        <errorConditionFormula>AND(NOT(IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_Peak_Data__c),NOT(IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_CBMS_Data__c), TEXT(CDE_TYPE_INFO_EMPLMT__c) = &apos;ML&apos; , DTE_BEGIN_EFFV__c &gt; Today())</errorConditionFormula>
+        <errorDisplayField>DTE_BEGIN_EFFV__c</errorDisplayField>
+        <errorMessage>Effective Begin Date must be a past date for maternity/medical leave.</errorMessage>
+    </validationRules-->
+    
+    <validationRules>
+        <fullName>Required_Verified_for_ML</fullName>
+        <active>true</active>
+        <errorConditionFormula>AND(NOT(IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_Peak_Data__c),NOT(IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_CBMS_Data__c),OR( TEXT(CDE_TYPE_INFO_EMPLMT__c )=&apos;ML&apos;, TEXT(CDE_TYPE_INFO_EMPLMT__c )=&apos;MPL&apos;), ISBLANK(TEXT( CDE_TYPE_VERIF__c )))</errorConditionFormula>
+        <errorDisplayField>CDE_TYPE_VERIF__c</errorDisplayField>
+        <errorMessage>When Temporary Break Type is medical or maternity/paternity, verified is a required field</errorMessage>
+    </validationRules>
+    <visibility>Public</visibility>
+</CustomObject>

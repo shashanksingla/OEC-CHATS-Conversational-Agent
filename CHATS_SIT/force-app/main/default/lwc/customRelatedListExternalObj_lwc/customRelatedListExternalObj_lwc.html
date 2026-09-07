@@ -1,0 +1,125 @@
+<template>
+    <article class="slds-card slds-card_boundary">
+        <div class="slds-card__header slds-grid">
+            <header class="slds-grid slds-media slds-media--center slds-has-flexi-truncate">
+                <div class="slds-media slds-no-space slds-grow">
+                    <span class="slds-avatar slds-avatar_small slds-m-right_small">
+                        <div class="slds-icon_container" style="background-color: #e9af67">
+                            <lightning-icon icon-name="custom:custom16" alternative-text="External Object" size="small"></lightning-icon>
+                        </div>
+                    </span>
+                    <div class="slds-media__body slds-align-middle">
+                        <h2 class="slds-card__header-title">
+                            <a class="slds-card__header-link" onclick={navigateToChildComponent}>
+                                <span class="slds-truncate slds-m-right--xx-small">
+                                    {relatedListHeader}
+                                </span>
+                                <span class="slds-shrink-none slds-m-right--xx-small">({recCount})</span>
+                            </a>
+                        </h2>
+                    </div>
+                </div>
+            </header>
+        </div>
+        
+        <template if:true={isLoading}>
+            <lightning-spinner variant="brand" size="small"></lightning-spinner>
+        </template>
+        
+        <div class="slds-card__body">
+            <template if:true={showTable}>
+                <div class="slds-scrollable">
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_fixed-layout">
+                        <thead>
+                            <tr class="slds-line-height_reset">
+                                <template for:each={tableHeaders} for:item="header">
+                                    <th key={header.fieldAPIName} 
+                                        class="slds-text-title_caps" 
+                                        scope="col" 
+                                        data-field={header.fieldAPIName}
+                                        onclick={sortColumn}>
+                                        <div class="slds-truncate" title={header.fieldLabel}>
+                                            {header.fieldLabel}
+                                            <template if:false={showMore}>
+                                                <template if:true={header.showAscIcon}>
+                                                    <lightning-icon icon-name="utility:arrowup" alternative-text="ASC" size="xx-small"></lightning-icon>
+                                                </template>
+                                                <template if:true={header.showDescIcon}>
+                                                    <lightning-icon icon-name="utility:arrowdown" alternative-text="DESC" size="xx-small"></lightning-icon>
+                                                </template>
+                                            </template>
+                                        </div>
+                                    </th>
+                                </template>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={displayRecords} for:item="record">
+                                <tr key={record.id}>
+                                    <template for:each={record.fldDefList} for:item="field">
+                                        <td key={field.fieldAPIName}>
+                                            <template if:true={field.isDate}>
+                                                <lightning-formatted-date-time 
+                                                    value={field.fieldValueDate} 
+                                                    year="numeric" 
+                                                    month="2-digit" 
+                                                    day="2-digit">
+                                                </lightning-formatted-date-time>
+                                            </template>
+                                            <template if:true={field.isDateTime}>
+                                                <lightning-formatted-date-time 
+                                                    value={field.fieldValueDateTime} 
+                                                    year="numeric" 
+                                                    month="numeric" 
+                                                    day="numeric" 
+                                                    hour="2-digit"
+                                                    minute="2-digit" 
+                                                    time-zone={timezone} 
+                                                    hour12="true">
+                                                </lightning-formatted-date-time>
+                                            </template>
+                                            <template if:true={field.isDouble}>
+                                                <lightning-formatted-number value={field.fieldValue}></lightning-formatted-number>
+                                            </template>
+                                            <template if:true={field.isExternalId}>
+                                                <a href={field.recordUrl} target="_self" class="slds-truncate">
+                                                    {field.fieldValue}
+                                                </a>
+                                            </template>
+                                            <template if:true={field.isReference}>
+                                                <template if:true={field.isUserReference}>
+                                                    <c-lookup-redirect_lwc record-id={field.fieldValue}></c-lookup-redirect_lwc>
+                                                </template>
+                                                <template if:false={field.isUserReference}>
+                                                    <template if:true={field.isIndivArtFees}>
+                                                        <a href={field.parentRecordUrl} target="_self" class="slds-truncate">
+                                                            {field.fieldValue}
+                                                        </a>
+                                                    </template>
+                                                    <template if:false={field.isIndivArtFees}>
+                                                        <span>{field.fieldValue}</span>
+                                                    </template>
+                                                </template>
+                                            </template>
+                                            <template if:true={field.isText}>
+                                                <div class="slds-truncate">{field.fieldValue}</div>
+                                            </template>
+                                        </td>
+                                    </template>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+        </div>
+        
+        <template if:true={showViewAllFooter}>
+            <footer class="slds-card__footer">
+                <a onclick={navigateToChildComponent}>
+                    View All <span class="slds-assistive-text">records</span>
+                </a>
+            </footer>
+        </template>
+    </article>
+</template>

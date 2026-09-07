@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Require_Check_Number_If_PymntType_Check</fullName>
+    <active>true</active>
+    <description>Check Number is must for Payment Type = &apos;Check&apos;</description>
+    <errorConditionFormula>AND( ISPICKVAL(CDE_TYPE_PMT_ADJMT__c,&apos;2&apos;), ISBLANK(TXT_NBR_CHECK_PMT__c ))</errorConditionFormula>
+    <errorDisplayField>TXT_NBR_CHECK_PMT__c</errorDisplayField>
+    <errorMessage>Check Number is must for Payment Type = &apos;Check&apos;</errorMessage>
+</ValidationRule>

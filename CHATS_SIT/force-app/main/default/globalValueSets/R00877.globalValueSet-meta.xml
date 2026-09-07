@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>1</fullName>
+        <default>false</default>
+        <label>A countywide fraud prevention policy (not specific to CCCAP) that outlines the county&apos;s expectation of staff to prevent and report fraud. If this option is selected, please provide the county policy to the State CCCAP team.</label>
+    </customValue>
+    <customValue>
+        <fullName>2</fullName>
+        <default>false</default>
+        <label>The information included in this Fraud Prevention and Detection CCCAP County Policy is the only fraud prevention policy utilized by the county.</label>
+    </customValue>
+    <description>R00877</description>
+    <masterLabel>R00877</masterLabel>
+    <sorted>true</sorted>
+</GlobalValueSet>

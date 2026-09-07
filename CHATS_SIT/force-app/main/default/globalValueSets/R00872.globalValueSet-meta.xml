@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>Business Office Lead Worker</fullName>
+        <default>false</default>
+        <label>Business Office Lead Worker</label>
+    </customValue>
+    <customValue>
+        <fullName>Business Office Supervisor</fullName>
+        <default>false</default>
+        <label>Business Office Supervisor</label>
+    </customValue>
+    <customValue>
+        <fullName>Business Office Worker</fullName>
+        <default>false</default>
+        <label>Business Office Worker</label>
+    </customValue>
+    <customValue>
+        <fullName>County Director</fullName>
+        <default>false</default>
+        <label>County Director</label>
+    </customValue>
+    <customValue>
+        <fullName>Eligibility Lead Worker</fullName>
+        <default>false</default>
+        <label>Eligibility Lead Worker</label>
+    </customValue>
+    <customValue>
+        <fullName>Eligibility Supervisor</fullName>
+        <default>false</default>
+        <label>Eligibility Supervisor</label>
+    </customValue>
+    <customValue>
+        <fullName>Eligibility Worker</fullName>
+        <default>false</default>
+        <label>Eligibility Worker</label>
+    </customValue>
+    <customValue>
+        <fullName>Recovery Worker</fullName>
+        <default>false</default>
+        <label>Recovery Worker</label>
+    </customValue>
+    <customValue>
+        <fullName>Other</fullName>
+        <default>false</default>
+        <label>Other</label>
+    </customValue>
+    <description>R00872</description>
+    <masterLabel>R00872</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

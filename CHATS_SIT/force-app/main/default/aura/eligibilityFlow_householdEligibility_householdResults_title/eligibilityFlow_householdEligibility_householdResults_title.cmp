@@ -1,0 +1,24 @@
+<aura:component >
+        <thead>
+            <tr class="slds-text-title_caps">
+                <th scope="col">
+                    <div class="slds-truncate" title="Program">Program</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="Eligibility Begin Date">Eligibility Begin Date</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="Eligibility End Date">Eligibility End Date</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="Eligibility Status">Eligibility Status</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="Eligibility Status">Override Reason</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="Eligibility Status">Override Comments</div>
+                </th>
+            </tr>            
+        </thead>
+</aura:component>

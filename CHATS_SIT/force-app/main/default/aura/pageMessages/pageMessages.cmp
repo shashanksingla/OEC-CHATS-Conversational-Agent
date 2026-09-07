@@ -1,0 +1,16 @@
+<aura:component >
+    <aura:attribute name="pageMessages" type="List"/>
+    <aura:attribute name="messageType" type="String"/>
+    <aura:if isTrue="{!v.pageMessages.length>0}">
+        <div class="{!'slds-notify slds-notify_alert slds-theme_'+v.messageType}" role="alert">
+            <span class="slds-assistive-text">{!v.messageType}</span>
+            <span class="slds-icon_container slds-icon-utility-ban slds-m-right_x-small" title="Description of icon when needed">
+            </span>
+            <ul>
+                <aura:iteration items="{!v.pageMessages}" var="pageMessage">
+                    <h2><li>{!pageMessage}</li></h2>
+                </aura:iteration>
+            </ul>
+        </div>     
+    </aura:if>
+</aura:component>

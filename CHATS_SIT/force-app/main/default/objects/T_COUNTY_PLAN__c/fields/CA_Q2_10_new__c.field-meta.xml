@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CA_Q2_10_new__c</fullName>
+    <description>NOT In Use, field-data Migrated to CA_Q2_10_N__c</description>
+    <encryptionScheme>None</encryptionScheme>
+    <label>CA_Q2_10_new</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>TextArea</type>
+</CustomField>

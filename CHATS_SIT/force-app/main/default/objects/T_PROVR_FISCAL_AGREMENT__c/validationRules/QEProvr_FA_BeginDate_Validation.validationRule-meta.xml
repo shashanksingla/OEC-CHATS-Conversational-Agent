@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>QEProvr_FA_BeginDate_Validation</fullName>
+    <active>true</active>
+    <description>CCCAP-5987</description>
+    <errorConditionFormula>AND(
+ ISPICKVAL(ID_SERVICE__r.CDE_TYPE_PROVR__c, &quot;EFACH&quot;),
+ DTE_BEGIN_AGRMT__c &lt; ID_SERVICE__r.DTE_FA_ReimEff__c,
+ ISNEW()
+)</errorConditionFormula>
+    <errorMessage>Fiscal Agreement Effective Begin Date should be the same day or greater than the Fiscal Agreement/Reimbursement Effective date on the provider’s details screen.</errorMessage>
+</ValidationRule>

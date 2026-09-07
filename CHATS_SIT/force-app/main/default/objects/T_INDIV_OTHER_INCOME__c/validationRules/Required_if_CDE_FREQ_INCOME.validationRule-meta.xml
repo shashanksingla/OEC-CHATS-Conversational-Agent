@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Required_if_CDE_FREQ_INCOME</fullName>
+    <active>true</active>
+    <description>Hours per Week is Required if CDE_FREQ_INCOME = &apos;HLY&apos; and Cannot be less than 0</description>
+    <errorConditionFormula>AND(NOT( IDN_CLIENT__r.Is_Peak_Data__c ),NOT( IDN_CLIENT__r.Is_CBMS_Data__c ), OR( 
+	AND(ISPICKVAL( CDE_FREQ_INCOME__c , &quot;HLY&quot;), ISNULL(CNT_HOURS_WEEK__c)),
+	CNT_HOURS_WEEK__c  &lt; 0
+))</errorConditionFormula>
+    <errorDisplayField>CNT_HOURS_WEEK__c</errorDisplayField>
+    <errorMessage>Required if income received is &apos;Hourly&apos; and value cannot be less than 0.</errorMessage>
+</ValidationRule>

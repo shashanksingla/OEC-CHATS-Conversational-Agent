@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CR107_Checklist_SPN__c</fullName>
+    <label>CR107 Checklist (Spanish)</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>MultiselectPicklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetName>checklist_CR107_SPN</valueSetName>
+    </valueSet>
+    <visibleLines>5</visibleLines>
+</CustomField>

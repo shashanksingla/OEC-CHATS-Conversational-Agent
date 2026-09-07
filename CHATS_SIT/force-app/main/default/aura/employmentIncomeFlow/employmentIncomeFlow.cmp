@@ -1,0 +1,73 @@
+<!--  
+Author      :	Rishav Maji
+Description :	Container component for Employment Income new and edit flow
+JIRA Id		:	CCCAP-3041
+-->
+<aura:component Controller="employmentIncomeApexController" extends="c:abstractComponent" implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickAction,lightning:actionOverride" access="global" >
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    
+    <aura:set attribute="pageMessages" value="{!v.recordError}" />  
+    <aura:set attribute="messageType" value="{!v.message}" />
+    
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="parentObjId" type="String"/>
+    <aura:attribute name="sObjName" type="String"/>
+    <aura:attribute name="employmentType" type="String"/>
+    <aura:attribute name="recordError" type="List" />
+    <aura:attribute name="message" type="String" />
+    <aura:attribute name="empIncomeObj" type="T_EMPLMT_INCOME__c" default="{'sobjectType':'T_EMPLMT_INCOME__c',
+                                                                           'IDN_EMPLMT_INDIV__c':'',
+                                                                           'AMT_INCOME_ANNUAL_ESTMD__c':'',
+                                                                           'DTE_BEGIN_EFFV__c':'',
+                                                                           'CDE_FREQ_PAY_ESTMD__c':'',
+                                                                           'CDE_STATUS__c':'',
+                                                                           'CNT_WEEK_PER_HOURS_ESTMD__c':'',
+                                                                           'CDE_TYPE_VERIF__c':'',
+                                                                           'CDE_SOURCE_VRFYD_PAY__c':''}"/>
+<aura:attribute name="empIncomeObjNew" type="T_EMPLMT_INCOME__c" default="{'sobjectType':'T_EMPLMT_INCOME__c',
+                                                                           'IDN_EMPLMT_INDIV__c':'',
+                                                                           'AMT_INCOME_ANNUAL_ESTMD__c':'',
+                                                                           'DTE_BEGIN_EFFV__c':'',
+                                                                           'CDE_FREQ_PAY_ESTMD__c':'',
+                                                                           'CDE_STATUS__c':'',
+                                                                           'CNT_WEEK_PER_HOURS_ESTMD__c':'',
+                                                                           'CDE_TYPE_VERIF__c':'',
+                                                                           'CDE_SOURCE_VRFYD_PAY__c':''}"/>
+    <aura:attribute name="howVerifiedOptions" type="List" default="[]"/>
+    
+    <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+    <lightning:card>
+        <div class="slds-text-align--right slds-m-top_small">
+            <c:navigationComponent onFinish="{!c.doFinish}"
+                                   onCancel="{!c.doCancel}"
+                                   finishLabel="Save"
+                                   showNext="false"
+                                   showFinish="true"/>
+        </div>
+        <aura:if isTrue="{!v.sObjName}">
+            <aura:if isTrue="{!v.sObjName == 'T_SBSD_INDIV_EMPLMT__c'}"> <!-- New Record from Employment object-->
+                <c:employmentIncomeLayoutNew aura:id="newEmpIncomeRecord"
+                                            recordId="{!v.recordId}"
+                                            empIncomeObjNew="{!v.empIncomeObjNew}"
+                                            isCurrentPageValid="{!v.isCurrentPageValid}"
+                                            fieldValidationErrors="{!v.fieldValidationErrors}"
+                                            sObjName="{!v.sObjName}"
+                                            parentObjId="{!v.parentObjId}"
+                                            employmentType="{!v.employmentType}"
+                                            howVerifiedOptions="{!v.howVerifiedOptions}"/>
+                <aura:set attribute="else"> <!-- Edit Record from Employment Income object-->
+                    <c:employmentIncomeLayoutEdit aura:id="editEmpIncomeRecord" 
+                                                recordId="{!v.recordId}"
+                                                empIncomeObj="{!v.empIncomeObj}"
+                                                isCurrentPageValid="{!v.isCurrentPageValid}"
+                                                fieldValidationErrors="{!v.fieldValidationErrors}"
+                                                sObjName="{!v.sObjName}"
+                                                parentObjId="{!v.parentObjId}"
+                                                employmentType="{!v.employmentType}"
+                                                howVerifiedOptions="{!v.howVerifiedOptions}"/>
+                </aura:set>
+            </aura:if>
+        </aura:if>        
+    </lightning:card>    
+</aura:component>

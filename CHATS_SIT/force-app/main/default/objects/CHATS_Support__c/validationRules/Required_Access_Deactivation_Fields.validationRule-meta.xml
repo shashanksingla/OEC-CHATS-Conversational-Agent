@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Required_Access_Deactivation_Fields</fullName>
+    <active>true</active>
+    <description>Required fields when Deactivate Access is chosen from the Support Ticket pick-list</description>
+    <errorConditionFormula>AND( 
+    ISPICKVAL(Support_Type__c, &quot;Deactivate Access&quot;), 
+    
+    $Profile.Name==&quot;Eligibility Worker Supervisor&quot;, 
+    $Profile.Name==&quot;Fiscal Worker Supervisor&quot;, 
+    $Profile.Name==&quot;Provider Worker Supervisor&quot;, 
+    $Profile.Name==&quot;Universal User&quot;, 
+    $Profile.Name==&quot;CCCAP Program Internal Team&quot;, 
+    $Profile.Name==&quot;System Administrator&quot;, 
+    $Profile.Name==&quot;System Admin&quot;, 
+    $Profile.Name==&quot;CHATS System Administrator&quot; , 
+    OR( 
+    ISBLANK(Last_Name__c), 
+    ISBLANK(First_name__c), 
+    ISBLANK(CHATS_Supervisor__c),
+    ISBLANK(Start_Deactivation_Change_Date__c)) 
+    )</errorConditionFormula>
+    <errorMessage>For a Deactivate Access, Please ensure the following fields have been completed: Start/Deactivation/Change date; First Name; Last Name; Email Address; CHATS Supervisor.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All</fullName>
+    <columns>NAME</columns>
+    <columns>OWNER.FIRST_NAME</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>CDE_TYPE_STATUS__c</field>
+        <operation>equals</operation>
+        <value>DFT</value>
+    </filters>
+    <label>All</label>
+</ListView>

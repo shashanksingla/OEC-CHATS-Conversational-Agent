@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Root_Cause_System_Issue</fullName>
+    <columns>NAME</columns>
+    <columns>Root_Cause__c</columns>
+    <columns>CHATS_Area__c</columns>
+    <columns>Status__c</columns>
+    <columns>JIRA_ID__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Root_Cause__c</field>
+        <operation>equals</operation>
+        <value>System Issue</value>
+    </filters>
+    <filters>
+        <field>Status__c</field>
+        <operation>equals</operation>
+        <value>New,In Progress,Elevated</value>
+    </filters>
+    <label>Root Cause = System Issue</label>
+</ListView>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_detail_pmt_adjmt__c</fullName>
+    <description>idn_detail_pmt_adjmt</description>
+    <externalDeveloperName>idn_detail_pmt_adjmt</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Adjust Detail payment ID</label>
+    <length>50</length>
+    <referenceTargetField>T_ADJMT_PMT_DETAIL__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_ADJMT_PMT_DETAIL__c</referenceTo>
+    <relationshipLabel>Adjustment Payment Detail Legacy History</relationshipLabel>
+    <relationshipName>sfrosit_t_adjmt_pmt_detail_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

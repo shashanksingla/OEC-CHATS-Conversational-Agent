@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CLOSED_CASES_STATUS__c</fullName>
+    <description>check the Status is closed?</description>
+    <label>Closed Cases</label>
+    <summaryFilterItems>
+        <field>T_SBSD_CASE_STATUS_MODE__c.CDE_STATUS_CASE__c</field>
+        <operation>equals</operation>
+        <value>Closed</value>
+    </summaryFilterItems>
+    <summaryFilterItems>
+        <field>T_SBSD_CASE_STATUS_MODE__c.DTE_END_EFFV__c</field>
+        <operation>equals</operation>
+        <value></value>
+    </summaryFilterItems>
+    <summaryForeignKey>T_SBSD_CASE_STATUS_MODE__c.IDN_CASE__c</summaryForeignKey>
+    <summaryOperation>count</summaryOperation>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Summary</type>
+</CustomField>

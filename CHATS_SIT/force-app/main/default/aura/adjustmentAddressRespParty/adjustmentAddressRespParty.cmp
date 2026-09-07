@@ -1,0 +1,99 @@
+<aura:component extends="c:abstractSection">
+    <aura:attribute name="address"  type="T_ADJMT_ADDR__c" default="{'sobjectType':'T_ADJMT_ADDR__c',
+                                                                    'IDN_ADJMT__c':'',
+                                                                    'ADR_STATE__c':'',
+                                                                    'ADR_LINE_1__c':'',
+                                                                    'ADR_LINE_2__c':'',
+                                                                    'Adjustment_Responsible_Party__c':'',
+                                                                    'Responsible_Party_Name__c':'',
+                                                                    'Responsible_Party_Client_Id__c':'',
+                                                                    'ADR_ZIP_MAIN__c':'',
+                                                                    'ADR_ZIP_EXTN__c':'',
+                                                                    'ADR_CITY__c':''
+                                                                    }"/>
+    <aura:attribute name="isEditableAddress" type="Boolean" default="false"/> 
+    <aura:attribute name="adjustment" type="T_ADJMT__c"/>
+    <aura:attribute name="pageMode" type="String" default="view"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    
+    <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+        <h3 class="slds-section__title">Adjustment Address</h3>
+    </lightning:layoutItem>
+    
+    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+        <aura:if isTrue="{!v.adjustment &amp;&amp; v.pageMode=='view'}">
+            <c:outputField label="Responsibility Party" value="{!v.address.Responsible_Party_Name__c}"/>
+            <aura:set attribute="else">
+                <lightning:input aura:id="input-field" type="text" name="input-name" label="Responsibility Party"
+                                 value="{!v.address.Responsible_Party_Name__c}" required="true" disabled="true"/>
+            </aura:set>
+        </aura:if>
+    </lightning:layoutItem>
+    
+    <lightning:layoutItem flexibility="auto" size="6" padding="around-small"/>
+    
+    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+        <aura:if isTrue="{!!v.isEditableAddress}">
+            <c:outputField label="Address Line 1" value="{!v.address.ADR_LINE_1__c}"/>
+            <aura:set attribute="else"> 
+                <lightning:input aura:id="input-field" type="text" name="input-name" label="Address Line 1"
+                                 value="{!v.address.ADR_LINE_1__c}" required="true" maxlength="35"/>
+            </aura:set>
+        </aura:if>
+    </lightning:layoutItem>
+    
+    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+        <aura:if isTrue="{!!v.isEditableAddress}">
+            <c:outputField label="Address Line 2" value="{!v.address.ADR_LINE_2__c}" />
+            <aura:set attribute="else">
+                <lightning:input aura:id="input-field" type="text" name="input-name" label="Address Line 2"
+                                 value="{!v.address.ADR_LINE_2__c}" maxlength="35"/>
+            </aura:set>
+        </aura:if>
+    </lightning:layoutItem>
+    
+    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+        <aura:if isTrue="{!!v.isEditableAddress}">
+            <c:outputField label="City" value="{!v.address.ADR_CITY__c}"/>
+            <aura:set attribute="else">
+                <lightning:input aura:id="input-field" type="text" name="input-name" label="City"
+                                 value="{!v.address.ADR_CITY__c}" required="true" maxlength="30"/>
+            </aura:set>
+        </aura:if>
+    </lightning:layoutItem>
+    
+    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+        <aura:if isTrue="{!!v.isEditableAddress}">
+            <c:outputField label="State" value="{!v.address.ADR_STATE__c}"/>
+            <aura:set attribute="else">
+                <aura:if isTrue="{!!empty(v.address)}">
+                    <c:inputPicklist label="State" aura:id="input-field" value="{!v.address.ADR_STATE__c}"  matchWithLabel="true"
+                                     object="T_ADJMT_ADDR__c" field="ADR_STATE__c" required="true" showNone="true"/>
+                </aura:if>
+            </aura:set>
+        </aura:if>
+    </lightning:layoutItem>
+    
+    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+        <aura:if isTrue="{!!v.isEditableAddress}">
+            <c:outputField label="Zip Code" value="{!v.address.ADR_ZIP_MAIN__c}"/>
+            <aura:set attribute="else">
+                <lightning:input aura:id="input-field" type="text" name="input-name" label="Zip Code" maxlength="5"
+                                 value="{!v.address.ADR_ZIP_MAIN__c}" required="true" onblur="{!c.divideZipCode}"/>
+            </aura:set>
+        </aura:if>
+    </lightning:layoutItem>
+    
+    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+        <aura:if isTrue="{!!v.isEditableAddress}">
+            <c:outputField label="Zip Code(Extn.)" value="{!v.address.ADR_ZIP_EXTN__c}"/>
+            <aura:set attribute="else">
+                <lightning:input aura:id="input-field" type="text" name="input-name" label="Zip Code(Extn.)"
+                                 value="{!v.address.ADR_ZIP_EXTN__c}" maxlength="4"/>
+            </aura:set>
+        </aura:if>
+        <c:fieldLevelMessage aura:id="T_ADJMT__c-ADR_ZIP_EXTN__c"/>
+    </lightning:layoutItem>
+</aura:component>

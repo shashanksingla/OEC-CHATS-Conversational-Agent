@@ -1,0 +1,181 @@
+<aura:component extends="c:abstractComponent" controller="IndividualSearchApxCtrl" implements="force:appHostable,lightning:actionOverride">
+    <aura:attribute name="options" type="List" default="[
+                                                        {'label': 'String Search', 'value': 'StringSearch'},
+                                                        {'label': 'Soundex Search', 'value': 'SoundexSearch'}
+                                                        ]"/>
+    <aura:attribute name="pageReference" type="Object" />
+    <aura:attribute name="indivSearchWrapper" type="IndividualSearchWrapper"/>
+    <aura:attribute name="searchResults" type="T_SBSD_INDIV__c[]"/>
+    <aura:attribute name="stateRefresh" type="Boolean" default="true"/>
+    <aura:attribute name="newCaseDisabled" type="Boolean" default="true"/>
+    <aura:attribute name="newCaseVisible" type="Boolean" default="false"/>
+    <aura:attribute name="isNotCalledFromPeak" type="Boolean" default="true"/>
+    <aura:attribute name="isNextBtnVisible" type="Boolean" default="true"/>
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="recordId" type="String" />
+    <aura:attribute name="onNext" type="Aura.Action"/>
+    <aura:attribute name="isRejectedReferralFlow" type="Boolean" default="false"/>
+    <aura:attribute name="applnProcessQueueRec" type="T_APPLN_PRCS_QUEUE__c"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.pageReference}" action="{!c.doInit}" />
+    
+    <lightning:card iconName="standard:event">
+        
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="Case">Individual Search</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        
+        <p class="slds-p-horizontal_small">
+            <lightning:layout multipleRows="true" horizontalAlign="space">
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                    <h3 class="slds-section__title">Name Search</h3>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                    <div>
+                        <lightning:radioGroup aura:id="radioGrp" name="radioButtonGroup" label="" options="{!v.options }" 
+                                              value="{!v.indivSearchWrapper.searchType}" class="slds-list_horizontal"/>
+                    </div>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input aura:id="input-field" type="text" name="input-name" label="First Name" value="{!v.indivSearchWrapper.indivRec.NAM_FIRST__c}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input aura:id="input-field" type="text" name="input-name" label="Last Name" value="{!v.indivSearchWrapper.indivRec.NAM_LAST__c}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                    <h3 class="slds-section__title">Simple Search</h3>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input aura:id="input-field" type="text" name="input-name" label="State ID" value="{!v.indivSearchWrapper.indivRec.IDN_STATE__c}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input aura:id="input-field" type="text" name="input-name" label="Case ID" value="{!v.indivSearchWrapper.caseId}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input aura:id="input-field" type="text" name="input-name" label="SSN" value="{!v.indivSearchWrapper.indivRec.NBR_SSN__c}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <!-- <lightning:input aura:id="input-field" type="date" name="input-name" label="Date Of Birth" value="{!v.indivSearchWrapper.indivRec.DTE_DOB__c}"/> -->
+                    <ui:inputDate  aura:id="input-field" displayDatePicker="true" format="MM/DD/YYYY" label="Date Of Birth" value="{!v.indivSearchWrapper.indivRec.DTE_DOB__c}" />
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input aura:id="input-field" type="number" name="input-name" label="Phone Number" value="{!v.indivSearchWrapper.phone}"/>
+                </lightning:layoutItem>
+                
+                <!-- Added below layoutItem by Rishav for CCCAP-3239 -->
+                <!-- <lightning:layoutItem size="6"></lightning:layoutItem> -->
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input aura:id="input-field" type="text" name="input-name" label="Email Address" value="{!v.indivSearchWrapper.emailId}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+                    <h3 class="slds-section__title">Demographic Search</h3>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <!-- <lightning:input aura:id="input-field" type="text" name="input-name" label="State" value="{!v.indivSearchWrapper.state}"/> -->
+                    <div>
+                        <aura:if isTrue="{!v.stateRefresh}">
+                            <c:inputPicklist label="State" aura:id="input-field" value="{!v.indivSearchWrapper.state}"
+                                             object="T_SBSD_CASE_ADR__c" required="true" showNone="true" field="ADR_STATE__c"/>
+                        </aura:if>
+                    </div>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input aura:id="input-field" type="text" name="input-name" label="City" value="{!v.indivSearchWrapper.city}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <!-- <lightning:input aura:id="input-field" type="text" name="input-name" label="County" value="{!v.indivSearchWrapper.county}"/> -->
+                    <c:inputLookup label="County" aura:id="input-field" value="{!v.indivSearchWrapper.county}" object="T_COUNTY__c" searchField="Name"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <lightning:input aura:id="input-field" type="text" name="input-name" label="Zip" value="{!v.indivSearchWrapper.zip}"/>
+                </lightning:layoutItem>
+                
+                <lightning:layoutItem size="6"></lightning:layoutItem>
+                
+                <lightning:layoutItem size="6" >
+                    <div class="slds-float--right">
+                        <lightning:button variant="neutral" label="Clear" onclick="{!c.clearIndivs}"/>
+                        <lightning:button variant="brand" label="Search" onclick="{!c.searchIndivs}"/>
+                        <aura:if isTrue ="{!and(v.newCaseVisible, v.isNotCalledFromPeak)}">
+                            <lightning:button variant="brand" label="New Case" disabled="{!v.newCaseDisabled}" onclick="{!c.navigateToNewCase}"/>
+                        </aura:if>
+                        <aura:if isTrue ="{!!v.isNotCalledFromPeak}">
+                            <lightning:button variant="brand" label="Next" disabled="{!v.isNextBtnVisible}" onclick="{!c.doNext}"/>
+                        </aura:if>
+                    </div>
+                </lightning:layoutItem>
+                
+            </lightning:layout>
+            
+            <div>
+                <aura:if isTrue="{!!empty(v.searchResults)}">
+                    <div class="">
+                        
+                        <lightning:layout >
+                            <lightning:layoutItem flexibility="auto" size="12" class="slds-m-left--small">
+                                <h3 class="slds-section__title">Search Results</h3>
+                                <h5 class="slds-section_title">Select the Client ID to view related cases</h5>
+                            </lightning:layoutItem>
+                        </lightning:layout>
+                        
+                        <div class="slds-p-horizontal_small slds-m-top--large">
+                            <table class="slds-table slds-table_bordered slds-table_resizable-cols slds-table_fixed-layout slds-border_right slds-border_left" padding="around-medium">
+                                <thead>
+                                    <tr class="slds-text-title_caps">
+                                        <th scope="col"><div class="slds-truncate" title="Client ID">Client ID</div></th>
+                                        <th scope="col"><div class="slds-truncate" title="State ID">State ID</div></th>
+                                        <th scope="col"><div class="slds-truncate" title="Last Name">Last Name</div></th>
+                                        <th scope="col"><div class="slds-truncate" title="First Name">First Name</div></th>
+                                        <th scope="col"><div class="slds-truncate" title="MI">MI</div></th>
+                                        <th scope="col"><div class="slds-truncate" title="DOB">DOB</div></th>
+                                        <th scope="col"><div class="slds-truncate" title="SSN">SSN</div></th>
+                                    </tr>
+                                </thead>
+                                
+                                <tbody>
+                                    <aura:iteration var="searchedItem" items="{!v.searchResults}">
+                                        <tr>
+                                            <td><a href="" onclick="{!c.openRecordDetail}" data-item="{!searchedItem.Id}">{!searchedItem.Name}</a></td>
+                                            <td>{!searchedItem.IDN_STATE__c}</td>
+                                            <td>{!searchedItem.NAM_LAST__c}</td>
+                                            <td>{!searchedItem.NAM_FIRST__c}</td>
+                                            <td>{!searchedItem.NAM_MI__c}</td>
+                                            <td>{!searchedItem.DTE_DOB__c}</td>
+                                            <td>{!searchedItem.NBR_SSN__c}</td>
+                                        </tr>
+                                    </aura:iteration>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                    </div>
+                </aura:if>
+            </div>
+            
+        </p>
+    </lightning:card>
+    
+</aura:component>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>LWC Converted component of Income and Parent Fee Calculator</description>
+    <label>Income and Parent Fee Calculator</label>
+    <lwcComponent>incomeCalculator_lwc</lwcComponent>
+    <motif>Custom58: Caduceus</motif>
+</CustomTab>

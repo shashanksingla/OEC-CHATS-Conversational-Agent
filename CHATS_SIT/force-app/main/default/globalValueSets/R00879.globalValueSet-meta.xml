@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>1</fullName>
+        <default>false</default>
+        <label>&quot;Front end reviews&quot; by the eligibility worker or business office (for providers) prior to determining eligibility or authorization. Note: if this option is selected the county must ensure the review does not negatively impact timely processing.</label>
+    </customValue>
+    <customValue>
+        <fullName>2</fullName>
+        <default>false</default>
+        <label>Investigation conducted by county staff</label>
+    </customValue>
+    <customValue>
+        <fullName>3</fullName>
+        <default>false</default>
+        <label>Review of interfaces and other systems</label>
+    </customValue>
+    <customValue>
+        <fullName>4</fullName>
+        <default>false</default>
+        <label>Reviews of risk-based reports</label>
+    </customValue>
+    <customValue>
+        <fullName>5</fullName>
+        <default>false</default>
+        <label>Other</label>
+    </customValue>
+    <description>R00879</description>
+    <masterLabel>R00879</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

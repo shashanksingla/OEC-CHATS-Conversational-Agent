@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>dte_resoln_delinqc__c</fullName>
+    <description>dte_resoln_delinqc</description>
+    <externalDeveloperName>dte_resoln_delinqc</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Delinquency Resolution Date</label>
+    <required>false</required>
+    <type>Date</type>
+</CustomField>

@@ -1,0 +1,124 @@
+<aura:component extends="c:abstractComponent" controller="AuthorizationStatusController" implements="lightning:actionOverride,flexipage:availableForRecordHome,force:hasRecordId" access="global">
+    <aura:attribute name="authStatusRecord" type="batchsit_t_auth_status__x" default="{'sobjectType':'batchsit_t_auth_status__x',
+                                                                                      'dte_end_effv__c':'',
+                                                                                      'dte_begin_effv__c':'',
+                                                                                      'cde_status_auth__c':'',
+                                                                                      'cde_reason_change_auth__c':'',
+                                                                                      'idn_auth__c':'',
+                                                                                      'createdbyid__c':'',
+                                                                                      'createddate__c':''}"/>
+    <aura:attribute name="propertyRecord" type="batchsit_t_auth_status__x" />
+    <aura:attribute name="proRecord" type="T_AUTH__c" />
+    <aura:attribute name="authRecord" type="T_AUTH__c" />
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    <aura:attribute name="loggedInUserId" type="String" />
+    <aura:set attribute="pageMessages" value="{!v.recordError}" />
+    <aura:attribute name="timeConversionOffset" type="Integer" default="0"/>
+    <aura:set attribute="messageType" value="{!v.message}" />
+     <aura:attribute name="message" type="String" />
+    <aura:attribute name="recordError" type="list" />
+    <aura:attribute name="countyMessage" type="String" />
+    <aura:attribute name="showWarningForCounty" type="Boolean" default="false" />
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="createProcess" type="Boolean" default="false" />
+    <aura:attribute name="isAuthFlowCompleted" type="Boolean" default="false" />
+    <aura:if isTrue="{!!empty(v.recordId)}">
+        <force:recordData recordId="{!v.recordId}"
+                          targetRecord="{!v.authRecord}"
+                          targetFields="{!v.proRecord}"
+                          fields="Id,Name,IDN_EXTNL__c,DTE_BEGIN_EFFV_AUTH__c,DTE_END_EFFV_AUTH__c,IDN_CASE__c,IDN_SLOT_CONTRACT__c"/>
+    </aura:if>
+    <lightning:card iconName="standard:event">
+        <lightning:overlayLibrary aura:id="overlayLib"/>
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="New Authorization Notes">New Authorization Status</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        <aura:set attribute="footer">
+            <lightning:button variant="neutral" label="Cancel" onclick="{!c.handleCancelAuthNote}"/>
+            <lightning:button variant="brand" label="Submit" onclick="{!c.verifyUserCounty}"/>
+        </aura:set>
+        <aura:set attribute="actions">
+        </aura:set>
+        <p class="slds-p-horizontal_small">
+            <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+            <div class="slds-form_stacked">
+                <div class="slds-card">
+                    <div class="slds-card__body slds-card__body_inner"> 
+                        <lightning:recordViewForm recordId="{!v.recordId}" objectApiName="T_AUTH__c">
+                            <lightning:layout multipleRows="true" horizontalAlign="space">
+                                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                    <lightning:outputField fieldName="Name" />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                                </lightning:layoutItem>
+                            </lightning:layout>
+                        </lightning:recordViewForm>
+                        <lightning:layout multipleRows="true" horizontalAlign="space">
+                            <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                                <c:inputPicklist label="Status Change Reason" aura:id="chnageReasonId"
+                                                 value="{!v.authStatusRecord.cde_reason_change_auth__c}"
+                                                 object="Field_Utility__c"
+                                                 showNone="true"
+                                                 field="R00687__c"
+                                                  required="true"
+                                                inputPickListCustomWarningMsg="Authorization Status Change Reason is required" />
+                                <c:fieldLevelMessage aura:id="batchsit_t_auth_notes__x-cde_reason_change_auth__c"/>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" size="6" padding="around-small" >
+                                <label class="slds-form-element__label" for="input-id-01">Authorization Status</label><br />
+                                <lightning:formattedText value="Terminated" />
+                              <!--   <c:inputPicklist label="Authorization Status" aura:id="input-field"
+                                                 value="{!v.authStatusRecord.cde_status_auth__c}"
+                                                 object="Field_Utility__c"
+                                                 showNone="true"
+                                                  required="true"
+                                                 field="R00686__c"/> -->
+                                <c:fieldLevelMessage aura:id="batchsit_t_auth_notes__x-txt_notes__c"/>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                             <c:inputDate label="Authorization Status Effective Date" 
+                                 aura:id="input-field"
+                                 value="{!v.authStatusRecord.dte_begin_effv__c}"
+                                 convertTime="true"
+                                              required="true"
+                                 />
+                              <!--    <lightning:input type="date" label="Authorization Status Effective Date" aura:id="beginDate" name="Authorization Status Effective Date" value="{!v.authStatusRecord.dte_begin_effv__c}" required="true" />-->
+                                <c:fieldLevelMessage aura:id="batchsit_t_auth_notes__x-txt_notes__c"/>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            </lightning:layoutItem>
+                           <!--  <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                               <lightning:input type="date" label="Authorization Status End Date" aura:id="endDate" name="Authorization Status End Date" value="{!v.authStatusRecord.dte_end_effv__c}"/>
+                                <c:fieldLevelMessage aura:id="batchsit_t_auth_notes__x-txt_notes__c"/>
+                            </lightning:layoutItem> -->
+                           <!-- <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                <lightning:input name="Authorization ID" value="{!v.authStatusRecord.idn_auth__c}" 
+                                                    label="Authorization ID"  /> 
+                                <c:fieldLevelMessage aura:id="batchsit_t_auth_notes__x-idn_auth__c"/>
+                            </lightning:layoutItem> -->
+                           <!-- <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                <lightning:input name="Authorization Status ID" value="{!v.authStatusRecord.ExternalId}" 
+                                                    label="Authorization Status ID" maxlength="2000" required="true" /> 
+                                <c:fieldLevelMessage aura:id="batchsit_t_auth_notes__x-txt_notes__c"/>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                            </lightning:layoutItem> -->
+                        </lightning:layout>
+                        <c:confirmationModal aura:id="confirmationModalOnCountyCheck_1" confirmMsg="{!v.countyMessage}"
+                                             confirmModalYes="{!c.confirmCountyYes}"/>
+                       <c:confirmationModal aura:id="confirmationModalOnParentFeeCheck" confirmMsg="{!$Label.c.Auth_Termination_Msg }"
+                                             confirmModalYes="{!c.confirmYes}"/>
+                    </div>
+                </div>
+            </div>
+        </p>
+    </lightning:card>
+</aura:component>

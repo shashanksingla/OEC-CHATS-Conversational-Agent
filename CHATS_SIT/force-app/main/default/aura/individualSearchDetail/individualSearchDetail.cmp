@@ -1,0 +1,129 @@
+<aura:component extends="c:abstractComponent" controller="IndividualSearchApxCtrl"  implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" access="global" >
+    <aura:attribute name="recordId" type="string"/>
+    <aura:attribute name="fullName" type="string"/>
+    <aura:attribute name="individualRec" type="T_SBSD_INDIV__c"/>
+    <aura:attribute name="lstCaseDetailWrapper" type="List"/>
+    <aura:attribute name="recordError" type="String" />
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <div>
+        <lightning:card iconName="standard:event">
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="Case">Individual's Related Cases</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </aura:set>
+         <aura:set attribute="actions">
+           <lightning:button variant="brand" label="Back To Search Results" onclick="{!c.redirectBack}"/>
+        </aura:set>
+        <p class="slds-p-horizontal_small">
+            <h3 class="slds-section-title--divider">Individual Information
+            </h3>
+            <p class="slds-p-horizontal_small">
+                <aura:if isTrue="{!!empty(v.recordId)}">
+                    <force:recordData aura:id="forceRecordCmp"
+                                      recordId="{!v.recordId}"
+                                      fields="Id,Name,IDN_STATE__c,DTE_DOB__c,NBR_SSN__c,CDE_GENDER__c,CDE_STATUS_MAR__c,CDE_RACE__c,CDE_ETNCTY__c"
+                                      targetFields="{!v.individualRec}"
+                                      mode="VIEW"
+                                      targetError="{!v.recordError}" />
+                </aura:if>
+                <div class="slds-card">
+                    
+                    <div class="slds-card__body slds-card__body_inner">
+                        <lightning:recordViewForm recordId="{!v.recordId}" objectApiName="T_SBSD_INDIV__c">
+                            <!--<div class="slds-box slds-theme_default">
+            <lightning:outputField fieldName="Name" />
+            <lightning:outputField fieldName="IDN_STATE__c"/>
+            <lightning:outputField fieldName="DTE_DOB__c" />
+            <lightning:outputField fieldName="NBR_SSN__c" />
+            <lightning:outputField fieldName="CDE_GENDER__c" />
+            <lightning:outputField fieldName="CDE_STATUS_MAR__c" />
+            <lightning:outputField fieldName="CDE_RACE__c" />
+            <lightning:outputField fieldName="CDE_ETNCTY__c" />
+        </div> -->
+                            
+                            <lightning:layout multipleRows="true" horizontalAlign="space">
+                                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                    <lightning:outputField fieldName="Name" />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                    <lightning:outputField fieldName="IDN_STATE__c" />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                    Name<br/>
+                                    <lightning:formattedText value="{!v.fullName}" />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                    <lightning:outputField fieldName="DTE_DOB__c" />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                    <lightning:outputField fieldName="NBR_SSN__c" />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                    <lightning:outputField fieldName="CDE_GENDER__c" />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                    <lightning:outputField fieldName="CDE_STATUS_MAR__c" />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                    <lightning:outputField fieldName="CDE_RACE__c" />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                    <lightning:outputField fieldName="CDE_ETNCTY__c" />
+                                </lightning:layoutItem>
+                                <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                                </lightning:layoutItem>
+                            </lightning:layout>
+                        </lightning:recordViewForm>
+                    </div>
+                </div>
+            </p>
+            <lightning:layout >
+                 <lightning:layoutItem flexibility="auto" size="12" class="slds-m-left--small slds-p-right_large">
+                    <h3 class="slds-section-title--divider">Cases</h3>
+                    <h5 class="slds-section_title slds-m-top--small">Select the Case ID to navigate to the case record.</h5>
+                </lightning:layoutItem>
+            </lightning:layout>
+            <p class="slds-p-horizontal_small slds-m-top--large">
+                <table class="slds-table slds-table_bordered slds-table_resizable-cols slds-border_right slds-border_left" padding="around-medium">
+                    <thead>
+                        <tr class="slds-text-title_caps">
+                            <th scope="col">
+                                <div class="slds-truncate" title="Case ID">Case ID</div>
+                            </th>
+                            <th scope="col">
+                                <div class="slds-truncate" title="Address">Address</div>
+                            </th>
+                            <th scope="col">
+                                <div class="slds-truncate" title="County">County</div>
+                            </th>
+                            <th scope="col">
+                                <div class="slds-truncate" title="Case Status">Case Status</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <aura:if isTrue="{!v.lstCaseDetailWrapper.length > 0}">
+                            <aura:iteration var="caseDetail" items="{!v.lstCaseDetailWrapper}">
+                                <tr>
+                                    <td><a href="" onclick="{!c.openRecordDetail}" data-item="{!caseDetail.caseRecId}">{!caseDetail.caseId}</a></td>
+                                    <td>{!caseDetail.address}</td>
+                                    <td>{!caseDetail.countyName}</td>
+                                    <td>{!caseDetail.caseStatus}</td>
+                                </tr>
+                            </aura:iteration>
+                        </aura:if>
+                    </tbody>
+                </table>
+            </p>
+           
+        </p>
+    </lightning:card>
+    </div>
+</aura:component>

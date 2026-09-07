@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>This is used for Mule to CHATS integration. (JAI Project)</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>CHATS_MULE_API</label>
+</PermissionSet>

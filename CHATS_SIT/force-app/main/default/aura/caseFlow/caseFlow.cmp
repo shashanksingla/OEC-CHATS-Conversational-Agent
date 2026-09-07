@@ -1,0 +1,138 @@
+<aura:component extends="c:abstractComponent" controller="CaseFlowApxCtrl" implements="force:lightningQuickAction,lightning:actionOverride">
+    
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="recordError" type="String"/>
+    <aura:attribute name="confirmCounty" type="String"/>
+    <aura:attribute name="appQueueId" type="String"/>  
+    <aura:attribute name="isRejectedReferralFlow" type="Boolean" default="false"/> 
+    <aura:attribute name="applnProcessQueueRec" type="T_APPLN_PRCS_QUEUE__c"/> 
+    <aura:attribute name="caseRec" type="T_SBSD_CASE__c"
+                    default="{'sobjectType':'T_SBSD_CASE__c',
+                             'Name':'RECORD_FROM_CASE_FLOW',
+                             'CDE_LANG_CORR__c':'ENG',
+                             'IND_ASSIST_PROVR__c':'N',
+                             'CDE_COUNTY__c':'',
+                             'IND_INCOME_FED_OTHER__c':'',
+                             'IND_HEAD_START__c':'',
+                             'IND_LEAP__c':'',
+                             'IND_FS_RCVNG__c':'',
+                             'IND_WIC__c':'',
+                             'IND_FOOD_PGM__c':'',
+                             'IND_CHP__c':'',
+                             'CDE_ASST_HSNG__c':'',
+                             'IND_REFUGEE__c':'',
+                             'IND_IDEA_3_5__c':'',
+                             'IND_IDEA_0_3__c':'',
+                             'IND_PENSION__c':'',
+                             'IND_SSI__c':''
+                             }"/>
+    <!-- //'Id':'a1Qg0000006in1m',-->
+    <aura:attribute name="caseHomelessRec" type="T_SBSD_CASE_HOMELESS__c"
+                    default="{'sobjectType':'T_SBSD_CASE_HOMELESS__c',
+                             'IND_LVG_HOTEL__c':false,
+                             'IND_LVG_CAMPGROUND__c':false,
+                             'IND_LVG_SHELTER__c':false,
+                             'IND_LVG_SUBSTANDARD__c':false,
+                             'IND_LVG_OTHER__c':false}"/>
+    <aura:attribute name="caseResidenceAddressRec" type="T_SBSD_CASE_ADR__c"
+                    default="{'sobjectType':'T_SBSD_CASE_ADR__c',
+                             'IDN_CASE__c':'',
+                             'ADR_STATE__c':'CO',
+                             'CDE_TYPE_ADR__c':'HOM'
+                             }"/>
+    <aura:attribute name="caseMailingAddressRec" type="T_SBSD_CASE_ADR__c"
+                    default="{'sobjectType':'T_SBSD_CASE_ADR__c',
+                             'IDN_CASE__c':'',
+                             'ADR_STATE__c':'CO',
+                             'CDE_TYPE_ADR__c':'MAL'
+                             }"/>
+    <aura:attribute name="caseHomePhoneRec" type="T_SBSD_CASE_PHONE__c"
+                    default="{'sobjectType':'T_SBSD_CASE_PHONE__c',
+                             'CDE_TYPE_PHONE__c':'HOM',
+                             'IDN_CASE__c':''}"/>
+    <aura:attribute name="caseWorkPhoneRec" type="T_SBSD_CASE_PHONE__c"
+                    default="{'sobjectType':'T_SBSD_CASE_PHONE__c',
+                             'CDE_TYPE_PHONE__c':'WOR',
+                             'IDN_CASE__c':''}"/>
+    <aura:attribute name="caseMobilePhoneRec" type="T_SBSD_CASE_PHONE__c"
+                    default="{'sobjectType':'T_SBSD_CASE_PHONE__c',
+                             'CDE_TYPE_PHONE__c':'MOB',
+                             'IDN_CASE__c':''}"/>
+    <!--aura:attribute name="caseEMInfoRec" type="T_SBSD_CASE_INFO__c"
+                    default="{'sobjectType':'T_SBSD_CASE_INFO__c',
+                             'CDE_TYPE_INFO_CASE__c':'EM',
+                             'IDN_CASE__c':''}"/-->
+    <aura:attribute name="casePMCInfoRec" type="T_SBSD_CASE_INFO__c"
+                    default="{'sobjectType':'T_SBSD_CASE_INFO__c',
+                             'CDE_TYPE_INFO_CASE__c':'PMC',
+                             'IDN_CASE__c':''}"/>
+    <aura:attribute name="caseAddressTracker" type="List" default="[]"/>
+    <aura:attribute name="copyAddressFlag" type="Boolean" default="false"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler name="change" value="{!v.currentTabNumber}" action="{!c.doChangeCurrentTab}"/>
+    <lightning:card iconName="standard:event">
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <p class="slds-text-title--caps slds-line-height--reset">CREATE NEW</p>
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="Case">Case</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        <aura:set attribute="actions">
+            <c:navigationComponent totalTabs="4" 
+                                   currentTabNumber="{!v.currentTabNumber}"
+                                   onNext="{!c.doNext}"
+                                   onFinish="{!c.doFinish}"
+                                   onPrevious="{!c.doPrevious}"
+                                   showCancel="false"/>
+        </aura:set>
+        <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+        <aura:if isTrue="{!v.currentTabNumber==1}">
+            <c:createNewCasePage1 aura:id="createNewCasePage1" caseRec="{!v.caseRec}"
+                                  fieldValidationErrors="{!v.fieldValidationErrors}" 
+                                  isCurrentPageValid="{!v.isCurrentPageValid}"
+                                  pageMessages="{!v.pageMessages}"
+                                  messageType="{!v.messageType}"
+                                  />
+            <c:confirmationModal aura:id="countyDifferentThanUserCounty" confirmMsg="The county of the case does not match your assigned county. Would you like to continue?"
+                                 confirmModalYes="{!c.doHideCountyDifferentThanUserCounty}"
+                                 title="WARNING!"/>
+        </aura:if>
+        <aura:if isTrue="{!v.currentTabNumber==2}">
+            <c:createNewCasePage2 aura:id="createNewCasePage2" 
+                                  caseRec="{!v.caseRec}" 
+                                  isCurrentPageValid="{!v.isCurrentPageValid}"
+                                  pageMessages="{!v.pageMessages}"
+                                  messageType="{!v.messageType}"
+                                  />
+        </aura:if>
+        <aura:if isTrue="{!v.currentTabNumber==3}">
+            <c:createNewCasePage3 aura:id="createNewCasePage3" caseHomelessRec="{!v.caseHomelessRec}"
+                                  caseResidenceAddressRec="{!v.caseResidenceAddressRec}"
+                                  caseMailingAddressRec="{!v.caseMailingAddressRec}"
+                                  caseHomePhoneRec="{!v.caseHomePhoneRec}"
+                                  caseWorkPhoneRec="{!v.caseWorkPhoneRec}"
+                                  caseMobilePhoneRec="{!v.caseMobilePhoneRec}"
+                                  casePMCInfoRec="{!v.casePMCInfoRec}"
+                                  fieldValidationErrors="{!v.fieldValidationErrors}"
+                                  pageMessages="{!v.pageMessages}"
+                                  messageType="{!v.messageType}"
+                                  copyAddressFlag="{!v.copyAddressFlag}"
+                                  />
+        </aura:if>
+        <aura:if isTrue="{!v.currentTabNumber==4}">
+            <div class="slds-card__body slds-card__body_inner">
+                <c:launchCasAddressClearance execSource="ManualCase"
+                                             recordId="{!v.caseRec.Id}" 
+                                             caseAddressTracker="{!v.caseAddressTracker}"/>
+            </div>            
+        </aura:if>
+    </lightning:card>
+    
+</aura:component>

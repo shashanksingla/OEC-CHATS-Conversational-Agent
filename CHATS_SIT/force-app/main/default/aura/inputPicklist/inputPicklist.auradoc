@@ -1,0 +1,5 @@
+<aura:documentation>
+	<aura:description>
+        <code>c:inputPicklist</code> is a resuable component which is used to display picklist fields. It fetches the picklist values from Salesforce metadata.
+    </aura:description>
+</aura:documentation>

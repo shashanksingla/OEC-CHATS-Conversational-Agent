@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Case_Name_not_editable</fullName>
+    <active>true</active>
+    <description>CCCAP-2720 : To restrict Case Name being edited from List view in Case tab</description>
+    <errorConditionFormula>AND(
+ ISCHANGED( Name ),
+ NOT(ISBLANK(PRIORVALUE( Name ))),
+ PRIORVALUE( Name ) &lt;&gt; &quot;RECORD_FROM_CASE_FLOW&quot;,
+ NOT (Bypass_CaseName_ValidationRule__c)
+)</errorConditionFormula>
+    <errorMessage>Case Name can not be changed after creation</errorMessage>
+</ValidationRule>

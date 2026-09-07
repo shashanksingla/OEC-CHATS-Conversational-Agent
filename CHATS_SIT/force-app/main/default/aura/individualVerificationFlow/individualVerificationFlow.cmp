@@ -1,0 +1,46 @@
+<aura:component extends="c:abstractComponent" controller="IndividualVerificationFlowApxCtrl">
+    <aura:attribute name="currentTabNumber" type="Integer" default="1"/>
+    <aura:attribute name="recordId" type="String"/>
+	<aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="individual" type="T_SBSD_INDIV__c"/>
+    <aura:attribute name="caseIndiv" type="T_SBSD_CASE_INDIV__c"/><!--CCCAP-13633-->
+    <aura:attribute name="indVerif" type="T_INDIV_VERIF__c" default="{'sobjectType':'T_INDIV_VERIF__c'}"/>
+    <aura:attribute name="indivInfos" type="List"/>
+	<aura:attribute name="isReadOnly" type="Boolean" default="false"/>
+    
+    <lightning:card iconName="standard:event">
+        <aura:set attribute="title">
+            <div class="slds-grid">
+                <div class="slds-col slds-has-flexi-truncate">
+                    <div class="slds-media slds-no-space slds-grow">                        
+                        <div class="slds-media__body">
+                            <h1 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate" title="Individual Verifications">Individual Verifications</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aura:set>
+        <aura:set attribute="actions">
+            <c:navigationComponent totalTabs="1" 
+                                   currentTabNumber="{!v.currentTabNumber}"
+                                   onFinish="{!c.doFinish}"
+                                   showPrevious="false"
+                                   showCancel="false"
+                                   finishLabel="Finish"
+                                   />
+        </aura:set>
+        <c:pageMessages pageMessages="{!v.pageMessages}" messageType="{!v.messageType}"/>
+        <aura:if isTrue="{!v.currentTabNumber==1 &amp;&amp; !empty(v.individual.Id)}">
+            <c:individualVerificationLayout aura:id="individualVerificationLayout" 
+                                            individual="{!v.individual}"
+                                            indVerif="{!v.indVerif}"
+                                            indivInfos="{!v.indivInfos}"
+                                            caseIndiv="{!v.caseIndiv}"
+                                            isCurrentPageValid="{!v.isCurrentPageValid}"
+                                            fieldValidationErrors="{!v.fieldValidationErrors}"
+                                            readOnly="{!v.isReadOnly}"
+                                            />
+        </aura:if>
+    </lightning:card>
+
+</aura:component>

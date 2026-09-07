@@ -1,0 +1,26 @@
+<aura:component extends="c:abstractComponent" controller="TaskServicesAPXCtrl" implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction">
+    <aura:attribute name="recordId" type="String"/>
+    <aura:attribute name="options" type="List" default="[
+    {'label': 'Not Started', 'value': 'Not Started'},
+    {'label': 'In Progress', 'value': 'In Progress'},
+	{'label': 'Waiting on someone else', 'value': 'Waiting on someone else'},
+    {'label': 'Deferred', 'value': 'Deferred'},
+    {'label': 'Cancelled', 'value': 'Cancelled'},
+    ]"/> 
+    <aura:attribute name="value" type="String" />
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <lightning:radioGroup 
+                          aura:id="radioGrp"
+                          name="radioGroup"
+                          label="Select a Status "
+                          options="{!v.options }"
+                          value="{!v.value}"
+                          type="radio"/>
+        </lightning:layoutItem>       
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <lightning:button onclick="{!c.doTransfer}" variant="brand" label="Save" disabled="{!empty(v.value)}" />
+        </lightning:layoutItem>                          
+    </lightning:layout>
+</aura:component>

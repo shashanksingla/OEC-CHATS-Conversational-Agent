@@ -1,0 +1,75 @@
+<aura:component >
+    <aura:attribute name="mapCaseIdCaseStatus" type="Map"/>
+    <aura:attribute name="lstCaseIndividual" type="List"/>
+    <aura:attribute name="lstCaseIndividualPerPage" type="List"/>
+    <aura:attribute name="pageNo" type="Integer" default="1"/>
+    <aura:attribute name="isChangeRefFlow" type="Boolean" default="false"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+
+    <div class="slds-m-top_large">
+        <div class="slds-text-body_regular">Select an existing Case</div>
+        <div class="slds-text-body_small">In order to use an existing case, select the case record from the grid below, and click "Finish". The information the existing case can be modified as desired (no information in the case will be overwritten by application data). 
+            <div class="slds-float_right">    
+                <aura:if isTrue="{!v.pageNo!=1}">
+                    <a onclick="{!c.doPrev}">Previous</a>
+                </aura:if>                
+                <aura:if isTrue="{!v.pageNo!=1 &amp;&amp;v.lstCaseIndividual.length gt (10*v.pageNo) }">
+                    |
+                </aura:if>                
+                <aura:if isTrue="{!v.lstCaseIndividual.length gt (10*v.pageNo)}">
+                    <a onclick="{!c.doNext}">Next</a>
+                </aura:if>                
+            </div>
+        </div>
+        <table class="slds-table slds-table_bordered">
+            <thead>
+                <tr class="slds-text-title_caps">
+                    <th scope="col">
+                        <div class="slds-truncate" title="action"></div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="Case ID">Case ID</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="State ID">State ID</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="Primary Caretaker">Primary Caretaker</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="DOB">DOB</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="SSN">SSN</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="Case Status">Case Status</div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <aura:iteration items="{!v.lstCaseIndividualPerPage}" var="caseIndividual">
+                    <c:peakCaseSelectionRow caseIndividual="{!caseIndividual}" mapCaseIdCaseStatus="{!v.mapCaseIdCaseStatus}"/>
+                </aura:iteration>
+            </tbody>
+        </table>  
+        <div class="slds-float_right">    
+            <aura:if isTrue="{!v.pageNo!=1}">
+                <a onclick="{!c.doPrev}">Previous</a>
+            </aura:if>                
+            <aura:if isTrue="{!v.pageNo!=1 &amp;&amp;v.lstCaseIndividual.length gt (10*v.pageNo) }">
+                |
+            </aura:if>                
+            <aura:if isTrue="{!v.lstCaseIndividual.length gt (10*v.pageNo)}">
+                <a onclick="{!c.doNext}">Next</a>
+            </aura:if>                
+        </div>
+    </div>
+    <aura:if isTrue="{!!v.isChangeRefFlow}">
+    <div class="slds-m-top_large">
+        <div class="slds-text-body_regular">Create a New Case</div>
+        <div class="slds-text-body_small">In order to create a new case, select the option below, and click "Finish". This will auto-fill all available application data into a new case, which can be updated by the user after successful case creation.</div>
+        <lightning:input type="radio" label="Create a new case" name="caseSelectionRadioOption" onchange="{!c.onCaseSelectionRadioOption}"/>
+    </div>
+    </aura:if>    
+</aura:component>

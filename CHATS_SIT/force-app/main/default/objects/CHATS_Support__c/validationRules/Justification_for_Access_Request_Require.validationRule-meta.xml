@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Justification_for_Access_Request_Require</fullName>
+    <active>true</active>
+    <description>Access request for Read only or Universal User requires justification and information entered in the description field.   (WILL ADD Universal User value into rule when Universal user becomes picklist option in Access Level Requested Field)</description>
+    <errorConditionFormula>AND( 
+ISBLANK(Access_Request_Title_Info_Justification__c), 
+ISPICKVAL(Access_Level_Requested__c,&quot;Read Only&quot;))</errorConditionFormula>
+    <errorDisplayField>Access_Request_Title_Info_Justification__c</errorDisplayField>
+    <errorMessage>Please enter the user&apos;s position title and information when requesting &quot;Read Only&quot; access. See helptext for information needed.</errorMessage>
+</ValidationRule>

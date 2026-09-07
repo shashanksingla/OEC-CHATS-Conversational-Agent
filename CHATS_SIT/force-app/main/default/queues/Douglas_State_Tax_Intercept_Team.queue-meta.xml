@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Douglas State Tax Intercept Team</name>
+    <queueMembers>
+        <users>
+            <user>afithian@douglas.co.us.chats</user>
+            <user>jperez1@douglas.co.us.chats</user>
+            <user>mingalls@douglas.co.us.chats</user>
+            <user>vhofshei@douglas.co.us.chats</user>
+        </users>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>Task</sobjectType>
+    </queueSobject>
+</Queue>

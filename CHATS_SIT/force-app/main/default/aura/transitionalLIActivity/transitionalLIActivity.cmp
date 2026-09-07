@@ -1,0 +1,30 @@
+<aura:component>
+    
+    <aura:attribute name="activityLIRefInfo" type="T_APPLN_ACTIVITY__c[]"/>
+	<div><h3 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate">Activity</h3><br/></div>
+    <div class="slds-grid slds-wrap slds-p-around--large">
+        <table class="slds-table slds-table_bordered">
+            <thead>
+                <tr class="slds-text-title_caps">
+                    <th scope="col">
+                        <div class="slds-truncate" title="Activity Type">Activity Type</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="Actual Start Date">Actual Start Date</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="Actual End Date">Actual End Date</div>
+                    </th>
+                </tr>            
+            </thead>
+            
+            <tbody>
+                <aura:iteration items="{!v.activityLIRefInfo}" var="res" indexVar="i">
+                    <c:transitionalLIActivityRow aura:id="transitionalLIActivityRow" activityRcrd="{!res}"/>
+                </aura:iteration>
+            </tbody>
+            
+        </table>
+    </div>
+    
+</aura:component>

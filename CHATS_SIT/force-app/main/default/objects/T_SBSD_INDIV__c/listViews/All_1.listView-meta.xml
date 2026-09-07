@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All_1</fullName>
+    <columns>NAME</columns>
+    <columns>CREATEDBY_USER</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>UPDATEDBY_USER</columns>
+    <columns>IDN_STATE__c</columns>
+    <columns>NAM_FIRST__c</columns>
+    <columns>NAM_LAST__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>NAM_FIRST__c</field>
+        <operation>equals</operation>
+        <value>SHAUN</value>
+    </filters>
+    <label>All 1</label>
+</ListView>

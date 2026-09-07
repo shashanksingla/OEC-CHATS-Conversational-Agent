@@ -1,0 +1,4 @@
+<aura:event type="APPLICATION" description="Event template" >
+    <aura:attribute name="cmpValidated" type="Boolean" default="false" />
+    <aura:attribute name="enterRecurrence" type="Boolean" default="false" />
+</aura:event>

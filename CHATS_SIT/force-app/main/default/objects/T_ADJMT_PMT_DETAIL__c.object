@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Detail information about sub payment, payment corrections</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableChangeDataCapture>false</enableChangeDataCapture>
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>true</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>AMT_PMT_DETAIL_ADJMT__c</fullName>
+        <description>Amount</description>
+        <externalId>false</externalId>
+        <label>Amount</label>
+        <precision>9</precision>
+        <required>false</required>
+        <scale>2</scale>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>CDE_STATUS_DETAIL_PMT_ADJMT__c</fullName>
+        <defaultValue>&apos;3&apos;</defaultValue>
+        <externalId>false</externalId>
+        <label>Status</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00716</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>IDN_ADJMT__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <description>Adjustment</description>
+        <externalId>false</externalId>
+        <label>Adjustment</label>
+        <referenceTo>T_ADJMT__c</referenceTo>
+        <relationshipLabel>Adjustment Payment Details</relationshipLabel>
+        <relationshipName>AdjustmentPaymentDetails</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_DETAIL_ADJMT_NON__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <description>Non Adjustment Detail</description>
+        <externalId>false</externalId>
+        <label>Non Adjustment Detail</label>
+        <referenceTo>T_NON_ADJMT_DETAIL__c</referenceTo>
+        <relationshipLabel>Non Adjustment details</relationshipLabel>
+        <relationshipName>Non_Adjustment_details</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_DETAIL_ADJMT__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <description>Adjustment Detail</description>
+        <externalId>false</externalId>
+        <label>Adjustment Detail</label>
+        <referenceTo>T_ADJMT_DETAIL__c</referenceTo>
+        <relationshipLabel>Adjustment Details</relationshipLabel>
+        <relationshipName>Adjustment_Details</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>External ID</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <fields>
+        <fullName>IDN_PMT_ADJMT_EXTNL__c</fullName>
+        <caseSensitive>false</caseSensitive>
+        <externalId>true</externalId>
+        <label>Adjustment Payment ID external</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>IDN_PMT_ADJMT__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <description>Adjustment Payment</description>
+        <externalId>false</externalId>
+        <label>Adjustment Payment</label>
+        <referenceTo>T_ADJMT_PMT__c</referenceTo>
+        <relationshipLabel>Adjustment Payment Detail</relationshipLabel>
+        <relationshipName>Adjustment_Payment</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <label>Adjustment Payment Detail</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>ID</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Adjustment Payment Details</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ReadWrite</sharingModel>
+</CustomObject>

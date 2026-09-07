@@ -1,0 +1,68 @@
+<aura:component controller="RateScheduleFlowApxCtrl" extends="c:abstractSection">
+    <aura:attribute name="countyName" type="String"/>
+    <aura:attribute name="fiscalRateValues" type="T_FISCAL_RAT_FEES__c"/>
+    <aura:attribute name="countyRatePlan" type="T_COUNTY_RATE__c"/>
+    <aura:attribute name="rateScheduleId" type="String"/>
+    <aura:attribute name="fiscalAgreementRecordId" type="String"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:attribute name="CDE_TRANS_FREQ__c" type="String"/>
+    <aura:attribute name="CDE_ACT_FREQ__c" type="String"/>
+    <aura:attribute name="CDE_REG_FREQ__c" type="String"/>
+    <aura:attribute name="AMT_TRANS_FA__c" type="String"/>
+    <aura:attribute name="AMT_REG_FA__c" type="String"/>
+    <aura:attribute name="AMT_ACT_FA__c" type="String"/>
+    <aura:attribute name='providerFiscalAgreementRec' type='T_PROVR_FISCAL_AGREMENT__c' default="{'sobjectType' : 'T_PROVR_FISCAL_AGREMENT__c',
+                                                                                 'Id' : null }"/>
+    <aura:attribute name="providerQualityRating" type="String"/> 
+    <aura:attribute name="isReadOnly" type="boolean" default="false" description="marker for making the fields readonly"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+            <lightning:layoutItem flexibility="auto" size="4" class='slds-p-right--small'>
+                <lightning:input type="text" name="input-name" label="Fiscal Agreement County"
+                                 value="{!v.countyName}" disabled="true"/>
+            </lightning:layoutItem>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <lightning:input type="number" name="input-name" label="Yearly Activity Fee"
+                                 value="{!v.AMT_ACT_FA__c}" formatter="currency" step="0.01"
+                                 aura:id="input-field" disabled="true"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <lightning:input type="text" label="Activity Fee Frequency"
+                                 value="{!v.CDE_ACT_FREQ__c}" aura:id="input-field" disabled="true"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small"></lightning:layoutItem>
+            
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <lightning:input type="number" name="input-name" label="Yearly Registration Fee"
+                                 value="{!v.AMT_REG_FA__c}" formatter="currency" step="0.01" 
+                                 aura:id="input-field" disabled="true"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <lightning:input type="text" label="Registration Fee Frequency" 
+                                 value="{!v.CDE_REG_FREQ__c}" aura:id="input-field" disabled="true"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small"></lightning:layoutItem> 
+            
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <lightning:input type="number" name="input-name" label="Yearly Transportation Fee"
+                                 value="{!v.AMT_TRANS_FA__c}" formatter="currency" step="0.01" 
+                                 aura:id="input-field" disabled="true"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="4" padding="around-small">
+                <lightning:input label="Transportation Fee Frequency" 
+                                 value="{!v.CDE_TRANS_FREQ__c}" aura:id="input-field" disabled="true"/>
+            </lightning:layoutItem>
+        	<lightning:layoutItem flexibility="auto" size="4" padding="around-small"></lightning:layoutItem>
+        
+            
+        
+            	
+        
+    </lightning:layout>	
+    
+</aura:component>

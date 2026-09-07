@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Template_List_View</fullName>
+    <columns>NAME</columns>
+    <columns>Status__c</columns>
+    <columns>DTE_BEGIN_EFFV_RATE__c</columns>
+    <columns>DTE_END_EFFV_RATE__c</columns>
+    <columns>CDE_RATE_PLAN_TEMPLT__c</columns>
+    <columns>IND_RATE_PLAN_TEMPLT__c</columns>
+    <columns>LAST_UPDATE</columns>
+    <columns>IDN_COUNTY__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>IND_RATE_PLAN_TEMPLT__c</field>
+        <operation>equals</operation>
+        <value>1</value>
+    </filters>
+    <label>Template</label>
+</ListView>

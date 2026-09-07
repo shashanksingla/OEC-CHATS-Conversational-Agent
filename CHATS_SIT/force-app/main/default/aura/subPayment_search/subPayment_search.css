@@ -1,0 +1,17 @@
+.THIS .sub-payment-table  tr th:nth-child(1) .slds-cell-fixed.slds-has-button-menu,
+.THIS .sub-payment-table  tr th:nth-child(1) {
+    width:60px !important;
+}
+.THIS .sub-payment-table  tr .slds-cell-fixed.slds-has-button-menu{
+    position:relative;
+   min-height:5rem;
+}
+.THIS .sub-payment-table  tr .slds-th__action-button.slds-dropdown-trigger.slds-dropdown-trigger_click{
+    display:none;
+}
+.THIS .slds-truncate {
+    text-overflow: inherit;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word; 
+}

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>02</fullName>
+        <default>false</default>
+        <label>Número de licencia del proveedor de cuidado de niños</label>
+    </customValue>
+    <customValue>
+        <fullName>01</fullName>
+        <default>false</default>
+        <label>Nombre del proveedor de cuidado de niños</label>
+    </customValue>
+    <customValue>
+        <fullName>03</fullName>
+        <default>false</default>
+        <label>Programa para el cuidado de niños</label>
+    </customValue>
+    <customValue>
+        <fullName>05</fullName>
+        <default>false</default>
+        <label>Historia de vacunaciones documentada, como la tarjeta de vacunación o un certificado médico o de la enfermera donde se indique que el niño está al día con todas las vacunas para su edad.</label>
+    </customValue>
+    <customValue>
+        <fullName>04</fullName>
+        <default>false</default>
+        <label>Información sobre los días no escolares, tales como un calendario de la escuela o la información del distrito escolar del niño</label>
+    </customValue>
+    <masterLabel>Checklist CR212(Spanish)</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Orphan_DropIn_Date_c__c</fullName>
+    <externalDeveloperName>Orphan_DropIn_Date__c</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Orphan DropIn Date</label>
+    <required>false</required>
+    <type>Date</type>
+</CustomField>

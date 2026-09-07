@@ -1,0 +1,69 @@
+.slds-spinner_container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.slds-page-header__title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.slds-text-title--caps {
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.0625rem;
+    line-height: 1.25;
+    text-transform: uppercase;
+}
+
+.slds-media__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.slds-grid {
+    display: flex;
+}
+
+.slds-col {
+    flex: 1;
+}
+
+.slds-has-flexi-truncate {
+    min-width: 0;
+}
+
+.slds-no-space {
+    margin: 0;
+}
+
+.slds-grow {
+    flex-grow: 1;
+}
+
+.slds-m-right--small {
+    margin-right: 0.75rem;
+}
+
+.slds-align-middle {
+    vertical-align: middle;
+}
+
+.slds-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.slds-line-height--reset {
+    line-height: 1;
+}

@@ -1,0 +1,260 @@
+/* Host: display contents so the component renders as a native table row */
+:host {
+    display: contents;
+    clip-path: none !important;
+}
+
+/* ─── BASE TABLE ROW & CELL STYLES ───────────────────────────────────────────── */
+
+/* Row hover state - subtle background change for visual feedback */
+tr {
+    overflow: visible;
+    position: relative;
+    z-index: 0;
+    clip-path: none !important;
+}
+
+tr:hover {
+    background-color: #f3f3f3;
+    cursor: pointer;
+}
+
+/**
+ * Focus state for keyboard navigation - applies when cell is focused.
+ * Provides clear visual indicator for keyboard users.
+ */
+tr:focus-within {
+    outline: 2px solid #0070d2;
+    outline-offset: -2px;
+    z-index: 2000;
+
+}
+
+/* Base table cell - COMPACT styling to match original design */
+.row-cell {
+    padding: 0.25rem 0.4rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 0.8125rem;
+    color: #3e3e3c;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    /* CRITICAL: Do NOT use overflow:hidden on cells - it clips dropdown menus */
+    overflow: visible;
+    position: relative;
+    clip-path: none !important;
+}
+
+/**
+ * Cell header - shown on high zoom/mobile with ::before pseudo-element.
+ * Hidden by default in normal desktop view.
+ */
+.cell-header {
+    display: none;
+    font-weight: 600;
+    color: #0070d2;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    margin-bottom: 0.125rem;
+}
+
+.cell-content {
+    word-break: break-word;
+    hyphens: auto;
+}
+
+/* ─── CURRENCY & NUMERIC CELLS ───────────────────────────────────────────────── */
+
+/**
+ * Currency / numeric cells — right-aligned with tabular figures for proper alignment.
+ */
+.row-cell.currency-cell {
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* ─── ACTION MENU CELL ───────────────────────────────────────────────────────── */
+
+/**
+ * Action menu cell — centred and constrained width.
+ * CRITICAL: Highly elevated z-index ensures dropdown menu appears on top of all content
+ * without being clipped by parent scrollable container.
+ */
+.row-cell.action-cell {
+    text-align: center;
+    width: 2.75rem;
+    padding: 0.15rem 0.3rem;
+    position: relative;
+    overflow: visible;
+    clip-path: none !important;
+}
+
+/* Ensure the button-menu sits flush inside the cell */
+.row-cell.action-cell lightning-button-menu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    clip-path: none !important;
+    overflow: visible;
+}
+
+/**
+ * Action cell focus indicator - enhances menu button focus for accessibility.
+ */
+.row-cell.action-cell:focus-within {
+    background-color: #ecf2f9;
+    border-radius: 4px;
+}
+
+/* ─── ACCESSIBILITY: FOCUS INDICATORS ────────────────────────────────────────── */
+
+/**
+ * Enhanced focus visible style for interactive cells.
+ * Meets WCAG AA contrast requirements (3:1).
+ */
+.row-cell:focus-visible {
+    outline: 2px solid #0070d2;
+    outline-offset: -2px;
+}
+
+lightning-button-menu:focus-visible {
+    outline: 2px solid #0070d2;
+    outline-offset: 2px;
+}
+
+/* ─── RESPONSIVE DESIGN: HIGH ZOOM (150% - 199%) ──────────────────────────── */
+
+/**
+ * At 150% zoom and above, reduce font and padding to accommodate smaller screen real estate.
+ * Viewport width at 150% zoom: ~1280px → each cell becomes ~1920/1280 = narrower.
+ */
+@media (max-width: 1600px) {
+    .row-cell {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.35rem;
+    }
+
+    .cell-header {
+        font-size: 0.625rem;
+        margin-bottom: 0.1rem;
+    }
+
+    .row-cell.action-cell {
+        width: 2.5rem;
+        padding: 0.1rem 0.25rem;
+        overflow: visible;
+        z-index: 1000;
+        position: relative;
+    }
+}
+
+/* ─── RESPONSIVE DESIGN: VERY HIGH ZOOM (200%+) ──────────────────────────── */
+
+/**
+ * At 200%+ zoom, maintain horizontal table layout (do not stack vertically).
+ * Keep compact sizing for readability on smaller screens.
+ */
+@media (max-width: 960px) {
+
+    /* Keep cell headers hidden at 200% zoom */
+    .cell-header {
+        display: none;
+    }
+
+    /* Maintain horizontal layout - do NOT use flex-direction: column */
+    .row-cell {
+        padding: 0.4rem 0.3rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .row-cell.currency-cell {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Action cell styling at 200% zoom */
+    .row-cell.action-cell {
+        text-align: center;
+        width: 2.5rem;
+        padding: 0.1rem 0.25rem;
+        overflow: visible;
+        z-index: 1000;
+        position: relative;
+    }
+
+    /* Touch targets remain accessible */
+    lightning-button-menu {
+        min-height: 2rem;
+        min-width: 2rem;
+        position: relative;
+        z-index: 1001;
+    }
+}
+
+/* ─── RESPONSIVE DESIGN: ULTRA HIGH ZOOM (250%+) ────────────────────────── */
+
+/**
+ * At 250%+ zoom, maintain horizontal layout with increased spacing.
+ * Keep table rows horizontal but with larger fonts and padding for readability.
+ */
+@media (max-width: 640px) {
+    .row-cell {
+        font-size: 0.875rem;
+        padding: 0.4rem 0.3rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .cell-header {
+        display: none;
+    }
+
+    /* Larger touch targets for actions */
+    .row-cell.action-cell {
+        width: 2.25rem;
+        padding: 0.4rem 0.25rem;
+        overflow: visible;
+        /*z-index: 1000;*/
+        position: relative;
+    }
+
+    lightning-button-menu {
+        min-height: 2.25rem;
+        min-width: 2.25rem;
+        position: relative;
+        /*z-index: 1001;*/
+    }
+}
+
+/* ─── PRINT STYLES (FOR ACCESSIBILITY & DOCUMENTATION) ───────────────────── */
+
+/**
+ * Print styles ensure the table is readable and properly formatted when printed.
+ */
+@media print {
+    .row-cell {
+        page-break-inside: avoid;
+        border: 1px solid #000;
+    }
+
+    .row-cell.action-cell {
+        display: none;
+        /* Hide action menu in print */
+    }
+
+    .cell-header {
+        display: block;
+        font-weight: 700;
+    }
+
+    tr {
+        page-break-inside: avoid;
+    }
+}

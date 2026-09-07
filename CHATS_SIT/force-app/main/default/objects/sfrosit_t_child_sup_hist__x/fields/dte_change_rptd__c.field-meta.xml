@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>dte_change_rptd__c</fullName>
+    <description>dte_change_rptd</description>
+    <externalDeveloperName>dte_change_rptd</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Reported Change Date</label>
+    <required>false</required>
+    <type>DateTime</type>
+</CustomField>

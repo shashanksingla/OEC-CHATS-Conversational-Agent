@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_copay_auth__c</fullName>
+    <description>idn_copay_auth</description>
+    <externalDeveloperName>idn_copay_auth</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Identifier Auth Copay</label>
+    <length>50</length>
+    <referenceTo>batchsit_t_auth_copay__x</referenceTo>
+    <relationshipLabel>Parent Fee Delinquency Legacy History</relationshipLabel>
+    <relationshipName>sfrosit_t_copay_delinqc_hist</relationshipName>
+    <type>ExternalLookup</type>
+</CustomField>

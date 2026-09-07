@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_indiv_eligty_detail__c</fullName>
+    <description>idn_indiv_eligty_detail</description>
+    <externalDeveloperName>idn_indiv_eligty_detail</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Individual Eligibility ID detail</label>
+    <length>50</length>
+    <referenceTo>batchsit_t_indiv_eligty_detail__x</referenceTo>
+    <relationshipLabel>Individual Eligibility Detail Legacy History</relationshipLabel>
+    <relationshipName>batchsit_t_indiv_eligty_detail_hist</relationshipName>
+    <type>ExternalLookup</type>
+</CustomField>

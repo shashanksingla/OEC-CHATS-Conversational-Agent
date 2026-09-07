@@ -1,0 +1,12 @@
+<aura:component >
+    
+    <aura:attribute name="empPaystubRcrd" type="Object"/>
+    <aura:handler name="init" value="{! this }" action="{! c.doInit }"/>
+    
+    <tr>
+        <td scope="row"><div class="slds-truncate" title="{!v.empPaystubRcrd.INCOME_FREQUENCY__c}">{!v.empPaystubRcrd.INCOME_FREQUENCY__c}</div></td>
+        <td scope="row"><div class="slds-truncate" title="{!v.empPaystubRcrd.TOTAL_WEEKLY_HOURS_WORKED__c}">{!v.empPaystubRcrd.TOTAL_WEEKLY_HOURS_WORKED__c}</div></td>
+        <td scope="row"><div class="slds-truncate" title="{!v.empPaystubRcrd.DTE_PAY__c}">{!v.empPaystubRcrd.DTE_PAY__c}</div></td>
+        <td scope="row"><div class="slds-truncate" title="{!v.empPaystubRcrd.CDE_TYPE_VERIF__c}">{!v.empPaystubRcrd.CDE_TYPE_VERIF__c}</div></td>
+    </tr>
+</aura:component>

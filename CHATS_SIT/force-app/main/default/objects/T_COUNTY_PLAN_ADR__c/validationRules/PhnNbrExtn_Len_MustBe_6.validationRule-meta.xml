@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>PhnNbrExtn_Len_MustBe_6</fullName>
+    <active>true</active>
+    <description>Phone Number extension length should be 6</description>
+    <errorConditionFormula>AND(NOT(ISBLANK( NBR_PHONE_EXTN__c )), 
+OR(LEN( NBR_PHONE_EXTN__c ) &lt;&gt; 6, 
+NOT(ISNUMBER( NBR_PHONE_EXTN__c )) 
+) 
+)</errorConditionFormula>
+    <errorDisplayField>NBR_PHONE_EXTN__c</errorDisplayField>
+    <errorMessage>Phone Number Extension must be a 6 digit number</errorMessage>
+</ValidationRule>

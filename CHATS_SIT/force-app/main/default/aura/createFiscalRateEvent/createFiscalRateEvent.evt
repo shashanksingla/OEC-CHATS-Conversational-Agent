@@ -1,0 +1,4 @@
+<aura:event type="APPLICATION" description="Event template">
+    <aura:attribute name="fiscalRateAmount" type="batchsit_t_fiscal_rate__x"/>
+    <aura:attribute name="lstFiscalRateAmount" type="List"/>
+</aura:event>

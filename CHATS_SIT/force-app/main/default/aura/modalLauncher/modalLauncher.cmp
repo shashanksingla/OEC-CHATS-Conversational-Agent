@@ -1,0 +1,24 @@
+<aura:component implements="flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickAction,force:hasSObjectName" 
+                access="global"
+                extends="c:genericUtilities">
+    <aura:attribute name="buttonLabel" type="String"/>
+    <aura:attribute name="componentName" type="String"/>
+    <aura:attribute name="recordIdAttribute" type="String" default="recordId"/>
+    <aura:attribute name="type" type="String" default="redirect"/>
+    
+    <aura:attribute name="callApexOrLaunchComponent" type="String" default="component"/>    
+    <aura:attribute name="apexClassName" type="String"/>
+    <aura:attribute name="apexMethodName" type="String"/>
+    <aura:attribute name="actionParameters" type="String"/>
+    <aura:attribute name="successCallBack" type="String"/>
+    
+    <aura:attribute name="showConfirmMsg" type="Boolean"/>
+    <lightning:overlayLibrary aura:id="overlayLib"/>
+    <div style="background-color: white; border-radius: 5px;" class="slds-align_absolute-center">
+        <div style="margin: 20px"><!-- iconName & iconPosition-->
+            <lightning:button variant="brand" name="modal" 
+                              label="{!v.buttonLabel}"
+                              onclick="{!c.handleModalButtonClick}"/>
+        </div>
+    </div>
+</aura:component>

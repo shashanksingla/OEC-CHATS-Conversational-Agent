@@ -1,0 +1,54 @@
+<aura:component >
+    <aura:attribute name="lstApplicationIndividuals" type="List"/>
+    <aura:attribute name="lstSelectedApplicationIndividuals" type="List"/>
+    <aura:attribute name="mapIndivSequenceToRelationship" type="Map"/>
+    <aura:attribute name="mapIndivToRelationship" type="Map"/>
+    <aura:attribute name="isCBMSFlow" type="Boolean" default="false"/>
+    <div class="slds-text-body_regular">Select individuals to add to the case.</div>
+    <table class="slds-table slds-table_bordered">
+        <thead>
+            <tr class="slds-text-title_caps">
+                <th scope="col">
+                    <div class="slds-truncate" title="action"></div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="Last Name">Last Name</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="First Name">First Name</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="MI">MI</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="DOB">DOB</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="SSN">SSN</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="Gender">Gender</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="State ID">State ID</div>
+                </th>
+                <th scope="col">
+                    <div class="slds-truncate" title="Primary Caretaker">Primary Caretaker</div>
+                </th>
+                <th>
+                    <div class="slds-truncate" title="Relationship">Relationship</div>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <aura:iteration items="{!v.lstApplicationIndividuals}" var="applicationIndividual">
+                <c:peakApplicationIndividualSelectionRow applicationIndividual="{!applicationIndividual}"
+                                                         lstSelectedApplicationIndividuals="{!v.lstSelectedApplicationIndividuals}"
+                                                         mapIndivSequenceToRelationship="{!v.mapIndivSequenceToRelationship}"
+                                                         mapIndivToRelationship ="{!v.mapIndivToRelationship}"
+                                                         isCBMSFlow ="{!v.isCBMSFlow}"/>
+            </aura:iteration>
+        </tbody>
+    </table>      
+    
+</aura:component>

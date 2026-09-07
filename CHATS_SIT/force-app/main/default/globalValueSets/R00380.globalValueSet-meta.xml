@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>NO</fullName>
+        <default>false</default>
+        <label>No</label>
+    </customValue>
+    <customValue>
+        <fullName>NOU</fullName>
+        <default>false</default>
+        <label>No, Unscheduled</label>
+    </customValue>
+    <customValue>
+        <fullName>YES</fullName>
+        <default>false</default>
+        <label>Yes</label>
+    </customValue>
+    <description>R00380</description>
+    <masterLabel>R00380</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

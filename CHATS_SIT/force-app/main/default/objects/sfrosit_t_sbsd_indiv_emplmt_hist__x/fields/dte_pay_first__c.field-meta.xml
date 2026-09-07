@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>dte_pay_first__c</fullName>
+    <description>dte_pay_first</description>
+    <externalDeveloperName>dte_pay_first</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>First Pay Date</label>
+    <required>false</required>
+    <type>Date</type>
+</CustomField>

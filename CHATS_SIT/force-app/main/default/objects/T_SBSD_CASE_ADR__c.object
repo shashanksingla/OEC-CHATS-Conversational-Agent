@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <comment>Action override created by Lightning App Builder during activation.</comment>
+        <content>Case_Address_Record_Page</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>Flexipage</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Case addresses</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+     <!--<enableChangeDataCapture>false</enableChangeDataCapture>-->
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>false</enableReports>
+    <enableSearch>true</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>ADR_CITY__c</fullName>
+        <description>City</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>City</label>
+        <length>30</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>ADR_LINE_1__c</fullName>
+        <description>Address Line 1</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Address Line 1</label>
+        <length>80</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>ADR_LINE_2__c</fullName>
+        <description>Address Line 2</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Address Line 2</label>
+        <length>80</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>ADR_STATE__c</fullName>
+        <externalId>false</externalId>
+        <label>State</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00002</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>ADR_ZIP_EXTN__c</fullName>
+        <description>Zip Ext.</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Zip Ext.</label>
+        <length>4</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>ADR_ZIP_MAIN__c</fullName>
+        <description>Zip</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Zip</label>
+        <length>5</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>CDE_SOURCE_VRFD_ADR__c</fullName>
+        <externalId>false</externalId>
+        <label>How Verified</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00832</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_TYPE_ADR__c</fullName>
+        <externalId>false</externalId>
+        <label>Address Type</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00836</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_TYPE_VERIF__c</fullName>
+        <externalId>false</externalId>
+        <label>Verified</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00831</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>DTE_BEGIN_EFFV__c</fullName>
+        <externalId>false</externalId>
+        <label>Effective Begin Date</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>DTE_END_EFFV__c</fullName>
+        <externalId>false</externalId>
+        <label>Effective End Date</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>IDN_CASE__c</fullName>
+        <deleteConstraint>Restrict</deleteConstraint>
+        <description>Case ID</description>
+        <externalId>false</externalId>
+        <label>Case ID</label>
+        <referenceTo>T_SBSD_CASE__c</referenceTo>
+        <relationshipLabel>Case Address</relationshipLabel>
+        <relationshipName>T_SBSD_CASE3</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>ID External</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <label>Case Address</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <columns>IDN_CASE__c</columns>
+        <columns>ADR_LINE_1__c</columns>
+        <columns>CDE_TYPE_ADR__c</columns>
+        <columns>CDE_TYPE_VERIF__c</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All1</fullName>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+ 	<nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>Address ID</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Case Address</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ReadWrite</sharingModel>
+    <validationRules>
+        <fullName>Adr_Zip_Extn_Length_4</fullName>
+        <active>true</active>
+        <description>Validation to check Length of Zip Extn is 4</description>
+        <errorConditionFormula>AND( !IDN_CASE__r.Is_Peak_Data__c,!IDN_CASE__r.Is_CBMS_Data__c, NOT ( ISBLANK ( ADR_ZIP_EXTN__c ) ), LEN( ADR_ZIP_EXTN__c ) &lt;&gt; 4)</errorConditionFormula>
+        <errorDisplayField>ADR_ZIP_EXTN__c</errorDisplayField>
+        <errorMessage>Zip Extension should be of 4 digits</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Adr_Zip_Main_Length_5</fullName>
+        <active>true</active>
+        <description>validate to check the length of field to 5</description>
+        <errorConditionFormula>AND( !IDN_CASE__r.Is_Peak_Data__c,!IDN_CASE__r.Is_CBMS_Data__c, NOT ( ISBLANK ( ADR_ZIP_MAIN__c ) ), LEN(  ADR_ZIP_MAIN__c ) &lt;&gt; 5)</errorConditionFormula>
+        <errorDisplayField>ADR_ZIP_MAIN__c</errorDisplayField>
+        <errorMessage>Zip Address must be of length 5</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Begin_date_validation</fullName>
+        <active>true</active>
+        <errorConditionFormula>AND( (!ISNEW()) , DTE_BEGIN_EFFV__c  &gt;  DTE_END_EFFV__c )</errorConditionFormula>
+        <errorMessage>Begin date cannot be greater than the end date.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Require_Adr_City_if_AdrType_HOME</fullName>
+        <active>true</active>
+        <description>CHAT-1158: Require Address City if Address Type is Mailing.</description>
+        <errorConditionFormula>AND( !IDN_CASE__r.Is_Peak_Data__c,!IDN_CASE__r.Is_CBMS_Data__c, NOT(ISBLANK(TEXT( CDE_TYPE_ADR__c ))),
+     ISPICKVAL( CDE_TYPE_ADR__c, &quot;MAL&quot;),
+     ISBLANK( ADR_CITY__c ) 
+)</errorConditionFormula>
+        <errorDisplayField>ADR_CITY__c</errorDisplayField>
+        <errorMessage>Require Address City if Address Type is Mailing.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Require_Adr_Line1_if_AdrType_HOME</fullName>
+        <active>true</active>
+        <description>CHAT-1159: Require Address City if Address Type is Mailing.</description>
+        <errorConditionFormula>AND( !IDN_CASE__r.Is_Peak_Data__c,!IDN_CASE__r.Is_CBMS_Data__c, NOT(ISBLANK(TEXT( CDE_TYPE_ADR__c ))), 
+     ISPICKVAL( CDE_TYPE_ADR__c, &quot;MAL&quot;), 
+     ISBLANK(  ADR_LINE_1__c  ) 
+)</errorConditionFormula>
+        <errorDisplayField>ADR_LINE_1__c</errorDisplayField>
+        <errorMessage>Require Address Line 1 if Address Type is Mailing.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>req_HowVerified_if_Verified_Written</fullName>
+        <active>true</active>
+        <description>Require How Verified Field if Verified field is &quot;Written Verification&quot;</description>
+        <errorConditionFormula>AND( !IDN_CASE__r.Is_Peak_Data__c,!IDN_CASE__r.Is_CBMS_Data__c, TEXT(CDE_TYPE_VERIF__c) = &apos;V&apos; , ISBLANK(TEXT(CDE_SOURCE_VRFD_ADR__c) ) )</errorConditionFormula>
+        <errorDisplayField>CDE_SOURCE_VRFD_ADR__c</errorDisplayField>
+        <errorMessage>&quot;How Verified&quot; is required if Verified is &quot;Written Verification&quot;.</errorMessage>
+    </validationRules>
+    <visibility>Public</visibility>
+</CustomObject>

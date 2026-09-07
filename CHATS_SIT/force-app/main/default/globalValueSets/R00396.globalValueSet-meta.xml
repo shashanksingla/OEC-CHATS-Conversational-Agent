@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>INP</fullName>
+        <default>false</default>
+        <label>In Process</label>
+    </customValue>
+    <customValue>
+        <fullName>NCM</fullName>
+        <default>false</default>
+        <label>Not Confirmed</label>
+    </customValue>
+    <customValue>
+        <fullName>CFM</fullName>
+        <default>false</default>
+        <label>Confirmed</label>
+    </customValue>
+    <customValue>
+        <fullName>RTO</fullName>
+        <default>false</default>
+        <isActive>false</isActive>
+        <label>RTO</label>
+    </customValue>
+    <description>R00396</description>
+    <masterLabel>R00396</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

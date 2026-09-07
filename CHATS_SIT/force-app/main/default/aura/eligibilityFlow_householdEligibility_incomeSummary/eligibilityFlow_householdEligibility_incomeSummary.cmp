@@ -1,0 +1,198 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickAction" access="global" >
+    <aura:attribute name="indivEmplmtIncomeTypeEmployment" type="batchsit_t_indiv_eligty_emplmt_income__x"
+                    default="{'sobjectType':'batchsit_t_indiv_eligty_emplmt_income__x'}"/>
+    <aura:attribute name="indivEmplmtIncomeTypeSelfEmployment" type="batchsit_t_indiv_eligty_emplmt_income__x"
+                    default="{'sobjectType':'batchsit_t_indiv_eligty_emplmt_income__x'}"/>
+    <!-- <aura:attribute name="indivEmplmtIncomeTypeEmployment" type="Map"/>
+    <aura:attribute name="indivEmplmtIncomeTypeSelfEmployment" type="Map"/>-->
+    <aura:attribute name="indivEmplmtIncomeTypeEmploymentLst" type="List"/>
+    <aura:attribute name="indivEmplmtExpense" type="batchsit_t_indiv_eligty_emplmt_exp__x"
+                    default="{'sobjectType':'batchsit_t_indiv_eligty_emplmt_exp__x'}"/>
+    <aura:attribute name="indivEligtyOtherIncome" type="batchsit_t_indiv_eligty_income_other__x"
+                    default="{'sobjectType':'batchsit_t_indiv_eligty_income_other__x'}"/>
+    <aura:attribute name="indivEligtyIncomeDeduction" type="batchsit_t_indiv_eligty_income_ddtn__x"
+                    default="{'sobjectType':'batchsit_t_indiv_eligty_income_other__x'}"/>
+    <aura:attribute name="grossEmpIncome" type="String" default="0.00"/>
+    <aura:attribute name="grossSelfEmpIncome" type="String" default="0.00"/>
+    <aura:attribute name="grossSelfEmpexpense" type="String" default="0.00"/>
+    <aura:attribute name="grossOtherIncome" type="String" default="0.00"/>
+    <aura:attribute name="grossIncomeDeduction" type="String" default="0.00"/>
+    <aura:attribute name="caseEligibility" type="batchsit_t_fcompsn_eligty__x"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="initLoaded" type="Boolean" default="false"/>    
+    <aura:if isTrue="{!v.initLoaded}">
+        <h2 class="slds-section__title slds-p-left--small slds-p-top--small slds-border_top">Income Summary</h2>
+        <div>
+            <table class="slds-table slds-table_bordered slds-table_cell-buffer slds-border_left slds-border_right slds-p-top_medium slds-p-right_medium slds-p-bottom_medium slds-p-left_medium">
+                <thead>
+                    <tr class="slds-text-title_caps">
+                        <th scope="col">
+                            <div class="slds-truncate" title="Parent/CareTaker">Parent/CareTaker</div>
+                        </th>
+                        <th scope="col">
+                            <div class="slds-truncate" title="Source">Source</div>
+                        </th>
+                        <th scope="col">
+                            <div class="slds-truncate" title="Amount">Amount</div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <aura:if isTrue="{!!empty(v.indivEmplmtIncomeTypeEmployment)}">
+                        <tr>
+                            <th scope="row">
+                                <div class="slds-truncate"><b>Employment Income</b></div>
+                            </th>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <aura:iteration items="{!v.indivEmplmtIncomeTypeEmployment}" var="empIncome">
+                            <tr>
+                                <td >
+                                    <div class="slds-truncate" >{!empIncome.NAM_INDIV__c}</div>
+                                </td>
+                                <td >
+                                    <div class="slds-truncate" >{!empIncome.nam_busns__c}</div>
+                                </td>
+                                <td >
+                                    <div class="slds-truncate" ><c:outputField hideLabel="true" value="{!empIncome.amt_income_annual__c}" type="CURRENCY"/></div>
+                                </td>
+                            </tr>
+                        </aura:iteration>
+                        <tr>
+                            <td>Gross Employment Income</td>
+                            <td></td>
+                            <td><c:outputField hideLabel="true" value="{!v.grossEmpIncome}" type="CURRENCY"/></td>
+                        </tr>
+                    </aura:if>
+                    
+                    <aura:if isTrue="{!!empty(v.indivEmplmtIncomeTypeSelfEmployment)}">
+                        <tr>
+                            <th scope="row">
+                                <div class="slds-truncate"><b>Self-Employment Income</b></div>
+                            </th>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <aura:iteration items="{!v.indivEmplmtIncomeTypeSelfEmployment}" var="selfEmpIncome">
+                            <tr>
+                                <td >
+                                    <div class="slds-truncate" >{!selfEmpIncome.NAM_INDIV__c}</div>
+                                </td>
+                                <td >
+                                    <div class="slds-truncate" >{!selfEmpIncome.nam_busns__c}</div>
+                                </td>
+                                <td >
+                                    <div class="slds-truncate" ><c:outputField hideLabel="true" value="{!selfEmpIncome.amt_income_annual__c}" type="CURRENCY"/></div>
+                                </td>
+                            </tr>
+                        </aura:iteration>
+                        <tr>
+                            <td>Gross Self-Employment Income</td>
+                            <td></td>
+                            <td><c:outputField hideLabel="true" value="{!v.grossSelfEmpIncome}" type="CURRENCY"/></td>
+                        </tr>
+                    </aura:if>
+                    
+                    <aura:if isTrue="{!!empty(v.indivEmplmtExpense)}">
+                        <tr>
+                            <th scope="row">
+                                <div class="slds-truncate"><b>Self-Employment Expense</b></div>
+                            </th>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <aura:iteration items="{!v.indivEmplmtExpense}" var="indivExpense">
+                            <tr>
+                                <td >
+                                    <div class="slds-truncate" >{!indivExpense.NAM_INDIV__c}</div>
+                                </td>
+                                <td ></td>
+                                <td >
+                                    <div class="slds-truncate" ><c:outputField hideLabel="true" value="{!indivExpense.amt_exp_annual__c}" type="CURRENCY" format="-$.00"/></div>
+                                </td>
+                            </tr>
+                        </aura:iteration>
+                        <tr>
+                            <td>Gross Self-Employment Expense</td>
+                            <td></td>
+                            <td><c:outputField hideLabel="true" value="{!v.grossSelfEmpexpense}" type="CURRENCY" format="$.00"/></td>
+                        </tr>
+                    </aura:if>
+                    
+                    <aura:if isTrue="{!!empty(v.indivEligtyOtherIncome)}">
+                        <tr>
+                            <th scope="row">
+                                <div class="slds-truncate"><b>Other Income</b></div>
+                            </th>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <aura:iteration items="{!v.indivEligtyOtherIncome}" var="otherIncome">
+                            <tr>
+                                <td >
+                                    <div class="slds-truncate" >{!otherIncome.NAM_INDIV__c}</div>
+                                </td>
+                                <td >
+                                    <div class="slds-truncate" >Income</div>
+                                </td>
+                                <td >
+                                    <div class="slds-truncate" ><c:outputField hideLabel="true" value="{!otherIncome.amt_income_annual__c}" type="CURRENCY"/></div>
+                                </td>
+                            </tr>
+                        </aura:iteration>
+                        <tr>
+                            <td>Gross Other Income</td>
+                            <td></td>
+                            <td><c:outputField hideLabel="true" value="{!v.grossOtherIncome}" type="CURRENCY"/></td>
+                        </tr>
+                    </aura:if>
+                    
+                    <aura:if isTrue="{!!empty(v.indivEligtyIncomeDeduction)}">
+                        <tr>
+                            <th scope="row">
+                                <div class="slds-truncate"><b>Income Deduction</b></div>
+                            </th>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <aura:iteration items="{!v.indivEligtyIncomeDeduction}" var="incomeDeduction">
+                            <tr>
+                                <td >
+                                    <div class="slds-truncate" >{!incomeDeduction.NAM_INDIV__c}</div>
+                                </td>
+                                <td >
+                                    <div class="slds-truncate" >{!incomeDeduction.cde_type_ddtn__c}</div>
+                                </td>
+                                <td >
+                                    <div class="slds-truncate" ><c:outputField hideLabel="true" value="{!0-incomeDeduction.amt_ddtn_annual__c}" type="CURRENCY"/></div>
+                                </td>
+                            </tr>
+                        </aura:iteration>
+                        <tr>
+                            <td>Total Income Deduction</td>
+                            <td></td>
+                            <td><c:outputField hideLabel="true" value="{!v.grossIncomeDeduction}" type="CURRENCY"/></td>
+                        </tr>
+                    </aura:if>
+                    <tr>
+                        <td><b>Gross Annual Income</b></td>
+                        <td></td>
+                        <td><c:outputField hideLabel="true" value="{!!empty(v.caseEligibility.amt_income_gross_annual__c)?v.caseEligibility.amt_income_gross_annual__c:0}" type="CURRENCY"/></td>
+                    </tr>
+                    <tr>
+                        <td><b>Calculated Annual Deduction</b></td>
+                        <td></td>
+                        <td><c:outputField hideLabel="true" value="{!!empty(v.caseEligibility.amt_ddtn_total_annual__c)?v.caseEligibility.amt_ddtn_total_annual__c:0}" type="CURRENCY"/></td>
+                    </tr>
+                    <tr>
+                        <td><b>Annual Countable Income</b></td>
+                        <td></td>
+                        <td><c:outputField hideLabel="true" value="{!!empty(v.caseEligibility.amt_income_annual__c)?v.caseEligibility.amt_income_annual__c:0}" type="CURRENCY"/></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </aura:if>
+</aura:component>

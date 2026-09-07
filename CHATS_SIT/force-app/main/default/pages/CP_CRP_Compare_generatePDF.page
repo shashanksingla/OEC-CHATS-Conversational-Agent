@@ -1,0 +1,75 @@
+<!--  
+Author      :   Shashank
+Description :   VF Page where providerReviewFlow component is rendered
+Requirement :    JIRA CCCAP-11862
+-->
+<apex:page sidebar="false" showHeader="false">
+    <style>
+        
+        @media print {
+        .noprint {
+        display: none !important;
+        }
+        }
+        .slds-text-color_error{
+        color:red !important;
+        }
+        .slds-card{
+        border:0 !important;}
+        .msgText {
+        text-align: center;
+        display: inline-block;
+        }
+        .slds-card__header-title .slds-truncate{
+        padding:1px;
+        }
+        .feedbackCol{
+        min-width:0 !important;}
+    </style>
+    <apex:includeLightning />
+    
+    <!-- Lightning Container -->
+    <div style="width:100%;height:100px;" id="LightningContainer"/>
+    
+    <script type="text/javascript">
+    var urlParams = new URLSearchParams(window.location.search);
+    // Create Lightning Component
+    $Lightning.use("c:compareCountyApp", function() {
+        let mode =urlParams.get('mode');
+        if(mode == 'CP'){
+            $Lightning.createComponent("c:compareCountyPlan_lwc", { 
+                recordId: urlParams.get('recordId'),
+                screenMode: 'readonly',
+            },"LightningContainer", function(component) {
+                window.component = component;
+                const lContainer = document.getElementById("LightningContainer");
+                if (lContainer) {
+                    lContainer.addEventListener("componentready", function(event) {
+                        console.log("Component Ready Event Received:", event.detail);
+                        setTimeout(() => window.print(), 300); // Trigger print after 300ms
+                    });
+                } else {
+                    console.error("LightningContainer element not found.");
+                }
+            });
+        }else if(mode == 'CRP'){
+            $Lightning.createComponent("c:compareCountyRatePlan_lwc", { 
+                recordId: urlParams.get('recordId'),
+                screenMode: 'readonly',
+            },"LightningContainer", function(component) {
+                window.component = component;
+                const lContainer = document.getElementById("LightningContainer");
+                if (lContainer) {
+                    lContainer.addEventListener("componentready", function(event) {
+                        console.log("Component Ready Event Received:", event.detail);
+                        setTimeout(() => window.print(), 300); // Trigger print after 300ms
+                    });
+                } else {
+                    console.error("LightningContainer element not found.");
+                }
+            });
+        }
+        
+    });
+    </script>
+</apex:page>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_fiscal_sch__c</fullName>
+    <description>idn_fiscal_sch</description>
+    <externalDeveloperName>idn_fiscal_sch</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>idn_fiscal_sch</label>
+    <length>18</length>
+    <referenceTargetField>T_FISCAL_SCH__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_FISCAL_SCH__c</referenceTo>
+    <relationshipLabel>batchsit$t_fiscal_rate</relationshipLabel>
+    <relationshipName>batchsit_t_fiscal_rate</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

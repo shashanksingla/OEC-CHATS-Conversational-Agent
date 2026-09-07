@@ -1,0 +1,26 @@
+<aura:component >
+    <aura:attribute name="countyRateAmount" type="T_COUNTY_RATE_AMT__c" description="stores the T_COUNTY_RATE_AMT__c sObject."
+                    default="{'sObjectType':'T_COUNTY_RATE_AMT__c',
+                             'NBR_AMOUNT__c':0}"/>
+    <aura:attribute name="countyRatePlan" type="T_COUNTY_RATE__c" description="stores the county rate plan detail displayed in header."/>
+    <aura:attribute name="readOnly" type="boolean" default="false"/>
+    <aura:attribute name="mapCountyRateAmount" type="map" default="{}" description="stores the list of CountyRateAmount records to be upserted as map."/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler event="c:createCountyRateValidateError" action="{!c.validateRecord}"/>
+    <aura:handler event="c:updateCountyRateForCareUnits" action="{!c.handleCareUnitsUpdate}"/>
+    <td data-label="tier1">
+        <div class="slds-truncate">
+           <ui:inputNumber aura:id="amount" 
+                            value="{!v.countyRateAmount.NBR_AMOUNT__c}" 
+                            class="cellWidth" 
+                            blur="{!c.updateRecord}"
+                            keyup="{!c.checkDecimalPlaces}"
+                            updateOn="keyup"
+                           	disabled="{!v.readOnly}"
+                           	change="{!c.updateRecord}"
+                            format=".00"
+                           /> 
+                        
+        </div>
+    </td>
+</aura:component>

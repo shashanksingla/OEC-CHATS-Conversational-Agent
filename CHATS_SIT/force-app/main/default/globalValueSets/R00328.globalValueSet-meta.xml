@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>PER</fullName>
+        <default>false</default>
+        <label>Permanent</label>
+    </customValue>
+    <customValue>
+        <fullName>TMP</fullName>
+        <default>false</default>
+        <label>Temporary</label>
+    </customValue>
+    <description>R00328</description>
+    <masterLabel>R00328</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

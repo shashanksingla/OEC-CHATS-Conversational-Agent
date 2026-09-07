@@ -1,0 +1,167 @@
+<template>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         SECTION TITLE
+    ════════════════════════════════════════════════════════════════════════ -->
+    <h3 class="slds-section__title" id="adjustment-address-resp-party-title">Adjustment Address</h3>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         VIEW MODE  (pageMode === 'view' && !isEditableAddress)
+    ════════════════════════════════════════════════════════════════════════ -->
+    <template if:true={isViewMode}>
+        <!-- ADA FIX 1: role="region" + aria-labelledby ties this section to the h3 heading
+             so screen reader users can navigate to "Adjustment Address" as a named landmark -->
+        <div role="region" aria-label="Adjustment Address" aria-labelledby="adjustment-address-resp-party-title"
+            tabindex="0">
+            <lightning-layout multiple-rows="true">
+
+                <!-- Responsible Party -->
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <div class="view-field">
+                        <c-output-field_lwc label="Responsible Party" value={address.Responsible_Party_Name__c}>
+                        </c-output-field_lwc>
+                    </div>
+                </lightning-layout-item>
+
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+
+                <!-- Address Line 1 -->
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <div class="view-field">
+                        <c-output-field_lwc label="Address Line 1" value={address.ADR_LINE_1__c}>
+                        </c-output-field_lwc>
+                    </div>
+                </lightning-layout-item>
+
+                <!-- Address Line 2 -->
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <div class="view-field">
+                        <c-output-field_lwc label="Address Line 2" value={address.ADR_LINE_2__c}>
+                        </c-output-field_lwc>
+                    </div>
+                </lightning-layout-item>
+
+                <!-- City -->
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <div class="view-field">
+                        <c-output-field_lwc label="City" value={address.ADR_CITY__c}>
+                        </c-output-field_lwc>
+                    </div>
+                </lightning-layout-item>
+
+                <!-- State -->
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <div class="view-field">
+                        <c-output-field_lwc label="State" value={address.ADR_STATE__c}>
+                        </c-output-field_lwc>
+                    </div>
+                </lightning-layout-item>
+
+                <!-- Zip Code -->
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <div class="view-field">
+                        <c-output-field_lwc label="Zip Code" value={address.ADR_ZIP_MAIN__c}>
+                        </c-output-field_lwc>
+                    </div>
+                </lightning-layout-item>
+
+                <!-- Zip Code Extension -->
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <div class="view-field">
+                        <c-output-field_lwc label="Zip Code Extension" value={address.ADR_ZIP_EXTN__c}>
+                        </c-output-field_lwc>
+                    </div>
+                </lightning-layout-item>
+
+            </lightning-layout>
+        </div>
+    </template>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         EDIT MODE  (all other cases)
+    ════════════════════════════════════════════════════════════════════════ -->
+    <template if:false={isViewMode}>
+        <!-- ADA FIX 2: role="form" creates a named form landmark (WCAG 1.3.1, 4.1.2);
+             aria-label provides the accessible name required by role="form";
+             aria-labelledby additionally ties it to the visible h3 section heading -->
+        <div role="form" aria-label="Adjustment Address Form" aria-labelledby="adjustment-address-resp-party-title">
+            <lightning-layout multiple-rows="true">
+
+                <!-- Responsible Party (disabled – display only) -->
+
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <div class="form-field">
+                        <lightning-input type="text" label="Responsible Party" aria-label="Responsible Party"
+                            name="Responsible_Party_Name__c" value={address.Responsible_Party_Name__c} disabled
+                            data-id="input-field" data-field="Responsible_Party_Name__c">
+                        </lightning-input>
+                    </div>
+                </lightning-layout-item>
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6"></lightning-layout-item>
+                <!-- Address Line 1 (required, max 35) -->
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <div class="form-field required-field">
+                        <lightning-input type="text" label="Address Line 1" aria-label="Address Line 1"
+                            name="ADR_LINE_1__c" value={address.ADR_LINE_1__c} required maxlength="35"
+                            data-id="input-field" data-field="ADR_LINE_1__c" onchange={handleAddressChange}>
+                        </lightning-input>
+                    </div>
+                </lightning-layout-item>
+
+                <!-- Address Line 2 (optional, max 35) -->
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <div class="form-field">
+                        <lightning-input type="text" label="Address Line 2" aria-label="Address Line 2"
+                            name="ADR_LINE_2__c" value={address.ADR_LINE_2__c} maxlength="35" data-id="input-field"
+                            data-field="ADR_LINE_2__c" onchange={handleAddressChange}>
+                        </lightning-input>
+                    </div>
+                </lightning-layout-item>
+
+                <!-- City (required, max 30) -->
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <div class="form-field required-field">
+                        <lightning-input type="text" label="City" aria-label="City" name="ADR_CITY__c"
+                            value={address.ADR_CITY__c} required maxlength="30" data-id="input-field"
+                            data-field="ADR_CITY__c" onchange={handleAddressChange}>
+                        </lightning-input>
+                    </div>
+                </lightning-layout-item>
+
+                <!-- State (picklist, required) - matchWithLabel from Aura inputPicklist -->
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <div class="form-field required-field">
+                        <c-multiselect-combobox label="State" aria-label="State" name="ADR_STATE__c"
+                            value={address.ADR_STATE__c} behavior-type="picklist" object="T_ADJMT_ADDR__c"
+                            field="ADR_STATE__c" required show-none match-with-label data-id="input-field"
+                            unique-key={address.Id} data-field="ADR_STATE__c" onselect={handleStateChange}>
+                        </c-multiselect-combobox>
+                    </div>
+                </lightning-layout-item>
+                <!-- Zip Code Main (required, max 5) + Zip Code Extension (optional, max 4) -->
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <!-- Zip Code Main -->
+                    <lightning-input type="text" label="Zip Code" aria-label="Zip Code" name="ADR_ZIP_MAIN__c"
+                        value={address.ADR_ZIP_MAIN__c} required maxlength="5" data-id="input-field"
+                        data-field="ADR_ZIP_MAIN__c" onchange={handleAddressChange} onblur={handleZipBlur}>
+                    </lightning-input>
+                </lightning-layout-item>
+                <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                    <!-- Zip Code Extension (optional, max 4) -->
+                    <lightning-input type="text" label="Zip Ext." aria-label="Zip Code Extension" name="ADR_ZIP_EXTN__c"
+                        value={address.ADR_ZIP_EXTN__c} maxlength="4" data-id="input-field" data-field="ADR_ZIP_EXTN__c"
+                        onchange={handleAddressChange}>
+                    </lightning-input>
+                    <!-- ADA FIX 3: aria-live="polite" + aria-atomic="true" ensures screen
+                                 readers announce this dynamic inline validation error when it appears -->
+                    <div aria-live="polite" aria-atomic="true">
+                        <c-field-level-message_lwc data-id="zipExtensionError" message={zipExtErrorMessage}>
+                        </c-field-level-message_lwc>
+                    </div>
+
+                </lightning-layout-item>
+            </lightning-layout>
+        </div>
+    </template>
+
+</template>

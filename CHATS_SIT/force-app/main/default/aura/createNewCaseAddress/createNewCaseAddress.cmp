@@ -1,0 +1,79 @@
+<aura:component extends="c:abstractSection">
+    <aura:attribute name="caseAddressRec" type="T_SBSD_CASE_ADR__c"
+                    default="{'sobjectType':'T_SBSD_CASE_ADR__c'}"/>
+    <aura:attribute name="copyFromAddressRec" type="T_SBSD_CASE_ADR__c"/>
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:attribute name="copyAddressFlag" type="Boolean" default="false"/>
+    <aura:attribute name="showCopyAddressFlag" type="Boolean" default="false"/>
+    <aura:attribute name="IND_IS_HOMELESS" type="Boolean"/>
+    <aura:handler name="change" value="{!v.IND_IS_HOMELESS}" action="{!c.doSetVerificationFields}"/>
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+        <h3 class="slds-section__title">{!v.caseAddressRec.CDE_TYPE_ADR__c=='HOM'?'Residence Address':'Mailing Address'}</h3>
+    </lightning:layoutItem>
+    <aura:if isTrue="{!v.showCopyAddressFlag}">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <lightning:input type="checkbox" name="input-name" label="Check if Mailing Address is as same as Residence Address."
+                             checked="{!v.copyAddressFlag}" onchange="{!c.doCopyAddress}"/>
+        </lightning:layoutItem>
+    </aura:if>
+    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+        <lightning:input type="text" name="input-name" label="Address Line 1"
+                         value="{!v.caseAddressRec.ADR_LINE_1__c}" maxlength="35"/>
+        <c:fieldLevelMessage aura:id="T_SBSD_CASE_ADR__c-ADR_LINE_1__c"/>
+    </lightning:layoutItem>
+    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+        <lightning:input type="text" name="input-name" label="Address Line 2"
+                         value="{!v.caseAddressRec.ADR_LINE_2__c}" maxlength="35"/>
+        <c:fieldLevelMessage aura:id="T_SBSD_CASE_ADR__c-ADR_LINE_2__c"/>
+    </lightning:layoutItem>
+    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+        <lightning:input type="text" name="input-name" label="City"
+                         value="{!v.caseAddressRec.ADR_CITY__c}"/>
+        <c:fieldLevelMessage aura:id="T_SBSD_CASE_ADR__c-ADR_CITY__c"/>
+    </lightning:layoutItem>
+    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+        <c:inputPicklist label="State" 
+                         aura:id="input-field"
+                         value="{!v.caseAddressRec.ADR_STATE__c}"
+                         object="T_SBSD_CASE_ADR__c"
+                         field="ADR_STATE__c"
+                         required="true"/>
+        <c:fieldLevelMessage aura:id="T_SBSD_CASE_ADR__c-ADR_STATE__c"/>
+    </lightning:layoutItem>
+    <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+        <lightning:input type="text" 
+                         name="input-name" 
+                         label="Zip"
+                         value="{!v.caseAddressRec.ADR_ZIP_MAIN__c}" 
+                         required="true" 
+                         aura:id="input-field"/>
+        <c:fieldLevelMessage aura:id="T_SBSD_CASE_ADR__c-ADR_ZIP_MAIN__c"/>
+    </lightning:layoutItem>
+    <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+        <lightning:input type="text" name="input-name" label="Zip Ext."
+                         value="{!v.caseAddressRec.ADR_ZIP_EXTN__c}"/>
+        <c:fieldLevelMessage aura:id="T_SBSD_CASE_ADR__c-ADR_ZIP_EXTN__c"/>
+    </lightning:layoutItem>
+    <aura:if isTrue="{!v.caseAddressRec.CDE_TYPE_ADR__c=='MAL'}">
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputPicklist label="Verified" aura:id="input-field"
+                             value="{!v.caseAddressRec.CDE_TYPE_VERIF__c}"
+                             object="T_SBSD_CASE_ADR__c"
+                             field="CDE_TYPE_VERIF__c"
+                             disabled="{!v.IND_IS_HOMELESS==true}"
+                             required="true"
+                             showNone="true"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE_ADR__c-CDE_TYPE_VERIF__c"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:inputPicklist label="How Verified" aura:id="input-field"
+                             value="{!v.caseAddressRec.CDE_SOURCE_VRFD_ADR__c}"
+                             object="T_SBSD_CASE_ADR__c"
+                             field="CDE_SOURCE_VRFD_ADR__c" 
+                             disabled="{!v.IND_IS_HOMELESS==true}"/>
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE_ADR__c-CDE_SOURCE_VRFD_ADR__c"/>
+        </lightning:layoutItem>
+    </aura:if>
+</aura:component>

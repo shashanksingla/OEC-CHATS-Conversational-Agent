@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesIncludeBosses>true</doesIncludeBosses>
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <name>Pueblo Lead Workers / Supervisors</name>
+    <queueMembers>
+        <users>
+            <user>denise.louther@pueblocounty.us.chats</user>
+            <user>edith.fernandez@pueblocounty.us.chats</user>
+            <user>gina.wilburn@pueblocounty.us.chats</user>
+            <user>joy.gaylord@pueblocounty.us.chats</user>
+        </users>
+    </queueMembers>
+    <queueSobject>
+        <sobjectType>Case_Review__c</sobjectType>
+    </queueSobject>
+    <queueSobject>
+        <sobjectType>Task</sobjectType>
+    </queueSobject>
+</Queue>

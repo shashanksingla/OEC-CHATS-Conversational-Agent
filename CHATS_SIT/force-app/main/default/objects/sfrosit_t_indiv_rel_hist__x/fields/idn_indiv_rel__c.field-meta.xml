@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>idn_indiv_rel__c</fullName>
+    <description>idn_indiv_rel</description>
+    <externalDeveloperName>idn_indiv_rel</externalDeveloperName>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Relationship ID</label>
+    <length>50</length>
+    <referenceTargetField>T_INDIV_REL__c.IDN_EXTNL__c</referenceTargetField>
+    <referenceTo>T_INDIV_REL__c</referenceTo>
+    <relationshipLabel>Relationship Legacy History</relationshipLabel>
+    <relationshipName>sfrosit_t_indiv_rel_hist</relationshipName>
+    <type>IndirectLookup</type>
+</CustomField>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>0</fullName>
+        <default>false</default>
+        <label>No Military Affiliation</label>
+    </customValue>
+    <customValue>
+        <fullName>1</fullName>
+        <default>false</default>
+        <label>Yes, Active Duty, US Military</label>
+    </customValue>
+    <customValue>
+        <fullName>2</fullName>
+        <default>false</default>
+        <label>Yes, National Guard/Military Reserve</label>
+    </customValue>
+    <description>R00830</description>
+    <masterLabel>R00830</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

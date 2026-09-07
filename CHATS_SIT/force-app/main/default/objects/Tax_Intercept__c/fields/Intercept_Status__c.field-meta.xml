@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Intercept_Status__c</fullName>
+    <externalId>false</externalId>
+    <formula>IF(
+(OR((YEAR(TODAY())==(VALUE(Tax_Year__c))),((YEAR(TODAY())-1) == VALUE(Tax_Year__c)))), IF(
+NOT(ISBLANK(TEXT(Remove_Reason__c))), &quot;Removed&quot;,
+IF(
+ISPICKVAL(Reinstate__c, &quot;Y&quot;), &quot;Reinstated&quot;,
+&quot;Active&quot;
+)
+), &quot;Expired&quot;)</formula>
+    <label>Intercept Status</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

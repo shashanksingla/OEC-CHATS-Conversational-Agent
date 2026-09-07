@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>66.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Child Care Chat Utility</masterLabel>
+    <description>React child care chat for a Lightning utility bar.</description>
+    <targets>
+        <target>lightning__UtilityBar</target>
+        <target>lightningCommunity__Page</target>
+        <target>lightningCommunity__Default</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__UtilityBar">
+            <property name="label" type="String" label="Utility label" />
+            <property name="ascendBaseUrl" type="String" label="Ascend API URL (Apex proxy)" />
+            <property name="processRef" type="String" label="Process reference" />
+            <property name="personaRef" type="String" label="Persona reference" />
+            <property name="runLabel" type="String" label="Run label" />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

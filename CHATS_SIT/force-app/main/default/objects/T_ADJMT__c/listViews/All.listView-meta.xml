@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All</fullName>
+    <columns>NAME</columns>
+    <columns>IDN_CASE__c</columns>
+    <columns>CDE_COUNTY__c</columns>
+    <columns>CDE_REASON__c</columns>
+    <columns>CDE_STATUS_ADJMT__c</columns>
+    <columns>CDE_TYPE_ADJMT__c</columns>
+    <columns>CDE_AGNST_ADJMT__c</columns>
+    <columns>CDE_TYPE_CLSFN__c</columns>
+    <columns>CREATED_DATE</columns>
+    <filterScope>Everything</filterScope>
+    <label>All</label>
+</ListView>

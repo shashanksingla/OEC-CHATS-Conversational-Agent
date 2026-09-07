@@ -1,0 +1,229 @@
+<aura:component extends="c:abstractSection">
+    <aura:attribute name="caseRec" type="T_SBSD_CASE__c"
+                    default="{'sobjectType':'T_SBSD_CASE__c'}"/>
+    <aura:attribute name="fieldValidationErrors" type="List"/>
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <h3 class="slds-section__title">Other Case Information</h3>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_INCOME_FED_OTHER__c}"
+                                          label="Household receives COWks/TANF/Cash Asst?"
+                                          field="IND_INCOME_FED_OTHER__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/> 
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_INCOME_FED_OTHER_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_INCOME_FED_OTHER_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_HEAD_START__c}"
+                                          label="Household receives Head Start/Early HS?"
+                                          field="IND_HEAD_START__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/> 
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_HEAD_START_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_HEAD_START_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_LEAP__c}"
+                                          label="Household receives LEAP?"
+                                          field="IND_LEAP__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_LEAP_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_LEAP_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_FS_RCVNG__c}"
+                                          label="Household receives SNAP?"
+                                          field="IND_FS_RCVNG__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_FS_RCVNG_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_FS_RCVNG_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_WIC__c}"
+                                          label="Household receives WIC?"
+                                          field="IND_WIC__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_WIC_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_WIC_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_FOOD_PGM__c}"
+                                          label="Household receives Food Program?"
+                                          field="IND_FOOD_PGM__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_FOOD_PGM_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_FOOD_PGM_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_CHP__c}"
+                                          label="Household receives Medicaid/CHP+?"
+                                          field="IND_CHP__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_CHP_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_CHP_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.CDE_ASST_HSNG__c}"
+                                          label="Household receives Voucher/Cash Asst?"
+                                          field="CDE_ASST_HSNG__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_ASST_HSNG_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_ASST_HSNG_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_REFUGEE__c}"
+                                          label="Household receives Refugee Medical Asst?"
+                                          field="IND_REFUGEE__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_REFUGEE_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_REFUGEE_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_IDEA_3_5__c}"
+                                          label="Receives Preschool Special Education?"
+                                          field="IND_IDEA_3_5__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_IDEA_3_5_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_IDEA_3_5_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_IDEA_0_3__c}"
+                                          label="Participates in Early Intervention CO?"
+                                          field="IND_IDEA_0_3__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_IDEA_0_3_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_IDEA_0_3_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_PENSION__c}"
+                                          label="Household receives Old Age Pension?"
+                                          field="IND_PENSION__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_PENSION_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_PENSION_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>        
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_SSI__c}"
+                                          label="Household receives SSI?"
+                                          field="IND_SSI__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_SSI_ADDL__c}"
+                                          label="If not, would you like information?"
+                                          field="IND_SSI_ADDL__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+            <c:inputRadioGroupForPicklist value="{!v.caseRec.IND_Child_SS_participant__c}"
+                                          label="Child Support Services participant?"
+                                          field="IND_Child_SS_participant__c" 
+                                          object="T_SBSD_CASE__c"
+                                          required="true"
+                                          aura:id="input-field"/>            
+        </lightning:layoutItem> 
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="6"></lightning:layoutItem>
+    </lightning:layout>	
+</aura:component>

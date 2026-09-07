@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ReadOnly_Required_Fields</fullName>
+    <active>true</active>
+    <description>Requires completion of all necessary fields on the system access page layout.</description>
+    <errorConditionFormula>AND( 
+            ISPICKVAL(Support_Type__c, &quot;Read-Only Access Request&quot;), 
+            $Profile.Name==&quot;Eligibility Worker Supervisor&quot;, 
+            $Profile.Name==&quot;Fiscal Worker Supervisor&quot;, 
+            $Profile.Name==&quot;Provider Worker Supervisor&quot;, 
+            $Profile.Name==&quot;Universal User&quot;, 
+            $Profile.Name== &quot;CCCAP Program Internal Team&quot;, 
+            $Profile.Name==&quot;System Administrator&quot;, 
+            $Profile.Name==&quot;System Admin&quot;, 
+            $Profile.Name==&quot;CHATS System Administrator&quot;, 
+            OR( 
+            ISBLANK(Email_Address__c), 
+            ISBLANK(Last_Name__c), 
+            ISBLANK(First_name__c), 
+            ISBLANK(Phone_Number__c), 
+            ISBLANK(Start_Deactivation_Change_Date__c), 
+            ISBLANK(TEXT(Is_this_staff_member_replacing_another__c)), 
+            ISBLANK(TEXT(Access_Level_Requested__c)) 
+            ) 
+            )</errorConditionFormula>
+    <errorMessage>For a Read-Only Access Request, Please ensure the following fields have been completed: Start Date; First Name; Last Name; Email Address; Profile Name; Phone #; Is this staff member replacing another.</errorMessage>
+</ValidationRule>

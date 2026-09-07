@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All</fullName>
+    <columns>NAME</columns>
+    <columns>NME_CORSPD__c</columns>
+    <columns>IDN_CASE__c</columns>
+    <columns>DTE_REQ__c</columns>
+    <columns>CDE_CORSPD_STATUS__c</columns>
+    <columns>CDE_COUNTY__c</columns>
+    <columns>OBJECT_ID</columns>
+    <filterScope>Everything</filterScope>
+    <label>All</label>
+</ListView>

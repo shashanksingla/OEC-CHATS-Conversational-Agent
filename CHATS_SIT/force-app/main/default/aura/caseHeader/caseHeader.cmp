@@ -1,0 +1,123 @@
+<aura:component controller="CaseHeaderApxCtrl" implements="force:hasrecordId,force:hasSObjectName,flexipage:availableForRecordHome">
+    <aura:attribute name="case" type="T_SBSD_CASE__c"/>
+    <aura:attribute name="primaryCaretaker" type="String"/>
+    <aura:attribute name="childRecord" type="SObject"/>
+	<aura:attribute name="childCareProgram" type="String"/>
+    <aura:attribute name="isChildProgram" type="Boolean" default="false"/>
+    <aura:attribute name="closeDate" type="String"/>
+         
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    
+    <aura:handler name="change" value="{!v.caseId}" action="{!c.doGetCaseData}"/>
+    <aura:handler name="change" value="{!v.childRecord.Id}" action="{!c.doSetCaseId}"/>
+    
+    <aura:attribute name="caseId" type="String"/>
+    <aura:attribute name="recordError" type="String"/>
+    
+    <aura:attribute name="relationshipToCase" type="String"/>
+    <aura:attribute name="fields" type="List"/>
+    
+    <aura:if isTrue="{!v.sObjectName!='T_SBSD_CASE__c' &amp;&amp; v.fields.length>0}">
+        <force:recordData aura:id="forceRecordCmp"
+                          recordId="{!v.recordId}"
+                          fields="{!v.fields}"
+                          targetFields="{!v.childRecord}"
+                          mode="VIEW"
+                          targetError="{!v.recordError}" />
+    </aura:if>
+    {!v.recordError}
+    
+    <lightning:card >
+        <aura:set attribute="title">
+        </aura:set>
+        <aura:set attribute="footer">
+        </aura:set>
+        <aura:set attribute="actions">
+        </aura:set>
+        <p class="slds-p-horizontal_small">
+            <lightning:layout horizontalAlign="space" multipleRows="true">
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <div class="slds-form-element">
+                        <label class="slds-form-element__label" for="Name">Case ID</label>
+                        <div class="slds-form-element__control">
+                            <b><a onclick="{!c.handleClick}"><lightning:formattedText value="{!v.case.Name}" aura:id="case"/></a></b>
+                        </div>
+                    </div>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <div class="slds-form-element">
+                        <label class="slds-form-element__label" for="CareTaker">Primary Caretaker</label>
+                        <div class="slds-form-element__control">
+                            <b><span class="wrap-text"><lightning:formattedText value="{!v.primaryCaretaker}" aura:id="case"/></span></b>
+                        </div>
+                    </div>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <div class="slds-form-element">
+                        <label class="slds-form-element__label" for="Status">Case Status</label>
+                        <div class="slds-form-element__control">
+                            <b><lightning:formattedText value="{!v.case.T_SBSD_CASE10__r[0].CDE_STATUS_CASE__c}" aura:id="case"/></b>
+                        </div>
+                    </div>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <div class="slds-form-element">
+                        <label class="slds-form-element__label" for="Mode">Case Mode</label>
+                        <div class="slds-form-element__control">
+                            <b><lightning:formattedText value="{!v.case.T_SBSD_CASE10__r[0].CDE_MODE_CASE__c}" aura:id="case"/></b>
+                        </div>
+                    </div>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <div class="slds-form-element">
+                        <label class="slds-form-element__label" for="Mode">Case Status Mode Effective Date</label>
+                        <div class="slds-form-element__control">
+                            <b><ui:outputDate value="{!v.case.T_SBSD_CASE10__r[0].DTE_BEGIN_EFFV__c}" aura:id="case" format = "MM/DD/YYYY"/></b>
+                        </div>
+                    </div>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <div class="slds-form-element">
+                        <label class="slds-form-element__label" for="Owner">Child Care Program</label>
+                        <aura:if isTrue="{!v.isChildProgram}"> 
+                            <div class="slds-form-element__control">
+                                <b> <c:inputPicklist hideLabel="true"
+                                                     value="{!v.childCareProgram}"
+                                                     object="Field_Utility__c"
+                                                     field="R00373__c"
+                                                     type="ReadOnly"
+                                                     />  </b> 
+                            </div>
+                        </aura:if>
+                    </div>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <div class="slds-form-element">
+                        <label class="slds-form-element__label" for="County">County</label>
+                        <div class="slds-form-element__control">
+                            <b><lightning:formattedText value="{!v.case.CDE_COUNTY__r.Name}" aura:id="case"/></b>
+                        </div>
+                    </div>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <div class="slds-form-element">
+                        <label class="slds-form-element__label" for="Owner">Case Owner</label>
+                        <div class="slds-form-element__control">
+                            <b><lightning:formattedText value="{!v.case.Owner.Name}" aura:id="case"/></b>
+                        </div>
+                    </div>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">
+                    <div class="slds-form-element">
+                        <label class="slds-form-element__label" for="Owner">Scheduled Close Date</label>
+                        <div class="slds-form-element__control">
+                            <b><ui:outputDate value="{!v.closeDate}" aura:id="case" format = "MM/DD/YYYY"/></b>
+                        </div>
+                    </div>
+                </lightning:layoutItem>
+                <lightning:layoutItem flexibility="auto" padding="around-small" size="6">   
+                </lightning:layoutItem>
+            </lightning:layout>    
+        </p>
+    </lightning:card>
+</aura:component>

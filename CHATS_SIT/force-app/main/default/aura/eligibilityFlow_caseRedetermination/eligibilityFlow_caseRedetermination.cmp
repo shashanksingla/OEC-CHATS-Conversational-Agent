@@ -1,0 +1,34 @@
+<aura:component >
+    <aura:attribute name="caseEligibilityRun" type="batchsit_t_eligty_run__x"/>
+    <aura:attribute name="caseEligibility" type="batchsit_t_fcompsn_eligty__x"/>
+    <aura:attribute name="caseRecId" type="String"/>
+    <aura:attribute name="eligConfirmed" type="Boolean" default="false"/>
+    <aura:attribute name="showOverrideButton" type="Boolean" default="true"/>
+    <aura:attribute name="childCareProgram" type="String"/>
+    <aura:if isTrue="{!!(v.caseEligibility.cde_prog__c=='CW')}"> 
+    	<h2 class="slds-section__title slds-p-left--small slds-p-top--small slds-border_top">Case Redetermination</h2>
+    </aura:if>
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:overlayLibrary aura:id="overlayLib"/>
+
+       <aura:if isTrue="{!!(v.caseEligibility.cde_prog__c=='CW')}"> 
+
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="System-Determined Redetermination Date"
+                           value="{!v.caseEligibilityRun.dte_redet_prpsd__c}" 
+                           type="UIDATE"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="Redetermination Override Date"
+                           value="{!v.caseEligibilityRun.dte_redet_ovrd__c}" 
+                           type="UIDATE"/>
+        </lightning:layoutItem>
+        <aura:if isTrue="{!v.showOverrideButton}">
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+                <lightning:button label="Override Redetermination" onclick="{!c.showOverrideModal}" variant="brand"/>  
+            </lightning:layoutItem>
+            <lightning:layoutItem flexibility="auto" size="6" padding="around-small"></lightning:layoutItem>
+        </aura:if>
+       </aura:if>
+    </lightning:layout> 
+</aura:component>

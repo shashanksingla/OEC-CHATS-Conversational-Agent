@@ -1,0 +1,15 @@
+<aura:component controller="providerHdrForExtnlobjects"
+                implements="force:hasrecordId,force:hasSObjectName,flexipage:availableForRecordHome"
+                access="global">
+    <aura:attribute name="recordId" type="Id" />
+    <aura:attribute name="extSObject" type="String"/>
+    <aura:attribute name="providerLookupName" type="String" />
+    <aura:attribute name="providerId" type="T_CHATS_PROVR_STATUS__c"/>
+    <aura:attribute name="showcomponent" type="boolean" default="false"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+     
+    <aura:if isTrue="{!v.showcomponent}">
+        <c:ProviderHeader recordId="{!v.providerId.Id}"
+                          extSObject="{!v.extSObject}"/>
+	</aura:if> 
+</aura:component>

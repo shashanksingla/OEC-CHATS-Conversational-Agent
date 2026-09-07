@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>Accept</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>CancelEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Clone</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Delete</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Edit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>List</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <comment>Updated &apos;New&apos; override as part of CCCAP-6608, Changed component as part of CCCAP-10238</comment>
+        <content>adjustmentPaymentFlow_Aura</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <comment>Updated &apos;New&apos; override as part of CCCAP-6608, Changed component as part of CCCAP-10238</comment>
+        <content>adjustmentPaymentFlow_Aura</content>
+        <formFactor>Small</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>LightningComponent</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>New</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>SaveEdit</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>Tab</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <type>Default</type>
+    </actionOverrides>
+    <allowInChatterGroups>false</allowInChatterGroups>
+    <compactLayoutAssignment>SYSTEM</compactLayoutAssignment>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Information about payments made to satisfy the debt recorded for a provider or case</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>true</enableReports>
+    <enableSearch>false</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <fields>
+        <fullName>AMT_PMT_ADJMT__c</fullName>
+        <description>Amount</description>
+        <externalId>false</externalId>
+        <label>Amount</label>
+        <precision>9</precision>
+        <required>false</required>
+        <scale>2</scale>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>AMT_PMT_SRPLUS_ADJMT__c</fullName>
+        <description>Surplus Amount</description>
+        <externalId>false</externalId>
+        <label>Surplus Amount</label>
+        <precision>11</precision>
+        <required>false</required>
+        <scale>2</scale>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Number</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>CDE_ACTION_ADMIN__c</fullName>
+        <description>Administrative Action</description>
+        <externalId>false</externalId>
+        <label>Administrative Action</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00734</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>CDE_TYPE_PMT_ADJMT__c</fullName>
+        <description>Payment Type</description>
+        <externalId>false</externalId>
+        <label>Payment Type</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00733</valueSetName>
+        </valueSet>
+    </fields>
+    <fields>
+        <fullName>DTE_PMT_ADJMT__c</fullName>
+        <description>Date Paid</description>
+        <externalId>false</externalId>
+        <label>Date Paid</label>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Date</type>
+    </fields>
+    <fields>
+        <fullName>IDN_CASE__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <description>Case</description>
+        <externalId>false</externalId>
+        <label>Case</label>
+        <referenceTo>T_SBSD_CASE__c</referenceTo>
+        <relationshipLabel>Adjustment Payment</relationshipLabel>
+        <relationshipName>Case_2</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_EXTNL__c</fullName>
+        <caseSensitive>true</caseSensitive>
+        <externalId>true</externalId>
+        <label>Adjustment Payment ID external</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>true</unique>
+    </fields>
+    <fields>
+        <fullName>IDN_PMT_EXTNL__c</fullName>
+        <caseSensitive>false</caseSensitive>
+        <externalId>true</externalId>
+        <label>Payment ID external</label>
+        <length>50</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>IDN_PMT__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <description>Payment</description>
+        <externalId>false</externalId>
+        <label>Payment</label>
+        <referenceTo>T_PAYMT__c</referenceTo>
+        <relationshipLabel>Payment</relationshipLabel>
+        <relationshipName>Payment</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_PROVR__c</fullName>
+        <deleteConstraint>SetNull</deleteConstraint>
+        <externalId>false</externalId>
+        <label>Provider</label>
+        <referenceTo>T_CHATS_PROVR_STATUS__c</referenceTo>
+        <relationshipLabel>Adjustment Payments</relationshipLabel>
+        <relationshipName>Adjustment_Payments</relationshipName>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Lookup</type>
+    </fields>
+    <fields>
+        <fullName>IDN_RCPT_PMT__c</fullName>
+        <description>Receipt Number</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Receipt Number</label>
+        <length>30</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>TXT_INFO_OTHER__c</fullName>
+        <description>Other</description>
+        <encryptionScheme>ProbabilisticEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Other</label>
+        <length>4000</length>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>LongTextArea</type>
+        <visibleLines>3</visibleLines>
+    </fields>
+    <fields>
+        <fullName>TXT_NBR_CHECK_PMT__c</fullName>
+        <description>Check Number</description>
+        <encryptionScheme>CaseSensitiveDeterministicEncryption</encryptionScheme>
+        <externalId>false</externalId>
+        <label>Check Number</label>
+        <length>30</length>
+        <required>false</required>
+        <trackHistory>true</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+        <unique>false</unique>
+    </fields>
+    <fields>
+        <fullName>CDE_COUNTY__c</fullName>
+        <externalId>false</externalId>
+        <label>County</label>
+        <required>false</required>
+        <trackHistory>false</trackHistory>
+        <trackTrending>false</trackTrending>
+        <type>Picklist</type>
+        <valueSet>
+            <restricted>true</restricted>
+            <valueSetName>R00005</valueSetName>
+        </valueSet>
+    </fields>
+    <label>Adjustment Payment</label>
+    <listViews>
+        <fullName>All</fullName>
+        <columns>NAME</columns>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <listViews>
+        <fullName>All1</fullName>
+        <filterScope>Everything</filterScope>
+        <label>All</label>
+    </listViews>
+    <nameField>
+        <displayFormat>{0}</displayFormat>
+        <label>ID</label>
+        <trackHistory>true</trackHistory>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Adjustment Payments</pluralLabel>
+    <searchLayouts/>
+    <sharingModel>ReadWrite</sharingModel>
+    <validationRules>
+        <fullName>Adj_Pmt_Id_Not_Deletable</fullName>
+        <active>true</active>
+        <description>Adjustment Payment Id once created cannot be deleted</description>
+        <errorConditionFormula>AND( NOT( ISNEW() ) , 
+ISCHANGED( Name ) 
+)</errorConditionFormula>
+        <errorDisplayField>Name</errorDisplayField>
+        <errorMessage>Adjustment Payment Id once created cannot be deleted</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Adm_Action_Not_Deletable</fullName>
+        <active>true</active>
+        <description>Record once created , Action Admin cannot be changed</description>
+        <errorConditionFormula>AND( NOT( ISNEW() ) ,
+    ISCHANGED( CDE_ACTION_ADMIN__c )
+)</errorConditionFormula>
+        <errorDisplayField>CDE_ACTION_ADMIN__c</errorDisplayField>
+        <errorMessage>Record once created , Action Admin cannot be changed</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Amt_Not_Deletable</fullName>
+        <active>true</active>
+        <description>once Record is Created, Amount is not deletable</description>
+        <errorConditionFormula>AND( NOT( ISNEW() ) ,
+    ISCHANGED( AMT_PMT_ADJMT__c )
+)</errorConditionFormula>
+        <errorDisplayField>AMT_PMT_ADJMT__c</errorDisplayField>
+        <errorMessage>once Record is Created, Amount is not deletable</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Case_Not_Deletable</fullName>
+        <active>true</active>
+        <description>Once the record is created , it is not deletable</description>
+        <errorConditionFormula>AND( NOT( ISNEW() ) ,
+    ISCHANGED( IDN_CASE__c )
+)</errorConditionFormula>
+        <errorDisplayField>IDN_CASE__c</errorDisplayField>
+        <errorMessage>Once the record is created , it is not deletable</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Check_Number_Not_deletable</fullName>
+        <active>true</active>
+        <description>Once the record is Created, Check Number cannot be deleted</description>
+        <errorConditionFormula>AND( NOT( ISNEW() ) ,
+    ISCHANGED( TXT_NBR_CHECK_PMT__c )
+)</errorConditionFormula>
+        <errorDisplayField>TXT_NBR_CHECK_PMT__c</errorDisplayField>
+        <errorMessage>Once the record is Created, Check Number cannot be deleted</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Date_Paid_not_deletable</fullName>
+        <active>true</active>
+        <description>Once the Record is created, Date Paid is not deletable</description>
+        <errorConditionFormula>AND( NOT( ISNEW() ) ,
+    ISCHANGED( DTE_PMT_ADJMT__c )
+)</errorConditionFormula>
+        <errorDisplayField>DTE_PMT_ADJMT__c</errorDisplayField>
+        <errorMessage>Once the Record is created, Date Paid is not deletable</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Payment_Not_Deletable</fullName>
+        <active>true</active>
+        <description>Record once created , Payment cannot be changed</description>
+        <errorConditionFormula>AND( NOT( ISNEW() ) , 
+ISCHANGED( IDN_PMT__c ) 
+)</errorConditionFormula>
+        <errorDisplayField>IDN_PMT__c</errorDisplayField>
+        <errorMessage>Record once created , Payment cannot be changed</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Paymnt_Type_Not_deletable</fullName>
+        <active>true</active>
+        <description>Once the Record is created, Payment Type cannot be changed</description>
+        <errorConditionFormula>AND( NOT( ISNEW() ) ,
+    ISCHANGED( CDE_TYPE_PMT_ADJMT__c )
+)</errorConditionFormula>
+        <errorDisplayField>CDE_TYPE_PMT_ADJMT__c</errorDisplayField>
+        <errorMessage>Once the Record is created, Payment Type cannot be changed</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Provider_Not_Editable</fullName>
+        <active>true</active>
+        <description>Once the record is Created, provider cannot be edited</description>
+        <errorConditionFormula>AND( NOT( ISNEW() ) ,
+    ISCHANGED( IDN_PROVR__c )
+)</errorConditionFormula>
+        <errorDisplayField>IDN_PROVR__c</errorDisplayField>
+        <errorMessage>Once the record is Created, provider cannot be edited</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>ReceiptNumber_Not_deletable</fullName>
+        <active>true</active>
+        <description>Once Record is Created , Receipt Number cannot be deleted</description>
+        <errorConditionFormula>AND( NOT( ISNEW() ) ,
+    ISCHANGED( IDN_RCPT_PMT__c )
+)</errorConditionFormula>
+        <errorDisplayField>IDN_RCPT_PMT__c</errorDisplayField>
+        <errorMessage>Once Record is Created , Receipt Number cannot be deleted</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Require_AdmAction_If_PymntType_AdmAction</fullName>
+        <active>true</active>
+        <description>Require Administrative Action based on Payment Type</description>
+        <errorConditionFormula>AND( ISPICKVAL(CDE_TYPE_PMT_ADJMT__c,&apos;5&apos;) , ISBLANK(TEXT(CDE_ACTION_ADMIN__c))	 )</errorConditionFormula>
+        <errorDisplayField>CDE_ACTION_ADMIN__c</errorDisplayField>
+        <errorMessage>Administrative Action field is must for Payment Type = &apos;Administrative Action&apos;.</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Require_Check_Number_If_PymntType_Check</fullName>
+        <active>true</active>
+        <description>Check Number is must for Payment Type = &apos;Check&apos;</description>
+        <errorConditionFormula>AND( ISPICKVAL(CDE_TYPE_PMT_ADJMT__c,&apos;2&apos;), ISBLANK(TXT_NBR_CHECK_PMT__c ))</errorConditionFormula>
+        <errorDisplayField>TXT_NBR_CHECK_PMT__c</errorDisplayField>
+        <errorMessage>Check Number is must for Payment Type = &apos;Check&apos;</errorMessage>
+    </validationRules>
+    <validationRules>
+        <fullName>Txt_Info_cannot_be_changed</fullName>
+        <active>true</active>
+        <description>TXT_INFO_OTHER cannot be changed</description>
+        <errorConditionFormula>AND( NOT( ISNEW() ) ,
+    ISCHANGED( TXT_INFO_OTHER__c )
+)</errorConditionFormula>
+        <errorDisplayField>TXT_INFO_OTHER__c</errorDisplayField>
+        <errorMessage>TXT_INFO_OTHER cannot be changed</errorMessage>
+    </validationRules>
+    <visibility>Public</visibility>
+</CustomObject>

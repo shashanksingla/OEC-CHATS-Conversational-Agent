@@ -1,0 +1,221 @@
+<aura:component controller="AuthorizationFlowApxCtrl" implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" access="global">
+    
+    <aura:attribute name="isCreate" type="Boolean"/>
+    <aura:attribute name="timezone" type="String"/>
+    <aura:attribute name="isModalOpen" type="Boolean" default="true"/>
+    <aura:attribute name="isHardDelete" type="Boolean" default="false"/>
+    <aura:attribute name="hardDeleteVal" type="Boolean" default="false"/>
+    <aura:attribute name="showSpinner" type="Boolean" default="false"/>
+    <aura:attribute name="weekcheck" type="Boolean" default="false"/>
+    <aura:attribute name="selectedJobType" type="string" default="All"/>
+    <aura:attribute name="filterCondition" type="string" default=""/>
+    <aura:attribute name="jobFrequency" type="string" default=""/>
+    <aura:attribute name="objectName" type="string"/>
+    <aura:attribute name="recycleBinStorageRemaining" type="Decimal"/>
+    <aura:attribute name="cronExpression" type="string"/>
+    <aura:attribute name="errorMessage" type="string"/>
+    <aura:attribute name="isAuthFlowFirstTime" type="Boolean" default="false"/> 
+    <aura:attribute name="isAuthUpdatedInCreateFlow" type="Boolean" default="false"/>
+    <aura:attribute name="isEncumbrnceCreated" type="Boolean" default="false" />
+    <aura:attribute name="scheduleRecurrObj" type="Auth_Schedule_Recurrence__c" default="{'sobjectType':'Auth_Schedule_Recurrence__c','Recur_Type__c':'','RecurDay__c':'','DTE_Begin_Date__c':'','DTE_End_Date__c':'','Sun__c':'',
+                                                                                         'Mon__c':'',
+                                                                                         'Tue__c':'',
+                                                                                         'Wed__c':'',
+                                                                                         'Thur__c':'',
+                                                                                         'Fri__c':'',
+                                                                                         'Sat__c':'',
+                                                                                         'WeekDays__c':'',
+                                                                                         'DaysOfMonth__c':''}" />
+    <aura:attribute name="scheduleRecurr" type="Auth_Schedule_Recurrence__c[]" />
+    <aura:attribute name="authEndDate" type="Date" />
+    <!-- time attribute -->
+    <aura:attribute name="time" type="string" />
+    <aura:attribute name="minute" type="integer" />
+    <aura:attribute name="second" type="integer" default="0"/>
+    <aura:attribute name="hours" type="integer" />
+    <aura:attribute name="selectedRecordIds" type="List"/>
+    <aura:attribute name="isSelectedRecords" type="Boolean" default="false"/>
+    <aura:attribute name="isModifiedAfterChange" type="Boolean" default="false"/>
+    <aura:attribute name="enterRecurrence" type="Boolean" default="false" />
+    <aura:attribute name="columns" type="List"/>
+    <aura:attribute name="isReadOnly" type="Boolean" default="false" />
+    <!--time attribute -->
+    <aura:attribute name="frequency" type="List" default="[{'label': '-- None --', 'value': '', 'selected' : 'true'},
+                                                          {'label': 'Monthly', 'value': 'Monthly'},
+                                                          {'label': 'Daily/Weekly', 'value': 'Daily/Weekly'},
+                                                          {'label': 'Every Other Week', 'value': 'Every Other Week'}]"/>
+    <!-- week name attribute -->
+    <aura:attribute name="weekDays" type="List" default="[{'label': 'Sunday', 'value': '1'},
+                                                         {'label': 'Monday', 'value': '2'},
+                                                         {'label': 'Tuesday', 'value': '3'},
+                                                         {'label': 'Wednesday', 'value': '4'},
+                                                         {'label': 'Thursday', 'value': '5'},
+                                                         {'label': 'Friday', 'value': '6'},
+                                                         {'label': 'Saturday', 'value': '7'}]"/>
+    <aura:attribute name="selectWeek" type="string" />
+    <aura:attribute name="dayNamesSelected" type="String[]" />
+    <!-- week name attribute -->
+    <aura:attribute name="counter" type="integer" default=""/>
+    <!-- start date/end date attribute -->
+    <aura:attribute name="startDate" type="date"/>
+    <aura:attribute name="startMonth" type="string"/>
+    <aura:attribute name="startDateOfMonth" type="string"/>
+    <aura:attribute name="startYear" type="string"/>
+    <aura:attribute name="startday" type="string"/>
+    <aura:attribute name="endday" type="string"/>
+    <aura:attribute name="EndDate" type="date" />
+    <aura:attribute name="endMonth" type="string"/>
+    <aura:attribute name="endDayOfMonth" type="string"/>
+    <aura:attribute name="endYear" type="string"/>
+    <aura:attribute name="validity" type="Object"/>
+    <aura:attribute name="valid" type="Boolean"/>
+    <aura:attribute name="authBeginDate" type="Date" />
+    <aura:attribute name="recordId" type="string" />
+    <aura:attribute name="showEditModal" type="Boolean" default="false" />
+    <aura:attribute name="recurrenceRecordId" type="string" />
+    <!-- start date/end date attribute -->
+    <aura:attribute name="dateToSelect" type="List" default="[{'label': '1', 'value': '1'},{'label': '2', 'value': '2'},{'label': '3', 'value': '3'},
+                                                             {'label': '4', 'value': '4'},{'label': '5', 'value': '5'},{'label': '6', 'value': '6'},
+                                                             {'label': '7', 'value': '7'},{'label': '8', 'value': '8'},{'label': '9', 'value': '9'},
+                                                             {'label': '10', 'value': '10'},{'label': '11', 'value': '11'},{'label': '12', 'value': '12'},
+                                                             {'label': '13', 'value': '13'},{'label': '14', 'value': '14'},{'label': '15', 'value': '15'},
+                                                             {'label': '16', 'value': '16'},{'label': '17', 'value': '17'},{'label': '18', 'value': '18'},
+                                                             {'label': '19', 'value': '19'},{'label': '20', 'value': '20'},{'label': '21', 'value': '21'},
+                                                             {'label': '22', 'value': '22'},{'label': '23', 'value': '23'},{'label': '24', 'value': '24'},
+                                                             {'label': '25', 'value': '25'},{'label': '26', 'value': '26'},{'label': '27', 'value': '27'},
+                                                             {'label': '28', 'value': '28'},{'label': '29', 'value': '29'},{'label': '30', 'value': '30'},
+                                                             {'label': '31', 'value': '31'}]"/>
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:handler event="force:showToast" action="{!c.refreshAll}"/>
+    
+    
+    <aura:if isTrue="{!v.showSpinner}">
+        <lightning:spinner variant="brand" size="medium"/>
+    </aura:if>
+    
+    <aura:if isTrue="{!v.isModalOpen}">
+        <!-- Modal/Popup Box starts here-->
+        <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open slds-modal_small">
+            <div class="slds-modal__container">
+                <!-- Modal/Popup Box Header Starts here-->
+                <header class="slds-modal__header">
+                    <lightning:buttonIcon iconName="utility:close" onclick="{!c.closeModel}" alternativeText="close" variant="bare-inverse" class="slds-modal__close"/>
+                    <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Recurrence Pattern</h2>
+                </header>
+                <!--Modal/Popup Box Body Starts here-->
+                <div class="slds-modal__content slds-p-around_small" id="modal-content-id-1">
+                    <!--   <aura:if isTrue="{!v.isCreate}">-->
+                    <aura:if isTrue="{!!v.isReadOnly}">
+                        
+                        <lightning:layout multipleRows="true" horizontalAlign="space">
+                            <!--  <div class="slds-grid slds-gutters">-->
+                            <lightning:layoutItem flexibility="auto" size="6" class="slds-is-relative">
+                                <lightning:combobox label="Frequency" aura:id="frequencyId" name="frequency" options="{!v.frequency}" placeholder="-- None --" 
+                                                    value="{!v.scheduleRecurrObj.Recur_Type__c}" onchange="{!c.handleChangeFrequency}" required="true"/>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" size="6" class="slds-is-relative"/>
+                            <br />
+                            <lightning:layoutItem flexibility="auto" size="6" class="slds-is-relative">
+                                <aura:if isTrue="{!or(v.jobFrequency== 'Daily/Weekly', v.jobFrequency== 'Every Other Week')}">
+                                    <div class="slds-col">
+                                        <span>
+                                            Recurs every week on
+                                            <aura:iteration items="{!v.weekDays}" var="item" indexVar="index">
+                                                <table class="slds-table slds-table " style="margin-top:0px;">
+                                                    <tbody>
+                                                        <tr scope="col">
+                                                            <td><lightning:input type="checkbox" label="{!item.label}" data-index="{!index}" value="{!item.value}" aura:id="weekTime" class="slds-p-vertical_small" onchange="{!c.selectWeek}"/></td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </aura:iteration>
+                                        </span>
+                                    </div>
+                                </aura:if>
+                                <aura:if isTrue="{!v.jobFrequency == 'Monthly'}">
+                                    <div class="slds-col">
+                                        <!--
+                                            <c:inputMultiSelectPicklist aura:id="picklist"
+                                                                    label="Days of Month"
+                                                                    options="{!v.dateToSelect}"
+                                                                    required="true"
+                                                                    value="{!v.scheduleRecurrObj.DaysOfMonth__c}"
+                                                                    doLabelMatch="false"
+                                                                    />
+                                          -->
+                                        <c:inputMultiSelectCombobox name="DaysOfMonth" aura:id="picklist" label="Days of Month" value="{!v.scheduleRecurrObj.DaysOfMonth__c}" options="{!v.dateToSelect}" alreadyHasValues="true" required="true"/>
+                                        <c:fieldLevelMessage aura:id="inputMultiSelectPIcklistError"/>
+                                        <!--
+                                        <span>
+                                            <lightning:combobox placeholder="None" aura:id="picklist" label="On day of every month" value="{!v.scheduleRecurrObj.RecurDay__c}"
+                                                                options="{! v.dateToSelect }" onchange="{!c.handleChangeDate}" required="true"/>
+                                        </span>
+                                        -->
+                                    </div>
+                                </aura:if>
+                            </lightning:layoutItem>
+                            <lightning:layoutItem flexibility="auto" size="6" class="slds-is-relative"/>
+                        </lightning:layout>
+                        
+                        <br/>
+
+                        <lightning:layout multipleRows="true" horizontalAlign="space">
+                            <lightning:layoutItem flexibility="auto" size="6" class="slds-is-relative">
+                                <label class="slds-form-element__label" style="margin-right: 0.5rem;" required="true"><b>Range of recurrence</b></label><br />
+                            </lightning:layoutItem>
+                            
+                            <lightning:layoutItem flexibility="auto" size="6" class="slds-is-relative"/>
+                            
+                            <lightning:layoutItem flexibility="auto" size="3" class="slds-is-relative">
+                                <ui:inputDate displayDatePicker="true" format="MM/DD/YYYY" class="field" aura:id="inputDate"
+                                              required="true" label="Start Date" value="{!v.scheduleRecurrObj.DTE_Begin_Date__c}"/>
+                            </lightning:layoutItem>
+                            
+                            <lightning:layoutItem flexibility="auto" size="1" class="slds-is-relative"/>
+                            
+                            <lightning:layoutItem flexibility="auto" size="3" class="slds-is-relative">
+                                <ui:inputDate displayDatePicker="true"  format="MM/DD/YYYY" value="{!v.scheduleRecurrObj.DTE_End_Date__c}"
+                                              aura:id="endDate" required="true" label="End Date" class="field"/>
+                            </lightning:layoutItem>
+                            
+                            <lightning:layoutItem flexibility="auto" size="1" class="slds-is-relative"/>
+                            <lightning:layoutItem flexibility="auto" size="4" class="slds-is-relative"/>
+                        </lightning:layout>
+                    </aura:if>
+                    <br/>
+                    <lightning:layout multipleRows="true" horizontalAlign="space">
+                        <lightning:layoutItem flexibility="auto" size="6" class="slds-is-relative">
+                            <aura:if isTrue="{!v.isCreate}">
+                                <b>Create Recurring Schedule:</b> 
+                                <aura:set attribute="else">
+                                    <b>Edit/Create Recurring Schedule:</b> 
+                                </aura:set>
+                            </aura:if>
+                        </lightning:layoutItem>
+                        
+                        <lightning:layoutItem flexibility="auto" size="6" class="slds-is-relative"/>
+                        
+                        <lightning:layoutItem flexibility="auto" size="12" class="slds-is-relative">
+                            <lightning:datatable data="{!v.scheduleRecurr}" columns="{!v.columns}" keyField="id" onrowselection="{!c.getSelectedName}" 
+                                                 onrowaction="{!c.handleRowAction}" hideCheckboxColumn="true" min-column-width="150" wrapTextMaxLines="2"/>
+                        </lightning:layoutItem>
+                    </lightning:layout>
+                </div>
+                <!--Modal/Popup Box Footer Starts here-->
+                <footer class="slds-modal__footer">
+                    <lightning:button label="Create" variant="brand" onclick="{!c.doSchedule}" disabled="{!v.isReadOnly}"  />
+                    <lightning:button label="Done"  onclick="{!c.doCancel}"  disabled="{!v.isReadOnly}"/>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </aura:if>
+    
+    <aura:if isTrue="{!v.showEditModal}">
+        <lightning:layoutItem flexibility="auto" padding="around-small" size="12">
+            <c:editRecurrencePatternFlow recordId="{!v.recurrenceRecordId}" showEditModal="{!v.showEditModal}" authEndDate="{!v.authEndDate}" 
+                                         fieldValidationErrors="{!v.fieldValidationErrors}" isCurrentPageValid="{!v.isCurrentPageValid}"/>
+        </lightning:layoutItem>
+    </aura:if>
+</aura:component>

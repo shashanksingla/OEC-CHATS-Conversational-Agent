@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>AMT_TANF_INCOME_HH_GROSS_NOT_BLANK</fullName>
+    <active>true</active>
+    <description>Gross Household income without TANF cannot be less than 0.</description>
+    <errorConditionFormula>AMT_TANF_INCOME_HH_GROSS__c &lt; 0</errorConditionFormula>
+    <errorDisplayField>AMT_TANF_INCOME_HH_GROSS__c</errorDisplayField>
+    <errorMessage>Gross Household income without TANF cannot be less than 0.</errorMessage>
+</ValidationRule>

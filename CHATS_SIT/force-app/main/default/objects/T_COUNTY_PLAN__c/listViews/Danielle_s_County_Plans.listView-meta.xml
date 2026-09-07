@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Danielle_s_County_Plans</fullName>
+    <columns>NAME</columns>
+    <columns>CDE_COUNTY__c</columns>
+    <columns>DTE_BEGIN_EFFEV__c</columns>
+    <columns>DTE_END_EFFEV__c</columns>
+    <columns>CDE_STATUS__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>DTE_END_EFFEV__c</field>
+        <operation>equals</operation>
+    </filters>
+    <filters>
+        <field>DTE_BEGIN_EFFEV__c</field>
+        <operation>notEqual</operation>
+    </filters>
+    <filters>
+        <field>CDE_STATUS__c</field>
+        <operation>equals</operation>
+        <value>SUB</value>
+    </filters>
+    <label>State County Plan Monitoring</label>
+</ListView>

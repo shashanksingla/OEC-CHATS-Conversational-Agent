@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>County_FA_Chaffee</fullName>
+    <columns>NAME</columns>
+    <columns>CDE_COUNTY__c</columns>
+    <columns>CDE_TYPE_STATUS__c</columns>
+    <columns>Provider_Name__c</columns>
+    <columns>ID_SERVICE__c</columns>
+    <columns>CDE_TYPE_FACILITY__c</columns>
+    <columns>Owner_ID__c</columns>
+    <columns>DTE_BEGIN_AGRMT__c</columns>
+    <columns>DTE_END_AGRMT__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>CDE_TYPE_STATUS__c</field>
+        <operation>equals</operation>
+        <value>OPN,FIN,DFT</value>
+    </filters>
+    <filters>
+        <field>CDE_COUNTY__c</field>
+        <operation>equals</operation>
+        <value>chaffee</value>
+    </filters>
+    <label>County FA CHAFFEE</label>
+</ListView>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All1</fullName>
+    <columns>NAME</columns>
+    <columns>CDE_STATUS_CASE__c</columns>
+    <columns>IDN_CASE__c</columns>
+    <columns>CDE_ELIGTY_CONTNUS__c</columns>
+    <columns>CDE_REASON_CHANGE_MODE_STATUS__c</columns>
+    <filterScope>Everything</filterScope>
+    <label>All</label>
+</ListView>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Cannot_Edit_In_Progress_Tickets</fullName>
+    <active>true</active>
+    <description>Prevents users from editing an In-Progress Status ticket</description>
+    <errorConditionFormula>AND
+            (ISPICKVAL(PRIORVALUE(Status__c), &quot;In Progress&quot;), 
+            NOT(OR(
+             $Profile.Name = &quot;Eligibility Worker&quot;, 
+             $Profile.Name = &quot;Fiscal Worker&quot;, 
+             $Profile.Name = &quot;Provider Worker&quot;, 
+             $Profile.Name = &quot;Business Office Worker&quot;, 
+             $Profile.Name = &quot;Read Only User&quot;, 
+             $Profile.Name = &quot;Eligibility Worker Supervisor&quot;, 
+             $Profile.Name = &quot;Fiscal Worker Supervisor&quot;, 
+             $Profile.Name = &quot;Provider Worker Supervisor&quot;, 
+             $Profile.Name = &quot;Business Office Supervisor&quot;, 
+             $Profile.Name = &quot;Universal User&quot;, 
+             $Profile.Name = &quot;State IT User&quot;, 
+             $Profile.Name = &quot;State Program Administrator&quot;, 
+             $Profile.Name = &quot;System Administrator&quot;, 
+             $Profile.Name = &quot;System Admin&quot;, 
+             $Profile.Name = &quot;CHATS System Administrator&quot;,
+             $Profile.Name = &quot;CCCAP Program Internal Team&quot;
+            )) 
+           )</errorConditionFormula>
+    <errorMessage>You cannot Edit an In Progress Support Ticket. State Staff have already begun working on this ticket.</errorMessage>
+</ValidationRule>

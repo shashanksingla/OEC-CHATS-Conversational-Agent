@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Amount_cannot_be_greater_than_500</fullName>
+    <active>true</active>
+    <description>Amount cannot be greater than 500</description>
+    <errorConditionFormula>NBR_AMOUNT__c &gt;500 &amp;&amp;  TEXT(CDE_UNIT__c) = &apos;3&apos;</errorConditionFormula>
+    <errorDisplayField>NBR_AMOUNT__c</errorDisplayField>
+    <errorMessage>Amount cannot be greater than 500</errorMessage>
+</ValidationRule>

@@ -1,0 +1,32 @@
+<aura:component >
+    <aura:attribute name="casePayment" type="batchsit_t_sbsd_case_copay__x[]"/>
+    <aura:attribute name="caseEligibility" type="batchsit_t_fcompsn_eligty__x"/>
+    <aura:attribute name="dteBeginEffective" type="String"/>
+    <aura:attribute name="amt_copay_ft__c" type="String"/>
+    <aura:attribute name="amt_copay_pt__c" type="String"/>
+    <!-- <aura:handler name="change" value="{!v.casePayment}" action="{!c.doInit}"/> -->
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <h2 class="slds-section__title slds-p-left--small slds-p-top--small slds-border_top">Parent Fees Results</h2>
+    
+    <lightning:layout multipleRows="true" horizontalAlign="space">
+        <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+            <lightning:layoutItem flexibility="auto" size="6" >
+                <c:outputField label="Parent Fee Effective Date" value="{!v.dteBeginEffective}"/>
+            </lightning:layoutItem>
+        </lightning:layoutItem>
+        
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="Family Size" value="{!v.caseEligibility.nbr_size_fcompsn__c}"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="Children Requesting Care" value="{!v.caseEligibility.cnt_chldrn_rqng_care__c}"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="Parent Fee(FT)" value="{!v.amt_copay_ft__c}" type="CURRENCY" format="$0"/>
+        </lightning:layoutItem>
+        <lightning:layoutItem flexibility="auto" size="6" padding="around-small">
+            <c:outputField label="Parent Fee(PT)" value="{!v.amt_copay_pt__c}" type="CURRENCY" format="$0"/>
+        </lightning:layoutItem>
+    </lightning:layout>	
+    
+</aura:component>

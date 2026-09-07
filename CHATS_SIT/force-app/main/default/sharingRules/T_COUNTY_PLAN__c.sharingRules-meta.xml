@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SharingRules xmlns="http://soap.sforce.com/2006/04/metadata">
+    <sharingCriteriaRules>
+        <fullName>County_PlanSharing_Rule</fullName>
+        <accessLevel>Edit</accessLevel>
+        <label>County PlanSharing Rule</label>
+        <sharedTo>
+            <group>County_Edit_Access</group>
+        </sharedTo>
+        <criteriaItems>
+            <field>IND_COUNTY_PLAN_TEMPLT__c</field>
+            <operation>equals</operation>
+            <value>False</value>
+        </criteriaItems>
+        <includeRecordsOwnedByAll>false</includeRecordsOwnedByAll>
+    </sharingCriteriaRules>
+</SharingRules>

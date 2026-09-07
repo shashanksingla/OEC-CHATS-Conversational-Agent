@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Denver_County_Case_Homeless</fullName>
+    <columns>IDN_CASE__c</columns>
+    <columns>IND_IS_HOMELESS__c</columns>
+    <columns>DTE_BEGIN_EFFV__c</columns>
+    <columns>DTE_END_EFFV__c</columns>
+    <columns>NAME</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>IDN_CASE__c</field>
+        <operation>startsWith</operation>
+        <value>16</value>
+    </filters>
+    <filters>
+        <field>IND_IS_HOMELESS__c</field>
+        <operation>equals</operation>
+        <value>Y</value>
+    </filters>
+    <label>Denver County Case Homeless</label>
+</ListView>

@@ -1,0 +1,516 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GlobalValueSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customValue>
+        <fullName>1</fullName>
+        <default>false</default>
+        <label>Reg</label>
+    </customValue>
+    <customValue>
+        <fullName>2</fullName>
+        <default>false</default>
+        <label>Reg T1</label>
+    </customValue>
+    <customValue>
+        <fullName>3</fullName>
+        <default>false</default>
+        <label>Reg T2</label>
+    </customValue>
+    <customValue>
+        <fullName>4</fullName>
+        <default>false</default>
+        <label>Reg T3</label>
+    </customValue>
+    <customValue>
+        <fullName>5</fullName>
+        <default>false</default>
+        <label>Reg T4</label>
+    </customValue>
+    <customValue>
+        <fullName>6</fullName>
+        <default>false</default>
+        <label>Reg T5</label>
+    </customValue>
+    <customValue>
+        <fullName>7</fullName>
+        <default>false</default>
+        <label>Sch Age</label>
+    </customValue>
+    <customValue>
+        <fullName>8</fullName>
+        <default>false</default>
+        <label>Sch Age T1</label>
+    </customValue>
+    <customValue>
+        <fullName>9</fullName>
+        <default>false</default>
+        <label>Sch Age T2</label>
+    </customValue>
+    <customValue>
+        <fullName>10</fullName>
+        <default>false</default>
+        <label>Sch Age T3</label>
+    </customValue>
+    <customValue>
+        <fullName>11</fullName>
+        <default>false</default>
+        <label>Sch Age T4</label>
+    </customValue>
+    <customValue>
+        <fullName>12</fullName>
+        <default>false</default>
+        <label>Sch Age T5</label>
+    </customValue>
+    <customValue>
+        <fullName>13</fullName>
+        <default>false</default>
+        <label>Bf Sch</label>
+    </customValue>
+    <customValue>
+        <fullName>14</fullName>
+        <default>false</default>
+        <label>Bf Sch T1</label>
+    </customValue>
+    <customValue>
+        <fullName>15</fullName>
+        <default>false</default>
+        <label>Bf Sch T2</label>
+    </customValue>
+    <customValue>
+        <fullName>16</fullName>
+        <default>false</default>
+        <label>Bf Sch T3</label>
+    </customValue>
+    <customValue>
+        <fullName>17</fullName>
+        <default>false</default>
+        <label>Bf Sch T4</label>
+    </customValue>
+    <customValue>
+        <fullName>18</fullName>
+        <default>false</default>
+        <label>Bf Sch T5</label>
+    </customValue>
+    <customValue>
+        <fullName>19</fullName>
+        <default>false</default>
+        <label>Af Sch</label>
+    </customValue>
+    <customValue>
+        <fullName>20</fullName>
+        <default>false</default>
+        <label>Af Sch T1</label>
+    </customValue>
+    <customValue>
+        <fullName>21</fullName>
+        <default>false</default>
+        <label>Af Sch T2</label>
+    </customValue>
+    <customValue>
+        <fullName>22</fullName>
+        <default>false</default>
+        <label>Af Sch T3</label>
+    </customValue>
+    <customValue>
+        <fullName>23</fullName>
+        <default>false</default>
+        <label>Af Sch T4</label>
+    </customValue>
+    <customValue>
+        <fullName>24</fullName>
+        <default>false</default>
+        <label>Af Sch T5</label>
+    </customValue>
+    <customValue>
+        <fullName>25</fullName>
+        <default>false</default>
+        <label>B&amp;A Sch</label>
+    </customValue>
+    <customValue>
+        <fullName>26</fullName>
+        <default>false</default>
+        <label>B&amp;A Sch T1</label>
+    </customValue>
+    <customValue>
+        <fullName>27</fullName>
+        <default>false</default>
+        <label>B&amp;A Sch T2</label>
+    </customValue>
+    <customValue>
+        <fullName>28</fullName>
+        <default>false</default>
+        <label>B&amp;A Sch T3</label>
+    </customValue>
+    <customValue>
+        <fullName>29</fullName>
+        <default>false</default>
+        <label>B&amp;A Sch T4</label>
+    </customValue>
+    <customValue>
+        <fullName>30</fullName>
+        <default>false</default>
+        <label>B&amp;A Sch T5</label>
+    </customValue>
+    <customValue>
+        <fullName>31</fullName>
+        <default>false</default>
+        <label>Ovn</label>
+    </customValue>
+    <customValue>
+        <fullName>32</fullName>
+        <default>false</default>
+        <label>Ovn T1</label>
+    </customValue>
+    <customValue>
+        <fullName>33</fullName>
+        <default>false</default>
+        <label>Ovn T2</label>
+    </customValue>
+    <customValue>
+        <fullName>34</fullName>
+        <default>false</default>
+        <label>Ovn T3</label>
+    </customValue>
+    <customValue>
+        <fullName>35</fullName>
+        <default>false</default>
+        <label>Ovn T4</label>
+    </customValue>
+    <customValue>
+        <fullName>36</fullName>
+        <default>false</default>
+        <label>Ovn T5</label>
+    </customValue>
+    <customValue>
+        <fullName>37</fullName>
+        <default>false</default>
+        <label>Wkn</label>
+    </customValue>
+    <customValue>
+        <fullName>38</fullName>
+        <default>false</default>
+        <label>Wkn T1</label>
+    </customValue>
+    <customValue>
+        <fullName>39</fullName>
+        <default>false</default>
+        <label>Wkn T2</label>
+    </customValue>
+    <customValue>
+        <fullName>40</fullName>
+        <default>false</default>
+        <label>Wkn T3</label>
+    </customValue>
+    <customValue>
+        <fullName>41</fullName>
+        <default>false</default>
+        <label>Wkn T4</label>
+    </customValue>
+    <customValue>
+        <fullName>42</fullName>
+        <default>false</default>
+        <label>Wkn T5</label>
+    </customValue>
+    <customValue>
+        <fullName>43</fullName>
+        <default>false</default>
+        <label>Evn</label>
+    </customValue>
+    <customValue>
+        <fullName>44</fullName>
+        <default>false</default>
+        <label>Evn T1</label>
+    </customValue>
+    <customValue>
+        <fullName>45</fullName>
+        <default>false</default>
+        <label>Evn T2</label>
+    </customValue>
+    <customValue>
+        <fullName>46</fullName>
+        <default>false</default>
+        <label>Evn T3</label>
+    </customValue>
+    <customValue>
+        <fullName>47</fullName>
+        <default>false</default>
+        <label>Evn T4</label>
+    </customValue>
+    <customValue>
+        <fullName>48</fullName>
+        <default>false</default>
+        <label>Evn T5</label>
+    </customValue>
+    <customValue>
+        <fullName>49</fullName>
+        <default>false</default>
+        <label>Alt</label>
+    </customValue>
+    <customValue>
+        <fullName>50</fullName>
+        <default>false</default>
+        <label>Alt T1</label>
+    </customValue>
+    <customValue>
+        <fullName>51</fullName>
+        <default>false</default>
+        <label>Alt T2</label>
+    </customValue>
+    <customValue>
+        <fullName>52</fullName>
+        <default>false</default>
+        <label>Alt T3</label>
+    </customValue>
+    <customValue>
+        <fullName>53</fullName>
+        <default>false</default>
+        <label>Alt T4</label>
+    </customValue>
+    <customValue>
+        <fullName>54</fullName>
+        <default>false</default>
+        <label>Alt T5</label>
+    </customValue>
+    <customValue>
+        <fullName>55</fullName>
+        <default>false</default>
+        <label>Dsb</label>
+    </customValue>
+    <customValue>
+        <fullName>56</fullName>
+        <default>false</default>
+        <label>Dsb T1</label>
+    </customValue>
+    <customValue>
+        <fullName>57</fullName>
+        <default>false</default>
+        <label>Dsb T2</label>
+    </customValue>
+    <customValue>
+        <fullName>58</fullName>
+        <default>false</default>
+        <label>Dsb T3</label>
+    </customValue>
+    <customValue>
+        <fullName>59</fullName>
+        <default>false</default>
+        <label>Dsb T4</label>
+    </customValue>
+    <customValue>
+        <fullName>60</fullName>
+        <default>false</default>
+        <label>Dsb T5</label>
+    </customValue>
+    <customValue>
+        <fullName>61</fullName>
+        <default>false</default>
+        <label>Dsb Alt</label>
+    </customValue>
+    <customValue>
+        <fullName>62</fullName>
+        <default>false</default>
+        <label>Dsb Alt T1</label>
+    </customValue>
+    <customValue>
+        <fullName>63</fullName>
+        <default>false</default>
+        <label>Dsb Alt T2</label>
+    </customValue>
+    <customValue>
+        <fullName>64</fullName>
+        <default>false</default>
+        <label>Dsb Alt T3</label>
+    </customValue>
+    <customValue>
+        <fullName>65</fullName>
+        <default>false</default>
+        <label>Dsb Alt T4</label>
+    </customValue>
+    <customValue>
+        <fullName>66</fullName>
+        <default>false</default>
+        <label>Dsb Alt T5</label>
+    </customValue>
+    <customValue>
+        <fullName>67</fullName>
+        <default>false</default>
+        <label>At-Risk</label>
+    </customValue>
+    <customValue>
+        <fullName>68</fullName>
+        <default>false</default>
+        <label>At-Risk T1</label>
+    </customValue>
+    <customValue>
+        <fullName>69</fullName>
+        <default>false</default>
+        <label>At-Risk T2</label>
+    </customValue>
+    <customValue>
+        <fullName>70</fullName>
+        <default>false</default>
+        <label>At-Risk T3</label>
+    </customValue>
+    <customValue>
+        <fullName>71</fullName>
+        <default>false</default>
+        <label>At-Risk T4</label>
+    </customValue>
+    <customValue>
+        <fullName>72</fullName>
+        <default>false</default>
+        <label>At-Risk T5</label>
+    </customValue>
+    <customValue>
+        <fullName>73</fullName>
+        <default>false</default>
+        <label>Sick Cr</label>
+    </customValue>
+    <customValue>
+        <fullName>74</fullName>
+        <default>false</default>
+        <label>Sick Cr T1</label>
+    </customValue>
+    <customValue>
+        <fullName>75</fullName>
+        <default>false</default>
+        <label>Sick Cr T2</label>
+    </customValue>
+    <customValue>
+        <fullName>76</fullName>
+        <default>false</default>
+        <label>Sick Cr T3</label>
+    </customValue>
+    <customValue>
+        <fullName>77</fullName>
+        <default>false</default>
+        <label>Sick Cr T4</label>
+    </customValue>
+    <customValue>
+        <fullName>78</fullName>
+        <default>false</default>
+        <label>Sick Cr T5</label>
+    </customValue>
+    <customValue>
+        <fullName>79</fullName>
+        <default>false</default>
+        <label>Wpd</label>
+    </customValue>
+    <customValue>
+        <fullName>80</fullName>
+        <default>false</default>
+        <label>Wpd T1</label>
+    </customValue>
+    <customValue>
+        <fullName>81</fullName>
+        <default>false</default>
+        <label>Wpd T2</label>
+    </customValue>
+    <customValue>
+        <fullName>82</fullName>
+        <default>false</default>
+        <label>Wpd T3</label>
+    </customValue>
+    <customValue>
+        <fullName>83</fullName>
+        <default>false</default>
+        <label>Wpd T4</label>
+    </customValue>
+    <customValue>
+        <fullName>84</fullName>
+        <default>false</default>
+        <label>Wpd T5</label>
+    </customValue>
+    <customValue>
+        <fullName>85</fullName>
+        <default>false</default>
+        <label>Ex FCCH</label>
+    </customValue>
+    <customValue>
+        <fullName>86</fullName>
+        <default>false</default>
+        <label>Ex FCCH T1</label>
+    </customValue>
+    <customValue>
+        <fullName>87</fullName>
+        <default>false</default>
+        <label>Ex FCCH T2</label>
+    </customValue>
+    <customValue>
+        <fullName>88</fullName>
+        <default>false</default>
+        <label>Ex FCCH T3</label>
+    </customValue>
+    <customValue>
+        <fullName>89</fullName>
+        <default>false</default>
+        <label>Ex FCCH T4</label>
+    </customValue>
+    <customValue>
+        <fullName>90</fullName>
+        <default>false</default>
+        <label>Ex FCCH T5</label>
+    </customValue>
+    <customValue>
+        <fullName>91</fullName>
+        <default>false</default>
+        <label>Out Cty</label>
+    </customValue>
+    <customValue>
+        <fullName>92</fullName>
+        <default>false</default>
+        <label>Out Cty T1</label>
+    </customValue>
+    <customValue>
+        <fullName>93</fullName>
+        <default>false</default>
+        <label>Out Cty T2</label>
+    </customValue>
+    <customValue>
+        <fullName>94</fullName>
+        <default>false</default>
+        <label>Out Cty T3</label>
+    </customValue>
+    <customValue>
+        <fullName>95</fullName>
+        <default>false</default>
+        <label>Out Cty T4</label>
+    </customValue>
+    <customValue>
+        <fullName>96</fullName>
+        <default>false</default>
+        <label>Out Cty T5</label>
+    </customValue>
+    <customValue>
+        <fullName>97</fullName>
+        <default>false</default>
+        <label>Opt One</label>
+    </customValue>
+    <customValue>
+        <fullName>98</fullName>
+        <default>false</default>
+        <label>Opt Two</label>
+    </customValue>
+    <customValue>
+        <fullName>99</fullName>
+        <default>false</default>
+        <label>Opt Three</label>
+    </customValue>
+    <customValue>
+        <fullName>100</fullName>
+        <default>false</default>
+        <label>Opt Four</label>
+    </customValue>
+    <customValue>
+        <fullName>101</fullName>
+        <default>false</default>
+        <label>Opt Five</label>
+    </customValue>
+    <customValue>
+        <fullName>102</fullName>
+        <default>false</default>
+        <label>Opt Six</label>
+    </customValue>
+    <description>R00683</description>
+    <masterLabel>R00683</masterLabel>
+    <sorted>false</sorted>
+</GlobalValueSet>

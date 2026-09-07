@@ -1,0 +1,76 @@
+<aura:component controller="caseInfoFlowApxCtrl" extends="c:abstractSection"  implements="force:appHostable,lightning:actionOverride,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickAction" access="global" >
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    <aura:set attribute="pageMessages" value="{!v.recordError}" />
+    <aura:handler name="change" value="{!v.fieldValidationErrors}" action="{!c.handleFieldLevelValidation}"/>
+    <aura:set attribute="messageType" value="{!v.message}" />
+    <aura:attribute name="message" type="String" />
+    <aura:attribute name="recordError" type="list" />
+    <aura:attribute name="sObjectName" type="String"/>
+    <aura:attribute name="options" type="List" default="[]"/>
+    <aura:attribute name="selectedLookUpRecord" type="sObject" default="{}"/>
+    <aura:method name="callValidateCurrentPage" action="{!c.handleValidateCurrentPage}" access="PUBLIC"/>
+    <aura:attribute name="initDataLoaded" type="Boolean" default="false"/>
+    <aura:attribute name="newcaseInfoObj" type="T_SBSD_CASE_INFO__c" default="{'sobjectType':'T_SBSD_CASE_INFO__c',
+                                                                              'TXT_VALUE_INFO_CASE__c':'',
+                                                                              'CDE_TYPE_INFO_CASE__c':'',
+                                                                              'IDN_CASE__c':'',
+                                                                              'Name':''}"/>
+    
+    
+    
+    <lightning:layout multipleRows="true">
+        <lightning:layoutItem size="6" padding="around-small"> 
+                <c:customLookup aura:id="input-field"
+                                value="{!v.newcaseInfoObj.IDN_CASE__c}"
+                                objectAPIName="T_SBSD_CASE__c"
+                                label="Case ID" 
+                                selectedRecord="{!v.selectedLookUpRecord}"
+                                showRecentRecords="true"
+                                required="true"
+                                isDisabled="{!v.newcaseInfoObj.CDE_TYPE_INFO_CASE__c=='EM'?true:false}" />
+                <c:fieldLevelMessage aura:id="T_SBSD_CASE_INFO__c-IDN_CASE__c"/> 
+        </lightning:layoutItem>
+        
+        <aura:if isTrue="{!v.newcaseInfoObj.CDE_TYPE_INFO_CASE__c=='EM'}">
+            <lightning:layoutItem size="6" padding="around-small">
+                <lightning:input aura:id="caseInformation"  label="Case Information Type"
+                                 value="Email"
+                                 object="T_SBSD_CASE_INFO__c"
+                                 type="text"
+                                 disabled="true"
+                                 field="CDE_TYPE_INFO_CASE__c"/>  
+                <c:fieldLevelMessage aura:id="T_SBSD_CASE_INFO__c-CDE_TYPE_INFO_CASE__c"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem size="6" padding="around-small">
+            <lightning:input aura:id="input-field"  label="Case Information"
+                             value="{!v.newcaseInfoObj.TXT_VALUE_INFO_CASE__c}"
+                             object="T_SBSD_CASE_INFO__c"
+                             type="text"
+                             required="true"
+                             disabled="true"
+                             field="TXT_VALUE_INFO_CASE__c"/>   
+            <c:fieldLevelMessage aura:id="T_SBSD_CASE_INFO__c-TXT_VALUE_INFO_CASE__c"/>
+        </lightning:layoutItem>
+            
+            <aura:set attribute="else">
+                <lightning:layoutItem size="6" padding="around-small">
+                <lightning:select name="input-name" 
+                              label="Case Information" 
+                              value="{!v.newcaseInfoObj.TXT_VALUE_INFO_CASE__c}" 
+                              aura:id="input-field"
+                              required="true"
+                              >
+                              <option value="">--None--</option>
+                              <option value="Mobile Phone">Mobile Phone</option>
+                              <option value="Email">Email</option>
+                              <option value="Mail">Mail</option>
+                              <option value="Home Phone">Home Phone</option>
+                              <option value="Work Phone">Work Phone</option>
+                </lightning:select> 
+                    <c:fieldLevelMessage aura:id="T_SBSD_CASE_INFO__c-TXT_VALUE_INFO_CASE__c"/>
+                </lightning:layoutItem>
+            </aura:set>
+        </aura:if>
+
+    </lightning:layout>
+</aura:component>

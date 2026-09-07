@@ -1,0 +1,52 @@
+<aura:component >
+    <aura:attribute name="eachParentFeeAllocation" type="ParentFeeAllocationWrapper"/>
+    <aura:attribute name="isEditable" type="Boolean" default="false"/>
+    <aura:attribute name="isNotReadOnlyUser" type="Boolean" default="false"/>
+    <aura:attribute name="isAuthCopayEditable" type="Boolean" default="false"/>
+    <aura:method name="validateEachRow" action="{!c.validateAmountField}" access="PUBLIC"/>
+    <tr>
+        <td scope="col">
+            <div class="slds-truncate" title="CHILD NAME">{!v.eachParentFeeAllocation.childName}</div>
+        </td>
+        <td scope="col">
+            <div class="slds-truncate" title="AUTHORIZATION ID">
+                <c:lookupRedirect recordId = "{!v.eachParentFeeAllocation.authRecId}"
+                                  screenFrom = "ViewParentFee"/>
+            </div>    
+        </td>
+        <td scope="col">
+            <div class="slds-truncate" title="DATE OF BIRTH"><c:outputField label="Parent Fee" value="{!v.eachParentFeeAllocation.childDOB}" type="UIDATE" hideLabel="true"/></div>
+        </td>
+        <td scope="col">
+            <div class="slds-truncate" title="PROVIDER ID">{!v.eachParentFeeAllocation.providerExternalId}</div>
+        </td>
+        <td scope="col">
+            <div class="slds-truncate" title="PROVIDER NAME">{!v.eachParentFeeAllocation.providerName}</div>
+        </td>
+        <td scope="col">
+            <div class="slds-truncate" title="AUTHORIZATION BEGIN DATE"><c:outputField value="{!v.eachParentFeeAllocation.authBeginDate}" type="UIDATE" hideLabel="true"/></div>
+        </td>
+        <td scope="col">
+            <div class="slds-truncate" title="AUTHORIZATION END DATE"><c:outputField value="{!v.eachParentFeeAllocation.authEndDate}" type="UIDATE" hideLabel="true"/></div>
+        </td>
+        <td scope="col">
+            <div class="slds-truncate" title="ALLOCATED AUTHORIZATION AMOUNT">
+                <aura:if isTrue="{!and(v.isAuthCopayEditable, v.isNotReadOnlyUser)}">  
+                    <lightning:input aura:id="input-field" 
+                                     type="number" 
+                                     value="{!v.eachParentFeeAllocation.allocatedAuthAmountDecimal}" 
+                                     step="any"
+                                     onblur="{!c.validateAmountField}"
+                                     variant="label-hidden" 
+                                     min="0"
+                                     messageWhenRangeUnderflow="Amount should be more than 0."
+                                     required="true"/>
+                    <c:fieldLevelMessage aura:id="allocatedAuthAmountErrorCmp"/>                
+                    <aura:set attribute="else">
+                        <c:outputField value="{!v.eachParentFeeAllocation.allocatedAuthAmountDecimal}" type="DECIMAL" hideLabel="true"/>
+                    </aura:set>                
+                </aura:if>
+            </div>
+        </td>
+    </tr>    
+</aura:component>

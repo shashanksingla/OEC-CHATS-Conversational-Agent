@@ -1,0 +1,34 @@
+<aura:component>
+    
+    <aura:attribute name="emplPaystubLIInfo" type="SObject[]"/>
+	
+    <div><h3 class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate">Pay Stubs</h3><br/></div>
+    <div class="slds-grid slds-wrap slds-p-around--large">
+        <table class="slds-table slds-table_bordered">
+            <thead>
+                <tr class="slds-text-title_caps">
+                    <th scope="col">
+                        <div class="slds-truncate" title="Frequency of Income">Frequency of Income</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="Hours Worked">Hours Worked</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="Pay Date">Pay Date</div>
+                    </th>
+                    <th scope="col">
+                        <div class="slds-truncate" title="Verified">Verified</div>
+                    </th>
+                </tr>            
+            </thead>
+            
+            <tbody>
+                <aura:iteration items="{!v.emplPaystubLIInfo}" var="res" indexVar="i">
+                    <c:transitionalLIEmploymentPaystubRow aura:id="transitionalLIEmploymentPaystubRow" empPaystubRcrd="{!res}"/>
+                </aura:iteration>
+            </tbody>
+            
+        </table>
+    </div>
+    
+</aura:component>

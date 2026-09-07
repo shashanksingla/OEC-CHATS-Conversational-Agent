@@ -1,0 +1,129 @@
+<template>
+    <!-- Spinner -->
+    <template lwc:if={showSpinner}>
+        <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+    </template>
+
+    <lightning-card icon-name="standard:event">
+        <h1 slot="title" class="slds-page-header__title slds-m-right--small slds-align-middle slds-truncate">
+            New Authorization Status
+        </h1>
+
+        <div slot="actions">
+            <!-- Actions slot if needed -->
+        </div>
+
+        <div class="slds-p-horizontal_small">
+            <!-- Page Messages Component -->
+            <template lwc:if={messageType}>
+                <c-page-messages_lwc 
+                    page-messages={pageMessages} 
+                    message-type={messageType}>
+                </c-page-messages_lwc>
+            </template>
+            <div class="slds-form_stacked">
+                <div class="slds-card">
+                    <div class="slds-card__body slds-card__body_inner">
+                        <!-- Record View Form for Authorization Name -->
+                        <template lwc:if={recordId}>
+                            <lightning-record-view-form record-id={recordId} object-api-name="T_AUTH__c">
+                                <lightning-layout multiple-rows="true" horizontal-align="space">
+                                    <lightning-layout-item flexibility="auto" size="6" padding="around-small">
+                                        <lightning-output-field field-name="Name"></lightning-output-field>
+                                    </lightning-layout-item>
+                                    <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                                    </lightning-layout-item>
+                                </lightning-layout>
+                            </lightning-record-view-form>
+                        </template>
+
+                        <lightning-layout multiple-rows="true" horizontal-align="space">
+                            <!-- Status Change Reason Picklist -->
+                            <lightning-layout-item flexibility="auto" padding="around-small" size="6">
+                                <c-multiselect-combobox
+                                    label="Status Change Reason"
+                                    object="Field_Utility__c"
+                                    field="R00687__c"
+                                    value={authStatusRecord.cde_reason_change_auth__c}
+                                    behavior-type="picklist"
+                                    required
+                                    show-none
+                                    onselect={handleStatusChangeReasonChange}
+                                    data-id="statusChangeReason"
+                                    field-level-error-message="Authorization Status Change Reason is required">
+                                </c-multiselect-combobox>
+                            </lightning-layout-item>
+
+                            <!-- Authorization Status (Read-only - Terminated) -->
+                            <lightning-layout-item flexibility="auto" size="6" padding="around-small">
+                                <div class="slds-form-element">
+                                    <label class="slds-form-element__label">Authorization Status</label>
+                                    <div class="slds-form-element__control">
+                                        <lightning-formatted-text value="Terminated"></lightning-formatted-text>
+                                    </div>
+                                </div>
+                            </lightning-layout-item>
+
+                            <!-- Authorization Status Effective Date -->
+                            <lightning-layout-item flexibility="auto" size="6" padding="around-small">
+                                <lightning-input
+                                    type="date"
+                                    name="effectiveDate"
+                                    label="Authorization Status Effective Date"
+                                    value={authStatusRecord.dte_begin_effv__c}
+                                    required
+                                    message-when-value-missing="Please enter a value."
+                                    onchange={handleEffectiveDateChange}
+                                    data-id="effectiveDate">
+                                </lightning-input>
+                            </lightning-layout-item>
+
+                            <lightning-layout-item flexibility="auto" size="6" padding="around-small">
+                            </lightning-layout-item>
+                        </lightning-layout>
+
+                        <!-- Confirmation Modal for County Check -->
+                        <template lwc:if={showCountyConfirmModal}>
+                            <c-confirmation-modal_-l-w-c
+                                title="CONFIRM"
+                                confirm-msg={countyMessage}
+                                show-yes-button
+                                show-no-button
+                                onyes={handleCountyConfirmYes}
+                                onno={handleCountyConfirmNo}>
+                            </c-confirmation-modal_-l-w-c>
+                        </template>
+
+                        <!-- Confirmation Modal for Parent Fee Check -->
+                        <template lwc:if={showParentFeeConfirmModal}>
+                            <c-confirmation-modal_-l-w-c
+                                title="CONFIRM"
+                                confirm-msg={authTerminationMessage}
+                                show-yes-button
+                                show-no-button
+                                onyes={handleParentFeeConfirmYes}
+                                onno={handleParentFeeConfirmNo}>
+                            </c-confirmation-modal_-l-w-c>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer with Cancel and Submit buttons -->
+        <div slot="footer">
+            <lightning-button 
+                variant="neutral" 
+                label="Cancel"
+                onclick={handleCancel}>
+            </lightning-button>
+            <lightning-button 
+                variant="brand" 
+                label="Submit" 
+                disabled={initFailure} 
+                onclick={handleSubmit}
+                class="slds-m-left_x-small">
+            </lightning-button>
+        </div>
+    </lightning-card>
+</template>

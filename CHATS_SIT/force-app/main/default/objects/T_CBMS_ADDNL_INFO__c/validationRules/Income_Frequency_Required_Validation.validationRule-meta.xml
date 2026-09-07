@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Income_Frequency_Required_Validation</fullName>
+    <active>true</active>
+    <description>Income Frequency is required if Gross Household income without TANF field is not empty</description>
+    <errorConditionFormula>NOT(ISBLANK(AMT_TANF_INCOME_HH_GROSS__c)) &amp;&amp; ISBLANK(TEXT(CDE_FREQ_INCOME__c))</errorConditionFormula>
+    <errorMessage>Income Frequency is required if Gross Household income without TANF field is not empty</errorMessage>
+</ValidationRule>

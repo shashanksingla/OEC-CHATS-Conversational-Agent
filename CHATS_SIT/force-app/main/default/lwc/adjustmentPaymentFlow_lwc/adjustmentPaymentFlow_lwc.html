@@ -1,0 +1,251 @@
+<template>
+    
+    <template if:true={showSpinner}>
+        <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+    </template>
+    
+    <c-page-messages_lwc page-messages={recordError} message-type={message} onmessagetypechange={handlePageError}></c-page-messages_lwc>
+    
+    <template if:true={isReadyToRender}>
+        <lightning-card>
+            <header class="slds-modal__header" style="padding-top: 0px;">
+                <span class="slds-text-heading--medium">New Adjustment Payment</span>
+            </header>
+            
+            <div class="slds-modal__content slds-p-around--medium">
+                <lightning-layout multiple-rows="true">
+                    
+                    <!-- Amount -->
+                    <lightning-layout-item size="6" padding="around-small">
+                        <lightning-input 
+                            type="number" 
+                            label="Amount" 
+                            aria-label="Amount"
+                            name="AMT_PMT_ADJMT__c"
+                            value={adjPaymentObj.AMT_PMT_ADJMT__c} 
+                            formatter="currency" 
+                            step="0.01" 
+                            required
+                            onchange={handleAmountChange}>
+                        </lightning-input>
+                        <c-field-level-message_lwc message={fieldValidationErrors.AMT_PMT_ADJMT__c}></c-field-level-message_lwc>
+
+                    </lightning-layout-item>
+                    
+                    <!-- County -->
+                    <lightning-layout-item size="6" padding="around-small">
+                        <lightning-combobox
+                            label="County"
+                            aria-label="County"
+                            name="CDE_COUNTY__c"
+                            value={adjPaymentObj.CDE_COUNTY__c}
+                            options={assignedCounties}
+                            required
+                            onchange={handleCountyChange}>
+                        </lightning-combobox>
+                        <c-field-level-message_lwc message={fieldValidationErrors.CDE_COUNTY__c}></c-field-level-message_lwc>
+                    </lightning-layout-item>
+                    
+                    <!-- Administrative Action -->
+                    <lightning-layout-item size="6" padding="around-small">
+                        <lightning-record-edit-form object-api-name="T_ADJMT_PMT__c">
+                            <lightning-input-field 
+                                field-name="CDE_ACTION_ADMIN__c" 
+                                value={adjPaymentObj.CDE_ACTION_ADMIN__c}
+                                name="CDE_ACTION_ADMIN__c"
+                                variant="label-stacked"
+                                onchange={handleAdminActionChange}>
+                            </lightning-input-field>
+                        </lightning-record-edit-form>
+                        <c-field-level-message_lwc message={fieldValidationErrors.CDE_ACTION_ADMIN__c}></c-field-level-message_lwc>
+                    </lightning-layout-item>
+                    
+                    <!-- Payment Type -->
+                    <lightning-layout-item size="6" padding="around-small">
+                        <lightning-record-edit-form object-api-name="T_ADJMT_PMT__c">
+                            <c-multiselect-combobox 
+                                label="Payment Type"
+                                aria-label="Payment Type"
+                                object="T_ADJMT_PMT__c"
+                                field="CDE_TYPE_PMT_ADJMT__c" 
+                                name="CDE_TYPE_PMT_ADJMT__c"
+                                value={adjPaymentObj.CDE_TYPE_PMT_ADJMT__c}
+                                behavior-type="picklist"
+                                hidden-values="['8','9']"
+                                required
+                                onchange={handlePaymentTypeChange}>
+                            </c-multiselect-combobox>
+                        </lightning-record-edit-form>
+                        <c-field-level-message_lwc message={fieldValidationErrors.CDE_TYPE_PMT_ADJMT__c}></c-field-level-message_lwc>
+                    </lightning-layout-item>
+                    
+                    <!-- Case -->
+                    <lightning-layout-item size="6" padding="around-small">
+                        <template if:true={adjPaymentObj.IDN_CASE__c}>
+                            <c-custom-lookup_lwc
+                                label="Case"
+                                aria-label="Case"
+                                name="IDN_CASE__c"
+                                object-api-name="T_SBSD_CASE__c"
+                                selected-record-id={adjPaymentObj.IDN_CASE__c}
+                                selected-record-name={caseLookupLabel}
+                                search-field="Name"
+                                default-record-id={adjPaymentObj.IDN_CASE__c}
+                                default-record-name={caseLookupLabel}
+                                onvalueselected={handleCaseSelected}>
+                            </c-custom-lookup_lwc>
+                        </template>
+                        <template if:false={adjPaymentObj.IDN_CASE__c}>
+                            <c-custom-lookup_lwc
+                                label="Case"
+                                aria-label="Case"
+                                name="IDN_CASE__c"
+                                object-api-name="T_SBSD_CASE__c"
+                                search-field="Name"
+                                onvalueselected={handleCaseSelected}>
+                            </c-custom-lookup_lwc>
+                        </template>
+                        <c-field-level-message_lwc message={fieldValidationErrors.IDN_CASE__c}></c-field-level-message_lwc>
+                    </lightning-layout-item>
+                    
+                    <!-- Date Paid -->
+                    <lightning-layout-item size="6" padding="around-small">
+                        <lightning-input 
+                            type="date" 
+                            label="Date Paid" 
+                            aria-label="Date Paid"
+                            name="DTE_PMT_ADJMT__c"
+                            value={adjPaymentObj.DTE_PMT_ADJMT__c} 
+                            required
+                            onchange={handleDatePaidChange}>
+                        </lightning-input>
+                        <c-field-level-message_lwc message={fieldValidationErrors.DTE_PMT_ADJMT__c}></c-field-level-message_lwc>
+                    </lightning-layout-item>
+                    
+                    <!-- Provider -->
+                    <lightning-layout-item size="6" padding="around-small">
+                        <template if:true={adjPaymentObj.IDN_PROVR__c}>
+                            <c-custom-lookup_lwc
+                                label="Provider"
+                                aria-label="Provider"
+                                name="IDN_PROVR__c"
+                                object-api-name="T_CHATS_PROVR_STATUS__c"
+                                selected-record-id={adjPaymentObj.IDN_PROVR__c}
+                                selected-record-name={providerLookupLabel}
+                                search-field="Name"
+                                default-record-id={adjPaymentObj.IDN_PROVR__c}
+                                default-record-name={providerLookupLabel}
+                                onvalueselected={handleProviderSelected}>
+                            </c-custom-lookup_lwc>
+                        </template>
+                        <template if:false={adjPaymentObj.IDN_PROVR__c}>
+                            <c-custom-lookup_lwc
+                                label="Provider"
+                                aria-label="Provider"
+                                name="IDN_PROVR__c"
+                                object-api-name="T_CHATS_PROVR_STATUS__c"
+                                search-field="Name"
+                                onvalueselected={handleProviderSelected}>
+                            </c-custom-lookup_lwc>
+                        </template>
+                        <c-field-level-message_lwc message={fieldValidationErrors.IDN_PROVR__c}></c-field-level-message_lwc>
+                    </lightning-layout-item>
+                    
+                    <!-- Payment -->
+                    <lightning-layout-item size="6" padding="around-small">
+                        <template if:true={adjPaymentObj.IDN_PMT__c}>
+                            <c-custom-lookup_lwc
+                                label="Payment"
+                                aria-label="Payment"
+                                name="IDN_PMT__c"
+                                object-api-name="T_PAYMT__c"
+                                selected-record-id={adjPaymentObj.IDN_PMT__c}
+                                selected-record-name={paymentLookupLabel}
+                                search-field="Name"
+                                default-record-id={adjPaymentObj.IDN_PMT__c}
+                                default-record-name={paymentLookupLabel}
+                                onvalueselected={handlePaymentSelected}>
+                            </c-custom-lookup_lwc>
+                        </template>
+                        <template if:false={adjPaymentObj.IDN_PMT__c}>
+                            <c-custom-lookup_lwc
+                                label="Payment"
+                                aria-label="Payment"
+                                name="IDN_PMT__c"
+                                object-api-name="T_PAYMT__c"
+                                search-field="Name"
+                                onvalueselected={handlePaymentSelected}>
+                            </c-custom-lookup_lwc>
+                        </template>
+                        <c-field-level-message_lwc message={fieldValidationErrors.IDN_PMT__c}></c-field-level-message_lwc>
+                    </lightning-layout-item>
+                    
+                    <!-- Other -->
+                    <lightning-layout-item size="6" padding="around-small">
+                        <lightning-textarea 
+                            label="Other" 
+                            aria-label="Other"
+                            name="TXT_INFO_OTHER__c"
+                            value={adjPaymentObj.TXT_INFO_OTHER__c} 
+                            maxlength="4000"
+                            onchange={handleOtherChange}>
+                        </lightning-textarea>
+                        <c-field-level-message_lwc message={fieldValidationErrors.TXT_INFO_OTHER__c}></c-field-level-message_lwc>
+                    </lightning-layout-item>
+                    
+                    <!-- Receipt Number -->
+                    <lightning-layout-item size="6" padding="around-small">
+                        <lightning-input 
+                            label="Receipt Number" 
+                            aria-label="Receipt Number"
+                            name="IDN_RCPT_PMT__c"
+                            value={adjPaymentObj.IDN_RCPT_PMT__c}
+                            onchange={handleReceiptNumberChange}>
+                        </lightning-input>
+                        <c-field-level-message_lwc message={fieldValidationErrors.IDN_RCPT_PMT__c}></c-field-level-message_lwc>
+                    </lightning-layout-item>
+                    
+                    <!-- Check Number -->
+                    <lightning-layout-item size="6" padding="around-small">
+                        <lightning-input 
+                            label="Check Number" 
+                            aria-label="Check Number"
+                            name="TXT_NBR_CHECK_PMT__c"
+                            value={adjPaymentObj.TXT_NBR_CHECK_PMT__c}
+                            onchange={handleCheckNumberChange}>
+                        </lightning-input>
+                        <c-field-level-message_lwc message={fieldValidationErrors.TXT_NBR_CHECK_PMT__c}></c-field-level-message_lwc>
+                    </lightning-layout-item>
+                    
+                </lightning-layout>
+            </div>
+            
+            <!-- Footer with buttons -->
+            <div class="slds-modal__footer">
+                <lightning-button 
+                    label="Cancel" 
+                    aria-label="Cancel"
+                    onclick={handleCancel} 
+                    class="slds-m-right_x-small">
+                </lightning-button>
+                <lightning-button 
+                    label="Save" 
+                    aria-label="Save"
+                    variant="brand" 
+                    onclick={handleSave}>
+                </lightning-button>
+            </div>
+        </lightning-card>
+    </template>
+    
+    <!-- Confirmation Modal -->
+    <template if:true={showConfirmationModal}>
+        <c-confirmation-modal_-l-w-c
+            title="Confirm"
+            confirm-msg="Are you sure you want to create a New Adjustment Payment for the county selected?"
+            onyes={handleConfirmationYes}
+            onno={handleConfirmationNo}>
+        </c-confirmation-modal_-l-w-c>
+    </template>
+    
+</template>

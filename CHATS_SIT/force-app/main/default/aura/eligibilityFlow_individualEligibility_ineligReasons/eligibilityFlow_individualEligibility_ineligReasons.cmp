@@ -1,0 +1,27 @@
+<aura:component >
+    <aura:attribute name="idnIndivFcompsn" type="String"/>
+    <aura:attribute name="idnEligtyFcompsn" type="String"/>
+    <aura:attribute name="indivIneligibilityFailure" type="batchsit_t_indiv_eligty_failr__x[]"/>
+    <h2 class="slds-section__title slds-p-left--small slds-p-top--small slds-border_top">Individual Ineligibility Reasons</h2>
+    <div class="slds-p-top--small">
+        <aura:iteration items="{!v.indivIneligibilityFailure}" var="eachFailrReason">
+            <p class="slds-p-left--large slds-p-bottom--small">
+                <c:inputPicklist value="{!eachFailrReason.cde_reason_failr_eligty_indiv__c}"
+                                 object="Field_Utility__c"
+                                 field="R00335__c"
+                                 type="ReadOnly"
+                                 hideLabel="true"
+                                 />
+            </p>
+        </aura:iteration>
+    </div>
+    <lightning:layout >
+        <lightning:overlayLibrary aura:id="overlayLib"/>
+        <aura:if isTrue="{!!v.eligConfirmed}">
+            <lightning:layoutItem flexibility="auto" size="12" padding="around-small">
+                <lightning:button label="Update" onclick="{!c.showIneligibilityReasons}" variant="brand"/>    
+            </lightning:layoutItem>
+        </aura:if>
+        <lightning:layoutItem flexibility="auto" size="11" padding="around-small"></lightning:layoutItem>
+    </lightning:layout>
+</aura:component>

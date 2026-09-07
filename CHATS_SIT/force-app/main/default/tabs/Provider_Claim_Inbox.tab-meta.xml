@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Provider Manual Claim Inbox to track Claims Received from ATS to CHATS</description>
+    <label>Provider Claim Inbox</label>
+    <lwcComponent>providerClaimInbox</lwcComponent>
+    <motif>Custom67: Gears</motif>
+</CustomTab>
