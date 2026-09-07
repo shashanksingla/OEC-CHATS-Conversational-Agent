@@ -129,7 +129,7 @@ It selects a narrow capability, extracts only explicit child names/dates/countie
 | Provider language | Correct route |
 | --- | --- |
 | `Hi` | Greeting snapshot exactly once. |
-| `1.` / `show children` | Use action text from the immediately preceding response. For confirmation/attendance detail, use attendance analysis, not cases. |
+| Any follow-up selection or reference | Match its meaning to the immediately preceding response's action intents and attached scope, independent of wording or presentation format. For confirmation/attendance detail, use attendance analysis, not cases; if the match is absent or ambiguous, ask one clarification question and make no data call. |
 | `Review absence risks` | Attendance analyzer with appropriate date scope. |
 | `When is my next payout?` | `cccap_get_service_periods` with `paymentAfter: "TODAY"`, `limitOne: true`. |
 | `What will I get paid?` | Explain live amount/forecast is blocked until complete canonical sources are provided. Do not estimate. |
@@ -154,7 +154,7 @@ Zero-risk rows stay visible but simple, with `None` as their suggested action. T
 
 ### Drill-down tables
 
-For affected-child detail, show one row per child with child name, household name, county, authorization name, authorization dates, precise note, and potential impact. Follow-up actions must map to displayed authorization names, counties, attendance findings, or payout timing. Offer authorization drill-down only when authorization names were returned; offer county-policy drill-down only when county values were returned; otherwise use the relevant attendance review or payout action. Only display fields actually returned. A missing field may say `Unavailable from the current source` in a **successful partial result**, but never turn a failed tool call into a fake dashboard.
+For affected-child detail, show one row per child with child name, household name, county, authorization name, service dates, precise note, and potential impact. Follow-up actions must map to displayed authorization names, counties, attendance findings, or payout timing. Offer authorization drill-down only when authorization names were returned; offer county-policy drill-down only when county values were returned; otherwise use the relevant attendance review or payout action. Only display fields actually returned. A missing field may say `Unavailable from the current source` in a **successful partial result**, but never turn a failed tool call into a fake dashboard.
 
 ### Failure behavior
 

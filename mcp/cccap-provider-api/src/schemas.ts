@@ -1,6 +1,6 @@
 import * as z from "zod/v4";
 
-const dateFilterSchema = z.enum([
+export const dateFilterSchema = z.enum([
   "TODAY",
   "THIS_MONTH",
   "LAST_MONTH",
@@ -68,6 +68,7 @@ export const caseSchema = z
 export const authorizationSchema = z
   .object({
     ...dateScopeShape,
+    careDate: z.string().date().optional(),
     caseIds: z.array(z.string().min(1)).optional(),
     countyIds: z.array(z.string().min(1)).optional(),
     authNames: z.array(z.string().min(1)).optional(),
@@ -88,6 +89,14 @@ export const schedulesSchema = z
 
 export const fiscalRatesSchema = dateScopeSchema;
 
+export const paymentHistorySchema = z
+  .object({
+    ...dateScopeShape,
+    dateFilter: dateFilterSchema,
+  })
+  .strict()
+  .superRefine(validateDateScope);
+
 export const attendanceDataSchema = z
   .object({
     ...dateScopeShape,
@@ -101,6 +110,14 @@ export const attendanceAnalysisSchema = z
     ...dateScopeShape,
     dateFilter: dateFilterSchema,
     childNames: z.array(z.string().min(1)).min(1).optional(),
+  })
+  .strict()
+  .superRefine(validateDateScope);
+
+export const paymentAnalysisSchema = z
+  .object({
+    ...dateScopeShape,
+    dateFilter: dateFilterSchema,
   })
   .strict()
   .superRefine(validateDateScope);

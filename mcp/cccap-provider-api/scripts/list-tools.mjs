@@ -20,12 +20,16 @@ const transport = new StdioClientTransport({
 
 const expectedTools = [
   "cccap_analyze_attendance_risk",
-  "cccap_get_authorizations",
+  "cccap_analyze_payment",
   "cccap_get_attendance_analysis",
+  "cccap_get_attendance_risk_snapshot",
+  "cccap_get_authorizations",
   "cccap_get_cases",
   "cccap_get_county_rate_plans",
   "cccap_get_current_month_risk_snapshot",
+  "cccap_get_fiscal_rates",
   "cccap_get_holidays",
+  "cccap_get_payment_history",
   "cccap_get_schedules",
   "cccap_get_service_periods",
   "cccap_initialize_provider",

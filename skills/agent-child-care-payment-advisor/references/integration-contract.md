@@ -17,13 +17,16 @@ The `cccapprovider` MCP server exposes these read-only tools over the Salesforce
 - `cccap_get_holidays` wraps `getHolidayList` for payment-calendar inputs
 - `cccap_get_schedules` wraps `getSchedules` for schedules and check-in/check-out transactions
 - `cccap_get_fiscal_rates` wraps `getFiscalRates` for authorized fiscal schedules, fiscal-rate rows, and fiscal-rate fee rows
+- `cccap_get_payment_history` wraps `getPaymentHistory` for authenticated-provider sub-payment history and duplicate-payment inputs
 - `cccap_get_service_periods` wraps `getServicePeriods` for service and payment periods
 
 The endpoint inventory is not yet a complete production contract. See `references/api-response-contract.json` for response-level gaps; do not claim readiness until response schemas map every required normalized field.
 
 `getSchedules` returns aggregate `Check_In_Count__c`/`Check_Out_Count__c` fields and, when present, individual transaction records under `Attendance__r.records`. MCP maps those nested records into the normalized transaction contract before invoking the richer transaction-level ruleset in `scripts/analyze_attendance_transactions.py`.
 
-`getFiscalRates` accepts only provider and schedule IDs injected by MCP from `getProviderData`. Apex re-derives active fiscal agreements and rate schedules for those provider IDs, then returns `batchsit_t_fiscal_rate__x` rows through the schedule external key and `T_FISCAL_RAT_FEES__c` rows through the Salesforce schedule lookup. Fiscal-rate retrieval supplies source data but does not authorize a live payout amount until the remaining payment inputs are mapped.
+`getFiscalRates` accepts only provider and schedule IDs injected by MCP from `getProviderData`. Apex re-derives active fiscal agreements and rate schedules for those provider IDs, then returns `batchsit_t_fiscal_rate__x` rows through the schedule external key and `T_FISCAL_RAT_FEES__c` rows through the Salesforce schedule lookup, including county, fiscal-agreement, and provider fee tiers. Fiscal-rate retrieval supplies source data but does not authorize a live payout amount until the remaining payment inputs are mapped.
+
+`getPaymentHistory` requires a date scope and accepts only provider IDs injected by MCP. Apex resolves the scope to overlapping service-period records, queries local payment parents by authenticated provider and service-period record IDs, then queries external sub-payments by the parents' external payment IDs and service-period external IDs. This avoids traversing the external `idn_pmt__r` relationship, which can exceed Salesforce's external subquery limit. The route is service-period based because duplicate-payment checks must find payments for the care period even when processing or release dates differ; paid-date filtering is not used by this route. The response supplies payment date/status plus authorization, service-period, slot-contract, status, and amount fields, then returns current and historical detail rows keyed from those sub-payments; status-code and additional-info meanings still require an approved normalization map.
 
 Source Salesforce and external-source objects, fields, and confirmed relationships are catalogued in `references/schema-mapping.json`. MCP routes, Python scripts, normalized inputs, response gaps, and derived outputs are catalogued separately in `references/api-response-contract.json`. Update the appropriate project contract when a source object or API response changes.
 

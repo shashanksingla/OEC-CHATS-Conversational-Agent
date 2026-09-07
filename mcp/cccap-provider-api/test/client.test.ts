@@ -185,6 +185,40 @@ test("schedule requests inject configured provider IDs after initialization", as
   });
 });
 
+test("payment-history requests preserve the date scope and inject provider IDs", async () => {
+  const requests: Array<{ action: string; body: Record<string, unknown> }> = [];
+  const requestApex: RequestApex = async (_targetOrg, action, body) => {
+    requests.push({ action, body });
+    if (action === "getProviderData") {
+      return {
+        isSuccess: true,
+        data: {
+          providers: [{ Id: "provider-1", Name: "20260722" }],
+          fiscalAgreements: [{ CDE_COUNTY__c: "county-1" }],
+        },
+      };
+    }
+    return { isSuccess: true, data: { servicePeriodIds: [], subPayments: [] } };
+  };
+  const client = new CccapClient({
+    targetOrg: "CHATS_SIT",
+    providerUserId: "user-1",
+    requestApex,
+  });
+
+  await client.initialize({ dateFilter: "TODAY" });
+  await client.getPaymentHistory({ dateFilter: "LAST_N_MONTHS", periodCount: 2 });
+
+  assert.deepEqual(requests[1], {
+    action: "getPaymentHistory",
+    body: {
+      dateFilter: "LAST_N_MONTHS",
+      periodCount: 2,
+      providerIds: ["provider-1"],
+    },
+  });
+});
+
 test("fiscal-rate requests use only schedule IDs returned by provider initialization", async () => {
   const requests: Array<{ action: string; body: Record<string, unknown> }> = [];
   const requestApex: RequestApex = async (_targetOrg, action, body) => {

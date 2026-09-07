@@ -9,9 +9,11 @@
     "cccap_get_county_rate_plans",
     "cccap_get_schedules",
     "cccap_get_fiscal_rates",
+    "cccap_get_payment_history",
     "cccap_get_service_periods",
     "cccap_get_holidays",
     "cccap_get_current_month_risk_snapshot",
+    "cccap_get_attendance_risk_snapshot",
     "cccap_analyze_attendance_risk"
   ],
   "python_scripts": [
@@ -118,12 +120,16 @@
     ],
     "getAuthData": [
       "Returns selected authorization fields plus related provider, child, county, slot-contract, facility, and child-name values as raw SObject output.",
+      "Returns slotContracts for linked T_SLOT_CONTRACT__c records, including effective dates, care unit, care level, rate type, program type, day limits, and occupancy flags.",
+      "Returns encumbrances keyed by authorization external ID with care date, authorized hours, actual attended hours, status, care unit, care level, and 0-36 enrollment indicator.",
+      "Returns authorizationCopays keyed by authorization external ID with effective dates and parent fee amount.",
       "Authorization status is returned through an unaliased toLabel expression, so its serialized response key must be verified before normalization.",
       "The response does not include fiscal-rate or parent-confirmation data."
     ],
     "getCountyData": [
       "Returns a manually normalized county-rate-plan map rather than raw T_COUNTY_RATE__c records.",
-      "These plans provide attendance/drop-in/holiday policy, not provider reimbursement fiscal rates."
+      "These plans provide attendance/drop-in/holiday policy, not provider reimbursement fiscal rates.",
+      "The response includes dropInResponse from PAYMENT_Q14_2__c for licensed-only versus universal drop-in policy."
     ],
     "getServicePeriods": [
       "Returns a DTO; if no stored row matches, it generates a computed period and payment dates instead of returning a Salesforce record."
@@ -138,13 +144,22 @@
     "getFiscalRates": [
       "Requires provider IDs and rate-schedule external IDs supplied by MCP from the authenticated provider initialization scope.",
       "Re-derives active fiscal agreements and rate schedules server-side before returning batchsit_t_fiscal_rate__x rows and T_FISCAL_RAT_FEES__c rows.",
-      "Returns fiscal schedule headers, fiscal-rate rows, and fiscal-rate fee rows; this data does not by itself enable live payout amounts."
+      "Returns fiscal schedule headers, fiscal-rate rows, and fiscal-rate fee rows, including county, fiscal-agreement, and provider fee amounts; this data does not by itself enable live payout amounts."
+    ],
+    "getPaymentHistory": [
+      "Requires provider IDs injected by MCP from authenticated provider initialization.",
+      "Requires a dateFilter and resolves it server-side to overlapping T_SERV_PERIOD__c external IDs before querying sub-payments.",
+      "Returns local T_PAYMT__c parent rows scoped by authenticated provider and service-period record IDs, plus read-only batchsit_t_sub_pmt__x rows scoped by the parent payment external IDs and resolved service-period IDs.",
+      "The date scope is service-period based for duplicate-payment checks; paid-date filtering is not used by this route.",
+      "Provides authorization, service-period, slot-contract, status, and amount fields for duplicate-payment checks; status-code normalization remains required.",
+      "Returns paymentDetails and paymentDetailHistory keyed to the scoped sub-payments, including care dates, additional-info codes, detail statuses, rates, copay, paid amounts, adjustment/recovery indicators, and 0-36 enrollment data."
     ]
   },
   "derived_outputs": {
     "AttendanceRiskSnapshot": {
       "produced_by": [
         "cccap_get_current_month_risk_snapshot",
+        "cccap_get_attendance_risk_snapshot",
         "cccap_analyze_attendance_risk"
       ],
       "derived_from": [

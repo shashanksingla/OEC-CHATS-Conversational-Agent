@@ -9,6 +9,7 @@ global with sharing class CccapPortalApiV1 {
     private static final String ACTION_SERVICE_PERIOD = 'getServicePeriods';
     private static final String ACTION_SCHEDULES      = 'getSchedules';
     private static final String ACTION_FISCAL_RATES   = 'getFiscalRates';
+    private static final String ACTION_PAYMENT_HISTORY = 'getPaymentHistory';
     private static final String ACTION_HOLIDAY_LIST    = 'getHolidayList';
     private static final String DECL_SCHEDULES_URL =
         'callout:DECL_Credential/services/apexrest/cccap/getSchedules/';
@@ -39,6 +40,7 @@ global with sharing class CccapPortalApiV1 {
             else if (ACTION_SERVICE_PERIOD.equals(action)) result = getServicePeriods(body);
             else if (ACTION_SCHEDULES.equals(action))      result = getSchedules(body);
             else if (ACTION_FISCAL_RATES.equals(action))   result = getFiscalRates(body);
+            else if (ACTION_PAYMENT_HISTORY.equals(action)) result = getPaymentHistory(body);
             else if (ACTION_HOLIDAY_LIST.equals(action))    result = getHolidayList(body);
             
             
@@ -89,7 +91,8 @@ global with sharing class CccapPortalApiV1 {
                 Date activeEndDate = activeDateRange.endDate;
 
                 List<T_CHATS_PROVR_STATUS__c> providers = [
-                    SELECT Id, Name, NAM_FACILITY__c, TXT_CHATS_RATING__c, CDE_STATUS_PROVR__c
+                    SELECT Id, Name, NAM_FACILITY__c, TXT_CHATS_RATING__c, CDE_STATUS_PROVR__c,
+                    CDE_TYPE_PROVR__c, CDE_TYPE_LICENSE__c, DTE_BEGIN_EFFV__c, DTE_END_EFFV__c
                     FROM T_CHATS_PROVR_STATUS__c
                     WHERE Name =:providerName
                     WITH SYSTEM_MODE
@@ -98,7 +101,7 @@ global with sharing class CccapPortalApiV1 {
                 List<T_PROVR_FISCAL_AGREMENT__c> faList = [
                     SELECT Id, Name, ID_SERVICE__c, CDE_COUNTY__c, CDE_COUNTY__r.Name,
                     CDE_TYPE_STATUS__c, DTE_BEGIN_AGRMT__c, DTE_END_AGRMT__c,
-                    (SELECT Id,toLabel(CDE_RATE_TYPE__c),
+                    (SELECT Id,CDE_RATE_TYPE__c,
                      IDN_EXTNL__c,
                      TXT_CHATS_RATING__c,
                      DTE_BEGIN_EFFV__c, DTE_END_EFFV__c
@@ -201,7 +204,7 @@ global with sharing class CccapPortalApiV1 {
             List<batchsit_t_fiscal_rate__x> fiscalRates = scheduleExternalIds.isEmpty()
                 ? new List<batchsit_t_fiscal_rate__x>()
                 : [
-                    SELECT Id, idn_fiscal_sch__c, rate_schedule__c,
+                    SELECT idn_fiscal_sch__c,
                     cde_age_group__c, cde_care_unit__c, cde_rate_type__c,
                     amt_cty__c, amt_fa__c, amt_provr__c
                     FROM batchsit_t_fiscal_rate__x
@@ -308,7 +311,10 @@ global with sharing class CccapPortalApiV1 {
                 Date activeEndDate = activeDateRange.endDate;
 
                 String soql =
-                    'SELECT Id, Name, IDN_CASE__c, IDN_PROVR__c, IDN_CLIENT__c, CDE_COUNTY__c, '
+                    'SELECT Id, Name, IDN_EXTNL__c, IDN_CASE__c, IDN_PROVR__c, IDN_CLIENT__c, '
+                    + 'IDN_SLOT_CONTRACT__c, CDE_COUNTY__c, AMT_ACTV_AUTH__c, AMT_RGSTR_AUTH__c, AMT_TRANSP_AUTH__c, '
+                    + 'CDE_TYPE_VERIF__c, CDE_TRANS_FEE__c, CDE_CHILD_ENROLLED_IN_UPK__c, '
+                    + 'Contract_for_Slots_indicator__c, Do_we_need_to_allow_drop_in_days_for__c, '
                     + 'DTE_BEGIN_EFFV_AUTH__c, DTE_END_EFFV_AUTH__c, toLabel(Authorization_Status__c), '
                     + 'Number_of_Drop_in_Days__c '
                     + 'FROM T_AUTH__c '
@@ -322,8 +328,54 @@ global with sharing class CccapPortalApiV1 {
                 if (!authNames.isEmpty())   soql += 'AND Name IN ('          + buildInClause(authNames)   + ') ';
                 soql += 'WITH SYSTEM_MODE ORDER BY CDE_COUNTY__c ASC, Name ASC';
                 
+                List<T_AUTH__c> authorizations = Database.query(soql);
+                Set<Id> slotContractIds = new Set<Id>();
+                Set<String> authorizationExternalIds = new Set<String>();
+                for (T_AUTH__c authorization : authorizations) {
+                    if (authorization.IDN_SLOT_CONTRACT__c != null) {
+                        slotContractIds.add(authorization.IDN_SLOT_CONTRACT__c);
+                    }
+                    if (String.isNotBlank(authorization.IDN_EXTNL__c)) {
+                        authorizationExternalIds.add(authorization.IDN_EXTNL__c);
+                    }
+                }
+                List<T_SLOT_CONTRACT__c> slotContracts = slotContractIds.isEmpty()
+                    ? new List<T_SLOT_CONTRACT__c>()
+                    : [
+                        SELECT Id, Name, IDN_PROVIDER__c, IDN_AUTH__c, IDN_ADDENDUM__c,
+                        CDE_COUNTY__c, CDE_CARE_UNIT__c, CDE_CARE_LEVEL__c, CDE_RATE_TYPE__c,
+                        CDE_PRG_TYPE__c, CNT_DAYS_OF_MONTH__c, CNT_DAYS_OF_WEEK__c,
+                        DTE_BEGIN_SLOT__c, DTE_END_SLOT__c, IND_OCCUPIED__c,
+                        IND_FUTURE_VACANT__c, IND_AVAILABLE__c, SLOT_CONTRACT_DESCRIPTION__c
+                        FROM T_SLOT_CONTRACT__c
+                        WHERE Id IN :slotContractIds
+                        WITH SYSTEM_MODE
+                    ];
+                List<batchsit_t_auth_encmbr__x> encumbrances = authorizationExternalIds.isEmpty()
+                    ? new List<batchsit_t_auth_encmbr__x>()
+                    : [
+                        SELECT Id, idn_auth__c, idn_encmbr_auth__c, dte_care__c,
+                        cnt_hour_care__c, cnt_hour_attnd_actual__c, cde_status_encmbr__c,
+                        cde_type_unit_care__c, cde_level_care__c, ind_0_36_months__c
+                        FROM batchsit_t_auth_encmbr__x
+                        WHERE idn_auth__c IN :authorizationExternalIds
+                    ];
+                List<batchsit_t_auth_copay__x> authorizationCopays = authorizationExternalIds.isEmpty()
+                    ? new List<batchsit_t_auth_copay__x>()
+                    : [
+                        SELECT Id, idn_auth__c, idn_copay_auth__c,
+                        dte_begin_effv__c, dte_end_effv__c, amt_copay_auth__c
+                        FROM batchsit_t_auth_copay__x
+                        WHERE idn_auth__c IN :authorizationExternalIds
+                    ];
+
                 return new CccapPortalApiV1ResponseWrapper.ApiResponse(true,
-                                                                       new Map<String, Object>{ 'authorizations' => Database.query(soql) });
+                    new Map<String, Object>{
+                        'authorizations' => authorizations,
+                        'slotContracts' => slotContracts,
+                        'encumbrances' => encumbrances,
+                        'authorizationCopays' => authorizationCopays
+                    });
                 
             } catch (Exception ex) {
                 ExceptionLoggingServices.captureExceptionLog(
@@ -354,7 +406,8 @@ global with sharing class CccapPortalApiV1 {
                     DTE_BEGIN_EFFV_RATE__c, DTE_END_EFFV_RATE__c,
                     PAYMENT_Q13_a__c, PAYMENT_Q13_b__c, PAYMENT_Q13_c__c,
                     PAYMENT_Q13_d__c, PAYMENT_Q13_e__c, PAYMENT_Q13_2__c,
-                    PAYMENT_Q13_1__c, PAYMENT_Q14__c, PAYMENT_Q14_1__c, PAYMENT_Q14_3__c
+                    PAYMENT_Q13_1__c, PAYMENT_Q14__c, PAYMENT_Q14_1__c, PAYMENT_Q14_2__c,
+                    PAYMENT_Q14_3__c
                     FROM T_COUNTY_RATE__c
                     WHERE CDE_STATUS__c           = :STATUS_COUNTY_ACTIVE
                     AND IND_RATE_PLAN_TEMPLT__c = false
@@ -384,6 +437,7 @@ global with sharing class CccapPortalApiV1 {
                             'countyholidayList'       => p.PAYMENT_Q13_1__c,
                             'allowDropInDays'         => p.PAYMENT_Q14__c,
                             'maxDropInDaysPerMonth'   => p.PAYMENT_Q14_1__c,
+                            'dropInResponse'          => p.PAYMENT_Q14_2__c,
                             'manageDropInAtAuthLevel' => p.PAYMENT_Q14_3__c
                             });
                 }
@@ -420,6 +474,127 @@ global with sharing class CccapPortalApiV1 {
             return new CccapPortalApiV1ResponseWrapper.ApiResponse(ex.getMessage());
         }
     }
+
+    // Returns read-only sub-payment history scoped to the authenticated provider and service periods.
+    private static CccapPortalApiV1ResponseWrapper.ApiResponse getPaymentHistory(
+        Map<String, Object> params) {
+        List<String> providerIds = CCCAPGeneric.getStringList(params, 'providerIds');
+        if (providerIds.isEmpty()) {
+            return new CccapPortalApiV1ResponseWrapper.ApiResponse(
+                'getPaymentHistory requires providerIds');
+        }
+        if (String.isBlank(CCCAPGeneric.getString(params, 'dateFilter'))) {
+            return new CccapPortalApiV1ResponseWrapper.ApiResponse(
+                'getPaymentHistory requires dateFilter');
+        }
+        try {
+            CCCAPGeneric.DateRange serviceDateRange = CCCAPGeneric.resolveDateRange(params);
+            Date serviceStartDate = serviceDateRange.startDate;
+            Date serviceEndDate = serviceDateRange.endDate;
+            Set<Id> servicePeriodRecordIds = new Set<Id>();
+            Set<String> servicePeriodIds = new Set<String>();
+            for (T_SERV_PERIOD__c servicePeriod : [
+                SELECT Id, IDN_EXTNL__c
+                FROM T_SERV_PERIOD__c
+                WHERE DTE_BEGIN_EFFV__c <= :serviceEndDate
+                AND DTE_END_EFFV__c >= :serviceStartDate
+                AND IDN_EXTNL__c != null
+                WITH SYSTEM_MODE
+            ]) {
+                servicePeriodRecordIds.add(servicePeriod.Id);
+                servicePeriodIds.add(servicePeriod.IDN_EXTNL__c);
+            }
+
+            if (servicePeriodIds.isEmpty()) {
+                return new CccapPortalApiV1ResponseWrapper.ApiResponse(true,
+                    new Map<String, Object>{
+                        'servicePeriodStart' => serviceStartDate,
+                        'servicePeriodEnd' => serviceEndDate,
+                        'servicePeriodIds' => new List<String>(),
+                        'payments' => new List<T_PAYMT__c>(),
+                        'subPayments' => new List<batchsit_t_sub_pmt__x>()
+                    });
+            }
+
+            List<T_PAYMT__c> payments = [
+                SELECT Id, IDN_EXTNL__c, IDN_PROVR__c, IDN_PERIOD_SERV__c,
+                DTE_PAID_PMT__c, CDE_STATUS_PMT__c, CDE_METHOD_PMT__c,
+                AMT_PMT__c, AMT_SLOT_PMT__c
+                FROM T_PAYMT__c
+                WHERE IDN_PROVR__c IN :providerIds
+                AND IDN_PERIOD_SERV__c IN :servicePeriodRecordIds
+                AND IDN_EXTNL__c != null
+                WITH SYSTEM_MODE
+                ORDER BY IDN_PERIOD_SERV__c ASC, DTE_PAID_PMT__c ASC
+            ];
+            Set<String> paymentExternalIds = new Set<String>();
+            for (T_PAYMT__c payment : payments) {
+                paymentExternalIds.add(payment.IDN_EXTNL__c);
+            }
+
+            List<batchsit_t_sub_pmt__x> subPayments = paymentExternalIds.isEmpty()
+                ? new List<batchsit_t_sub_pmt__x>()
+                : [
+                SELECT Id, ExternalId, idn_pmt_sub__c, idn_auth__c, idn_period_serv__c,
+                idn_slot_contract__c, cde_status_pmt_sub__c,
+                amt_total_pmt_sub__c, amt_rate_pmt_sub__c,
+                amt_copay_pmt_sub__c, amt_slot_pmt_sub__c
+                FROM batchsit_t_sub_pmt__x
+                WHERE idn_pmt__c IN :paymentExternalIds
+                AND idn_period_serv__c IN :servicePeriodIds
+                WITH SYSTEM_MODE
+                ORDER BY idn_period_serv__c ASC, idn_auth__c ASC
+            ];
+            Set<String> subPaymentExternalIds = new Set<String>();
+            Set<Decimal> subPaymentNumericIds = new Set<Decimal>();
+            for (batchsit_t_sub_pmt__x subPayment : subPayments) {
+                if (subPayment.idn_pmt_sub__c != null) {
+                    subPaymentExternalIds.add(String.valueOf(subPayment.idn_pmt_sub__c));
+                    subPaymentNumericIds.add(subPayment.idn_pmt_sub__c);
+                }
+            }
+            List<batchsit_t_sub_pmt_detail__x> paymentDetails = subPaymentExternalIds.isEmpty()
+                ? new List<batchsit_t_sub_pmt_detail__x>()
+                : [
+                    SELECT Id, idn_detail_pmt_sub__c, idn_pmt_sub__c, idn_fiscal_rat_fee__c,
+                    dte_care__c, cde_type_unit_care__c, cde_unit_care_exptd__c,
+                    cde_type_info_addntl__c, cde_time_trdnl__c, cde_status_detail_pmt_sub__c,
+                    cde_level_care__c, amt_rate__c, amt_total__c, amt_act_paid__c,
+                    amt_copay__c, amt_reg_paid__c, amt_slot_paid__c, amt_trans_paid__c,
+                    ind_0_36_months_enroll_pmt__c, ind_adjmt__c, ind_claim__c, ind_recovery__c
+                    FROM batchsit_t_sub_pmt_detail__x
+                    WHERE idn_pmt_sub__c IN :subPaymentExternalIds
+                ];
+            List<batchsit_t_sub_pmt_detail_hist__x> paymentDetailHistory = subPaymentNumericIds.isEmpty()
+                ? new List<batchsit_t_sub_pmt_detail_hist__x>()
+                : [
+                    SELECT Id, idn_detail_pmt_sub_hist__c, idn_detail_pmt_sub__c, idn_pmt_sub__c,
+                    idn_fiscal_rat_fee__c, dte_care__c, cde_type_unit_care__c,
+                    cnt_unit_care_exptd__c, cnt_unit_care_actual__c, cde_type_info_addntl__c,
+                    cde_time_trdnl__c, cde_status_detail_pmt_sub__c, cde_level_care__c,
+                    amt_rate__c, amt_total__c, amt_act_paid__c, amt_copay__c,
+                    amt_reg_paid__c, amt_trans_paid__c, ind_slots_for_cntrct__c,
+                    ind_adjmt__c, ind_record_delete_logcl__c
+                    FROM batchsit_t_sub_pmt_detail_hist__x
+                    WHERE idn_pmt_sub__c IN :subPaymentNumericIds
+                ];
+            return new CccapPortalApiV1ResponseWrapper.ApiResponse(true,
+                new Map<String, Object>{
+                    'servicePeriodStart' => serviceStartDate,
+                    'servicePeriodEnd' => serviceEndDate,
+                    'servicePeriodIds' => servicePeriodIds,
+                    'payments' => payments,
+                    'subPayments' => subPayments,
+                    'paymentDetails' => paymentDetails,
+                    'paymentDetailHistory' => paymentDetailHistory
+                });
+        } catch (Exception ex) {
+            ExceptionLoggingServices.captureExceptionLog(
+                ex, new Map<String, Object>{ 'Class__c' => CLASS_NAME, 'Method__c' => 'getPaymentHistory' });
+            return new CccapPortalApiV1ResponseWrapper.ApiResponse(
+                'Payment history source is unavailable');
+        }
+    }
     private static CccapPortalApiV1ResponseWrapper.ApiResponse getHolidayList(
         Map<String, Object> params) {
 
@@ -432,8 +607,10 @@ global with sharing class CccapPortalApiV1 {
                     'SELECT toLabel(CDE_HOL__c), DTE_HOL__c, DTE_OBSERVED_HOL__c '
                     + 'FROM T_YEAR_HOL__c';
                 if (dateRange != null) {
-                    soql += ' WHERE DTE_HOL__c >= :holidayStartDate '
-                        + 'AND DTE_HOL__c <= :holidayEndDate';
+                    soql += ' WHERE (DTE_HOL__c >= :holidayStartDate '
+                        + 'AND DTE_HOL__c <= :holidayEndDate) '
+                        + 'OR (DTE_OBSERVED_HOL__c >= :holidayStartDate '
+                        + 'AND DTE_OBSERVED_HOL__c <= :holidayEndDate)';
                 }
                 soql += ' ORDER BY DTE_HOL__c ASC';
                 

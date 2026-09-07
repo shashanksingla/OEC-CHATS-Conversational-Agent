@@ -1,3 +1,9 @@
+import { normalizeFiscalRateResponse } from "./fiscal-rate-normalizer.js";
+import {
+  selectFiscalScheduleForAuthorization,
+  type FiscalScheduleCandidate,
+} from "./authorization-fiscal-schedule-matcher.js";
+
 export interface ApiEnvelope {
   isSuccess: boolean;
   errorMessage?: string;
@@ -47,6 +53,7 @@ export class CccapClient {
   private providerExternalNames = new Set<string>();
   private countyIds = new Set<string>();
   private fiscalScheduleIds = new Set<string>();
+  private fiscalSchedules: FiscalScheduleCandidate[] = [];
   private readonly readCache = new Map<string, unknown>();
 
   public constructor(options: ClientOptions) {
@@ -72,6 +79,7 @@ export class CccapClient {
       "Rate_Schedules__r",
       "IDN_EXTNL__c",
     );
+    this.fiscalSchedules = this.extractFiscalSchedules(result.fiscalAgreements);
     if (this.providerSalesforceIds.size === 0 || this.providerExternalNames.size === 0) {
       throw new Error("No provider identifiers were returned for the configured user");
     }
@@ -96,13 +104,33 @@ export class CccapClient {
       caseIds?: string[] | undefined;
       countyIds?: string[] | undefined;
       authNames?: string[] | undefined;
+      careDate?: string | undefined;
     },
   ): Promise<unknown> {
-    return this.cachedCall("getAuthData", {
+    const data = await this.cachedCall("getAuthData", {
       ...input,
       countyIds: this.allowedCounties(input.countyIds),
       providerIds: this.allowedProviders(),
     });
+    const response = this.requireRecord(data, "getAuthData.data");
+    const careDate = input.careDate ?? input.dateFrom ?? new Date().toISOString().slice(0, 10);
+    const authorizations = response.authorizations;
+    const slotContracts = response.slotContracts;
+    if (!Array.isArray(authorizations)) {
+      return { ...response, normalizedAuthorizations: [] };
+    }
+    return {
+      ...response,
+      normalizedAuthorizations: authorizations.map((authorization) => ({
+        authorization,
+        fiscalScheduleMatch: selectFiscalScheduleForAuthorization(
+          authorization,
+          slotContracts,
+          this.fiscalSchedules,
+          careDate,
+        ),
+      })),
+    };
   }
 
   public async getCountyData(
@@ -128,10 +156,22 @@ export class CccapClient {
     if (this.fiscalScheduleIds.size === 0) {
       throw new Error("No authorized fiscal rate schedules were returned for the provider");
     }
-    return this.cachedCall("getFiscalRates", {
+    const data = await this.cachedCall("getFiscalRates", {
       ...input,
       providerIds: this.allowedProviders(),
       fiscalScheduleIds: [...this.fiscalScheduleIds],
+    });
+    const response = this.requireRecord(data, "getFiscalRates.data");
+    return {
+      ...response,
+      normalizedFiscalRates: normalizeFiscalRateResponse(response),
+    };
+  }
+
+  public async getPaymentHistory(input: DateScope): Promise<unknown> {
+    return this.cachedCall("getPaymentHistory", {
+      ...input,
+      providerIds: this.allowedProviders(),
     });
   }
 
@@ -146,6 +186,38 @@ export class CccapClient {
   private allowedProviders(): string[] {
     this.requireInitialized();
     return [...this.providerSalesforceIds];
+  }
+
+  private extractFiscalSchedules(value: unknown): FiscalScheduleCandidate[] {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((agreementValue) => {
+      const agreement = this.requireRecord(agreementValue, "fiscalAgreements");
+      const countyId = agreement.CDE_COUNTY__c;
+      const scheduleRelationship = agreement.Rate_Schedules__r;
+      if (scheduleRelationship === undefined || scheduleRelationship === null) return [];
+      const schedules = this.requireRecord(scheduleRelationship, "Rate_Schedules__r").records;
+      if (typeof countyId !== "string" || !Array.isArray(schedules)) return [];
+      return schedules.flatMap((scheduleValue) => {
+        const schedule = this.requireRecord(scheduleValue, "Rate_Schedules__r.records");
+        if (
+          typeof schedule.Id !== "string"
+          || typeof schedule.IDN_EXTNL__c !== "string"
+          || typeof schedule.CDE_RATE_TYPE__c !== "string"
+          || typeof schedule.DTE_BEGIN_EFFV__c !== "string"
+        ) return [];
+        const candidate: FiscalScheduleCandidate = {
+          id: schedule.Id,
+          externalId: schedule.IDN_EXTNL__c,
+          countyId,
+          rateTypeCode: schedule.CDE_RATE_TYPE__c,
+          beginDate: schedule.DTE_BEGIN_EFFV__c,
+        };
+        if (typeof schedule.DTE_END_EFFV__c === "string") {
+          candidate.endDate = schedule.DTE_END_EFFV__c;
+        }
+        return [candidate];
+      });
+    });
   }
 
   private allowedCaseProviderNames(): string[] {

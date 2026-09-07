@@ -191,26 +191,28 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         authorization_dates = sorted(child.pop("authorization_dates"))
         authorization_names = sorted(child.pop("authorization_names"))
         if child["pending_confirmation_days"]:
-            note = (
-                f"{child['pending_confirmation_days']} pending parent confirmation "
-                "day(s) require review."
-            )
+            note = f"{child['pending_confirmation_days']} pending parent confirmation day(s) require review."
             potential_impact = "Payment remains conditional until confirmation is completed."
-        elif (
+            if child["probable_absence_days"]:
+                note += f" {child['probable_absence_days']} probable absence day(s) are outside the confirmation window."
+        if (
             child["absence_limit"] is not None
             and child["probable_absence_days"] > child["absence_limit"]
         ):
             excess_days = child["probable_absence_days"] - child["absence_limit"]
-            note = f"{child['probable_absence_days']} probable absence days exceed the county limit."
-            potential_impact = (
-                f"Up to {excess_days} absence day(s) may be excluded from reimbursement."
-            )
+            absence_note = f"{child['probable_absence_days']} probable absence day(s) exceed the county limit."
+            absence_impact = f"Up to {excess_days} absence day(s) may be excluded from reimbursement."
+            note = f"{note} {absence_note}" if child["pending_confirmation_days"] else absence_note
+            potential_impact = f"{potential_impact} {absence_impact}" if child["pending_confirmation_days"] else absence_impact
         elif child["absence_limit"] is not None and child["probable_absence_days"] >= child["absence_limit"] - 2:
             days_until_exceeded = child["absence_limit"] - child["probable_absence_days"] + 1
             note = f"{child['probable_absence_days']} probable absence days are within the county limit threshold."
             potential_impact = (
                 f"The county limit may be exceeded after {days_until_exceeded} more absence day(s)."
             )
+        elif child["probable_absence_days"]:
+            note = f"{child['probable_absence_days']} probable absence day(s) require review."
+            potential_impact = "Payment may remain conditional until attendance is confirmed."
         else:
             note = f"{child['scheduled_days']} scheduled day(s) reviewed with no current category risk."
             potential_impact = "No direct payment impact was calculated from the returned attendance data."

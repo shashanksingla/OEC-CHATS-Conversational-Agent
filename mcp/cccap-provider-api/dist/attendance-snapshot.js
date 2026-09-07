@@ -4,8 +4,10 @@ import { promisify } from "node:util";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildCanonicalPaymentPayload, deriveAttendanceEnrichment, normalizeFiscalRatesForPayment, normalizeAuthorizationCopays, normalizePaymentFeeHistory, normalizePaymentFeeSchedules, normalizeQualityTier, } from "./payment-payload-adapter.js";
 const execFileAsync = promisify(execFile);
 const evaluatorPath = fileURLToPath(new URL("../../../skills/agent-child-care-payment-advisor/scripts/evaluate_attendance_risks.py", import.meta.url));
+const paymentEvaluatorPath = fileURLToPath(new URL("../../../skills/agent-child-care-payment-advisor/scripts/provider_risk_payment_engine.py", import.meta.url));
 function asRecord(value) {
     return value && typeof value === "object" && !Array.isArray(value)
         ? value
@@ -16,6 +18,15 @@ function transactionType(recordType) {
         return 1;
     if (recordType === "Check-Out")
         return 2;
+    return undefined;
+}
+export function normalizePaymentStatus(value) {
+    const status = String(value ?? "").trim().toUpperCase();
+    if (status === "4" || status === "PAID")
+        return "PAID";
+    if (["1", "2", "3", "CREATED", "IN_PROGRESS", "CALCULATED", "REQUESTED"].includes(status)) {
+        return "REQUESTED";
+    }
     return undefined;
 }
 function nestedCountyName(schedule) {
@@ -40,7 +51,13 @@ export function addDefaultCountyToSchedules(schedules, defaultCountyId) {
             : { ...schedule, countyId: defaultCountyId };
     });
 }
-export function normalizeScheduleAttendance(schedules, defaultCountyId) {
+export function addProviderQualityTierToSchedules(schedules, providerQualityTier) {
+    return schedules.map((value) => {
+        const schedule = asRecord(value);
+        return schedule ? { ...schedule, qualityTier: providerQualityTier } : value;
+    });
+}
+export function normalizeScheduleAttendance(schedules, defaultCountyId, providerQualityTier) {
     const transactions = [];
     const normalizedSchedules = [];
     for (const value of schedules) {
@@ -58,6 +75,7 @@ export function normalizeScheduleAttendance(schedules, defaultCountyId) {
             .map((record) => ({
             transaction_id: record.Id,
             schedule_id: record.Schedule__c ?? scheduleId,
+            authorization_id: schedule.CI_Authorization_Id__c,
             work_date: typeof workDate === "string" ? workDate : undefined,
             transaction_time: record.CI_Transaction_Time__c,
             attended_hours: record.Record_Type_Name__c === "Check-Out" ? schedule.Hours__c : undefined,
@@ -73,12 +91,22 @@ export function normalizeScheduleAttendance(schedules, defaultCountyId) {
             .map((transaction) => transaction.transaction_time)
             .filter((timestamp) => typeof timestamp === "string")
             .sort();
-        normalizedSchedules.push({
+        const parentStatuses = new Set(scheduleTransactions
+            .map((transaction) => transaction.status)
+            .filter((status) => typeof status === "string"));
+        const authorization = asRecord(schedule.Authorization__r);
+        const normalizedSchedule = {
             schedule_id: scheduleId,
+            authorization_id: schedule.CI_Authorization_Id__c ??
+                schedule.Authorization__c ??
+                schedule.IDN_AUTH__c ??
+                schedule.Authorization_Id__c ??
+                authorization?.Id,
             child_name: schedule.Contact_Name__c,
             county_id: schedule.County__c ?? schedule.county_id ?? defaultCountyId,
             county_name: nestedCountyName(schedule),
-            quality_tier: schedule.CI_Authorization_Rate_Type__c,
+            quality_tier: providerQualityTier,
+            rate_type_code: schedule.CI_Authorization_Rate_Type__c,
             work_date: workDate,
             schedule_type: schedule.Type__c ?? schedule.schedule_type,
             is_deleted: false,
@@ -88,12 +116,22 @@ export function normalizeScheduleAttendance(schedules, defaultCountyId) {
             auth_end_date: undefined,
             ci_authorization_hours: schedule.CI_Authorization_Hours__c,
             raw_hours: schedule.Hours__c,
+            care_not_offered: schedule.Care_Not_Offered__c ?? schedule.care_not_offered,
             check_in_count: schedule.Check_In_Count__c,
             check_out_count: schedule.Check_Out_Count__c,
             attended_flag: scheduleTransactions.length > 0,
             actual_start_ts: timestamps[0],
             actual_end_ts: timestamps[timestamps.length - 1],
-        });
+        };
+        if (parentStatuses.has("PARENT_PENDING")) {
+            normalizedSchedule.parent_confirmation = "PENDING";
+            normalizedSchedule.absence_parent_approved = false;
+        }
+        else if (parentStatuses.has("PARENT_APPROVED")) {
+            normalizedSchedule.parent_confirmation = "CONFIRMED";
+            normalizedSchedule.absence_parent_approved = true;
+        }
+        normalizedSchedules.push(normalizedSchedule);
     }
     return { schedules: normalizedSchedules, transactions };
 }
@@ -129,8 +167,20 @@ function requireArray(value, label) {
     }
     return value;
 }
-export async function getCurrentMonthAttendanceSnapshot(client, providerDisplayName, asOfDate) {
-    const snapshot = await getAttendanceRiskAnalysis(client, providerDisplayName, { dateFilter: "THIS_MONTH" }, asOfDate);
+function attendancePeriodLabel(scope) {
+    if (scope.dateFilter === "LAST_MONTH")
+        return "Last-month";
+    if (scope.dateFilter === "THIS_MONTH")
+        return "Current-month";
+    if (scope.dateFilter === "DATE_RANGE")
+        return "Date-range";
+    if (scope.dateFilter === "LAST_N_MONTHS" || scope.dateFilter === "LAST_N_DAYS") {
+        return "Historical";
+    }
+    return "Today";
+}
+export async function getAttendanceRiskSnapshot(client, providerDisplayName, scope, asOfDate) {
+    const snapshot = await getAttendanceRiskAnalysis(client, providerDisplayName, scope, asOfDate);
     const risk = requireRecord(snapshot.attendanceRisk, "Attendance risk evaluation");
     const today = requireRecord(risk.today, "Today's attendance snapshot");
     const categories = requireRecord(risk.risk_categories, "Attendance risk categories");
@@ -162,7 +212,7 @@ export async function getCurrentMonthAttendanceSnapshot(client, providerDisplayN
     ];
     const nextActions = [];
     if (pendingDays > 0) {
-        nextActions.push("Review and complete the pending parent confirmations");
+        nextActions.push("Review pending parent confirmations in the provider system");
     }
     if (approachingChildren > 0 || crossedChildren > 0) {
         nextActions.push("Review the affected children, county limits, and absence dates");
@@ -171,16 +221,27 @@ export async function getCurrentMonthAttendanceSnapshot(client, providerDisplayN
         nextActions.push("Review attendance records for missing or incomplete check-ins");
     }
     nextActions.push("View next payout details");
+    const isToday = (scope.dateFilter ?? "TODAY") === "TODAY";
+    const snapshotHeading = isToday ? "Today's snapshot" : `${attendancePeriodLabel(scope)} snapshot`;
+    const snapshotRows = isToday
+        ? [
+            "| Today | Count |",
+            "| --- | ---: |",
+            `| Children scheduled | ${today.scheduled_children} |`,
+            `| Children checked in | ${today.checked_in_children} |`,
+        ]
+        : [
+            "| Period measure | Count |",
+            "| --- | ---: |",
+            `| Scheduled days reviewed | ${numberValue(risk.scheduled_days)} |`,
+        ];
     return {
         ...snapshot,
         providerMessage: [
             `Greetings for the day, ${snapshot.providerDisplayName}. Here's where things stand at ${snapshot.facilityName}.`,
             "",
-            "Today's snapshot",
-            "| Today | Count |",
-            "| --- | ---: |",
-            `| Children scheduled | ${today.scheduled_children} |`,
-            `| Children checked in | ${today.checked_in_children} |`,
+            snapshotHeading,
+            ...snapshotRows,
             "",
             "**Payment-readiness risks**",
             "| Area | Finding | Suggested next step |",
@@ -192,6 +253,9 @@ export async function getCurrentMonthAttendanceSnapshot(client, providerDisplayN
         ].join("\n"),
     };
 }
+export async function getCurrentMonthAttendanceSnapshot(client, providerDisplayName, asOfDate) {
+    return getAttendanceRiskSnapshot(client, providerDisplayName, { dateFilter: "THIS_MONTH" }, asOfDate);
+}
 export async function getAttendanceRiskAnalysis(client, providerDisplayName, scope, asOfDate, childNames) {
     const initialization = requireRecord(await client.initialize(scope), "Provider context");
     const providers = requireArray(initialization.providers, "Provider facility");
@@ -200,6 +264,7 @@ export async function getAttendanceRiskAnalysis(client, providerDisplayName, sco
     if (typeof facilityName !== "string" || !facilityName) {
         throw new Error("Provider facility name is unavailable");
     }
+    const providerTier = normalizeQualityTier(provider.TXT_CHATS_RATING__c, provider.CDE_TYPE_PROVR__c);
     const countyIds = [
         ...new Set(requireArray(initialization.fiscalAgreements, "Provider county agreements")
             .map((agreement) => requireRecord(agreement, "Provider county agreement").CDE_COUNTY__c)
@@ -214,7 +279,7 @@ export async function getAttendanceRiskAnalysis(client, providerDisplayName, sco
     ]);
     const ratePlans = requireArray(requireRecord(ratePlanData, "County rate plans").countyRatePlans, "County rate plans");
     const schedules = requireArray(requireRecord(scheduleData, "Schedules").schedules, "Schedules");
-    const scopedSchedules = addDefaultCountyToSchedules(schedules, countyIds.length === 1 ? countyIds[0] : undefined);
+    const scopedSchedules = addProviderQualityTierToSchedules(addDefaultCountyToSchedules(schedules, countyIds.length === 1 ? countyIds[0] : undefined), providerTier);
     const directory = await mkdtemp(join(tmpdir(), "carepay-snapshot-"));
     const inputPath = join(directory, "snapshot.json");
     try {
@@ -245,6 +310,8 @@ export async function getAttendanceRiskAnalysis(client, providerDisplayName, sco
 }
 export async function getAttendanceDataAnalysis(client, scope) {
     const initialization = requireRecord(await client.initialize(scope), "Provider context");
+    const provider = firstArrayRecord(initialization.providers, "Provider facility");
+    const providerTier = normalizeQualityTier(provider.TXT_CHATS_RATING__c, provider.CDE_TYPE_PROVR__c);
     const countyIds = [
         ...new Set(requireArray(initialization.fiscalAgreements, "Provider county agreements")
             .map((agreement) => requireRecord(agreement, "Provider county agreement").CDE_COUNTY__c)
@@ -258,7 +325,7 @@ export async function getAttendanceDataAnalysis(client, scope) {
         client.getSchedules(scope),
     ]);
     const rawSchedules = requireArray(requireRecord(scheduleData, "Schedules").schedules, "Schedules");
-    const normalized = normalizeScheduleAttendance(rawSchedules, countyIds.length === 1 ? countyIds[0] : undefined);
+    const normalized = normalizeScheduleAttendance(rawSchedules, countyIds.length === 1 ? countyIds[0] : undefined, providerTier);
     const scheduleDates = normalized.schedules
         .map((schedule) => schedule.work_date)
         .filter((value) => typeof value === "string")
@@ -288,6 +355,103 @@ export async function getAttendanceDataAnalysis(client, scope) {
         if (evaluated.status !== "ok" || !evaluated.result) {
             throw new Error(evaluated.error || "Attendance transaction analysis failed");
         }
+        return evaluated.result;
+    }
+    finally {
+        await rm(directory, { recursive: true, force: true });
+    }
+}
+function firstArrayRecord(value, label) {
+    if (!Array.isArray(value) || value.length === 0)
+        throw new Error(`${label} is unavailable`);
+    return requireRecord(value[0], label);
+}
+export async function getPaymentAnalysis(client, scope) {
+    const initialization = requireRecord(await client.initialize(scope), "Provider context");
+    const providers = requireArray(initialization.providers, "Provider facility");
+    const provider = firstArrayRecord(providers, "Provider facility");
+    const providerTier = normalizeQualityTier(provider.TXT_CHATS_RATING__c, provider.CDE_TYPE_PROVR__c);
+    const countyIds = requireArray(initialization.fiscalAgreements, "Provider county agreements")
+        .map((value) => requireRecord(value, "Provider county agreement").CDE_COUNTY__c)
+        .filter((value) => typeof value === "string");
+    if (countyIds.length === 0)
+        throw new Error("Provider county agreements are unavailable");
+    const [servicePeriodData, authorizationData, countyData, scheduleData, fiscalData, holidayData, paymentData] = await Promise.all([
+        client.getServicePeriods({ ...scope, limitOne: true, dateFilter: scope.dateFilter }),
+        client.getAuthorizations({ ...scope, countyIds, careDate: scope.dateFrom }),
+        client.getCountyData({ ...scope, countyIds }),
+        client.getSchedules(scope),
+        client.getFiscalRates(scope),
+        client.getHolidayList(scope),
+        client.getPaymentHistory(scope),
+    ]);
+    const servicePeriod = firstArrayRecord(requireRecord(servicePeriodData, "Service periods").servicePeriods, "Service period");
+    const authResponse = requireRecord(authorizationData, "Authorizations");
+    const normalizedAuthorizations = requireArray(authResponse.normalizedAuthorizations, "Normalized authorizations");
+    const authorizationMatches = {};
+    const authorizations = normalizedAuthorizations.map((value) => {
+        const row = requireRecord(value, "Normalized authorization");
+        const authorization = requireRecord(row.authorization, "Authorization");
+        const id = typeof authorization.Id === "string" ? authorization.Id : undefined;
+        const match = requireRecord(row.fiscalScheduleMatch, "Fiscal schedule match");
+        if (!id || match.status !== "MATCHED" || typeof match.fiscalScheduleId !== "string") {
+            throw new Error("Authorization fiscal schedule mapping is incomplete");
+        }
+        authorizationMatches[id] = match.fiscalScheduleId;
+        return {
+            id,
+            county_id: authorization.CDE_COUNTY__c,
+            quality_tier: providerTier,
+            drop_in_limit: authorization.Number_of_Drop_in_Days__c,
+        };
+    });
+    const rawSchedules = requireArray(requireRecord(scheduleData, "Schedules").schedules, "Schedules");
+    const normalized = normalizeScheduleAttendance(rawSchedules, countyIds.length === 1 ? countyIds[0] : undefined, providerTier);
+    const enrichment = deriveAttendanceEnrichment(normalized.schedules, authorizationData, holidayData);
+    const countyPolicies = requireArray(requireRecord(countyData, "County policies").countyRatePlans, "County policies")
+        .map((value) => {
+        const policy = requireRecord(value, "County policy");
+        const absenceField = `absenceDaysTier${providerTier}`;
+        const absenceLimit = policy[absenceField];
+        if (typeof absenceLimit !== "number")
+            throw new Error(`County policy ${absenceField} is unavailable`);
+        return {
+            county_id: policy.countyId,
+            quality_tier: providerTier,
+            absence_limit: absenceLimit,
+            allow_paid_holidays: policy["allowPaidHolidays?"],
+            county_holiday_list: policy.countyholidayList,
+            allow_drop_in_days: policy.allowDropInDays,
+            max_drop_in_days_per_month: policy.maxDropInDaysPerMonth,
+            drop_in_response: policy.dropInResponse,
+            manage_drop_in_at_auth_level: policy.manageDropInAtAuthLevel,
+        };
+    });
+    const fiscalResponse = requireRecord(fiscalData, "Fiscal rates");
+    const normalizedFiscal = requireRecord(fiscalResponse.normalizedFiscalRates, "Normalized fiscal rates");
+    const fiscalRates = normalizeFiscalRatesForPayment(normalizedFiscal.fiscalRates, authorizationMatches);
+    const feeSchedules = normalizePaymentFeeSchedules(normalizedFiscal.fiscalRates, normalizedFiscal.fiscalRateFees, authResponse.slotContracts, authorizationMatches);
+    const payload = buildCanonicalPaymentPayload({
+        servicePeriod,
+        schedules: normalized.schedules,
+        attendanceEnrichmentByAuthorization: enrichment,
+        authorizations,
+        countyPolicies,
+        fiscalRates,
+        paymentHistory: paymentData,
+        feeSchedules,
+        feeHistory: normalizePaymentFeeHistory(paymentData),
+    });
+    const authorizationCopays = normalizeAuthorizationCopays(authResponse.authorizationCopays);
+    payload.authorization_copays = authorizationCopays;
+    const directory = await mkdtemp(join(tmpdir(), "carepay-payment-"));
+    const inputPath = join(directory, "payment.json");
+    try {
+        await writeFile(inputPath, JSON.stringify(payload), "utf8");
+        const { stdout } = await execFileAsync("uv", ["run", paymentEvaluatorPath, inputPath], { windowsHide: true });
+        const evaluated = JSON.parse(stdout);
+        if (evaluated.status !== "ok" || !evaluated.result)
+            throw new Error(evaluated.error || "Payment evaluation failed");
         return evaluated.result;
     }
     finally {

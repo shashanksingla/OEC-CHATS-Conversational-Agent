@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
-import { getAttendanceDataAnalysis, getAttendanceRiskAnalysis, getCurrentMonthAttendanceSnapshot, } from "./attendance-snapshot.js";
-import { authorizationSchema, attendanceAnalysisSchema, attendanceDataSchema, caseSchema, countySchema, dateScopeSchema, fiscalRatesSchema, schedulesSchema, servicePeriodSchema, } from "./schemas.js";
+import { getAttendanceDataAnalysis, getAttendanceRiskAnalysis, getAttendanceRiskSnapshot, getCurrentMonthAttendanceSnapshot, getPaymentAnalysis, } from "./attendance-snapshot.js";
+import { authorizationSchema, attendanceAnalysisSchema, attendanceDataSchema, caseSchema, countySchema, dateScopeSchema, fiscalRatesSchema, paymentHistorySchema, paymentAnalysisSchema, schedulesSchema, servicePeriodSchema, } from "./schemas.js";
 const readOnlyAnnotations = {
     readOnlyHint: true,
     destructiveHint: false,
@@ -25,8 +25,20 @@ function snapshotResult(data) {
     if (typeof providerMessage !== "string" || providerMessage.length === 0) {
         return result(data);
     }
+    const risk = recordValue(snapshot.attendanceRisk);
+    const children = risk && Array.isArray(risk.children)
+        ? risk.children
+            .map(recordValue)
+            .filter((child) => Boolean(child))
+        : [];
     return {
         content: [{ type: "text", text: providerMessage }],
+        structuredContent: {
+            capability: "attendance-risk-snapshot",
+            scope: snapshot.scope,
+            sourceFreshness: "evaluated-at-call",
+            actionIntents: risk ? actionMetadata(snapshot.scope, risk, children) : [],
+        },
     };
 }
 function recordValue(value) {
@@ -58,6 +70,67 @@ function authorizationNames(value) {
 function numericValue(value) {
     return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
+function attendanceScopeLabel(scope) {
+    const dateFilter = recordValue(scope)?.dateFilter;
+    if (dateFilter === "LAST_MONTH")
+        return "Last-month";
+    if (dateFilter === "THIS_MONTH")
+        return "Current-month";
+    if (dateFilter === "DATE_RANGE")
+        return "Date-range";
+    if (dateFilter === "TODAY")
+        return "Today";
+    return "Attendance-risk";
+}
+function actionMetadata(scope, risk, children) {
+    const childNamesFor = (code) => children
+        .filter((child) => Array.isArray(child.risk_codes) && child.risk_codes.includes(code))
+        .map((child) => child.child_name)
+        .filter((name) => typeof name === "string");
+    const actions = [];
+    if (numericValue(risk.pending_confirmation_days) > 0) {
+        actions.push({
+            actionId: "review-pending-parent-confirmations",
+            capability: "attendance-risk-analysis",
+            label: "Review pending parent confirmations in the provider system",
+            scope,
+            childNames: childNamesFor("PARENT_CONFIRMATION_PENDING"),
+        });
+    }
+    const absenceChildren = children.filter((child) => Array.isArray(child.risk_codes) && child.risk_codes.some((code) => typeof code === "string" && code.startsWith("ABSENCE_LIMIT_")));
+    if (absenceChildren.length > 0) {
+        actions.push({
+            actionId: "review-absence-limit-risk",
+            capability: "attendance-risk-analysis",
+            label: "Review county absence limits for the affected children",
+            scope,
+            childNames: absenceChildren
+                .map((child) => child.child_name)
+                .filter((name) => typeof name === "string"),
+        });
+    }
+    return actions;
+}
+function sourceIntegrityError(scope, message) {
+    return {
+        isError: true,
+        content: [{
+                type: "text",
+                text: JSON.stringify({
+                    error: {
+                        code: "PROVIDER_DATA_INCONSISTENT",
+                        capability: "attendance-risk analysis",
+                        scope,
+                        message,
+                        nextSteps: [
+                            "Retry the same request once",
+                            "Review data quality if the problem continues",
+                        ],
+                    },
+                }),
+            }],
+    };
+}
 export function formatAttendanceRiskResult(data) {
     const analysis = recordValue(data);
     const risk = analysis && recordValue(analysis.attendanceRisk);
@@ -74,28 +147,38 @@ export function formatAttendanceRiskResult(data) {
     const absenceChildren = affectedChildren.filter((child) => Array.isArray(child.risk_codes) &&
         child.risk_codes.some((code) => typeof code === "string" && code.startsWith("ABSENCE_LIMIT_"))).length;
     const incompleteChildren = affectedChildren.filter((child) => Array.isArray(child.risk_codes) && child.risk_codes.includes("INCOMPLETE_ATTENDANCE_RECORD")).length;
+    const probableAbsenceDays = numericValue(risk.probable_absence_days);
+    const scopeLabel = attendanceScopeLabel(analysis.scope);
+    const childPendingDays = affectedChildren.reduce((total, child) => total + numericValue(child.pending_confirmation_days), 0);
+    const childProbableAbsenceDays = affectedChildren.reduce((total, child) => total + numericValue(child.probable_absence_days), 0);
+    const reportedRiskChildCount = numericValue(risk.risk_child_count);
+    if (childPendingDays !== pendingDays ||
+        childProbableAbsenceDays !== probableAbsenceDays ||
+        (reportedRiskChildCount > 0 && reportedRiskChildCount !== affectedChildren.length)) {
+        return sourceIntegrityError(analysis.scope, "Aggregate attendance risk totals do not match the returned child details.");
+    }
     const hasAuthorizationNames = affectedChildren.some((child) => Array.isArray(child.authorization_names) && child.authorization_names.length > 0);
     const hasCounties = affectedChildren.some((child) => typeof child.county === "string" && child.county.length > 0);
     const lines = [
         affectedChildren.length > 0
-            ? `Current-month attendance review found ${affectedChildren.length} child(ren) needing attention.`
-            : "Current-month attendance review found no child-level attendance risks.",
+            ? `${scopeLabel} attendance review found ${affectedChildren.length} child(ren) needing attention.`
+            : `${scopeLabel} attendance review found no child-level attendance risks.`,
     ];
     if (pendingDays > 0) {
         lines.push(`${pendingDays} pending parent confirmation day(s) affect ${pendingChildren} child(ren).`);
     }
     if (absenceChildren > 0) {
-        lines.push(`${absenceChildren} child(ren) have an absence-limit concern.`);
+        lines.push(`${absenceChildren} child(ren) have an absence-limit concern${probableAbsenceDays > 0 ? ` (${probableAbsenceDays} probable absence day(s))` : ""}.`);
     }
     if (incompleteChildren > 0) {
         lines.push(`${incompleteChildren} child(ren) have incomplete attendance records.`);
     }
     if (affectedChildren.length > 0) {
-        lines.push("", "| Child name | Household name | County | Authorization name | Authorization dates | Note | Potential impact |", "| --- | --- | --- | --- | --- | --- | --- |", ...affectedChildren.map((child) => `| ${tableValue(child.child_name)} | ${tableValue(child.household_name)} | ${tableValue(child.county)} | ${authorizationNames(child.authorization_names)} | ${authorizationDates(child.authorization_dates)} | ${tableValue(child.note)} | ${tableValue(child.potential_impact)} |`));
+        lines.push("", "| Child name | Household name | County | Authorization name | Service dates | Note | Potential impact |", "| --- | --- | --- | --- | --- | --- | --- |", ...affectedChildren.map((child) => `| ${tableValue(child.child_name)} | ${tableValue(child.household_name)} | ${tableValue(child.county)} | ${authorizationNames(child.authorization_names)} | ${authorizationDates(child.authorization_dates)} | ${tableValue(child.note)} | ${tableValue(child.potential_impact)} |`));
     }
     const nextActions = [];
     if (pendingDays > 0) {
-        nextActions.push("Review and complete the pending parent confirmations");
+        nextActions.push("Review pending parent confirmations in the provider system");
         if (hasAuthorizationNames) {
             nextActions.push("Review authorization details for the affected children");
         }
@@ -113,7 +196,18 @@ export function formatAttendanceRiskResult(data) {
         nextActions.push("View next payout details");
     }
     lines.push("", "**Next actions**", ...nextActions.map((action, index) => `${index + 1}. ${action}`));
-    return { content: [{ type: "text", text: lines.join("\n") }] };
+    return {
+        content: [{ type: "text", text: lines.join("\n") }],
+        structuredContent: {
+            capability: "attendance-risk-analysis",
+            scope: analysis.scope,
+            sourceFreshness: "evaluated-at-call",
+            actionIntents: actionMetadata(analysis.scope, risk, affectedChildren),
+            affectedChildNames: affectedChildren
+                .map((child) => child.child_name)
+                .filter((name) => typeof name === "string"),
+        },
+    };
 }
 function toolError(capability, error) {
     void error;
@@ -150,6 +244,12 @@ export function createServer(client, providerDisplayName) {
         name: "cccap-provider-api",
         version: "1.0.0",
     });
+    server.registerTool("cccap_get_attendance_risk_snapshot", {
+        title: "Get CCCAP Attendance Risk Snapshot",
+        description: "Get a provider-scoped attendance risk snapshot for the requested date range. Use this for current-month, last-month, or explicit date-range snapshot requests; use cccap_analyze_attendance_risk for child-level follow-up details.",
+        inputSchema: dateScopeSchema.shape,
+        annotations: readOnlyAnnotations,
+    }, async (input) => execute("attendance-risk snapshot", () => getAttendanceRiskSnapshot(client, providerDisplayName, input, new Date().toISOString().slice(0, 10)), snapshotResult));
     server.registerTool("cccap_get_current_month_risk_snapshot", {
         title: "Get Current-Month Payment Risk Snapshot",
         description: "Get the authenticated provider's current-month attendance risk snapshot. This one read-only tool initializes provider scope, retrieves authorized county plans and schedules, and runs the deterministic attendance evaluator. Use first for a provider greeting or dashboard snapshot.",
@@ -216,5 +316,17 @@ export function createServer(client, providerDisplayName) {
         inputSchema: dateScopeSchema.shape,
         annotations: readOnlyAnnotations,
     }, async (input) => execute("holiday-calendar retrieval", () => client.getHolidayList(input)));
+    server.registerTool("cccap_analyze_payment", {
+        title: "Analyze CCCAP Payment",
+        description: "Retrieve provider-scoped read-only CCCAP inputs and run the deterministic payment engine. Returns expected, conditional, duplicate-guard, or blocked results without performing payment actions.",
+        inputSchema: paymentAnalysisSchema.shape,
+        annotations: readOnlyAnnotations,
+    }, async (input) => execute("payment analysis", () => getPaymentAnalysis(client, input)));
+    server.registerTool("cccap_get_payment_history", {
+        title: "Get CCCAP Payment History",
+        description: "After initialization, retrieve read-only sub-payment history for the authenticated provider and the requested service-period date scope. The server resolves the date scope to overlapping service periods before querying payments, so use this to detect existing paid or requested payments before any future payout calculation.",
+        inputSchema: paymentHistorySchema.shape,
+        annotations: readOnlyAnnotations,
+    }, async (input) => execute("payment-history retrieval", () => client.getPaymentHistory(input)));
     return server;
 }

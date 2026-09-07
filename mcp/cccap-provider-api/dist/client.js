@@ -1,3 +1,5 @@
+import { normalizeFiscalRateResponse } from "./fiscal-rate-normalizer.js";
+import { selectFiscalScheduleForAuthorization, } from "./authorization-fiscal-schedule-matcher.js";
 export class CccapClient {
     targetOrg;
     providerUserId;
@@ -6,6 +8,7 @@ export class CccapClient {
     providerExternalNames = new Set();
     countyIds = new Set();
     fiscalScheduleIds = new Set();
+    fiscalSchedules = [];
     readCache = new Map();
     constructor(options) {
         this.targetOrg = options.targetOrg;
@@ -22,6 +25,7 @@ export class CccapClient {
         this.providerExternalNames = this.extractIds(result.providers, "Name");
         this.countyIds = this.extractIds(result.fiscalAgreements, "CDE_COUNTY__c");
         this.fiscalScheduleIds = this.extractNestedIds(result.fiscalAgreements, "Rate_Schedules__r", "IDN_EXTNL__c");
+        this.fiscalSchedules = this.extractFiscalSchedules(result.fiscalAgreements);
         if (this.providerSalesforceIds.size === 0 || this.providerExternalNames.size === 0) {
             throw new Error("No provider identifiers were returned for the configured user");
         }
@@ -38,11 +42,25 @@ export class CccapClient {
         });
     }
     async getAuthorizations(input) {
-        return this.cachedCall("getAuthData", {
+        const data = await this.cachedCall("getAuthData", {
             ...input,
             countyIds: this.allowedCounties(input.countyIds),
             providerIds: this.allowedProviders(),
         });
+        const response = this.requireRecord(data, "getAuthData.data");
+        const careDate = input.careDate ?? input.dateFrom ?? new Date().toISOString().slice(0, 10);
+        const authorizations = response.authorizations;
+        const slotContracts = response.slotContracts;
+        if (!Array.isArray(authorizations)) {
+            return { ...response, normalizedAuthorizations: [] };
+        }
+        return {
+            ...response,
+            normalizedAuthorizations: authorizations.map((authorization) => ({
+                authorization,
+                fiscalScheduleMatch: selectFiscalScheduleForAuthorization(authorization, slotContracts, this.fiscalSchedules, careDate),
+            })),
+        };
     }
     async getCountyData(input) {
         return this.cachedCall("getCountyData", {
@@ -61,10 +79,21 @@ export class CccapClient {
         if (this.fiscalScheduleIds.size === 0) {
             throw new Error("No authorized fiscal rate schedules were returned for the provider");
         }
-        return this.cachedCall("getFiscalRates", {
+        const data = await this.cachedCall("getFiscalRates", {
             ...input,
             providerIds: this.allowedProviders(),
             fiscalScheduleIds: [...this.fiscalScheduleIds],
+        });
+        const response = this.requireRecord(data, "getFiscalRates.data");
+        return {
+            ...response,
+            normalizedFiscalRates: normalizeFiscalRateResponse(response),
+        };
+    }
+    async getPaymentHistory(input) {
+        return this.cachedCall("getPaymentHistory", {
+            ...input,
+            providerIds: this.allowedProviders(),
         });
     }
     async getServicePeriods(input) {
@@ -76,6 +105,39 @@ export class CccapClient {
     allowedProviders() {
         this.requireInitialized();
         return [...this.providerSalesforceIds];
+    }
+    extractFiscalSchedules(value) {
+        if (!Array.isArray(value))
+            return [];
+        return value.flatMap((agreementValue) => {
+            const agreement = this.requireRecord(agreementValue, "fiscalAgreements");
+            const countyId = agreement.CDE_COUNTY__c;
+            const scheduleRelationship = agreement.Rate_Schedules__r;
+            if (scheduleRelationship === undefined || scheduleRelationship === null)
+                return [];
+            const schedules = this.requireRecord(scheduleRelationship, "Rate_Schedules__r").records;
+            if (typeof countyId !== "string" || !Array.isArray(schedules))
+                return [];
+            return schedules.flatMap((scheduleValue) => {
+                const schedule = this.requireRecord(scheduleValue, "Rate_Schedules__r.records");
+                if (typeof schedule.Id !== "string"
+                    || typeof schedule.IDN_EXTNL__c !== "string"
+                    || typeof schedule.CDE_RATE_TYPE__c !== "string"
+                    || typeof schedule.DTE_BEGIN_EFFV__c !== "string")
+                    return [];
+                const candidate = {
+                    id: schedule.Id,
+                    externalId: schedule.IDN_EXTNL__c,
+                    countyId,
+                    rateTypeCode: schedule.CDE_RATE_TYPE__c,
+                    beginDate: schedule.DTE_BEGIN_EFFV__c,
+                };
+                if (typeof schedule.DTE_END_EFFV__c === "string") {
+                    candidate.endDate = schedule.DTE_END_EFFV__c;
+                }
+                return [candidate];
+            });
+        });
     }
     allowedCaseProviderNames() {
         this.requireInitialized();

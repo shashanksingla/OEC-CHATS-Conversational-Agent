@@ -50,7 +50,7 @@ Use this shape for parent confirmations, attendance exceptions, absence-limit de
 ```text
 [One sentence summary of the risk or finding.]
 
-| Child name | Household name | County | Authorization name | Authorization dates | Note | Potential impact |
+| Child name | Household name | County | Authorization name | Service dates | Note | Potential impact |
 | --- | --- | --- | --- | --- | --- | --- |
 | [child] | [household or unavailable field marker] | [county or unavailable field marker] | [authorization or unavailable field marker] | [dates or unavailable field marker] | [precise count/date/status] | [conditional payment, possible exclusion, review required, or unavailable impact] |
 

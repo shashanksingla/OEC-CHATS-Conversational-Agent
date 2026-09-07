@@ -187,11 +187,84 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
             "occupied_slot_contract": True,
             "attended_hours": 0,
         })
+        payload["fee_schedules"] = [{
+            "authorization_id": "auth-1",
+            "effective_start": "2026-09-01",
+            "slot_rate_amount": "9.00",
+            "days_of_month": 5,
+        }]
 
         result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
 
         self.assertEqual(result["attendance"]["days"][0]["classification"], "SLOT_CONTRACT_HOLIDAY")
-        self.assertEqual(result["payment"]["amount"], "45.00")
+        self.assertEqual(result["payment"]["amount"], "9.00")
+
+    def test_occupied_slot_replaces_regular_rate_but_vacant_slot_is_additive(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"][0]["slot_contract_present"] = True
+        payload["attendance_days"][0]["occupied_slot_contract"] = True
+        payload["fee_schedules"] = [{
+            "authorization_id": "auth-1",
+            "effective_start": "2026-09-01",
+            "slot_rate_amount": "6.00",
+            "days_of_month": 5,
+        }]
+
+        occupied = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+        self.assertEqual(occupied["payment"]["amount"], "6.00")
+
+        payload["attendance_days"][0]["occupied_slot_contract"] = False
+        vacant = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+        self.assertEqual(vacant["payment"]["amount"], "51.00")
+
+    def test_occupied_slot_regular_day_uses_slot_code_and_no_copay(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"][0]["occupied_slot_contract"] = True
+        payload["authorization_copays"] = [{
+            "authorization_id": "auth-1",
+            "amount": "12.00",
+            "effective_start": "2026-09-01",
+            "effective_end": "2026-09-30",
+        }]
+        payload["fee_schedules"] = [{
+            "authorization_id": "auth-1",
+            "effective_start": "2026-09-01",
+            "slot_rate_amount": "6.00",
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        day = result["attendance"]["days"][0]
+        self.assertEqual(day["classification"], "SLOT_CONTRACT_REGULAR")
+        self.assertEqual(day["info_code"], "8")
+        self.assertEqual(result["payment"]["parent_copay"], "0.00")
+        self.assertEqual(result["payment"]["amount"], "6.00")
+
+    def test_holiday_requires_county_plan_date_when_county_list_is_present(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"][0]["observed_holiday"] = True
+        payload["county_policies"][0]["allow_paid_holidays"] = True
+        payload["county_policies"][0]["county_holiday_list"] = "2026-12-25"
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertFalse(result["attendance"]["days"][0]["payable"])
+        self.assertIn("HOLIDAY_NOT_IN_COUNTY_PLAN", result["attendance"]["days"][0]["flags"])
+
+    def test_holiday_can_match_county_plan_by_name_or_either_date(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"][0].update({
+            "observed_holiday": True,
+            "holiday_name": "Labor Day",
+            "holiday_date": "2026-08-31",
+            "observed_holiday_date": "2026-09-01",
+        })
+        payload["county_policies"][0]["allow_paid_holidays"] = True
+        payload["county_policies"][0]["county_holiday_list"] = ["Labor Day"]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertTrue(result["attendance"]["days"][0]["payable"])
 
     def test_missing_confirmation_source_blocks_payment_conclusion(self) -> None:
         payload = self._complete_input()
@@ -242,6 +315,153 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
 
         self.assertEqual(result["payment"]["status"], "DUPLICATE_GUARD")
 
+    def test_no_payment_care_unit_produces_zero_base_amount(self) -> None:
+        payload = self._complete_input()
+        payload["fiscal_rates"][0]["paid_tier"] = "NO_PAYMENT"
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["payment"]["amount"], "0.00")
+
+    def test_monthly_copay_is_deducted_once_per_authorization_month(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"].append({**payload["attendance_days"][0], "service_date": "2026-09-03"})
+        payload["authorization_copays"] = [{
+            "authorization_id": "auth-1",
+            "amount": "12.00",
+            "effective_start": "2026-09-01",
+            "effective_end": "2026-09-30",
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["payment"]["gross_amount"], "90.00")
+        self.assertEqual(result["payment"]["parent_copay"], "12.00")
+        self.assertEqual(result["payment"]["amount"], "78.00")
+
+    def test_scheduled_fees_are_offset_by_payment_detail_history(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"][0]["occupied_slot_contract"] = True
+        payload["fee_schedules"] = [{
+            "authorization_id": "auth-1",
+            "effective_start": "2026-09-01",
+            "slot_rate_amount": "4.00",
+            "days_of_month": 5,
+            "days_of_week": 5,
+            "activity_amount": "10.00",
+            "activity_frequency": "MTH",
+        }]
+        payload["fee_history"] = [{
+            "authorization_id": "auth-1",
+            "service_date": "2026-09-01",
+            "slot_paid": "4.00",
+            "activity_paid": "3.00",
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["payment"]["slot_fee"], "0.00")
+        self.assertEqual(result["payment"]["activity_fee"], "7.00")
+        self.assertEqual(result["payment"]["amount"], "7.00")
+
+    def test_paid_hours_are_multiplied_by_the_fiscal_rate(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"][0]["authorized_hours"] = 4
+        payload["attendance_days"][0]["attended_hours"] = 3
+        payload["fiscal_rates"][0]["amount"] = "10.00"
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["attendance"]["days"][0]["unit_hours"], "3.00")
+        self.assertEqual(result["payment"]["amount"], "30.00")
+
+    def test_history_absence_codes_are_counted_before_current_absence(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"][0]["attended_hours"] = 0
+        payload["county_policies"][0]["absence_limit"] = 1
+        payload["fee_history"] = [{
+            "authorization_id": "auth-1",
+            "service_date": "2026-09-01",
+            "info_code": "4",
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["attendance"]["days"][0]["classification"], "ABSENCE")
+        self.assertFalse(result["attendance"]["days"][0]["payable"])
+        self.assertIn("ABSENCE_LIMIT_EXCEEDED", result["attendance"]["days"][0]["flags"])
+
+    def test_drop_in_uses_actual_hours_and_drop_in_history_limit(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"][0].update({
+            "authorized_hours": 0,
+            "attended_hours": 4,
+        })
+        payload["authorizations"][0]["drop_in_limit"] = 1
+        payload["fee_history"] = [{
+            "authorization_id": "auth-1",
+            "service_date": "2026-09-01",
+            "info_code": "3",
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        day = result["attendance"]["days"][0]
+        self.assertEqual(day["classification"], "DROP_IN")
+        self.assertFalse(day["payable"])
+        self.assertIn("DROP_IN_LIMIT_EXCEEDED", day["flags"])
+
+    def test_slot_weekday_names_and_monthly_capacity_limit_slot_fee(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"] = [
+            {**payload["attendance_days"][0], "service_date": "2026-09-02", "occupied_slot_contract": True},
+            {**payload["attendance_days"][0], "service_date": "2026-09-03", "occupied_slot_contract": True},
+        ]
+        payload["fee_schedules"] = [{
+            "authorization_id": "auth-1",
+            "effective_start": "2026-09-01",
+            "slot_rate_amount": "4.00",
+            "days_of_month": 1,
+            "days_of_week": "Monday,Wednesday",
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["payment"]["slot_fee"], "4.00")
+
+    def test_slot_fee_respects_weekday_and_effective_date_constraints(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"] = [
+            {**payload["attendance_days"][0], "service_date": "2026-09-02", "slot_contract_present": True},
+            {**payload["attendance_days"][0], "service_date": "2026-09-09", "slot_contract_present": True},
+        ]
+        payload["fee_schedules"] = [{
+            "authorization_id": "auth-1",
+            "effective_start": "2026-09-05",
+            "effective_end": "2026-09-30",
+            "slot_rate_amount": "4.00",
+            "days_of_week": "Monday,Wednesday",
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["payment"]["slot_fee"], "4.00")
+
+    def test_deleted_history_does_not_consume_absence_limit(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"][0]["attended_hours"] = 0
+        payload["county_policies"][0]["absence_limit"] = 1
+        payload["fee_history"] = [{
+            "authorization_id": "auth-1",
+            "service_date": "2026-09-01",
+            "info_code": "4",
+            "deleted": True,
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertTrue(result["attendance"]["days"][0]["payable"])
+
     @staticmethod
     def _complete_input() -> dict:
         return {
@@ -274,7 +494,7 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
             "fiscal_rates": [{
                 "authorization_id": "auth-1",
                 "paid_tier": "PART_TIME",
-                "amount": "45.00",
+                "amount": "9.00",
             }],
             "existing_sub_payments": [],
         }

@@ -69,6 +69,7 @@ const allowedActions = new Set([
   "getSchedules",
   "getHolidayList",
   "getFiscalRates",
+  "getPaymentHistory",
 ]);
 
 export async function resolveAuthenticatedUserId(

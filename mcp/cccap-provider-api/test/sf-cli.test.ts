@@ -148,3 +148,27 @@ test("the configured org's authenticated username resolves to one user ID", asyn
     },
   ]);
 });
+
+test("Salesforce CLI sends payment-history requests to the Apex endpoint", async () => {
+  const calls: Array<{ args: string[] }> = [];
+  const run: RunSfCommand = async (_command, args) => {
+    calls.push({ args });
+    return {
+      stdout: JSON.stringify({
+        status: 0,
+        result: { statusCode: 200, body: { isSuccess: true, data: { subPayments: [] } } },
+      }),
+      stderr: "",
+      exitCode: 0,
+    };
+  };
+
+  await requestApexViaSf(
+    "CHATS_SIT",
+    "getPaymentHistory",
+    { providerIds: ["provider-1"] },
+    run,
+  );
+
+  assert.equal(calls[0]?.args[3], "/services/apexrest/CccapPortalApi/v1/getPaymentHistory");
+});

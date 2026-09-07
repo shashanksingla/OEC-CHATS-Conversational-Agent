@@ -12,7 +12,11 @@
         "NAM_FACILITY__c": "Facility display name shown to the provider",
         "Program_Name__c": "Mapped provider account ID used before calling the external schedules service",
         "CDE_STATUS_PROVR__c": "Provider status",
-        "TXT_CHATS_RATING__c": "Provider Colorado Shines rating"
+        "TXT_CHATS_RATING__c": "Provider Colorado Shines rating",
+        "CDE_TYPE_PROVR__c": "Provider type used for holiday/license exemption rules",
+        "CDE_TYPE_LICENSE__c": "Provider license type",
+        "DTE_BEGIN_EFFV__c": "Provider effective start date",
+        "DTE_END_EFFV__c": "Provider effective end date"
       },
       "relationships": [
         { "target": "FiscalAgreement", "cardinality": "one_to_many", "via": "providers[] -> fiscalAgreements[]" },
@@ -115,6 +119,11 @@
         "DTE_BEGIN_EFFV_AUTH__c": "Authorization effective start date",
         "DTE_END_EFFV_AUTH__c": "Authorization effective end date",
         "Number_of_Drop_in_Days__c": "Authorization drop-in-day allowance",
+        "CDE_TYPE_VERIF__c": "Authorization verification type",
+        "CDE_TRANS_FEE__c": "Authorization transportation fee code",
+        "CDE_CHILD_ENROLLED_IN_UPK__c": "Child UPK enrollment indicator",
+        "Contract_for_Slots_indicator__c": "Slot-contract indicator",
+        "Do_we_need_to_allow_drop_in_days_for__c": "Authorization drop-in override",
         "AMT_ACTV_AUTH__c": "Authorization activity amount",
         "AMT_RGSTR_AUTH__c": "Authorization registration amount",
         "AMT_TRANSP_AUTH__c": "Authorization transportation amount"
@@ -126,7 +135,42 @@
         { "target": "Child", "cardinality": "many_to_one", "via": "IDN_CLIENT__c -> T_SBSD_INDIV__c.Id" },
         { "target": "Schedule", "cardinality": "one_to_many", "via": "authNames filter narrows schedules to an authorization" }
       ],
-      "status": "Field-level response schema not yet fully mapped."
+      "status": "Returns authorizations plus authenticated slotContracts for linked slot contracts. Parent confirmation and absence-approval records remain separate source mappings."
+    },
+    {
+      "name": "AuthorizationEncumbrance",
+      "kind": "external_salesforce",
+      "apex_action": "getAuthData",
+      "fields": {
+        "idn_auth__c": "Authorization external identifier",
+        "dte_care__c": "Care date",
+        "cnt_hour_care__c": "Authorized care hours",
+        "cnt_hour_attnd_actual__c": "Actual attended hours",
+        "cde_status_encmbr__c": "Encumbrance status",
+        "cde_type_unit_care__c": "Care-unit code",
+        "cde_level_care__c": "Care-level code",
+        "ind_0_36_months__c": "0-36-month enrollment indicator"
+      },
+      "relationships": [
+        { "target": "Authorization", "cardinality": "many_to_one", "via": "idn_auth__c -> T_AUTH__c.IDN_EXTNL__c" }
+      ],
+      "status": "Returned as encumbrances under getAuthData."
+    },
+    {
+      "name": "AuthorizationCopay",
+      "kind": "external_salesforce",
+      "apex_action": "getAuthData",
+      "fields": {
+        "idn_auth__c": "Authorization external identifier",
+        "idn_copay_auth__c": "Authorization copay identifier",
+        "dte_begin_effv__c": "Copay effective start date",
+        "dte_end_effv__c": "Copay effective end date",
+        "amt_copay_auth__c": "Parent fee amount"
+      },
+      "relationships": [
+        { "target": "Authorization", "cardinality": "many_to_one", "via": "idn_auth__c -> T_AUTH__c.IDN_EXTNL__c" }
+      ],
+      "status": "Returned as authorizationCopays under getAuthData."
     },
     {
       "name": "County",
@@ -138,7 +182,8 @@
         "CDE_COUNTY__c": "Required external county code; distinct from Salesforce Id",
         "countyId": "MCP/API county identifier, currently sourced from the county lookup Id",
         "absenceDaysTier{N}": "Reimbursable absence-day limit for quality tier N",
-        "dropInDayLimit": "Configured drop-in day limit; current live API exposes the allowance at authorization level"
+        "dropInDayLimit": "Configured drop-in day limit; current live API exposes the allowance at authorization level",
+        "dropInResponse": "County drop-in response code, including licensed-only policy"
       },
       "relationships": [
         { "target": "FiscalAgreement", "cardinality": "one_to_many", "via": "FiscalAgreement.CDE_COUNTY__c -> T_COUNTY__c.Id" },
@@ -218,14 +263,16 @@
         "CI_Authorization_Date__c": "Service date",
         "Check_In_Count__c": "Aggregate check-in count for the day (not per-transaction)",
         "Check_Out_Count__c": "Aggregate check-out count for the day (not per-transaction)",
+        "CI_Authorization_Rate_Type__c": "Schedule rate-type code; never used as provider quality tier",
         "countyId": "County identifier",
-        "qualityTier": "Colorado Shines quality tier"
+        "qualityTier": "Provider Colorado Shines quality tier derived from Provider.TXT_CHATS_RATING__c"
       },
       "normalized_fields": {
         "schedule_id": "Stable identifier used to link Transaction.schedule_id",
         "child_name": "Child name",
         "county_id": "County identifier",
-        "quality_tier": "Colorado Shines quality tier",
+        "quality_tier": "Provider Colorado Shines quality tier derived from Provider.TXT_CHATS_RATING__c",
+        "rate_type_code": "Schedule rate-type code from CI_Authorization_Rate_Type__c",
         "work_date": "ISO service date",
         "schedule_type": "CCCAP_AUTHORIZED | DROP_IN | PRIVATE_PAY | NOT_AUTHORIZED",
         "is_deleted": "Excludes the schedule entirely when true",
@@ -288,6 +335,34 @@
         { "target": "Provider", "cardinality": "none_confirmed", "via": "T_SERV_PERIOD__c has no provider lookup" }
       ],
       "status": "Response field schema (beyond query filters) not yet mapped."
+    },
+    {
+      "name": "PaymentDetail",
+      "kind": "external_salesforce",
+      "apex_action": "getPaymentHistory",
+      "fields": {
+        "idn_pmt_sub__c": "External sub-payment identifier",
+        "dte_care__c": "Paid care date",
+        "cde_type_info_addntl__c": "Additional payment/attendance classification",
+        "cde_status_detail_pmt_sub__c": "Payment-detail status",
+        "cde_type_unit_care__c": "Actual care-unit code",
+        "cde_unit_care_exptd__c": "Expected care-unit code",
+        "amt_rate__c": "Applied rate",
+        "amt_total__c": "Total detail amount",
+        "amt_act_paid__c": "Activity amount paid",
+        "amt_copay__c": "Copay amount",
+        "amt_reg_paid__c": "Registration amount paid",
+        "amt_slot_paid__c": "Slot amount paid",
+        "amt_trans_paid__c": "Transportation amount paid",
+        "ind_0_36_months_enroll_pmt__c": "0-36 enrollment payment indicator",
+        "ind_adjmt__c": "Adjustment indicator",
+        "ind_claim__c": "Claim indicator",
+        "ind_recovery__c": "Recovery indicator"
+      },
+      "relationships": [
+        { "target": "PaymentSub", "cardinality": "many_to_one", "via": "idn_pmt_sub__c" }
+      ],
+      "status": "Returned as paymentDetails and paymentDetailHistory under getPaymentHistory; code and status meanings require approved normalization."
     },
     {
       "name": "Holiday",
