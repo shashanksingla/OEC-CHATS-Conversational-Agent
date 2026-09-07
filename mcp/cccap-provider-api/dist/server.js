@@ -35,6 +35,7 @@ function snapshotResult(data) {
         content: [{ type: "text", text: providerMessage }],
         structuredContent: {
             capability: "attendance-risk-snapshot",
+            providerMessage,
             scope: snapshot.scope,
             sourceFreshness: "evaluated-at-call",
             actionIntents: risk ? actionMetadata(snapshot.scope, risk, children) : [],
@@ -196,10 +197,12 @@ export function formatAttendanceRiskResult(data) {
         nextActions.push("View next payout details");
     }
     lines.push("", "**Next actions**", ...nextActions.map((action, index) => `${index + 1}. ${action}`));
+    const providerMessage = lines.join("\n");
     return {
-        content: [{ type: "text", text: lines.join("\n") }],
+        content: [{ type: "text", text: providerMessage }],
         structuredContent: {
             capability: "attendance-risk-analysis",
+            providerMessage,
             scope: analysis.scope,
             sourceFreshness: "evaluated-at-call",
             actionIntents: actionMetadata(analysis.scope, risk, affectedChildren),

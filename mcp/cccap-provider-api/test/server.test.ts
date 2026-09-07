@@ -72,6 +72,8 @@ test("attendance analysis returns affected child drill-down rows", () => {
   assert.match(text, /\| Taylor Example \| Example Household \| Unavailable from the current source \| Unavailable from the current source \| 2026-09-01, 2026-09-02 \|/);
   assert.match(text, /1\. Review pending parent confirmations in the provider system/);
   assert.match(text, /2\. View next payout details/);
+  assert.equal(result.structuredContent?.providerMessage, text);
+  assert.match(String(result.structuredContent?.providerMessage), /Taylor Example/);
 });
 
 test("attendance analysis prioritizes absence and incomplete attendance review", () => {

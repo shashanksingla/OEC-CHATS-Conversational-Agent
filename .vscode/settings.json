@@ -13,5 +13,6 @@
                "--orgs", "DEFAULT_TARGET_ORG", 
                "--toolsets", "orgs,metadata,data,users,testing"]
     }
-  }
+  },
+  "git.ignoreLimitWarning": true
 }
