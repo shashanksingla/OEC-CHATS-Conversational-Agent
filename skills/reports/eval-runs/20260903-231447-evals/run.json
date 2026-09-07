@@ -1,0 +1,15 @@
+{
+  "run_id": "20260903-231447-evals",
+  "cases_file": "C:\\Users\\shsingla\\Downloads\\Child Care Agent\\Child Care Agent Final\\skills\\agent-child-care-payment-advisor\\evals\\cases.json",
+  "skill_path": "C:\\Users\\shsingla\\Downloads\\Child Care Agent\\Child Care Agent Final\\skills\\agent-child-care-payment-advisor",
+  "variant_path": null,
+  "mode": "baseline",
+  "configs": [
+    "skill",
+    "bare"
+  ],
+  "runs_per_case": 1,
+  "adapter": "none",
+  "started_at": "2026-09-03T17:44:47Z",
+  "case_count": 1
+}

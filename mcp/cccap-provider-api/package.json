@@ -1,0 +1,26 @@
+{
+  "name": "cccap-provider-api-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "protocol": "node scripts/list-tools.mjs",
+    "smoke:conversation": "node scripts/provider-conversation-smoke.mjs",
+    "smoke:snapshot": "node scripts/snapshot-smoke.mjs",
+    "smoke": "node scripts/smoke-test.mjs",
+    "start": "node dist/index.js",
+    "test": "tsx --test test/**/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
+    "@types/node": "26.4.1",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2"
+  }
+}

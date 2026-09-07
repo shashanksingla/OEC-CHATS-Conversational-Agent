@@ -1,0 +1,17 @@
+{
+  "chat.mcp.autostart": true,
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/.sf": true,
+    "**/.sfdx": true
+  },
+  "servers": {
+    "Salesforce DX": {
+      "command": "npx",
+      "args": ["-y", "@salesforce/mcp@latest", 
+               "--orgs", "DEFAULT_TARGET_ORG", 
+               "--toolsets", "orgs,metadata,data,users,testing"]
+    }
+  }
+}

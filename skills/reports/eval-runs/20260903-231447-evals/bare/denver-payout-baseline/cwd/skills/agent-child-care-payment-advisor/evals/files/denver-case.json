@@ -1,0 +1,19 @@
+{
+  "as_of_date": "2026-11-03",
+  "case_id": "denver-toddler-october",
+  "service_period": {
+    "authorized_days": 22,
+    "attended_days": 18,
+    "absence_days": 4
+  },
+  "rate_plan": {
+    "reimbursable_absence_limit": 3,
+    "daily_rate": "65.00",
+    "daily_parent_copay": "5.00"
+  },
+  "parent_confirmation": {
+    "status": "CONFIRMED",
+    "deadline": "2026-11-05",
+    "confirmed_at": "2026-11-03"
+  }
+}

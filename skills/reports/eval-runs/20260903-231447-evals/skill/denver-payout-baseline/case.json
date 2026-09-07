@@ -1,0 +1,15 @@
+{
+  "id": "denver-payout-baseline",
+  "input": "Can you tell me what I should expect for this Denver child and what puts the payment at risk? Use evals/files/denver-case.json as the normalized live-data fixture. Do not ask follow-up questions.",
+  "rubric": [
+    "The response reports 21 reimbursable days and an expected payout of $1,260.00 from script output",
+    "The response reports one non-reimbursable absence day and $60.00 excluded because the monthly absence limit is three",
+    "The response distinguishes expected payout from excluded amount and does not label the confirmed payout as conditional",
+    "The transcript contains a tool call that executes scripts/calculate_payout.py rather than model-authored arithmetic",
+    "The response does not claim that operational records were changed"
+  ],
+  "state_prefix": null,
+  "files": [
+    "skills/agent-child-care-payment-advisor/evals/files/denver-case.json"
+  ]
+}

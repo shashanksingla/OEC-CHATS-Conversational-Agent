@@ -1,0 +1,333 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# ///
+
+import argparse
+import json
+import sys
+from collections import defaultdict
+from datetime import date, timedelta
+from pathlib import Path
+from typing import Any
+
+
+class AttendanceRiskError(ValueError):
+    pass
+
+
+def _date_value(value: Any, field: str) -> date:
+    if not isinstance(value, str):
+        raise AttendanceRiskError(f"{field} must be an ISO date")
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise AttendanceRiskError(f"{field} must be an ISO date") from None
+
+
+def _non_negative_integer(value: Any, field: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise AttendanceRiskError(f"{field} must be a non-negative integer")
+    return value
+
+
+def _absence_limit(schedule: dict[str, Any], plans: dict[str, dict[str, Any]]) -> int | None:
+    county_id = schedule.get("countyId")
+    tier = schedule.get("qualityTier")
+    if not isinstance(county_id, str) or not isinstance(tier, int):
+        return None
+    plan = plans.get(county_id)
+    if not plan:
+        return None
+    return _non_negative_integer(plan.get(f"absenceDaysTier{tier}"), "absence limit")
+
+
+def _optional_text(schedule: dict[str, Any], *fields: str) -> str | None:
+    for field in fields:
+        value = schedule.get(field)
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
+def _county_name(schedule: dict[str, Any]) -> str | None:
+    county = schedule.get("Authorization__r", {}).get("County__r", {})
+    if isinstance(county, dict):
+        value = county.get("County_Name__c")
+        if isinstance(value, str) and value:
+            return value
+    return _optional_text(schedule, "county_name")
+
+
+def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
+    as_of_date = _date_value(snapshot.get("as_of_date"), "as_of_date")
+    schedules = snapshot.get("schedules")
+    if not isinstance(schedules, list):
+        raise AttendanceRiskError("schedules must be an array")
+    rate_plans = snapshot.get("county_rate_plans", [])
+    if not isinstance(rate_plans, list):
+        raise AttendanceRiskError("county_rate_plans must be an array")
+    requested_children = snapshot.get("child_names")
+    if requested_children is not None:
+        if not isinstance(requested_children, list) or not all(
+            isinstance(name, str) and name for name in requested_children
+        ):
+            raise AttendanceRiskError("child_names must be an array of names")
+        requested_children = set(requested_children)
+    plans = {
+        plan["countyId"]: plan
+        for plan in rate_plans
+        if isinstance(plan, dict) and isinstance(plan.get("countyId"), str)
+    }
+    cutoff_date = as_of_date - timedelta(days=9)
+    children: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {
+            "scheduled_days": 0,
+            "probable_absence_days": 0,
+            "pending_confirmation_days": 0,
+            "incomplete_attendance_days": 0,
+            "absence_limit": None,
+            "counties": set(),
+            "household_name": None,
+            "authorization_dates": set(),
+            "authorization_names": set(),
+        }
+    )
+    today = {
+        "scheduled_children": set(),
+        "checked_in_children": set(),
+    }
+
+    for schedule in schedules:
+        if not isinstance(schedule, dict):
+            raise AttendanceRiskError("each schedule must be an object")
+        child_name = schedule.get("Contact_Name__c")
+        if not isinstance(child_name, str) or not child_name:
+            raise AttendanceRiskError("Contact_Name__c is required")
+        if requested_children is not None and child_name not in requested_children:
+            continue
+        service_date = _date_value(
+            schedule.get("CI_Authorization_Date__c"), "CI_Authorization_Date__c"
+        )
+        if service_date > as_of_date:
+            continue
+        check_ins = _non_negative_integer(
+            schedule.get("Check_In_Count__c"), "Check_In_Count__c"
+        )
+        check_outs = _non_negative_integer(
+            schedule.get("Check_Out_Count__c"), "Check_Out_Count__c"
+        )
+        if service_date == as_of_date:
+            today["scheduled_children"].add(child_name)
+            if check_ins:
+                today["checked_in_children"].add(child_name)
+        child = children[child_name]
+        child["scheduled_days"] += 1
+        county = _county_name(schedule) or _optional_text(
+            schedule, "countyId", "County__c", "CDE_COUNTY__c"
+        )
+        if county:
+            child["counties"].add(county)
+        household_name = _optional_text(
+            schedule, "Household_Name__c", "Household__c", "Household_Name"
+        )
+        if household_name:
+            child["household_name"] = household_name
+        child["authorization_dates"].add(service_date.isoformat())
+        authorization_name = _optional_text(
+            schedule,
+            "authorization_name",
+            "Authorization_Name__c",
+            "Authorization_Number__c",
+            "Authorizaton_Number__c",
+            "Name",
+        )
+        if authorization_name:
+            child["authorization_names"].add(authorization_name)
+        limit = _absence_limit(schedule, plans)
+        if limit is not None:
+            existing_limit = child["absence_limit"]
+            if existing_limit is not None and existing_limit != limit:
+                raise AttendanceRiskError(
+                    f"conflicting absence limits for child {child_name}"
+                )
+            child["absence_limit"] = limit
+
+        if check_ins == 0 and check_outs == 0:
+            if service_date <= cutoff_date:
+                child["probable_absence_days"] += 1
+            else:
+                child["pending_confirmation_days"] += 1
+        elif check_ins == 0 or check_outs == 0:
+            child["incomplete_attendance_days"] += 1
+
+    child_results = []
+    for child_name, child in sorted(children.items()):
+        risk_codes = []
+        if child["probable_absence_days"]:
+            risk_codes.append("PROBABLE_ABSENCE_AFTER_CONFIRMATION_WINDOW")
+        if child["pending_confirmation_days"]:
+            risk_codes.append("PARENT_CONFIRMATION_PENDING")
+        if child["incomplete_attendance_days"]:
+            risk_codes.append("INCOMPLETE_ATTENDANCE_RECORD")
+        if (
+            child["probable_absence_days"]
+            and child["absence_limit"] is None
+            and plans
+        ):
+            risk_codes.append("ABSENCE_LIMIT_UNAVAILABLE")
+        elif (
+            child["absence_limit"] is not None
+            and child["probable_absence_days"] > child["absence_limit"]
+        ):
+            risk_codes.append("ABSENCE_LIMIT_EXCEEDED")
+        elif (
+            child["absence_limit"] is not None
+            and child["probable_absence_days"] > 0
+            and child["probable_absence_days"] >= child["absence_limit"] - 2
+        ):
+            risk_codes.append("ABSENCE_LIMIT_APPROACHING")
+        counties = sorted(child.pop("counties"))
+        authorization_dates = sorted(child.pop("authorization_dates"))
+        authorization_names = sorted(child.pop("authorization_names"))
+        if child["pending_confirmation_days"]:
+            note = (
+                f"{child['pending_confirmation_days']} pending parent confirmation "
+                "day(s) require review."
+            )
+            potential_impact = "Payment remains conditional until confirmation is completed."
+        elif (
+            child["absence_limit"] is not None
+            and child["probable_absence_days"] > child["absence_limit"]
+        ):
+            excess_days = child["probable_absence_days"] - child["absence_limit"]
+            note = f"{child['probable_absence_days']} probable absence days exceed the county limit."
+            potential_impact = (
+                f"Up to {excess_days} absence day(s) may be excluded from reimbursement."
+            )
+        elif child["absence_limit"] is not None and child["probable_absence_days"] >= child["absence_limit"] - 2:
+            days_until_exceeded = child["absence_limit"] - child["probable_absence_days"] + 1
+            note = f"{child['probable_absence_days']} probable absence days are within the county limit threshold."
+            potential_impact = (
+                f"The county limit may be exceeded after {days_until_exceeded} more absence day(s)."
+            )
+        else:
+            note = f"{child['scheduled_days']} scheduled day(s) reviewed with no current category risk."
+            potential_impact = "No direct payment impact was calculated from the returned attendance data."
+        child_results.append({
+            "child_name": child_name,
+            **child,
+            "county": counties[0] if len(counties) == 1 else ("Multiple" if counties else None),
+            "authorization_names": authorization_names,
+            "authorization_dates": authorization_dates,
+            "note": note,
+            "potential_impact": potential_impact,
+            "risk_codes": risk_codes,
+        })
+
+    pending_children = [
+        child for child in child_results if child["pending_confirmation_days"] > 0
+    ]
+    approaching_children = [
+        child for child in child_results if "ABSENCE_LIMIT_APPROACHING" in child["risk_codes"]
+    ]
+    crossed_children = [
+        child for child in child_results if "ABSENCE_LIMIT_EXCEEDED" in child["risk_codes"]
+    ]
+
+    def county_count(children: list[dict[str, Any]]) -> int:
+        return len({child["county"] for child in children if child["county"] not in (None, "Multiple")})
+
+    absence_risk_codes = {
+        "PROBABLE_ABSENCE_AFTER_CONFIRMATION_WINDOW",
+        "ABSENCE_LIMIT_UNAVAILABLE",
+        "ABSENCE_LIMIT_EXCEEDED",
+        "ABSENCE_LIMIT_APPROACHING",
+    }
+    attendance_concern_codes = {
+        "PARENT_CONFIRMATION_PENDING",
+        "INCOMPLETE_ATTENDANCE_RECORD",
+    }
+
+    return {
+        "as_of_date": as_of_date.isoformat(),
+        "confirmation_cutoff_date": cutoff_date.isoformat(),
+        "today": {key: len(value) for key, value in today.items()},
+        "scheduled_days": sum(child["scheduled_days"] for child in child_results),
+        "probable_absence_days": sum(
+            child["probable_absence_days"] for child in child_results
+        ),
+        "pending_confirmation_days": sum(
+            child["pending_confirmation_days"] for child in child_results
+        ),
+        "incomplete_attendance_days": sum(
+            child["incomplete_attendance_days"] for child in child_results
+        ),
+        "absence_risk_children": sum(
+            bool(set(child["risk_codes"]) & absence_risk_codes)
+            for child in child_results
+        ),
+        "attendance_concern_children": sum(
+            bool(set(child["risk_codes"]) & attendance_concern_codes)
+            for child in child_results
+        ),
+        "risk_child_count": sum(bool(child["risk_codes"]) for child in child_results),
+        "risk_categories": {
+            "pending_parent_confirmations": {
+                "days": sum(child["pending_confirmation_days"] for child in pending_children),
+                "children": len(pending_children),
+            },
+            "approaching_absence_limits": {
+                "children": len(approaching_children),
+                "counties": county_count(approaching_children),
+                "minimum_days_until_exceeded": min(
+                    (
+                        child["absence_limit"] - child["probable_absence_days"] + 1
+                        for child in approaching_children
+                    ),
+                    default=None,
+                ),
+            },
+            "crossed_absence_limits": {
+                "children": len(crossed_children),
+                "counties": county_count(crossed_children),
+                "maximum_days_over_limit": max(
+                    (
+                        child["probable_absence_days"] - child["absence_limit"]
+                        for child in crossed_children
+                    ),
+                    default=0,
+                ),
+            },
+        },
+        "children": child_results,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Evaluate current attendance risks from normalized schedule data."
+    )
+    parser.add_argument("snapshot", type=Path, help="Path to attendance snapshot JSON")
+    parser.add_argument("-o", "--output", type=Path, help="Write JSON to this path")
+    parser.add_argument("--verbose", action="store_true", help="Report input path")
+    args = parser.parse_args()
+    if args.verbose:
+        print(f"Reading {args.snapshot}", file=sys.stderr)
+    try:
+        snapshot = json.loads(args.snapshot.read_text(encoding="utf-8"))
+        if not isinstance(snapshot, dict):
+            raise AttendanceRiskError("input must be an object")
+        rendered = json.dumps({"status": "ok", "result": evaluate(snapshot)}, indent=2)
+    except (OSError, json.JSONDecodeError, AttendanceRiskError) as error:
+        print(json.dumps({"status": "error", "error": str(error)}))
+        return 2
+    if args.output:
+        args.output.write_text(rendered + "\n", encoding="utf-8")
+    else:
+        print(rendered)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,11 @@
+[
+  {"query": "Which attendance issues could reduce my child care provider payment this week?", "should_trigger": true},
+  {"query": "Show my upcoming CCCAP payout and any parent confirmations due.", "should_trigger": true},
+  {"query": "What happens to my forecast if this child has one more absence?", "should_trigger": true},
+  {"query": "Show details about the children from the pending confirmation action.", "should_trigger": true},
+  {"query": "Only show September attendance for Taylor.", "should_trigger": true},
+  {"query": "Why is my payment lower this month?", "should_trigger": true},
+  {"query": "Help me reconcile an unrelated corporate expense report.", "should_trigger": false},
+  {"query": "Explain how parents can choose a child care center.", "should_trigger": false},
+  {"query": "Write an Apex trigger for a generic Salesforce Account.", "should_trigger": false}
+]

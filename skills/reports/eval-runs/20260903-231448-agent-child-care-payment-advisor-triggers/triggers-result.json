@@ -1,0 +1,15 @@
+{
+  "run_id": "20260903-231448-agent-child-care-payment-advisor-triggers",
+  "completed_at": "2026-09-03T17:44:48Z",
+  "skill_name": "agent-child-care-payment-advisor",
+  "description": "Protects child care provider payouts. Use when the user asks to talk to CarePay Advisor, requests the Child Care Payment Advisor, or asks about provider attendance risks, absence limits, parent confirmation, upcoming payments, payout forecasts, or payment what-if scenarios.",
+  "status": "skipped",
+  "reason": "no runtime adapter configured",
+  "results": [],
+  "summary": {
+    "total": 6,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 6
+  }
+}

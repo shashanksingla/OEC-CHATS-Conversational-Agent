@@ -1,0 +1,310 @@
+{
+  "version": "1.0",
+  "description": "Source-of-truth map of Salesforce and external-source objects, required fields, and confirmed relationships. MCP routes, API response gaps, and derived analysis contracts live in api-response-contract.json.",
+  "objects": [
+    {
+      "name": "Provider",
+      "kind": "raw_salesforce",
+      "apex_action": "getProviderData",
+      "fields": {
+        "Id": "Salesforce provider record ID; injected into getAuthData/getSchedules providerIds",
+        "Name": "Numeric provider external name; injected into getCaseData providerIds",
+        "NAM_FACILITY__c": "Facility display name shown to the provider",
+        "Program_Name__c": "Mapped provider account ID used before calling the external schedules service",
+        "CDE_STATUS_PROVR__c": "Provider status",
+        "TXT_CHATS_RATING__c": "Provider Colorado Shines rating"
+      },
+      "relationships": [
+        { "target": "FiscalAgreement", "cardinality": "one_to_many", "via": "providers[] -> fiscalAgreements[]" },
+        { "target": "ChatsCase", "cardinality": "one_to_many", "via": "Provider.Name -> ChatsCase.IDN_PROVR__c" },
+        { "target": "Authorization", "cardinality": "one_to_many", "via": "Provider.Id -> Authorization providerIds" },
+        { "target": "Schedule", "cardinality": "one_to_many", "via": "Provider.Id -> Schedule providerIds" },
+        { "target": "ProviderClosure", "cardinality": "one_to_many", "via": "T_PROVR_CLOSURE__c.IDN_PROVIDER__c" }
+      ]
+    },
+    {
+      "name": "FiscalAgreement",
+      "kind": "raw_salesforce",
+      "apex_action": "getProviderData",
+      "fields": {
+        "Id": "Salesforce fiscal agreement record ID",
+        "Name": "Fiscal agreement name",
+        "IDN_EXTNL__c": "Fiscal agreement external identifier",
+        "ID_SERVICE__c": "Lookup to T_CHATS_PROVR_STATUS__c",
+        "CDE_COUNTY__c": "Lookup to T_COUNTY__c",
+        "CDE_TYPE_STATUS__c": "Fiscal agreement status",
+        "DTE_BEGIN_AGRMT__c": "Agreement effective start date",
+        "DTE_END_AGRMT__c": "Agreement effective end date"
+      },
+      "relationships": [
+        { "target": "Provider", "cardinality": "many_to_one", "via": "returned nested under providers[]" },
+        { "target": "County", "cardinality": "many_to_one", "via": "CDE_COUNTY__c -> T_COUNTY__c.Id" },
+        { "target": "RateSchedule", "cardinality": "one_to_many", "via": "Rate_Schedules__r / T_FISCAL_SCH__c.IDN_AGRMT_FISCAL__c" }
+      ]
+    },
+    {
+      "name": "ProviderClosure",
+      "kind": "raw_salesforce",
+      "apex_action": "getProviderData",
+      "fields": {
+        "Id": "Salesforce provider-closure record ID",
+        "IDN_PROVIDER__c": "Provider identifier",
+        "CDE_COUNTY__c": "County identifier",
+        "DTE_BEGIN_CLOSURE__c": "Closure start date",
+        "IND_ACTIVE__c": "Active closure flag",
+        "TXT_COMMENTS__c": "Closure comments"
+      },
+      "relationships": [
+        { "target": "Provider", "cardinality": "many_to_one", "via": "IDN_PROVIDER__c" },
+        { "target": "County", "cardinality": "many_to_one", "via": "CDE_COUNTY__c" }
+      ]
+    },
+    {
+      "name": "ChatsCase",
+      "kind": "raw_salesforce",
+      "apex_action": "getCaseData",
+      "fields": {
+        "Id": "Salesforce case record ID",
+        "Name": "Case name",
+        "IDN_EXTNL__c": "Case external identifier",
+        "CDE_COUNTY__c": "Lookup to T_COUNTY__c",
+        "IDN_PROVR__c": "Numeric provider external identifier; not a Salesforce lookup",
+        "CDE_STATUS_WTLST__c": "Case waitlist/enrollment-freeze status"
+      },
+      "relationships": [
+        { "target": "Provider", "cardinality": "many_to_one", "via": "IDN_PROVR__c = Provider.Name (numeric external identifier)" },
+        { "target": "County", "cardinality": "many_to_one", "via": "CDE_COUNTY__c -> T_COUNTY__c.Id" },
+        { "target": "CaseIndividual", "cardinality": "one_to_many", "via": "CaseIndividuals__r / T_SBSD_CASE_INDIV__c.IDN_CASE__c" },
+        { "target": "Authorization", "cardinality": "one_to_many", "via": "caseIds filter on getAuthData" }
+      ],
+      "status": "Field-level response schema not yet fully mapped; see integration-contract.md Missing Production Mappings."
+    },
+    {
+      "name": "CaseIndividual",
+      "kind": "raw_salesforce",
+      "apex_action": "getCaseData",
+      "fields": {
+        "IDN_CLIENT__c": "Lookup to T_SBSD_INDIV__c",
+        "NAM_FIRST__c": "Child first name from the related client",
+        "NAM_LAST__c": "Child last name from the related client",
+        "DTE_DOB__c": "Child date of birth from the related client",
+        "CDE_GENDER__c": "Child gender from the related client",
+        "IND_CRTKR__c": "Primary parent/caretaker flag",
+        "DTE_BEGIN_EFFV__c": "Case-individual effective start date",
+        "DTE_END_EFFV__c": "Case-individual effective end date",
+        "Individual_Status__c": "Case-individual status"
+      },
+      "relationships": [
+        { "target": "ChatsCase", "cardinality": "many_to_one", "via": "CaseIndividuals__r / IDN_CASE__c" },
+        { "target": "Child", "cardinality": "many_to_one", "via": "IDN_CLIENT__c" }
+      ]
+    },
+    {
+      "name": "Authorization",
+      "kind": "raw_salesforce",
+      "apex_action": "getAuthData",
+      "fields": {
+        "Id": "Salesforce authorization record ID",
+        "Name": "Authorization name; used as the external schedule filter key",
+        "IDN_EXTNL__c": "Authorization external identifier",
+        "IDN_CASE__c": "Lookup to T_SBSD_CASE__c",
+        "IDN_PROVR__c": "Lookup to T_CHATS_PROVR_STATUS__c",
+        "IDN_CLIENT__c": "Lookup to T_SBSD_INDIV__c",
+        "CDE_COUNTY__c": "Lookup to T_COUNTY__c",
+        "Authorization_Status__c": "Authorization status",
+        "DTE_BEGIN_EFFV_AUTH__c": "Authorization effective start date",
+        "DTE_END_EFFV_AUTH__c": "Authorization effective end date",
+        "Number_of_Drop_in_Days__c": "Authorization drop-in-day allowance",
+        "AMT_ACTV_AUTH__c": "Authorization activity amount",
+        "AMT_RGSTR_AUTH__c": "Authorization registration amount",
+        "AMT_TRANSP_AUTH__c": "Authorization transportation amount"
+      },
+      "relationships": [
+        { "target": "ChatsCase", "cardinality": "many_to_one", "via": "IDN_CASE__c -> T_SBSD_CASE__c.Id" },
+        { "target": "Provider", "cardinality": "many_to_one", "via": "IDN_PROVR__c -> T_CHATS_PROVR_STATUS__c.Id" },
+        { "target": "County", "cardinality": "many_to_one", "via": "CDE_COUNTY__c -> T_COUNTY__c.Id" },
+        { "target": "Child", "cardinality": "many_to_one", "via": "IDN_CLIENT__c -> T_SBSD_INDIV__c.Id" },
+        { "target": "Schedule", "cardinality": "one_to_many", "via": "authNames filter narrows schedules to an authorization" }
+      ],
+      "status": "Field-level response schema not yet fully mapped."
+    },
+    {
+      "name": "County",
+      "kind": "raw_salesforce",
+      "apex_action": "getCountyData",
+      "fields": {
+        "Id": "Salesforce county record ID; lookup target for county relationships",
+        "Name": "Auto-number county name",
+        "CDE_COUNTY__c": "Required external county code; distinct from Salesforce Id",
+        "countyId": "MCP/API county identifier, currently sourced from the county lookup Id",
+        "absenceDaysTier{N}": "Reimbursable absence-day limit for quality tier N",
+        "dropInDayLimit": "Configured drop-in day limit; current live API exposes the allowance at authorization level"
+      },
+      "relationships": [
+        { "target": "FiscalAgreement", "cardinality": "one_to_many", "via": "FiscalAgreement.CDE_COUNTY__c -> T_COUNTY__c.Id" },
+        { "target": "Schedule", "cardinality": "one_to_many", "via": "county_id / countyId" },
+        { "target": "Holiday", "cardinality": "none_confirmed", "via": "No county lookup exists on T_YEAR_HOL__c; applicability comes from rate-plan policy fields" }
+      ]
+    },
+    {
+      "name": "RateSchedule",
+      "kind": "raw_salesforce",
+      "apex_action": "getProviderData",
+      "fields": {
+        "Id": "Salesforce rate schedule record ID",
+        "Name": "Auto-number rate schedule name",
+        "IDN_EXTNL__c": "Rate schedule external identifier",
+        "IDN_AGRMT_FISCAL__c": "Lookup to T_PROVR_FISCAL_AGREMENT__c",
+        "TXT_CHATS_RATING__c": "Applicable provider rating level",
+        "CDE_RATE_TYPE__c": "Rate type",
+        "DTE_BEGIN_EFFV__c": "Rate schedule effective start date",
+        "DTE_END_EFFV__c": "Rate schedule effective end date"
+      },
+      "relationships": [
+        { "target": "FiscalAgreement", "cardinality": "many_to_one", "via": "IDN_AGRMT_FISCAL__c" },
+        { "target": "FiscalRate", "cardinality": "one_to_many", "via": "T_FISCAL_RAT_FEES__c.IDN_FISCAL_SCH__c" }
+      ],
+      "status": "Provider response currently returns selected rate-schedule fields, but not fiscal-rate rows."
+    },
+    {
+      "name": "FiscalRate",
+      "kind": "external_salesforce",
+      "apex_action": "getFiscalRates",
+      "fields": {
+        "idn_fiscal_rate__c": "External fiscal-rate identifier",
+        "idn_fiscal_sch__c": "Indirect lookup to T_FISCAL_SCH__c.IDN_EXTNL__c",
+        "cde_rate_type__c": "Rate type",
+        "cde_age_group__c": "Age-group selector",
+        "cde_care_unit__c": "Care-unit selector",
+        "amt_cty__c": "County ceiling amount",
+        "amt_fa__c": "Fiscal agreement amount",
+        "amt_provr__c": "Provider amount"
+      },
+      "relationships": [
+        { "target": "RateSchedule", "cardinality": "many_to_one", "via": "idn_fiscal_sch__c -> T_FISCAL_SCH__c.IDN_EXTNL__c" }
+      ],
+      "status": "Returned by getFiscalRates for rate schedules authorized through the provider's active fiscal agreements. Exact reimbursement-rate selection among rate type, age group, and care unit remains a deterministic normalization concern."
+    },
+    {
+      "name": "FiscalRateFee",
+      "kind": "raw_salesforce",
+      "apex_action": "getFiscalRates",
+      "fields": {
+        "IDN_FISCAL_SCH__c": "Lookup to T_FISCAL_SCH__c",
+        "CDE_ACT_FREQ__c": "Activity fee frequency",
+        "CDE_REG_FREQ__c": "Registration fee frequency",
+        "CDE_TRANS_FREQ__c": "Transportation fee frequency",
+        "AMT_ACT_CTY__c": "County activity fee amount",
+        "AMT_ACT_FA__c": "Fiscal-agreement activity fee amount",
+        "AMT_ACT_PROVR__c": "Provider activity fee amount",
+        "AMT_REG_CTY__c": "County registration fee amount",
+        "AMT_REG_FA__c": "Fiscal-agreement registration fee amount",
+        "AMT_REG_PROVR__c": "Provider registration fee amount",
+        "AMT_TRANS_CTY__c": "County transportation fee amount",
+        "AMT_TRANS_FA__c": "Fiscal-agreement transportation fee amount",
+        "AMT_TRANS_PROVR__c": "Provider transportation fee amount"
+      },
+      "relationships": [
+        { "target": "RateSchedule", "cardinality": "many_to_one", "via": "IDN_FISCAL_SCH__c" }
+      ],
+      "status": "Returned by getFiscalRates for schedules authorized through active provider fiscal agreements."
+    },
+    {
+      "name": "Schedule",
+      "kind": "external_source",
+      "apex_action": "getSchedules",
+      "raw_fields": {
+        "Contact_Name__c": "Child name (raw/live evaluator shape)",
+        "CI_Authorization_Date__c": "Service date",
+        "Check_In_Count__c": "Aggregate check-in count for the day (not per-transaction)",
+        "Check_Out_Count__c": "Aggregate check-out count for the day (not per-transaction)",
+        "countyId": "County identifier",
+        "qualityTier": "Colorado Shines quality tier"
+      },
+      "normalized_fields": {
+        "schedule_id": "Stable identifier used to link Transaction.schedule_id",
+        "child_name": "Child name",
+        "county_id": "County identifier",
+        "quality_tier": "Colorado Shines quality tier",
+        "work_date": "ISO service date",
+        "schedule_type": "CCCAP_AUTHORIZED | DROP_IN | PRIVATE_PAY | NOT_AUTHORIZED",
+        "is_deleted": "Excludes the schedule entirely when true",
+        "denial_reason": "e.g. NO_DROP_IN_DAYS_REMAINING, or an invalid-denial value",
+        "auth_status": "APPROVED required for care to be considered offered",
+        "auth_begin_date": "Authorization start date",
+        "auth_end_date": "Authorization end date",
+        "ci_authorization_hours": "CHATS-computed authorized hours; sole authorized-hours source",
+        "raw_hours": "Fallback numeric hours, used only for the unpaired check-in anomaly",
+        "check_in_count": "Used for the mismatched check-in/check-out anomaly flag",
+        "check_out_count": "Used for the mismatched check-in/check-out anomaly flag",
+        "multi_restriction_flag": "Surfaced for manual review, never blocks payment",
+        "is_saf": "Special authorization flag, tagged not gated",
+        "actual_start_ts": "Provider start timestamp; overnight-split use is deferred",
+        "actual_end_ts": "Provider end timestamp; overnight-split use is deferred",
+        "attended_flag": "Data-quality cross-check against surviving valid transactions"
+      },
+      "relationships": [
+        { "target": "Provider", "cardinality": "many_to_one", "via": "Provider.Id providerIds" },
+        { "target": "County", "cardinality": "many_to_one", "via": "county_id / countyId" },
+        { "target": "Authorization", "cardinality": "many_to_one", "via": "implied by auth_status/auth_begin_date/auth_end_date; no explicit authorization_id field yet" },
+        { "target": "Transaction", "cardinality": "one_to_many", "via": "Transaction.schedule_id" }
+      ],
+      "status": "getSchedules returns the raw schedule shape; MCP produces the normalized_fields shape for analyze_attendance_transactions.py, including nested Attendance__r.records."
+    },
+    {
+      "name": "Transaction",
+      "kind": "external_source",
+      "apex_action": null,
+      "fields": {
+        "CI_Transaction_ID__c": "External transaction identifier",
+        "CHATS_Case__c": "External CHATS Case record ID; case identity is T_SBSD_CASE__c.Id",
+        "Case_Individual__c": "External case-individual identifier",
+        "Schedule__c": "External schedule identifier",
+        "CI_Attendance_Date__c": "Attendance date",
+        "CI_Attendance_Hours__c": "Attendance hours",
+        "CI_Transaction_Type__c": "Transaction type",
+        "CI_Transaction_Result__c": "Transaction result",
+        "Status__c": "PARENT_PENDING or PARENT_APPROVED, plus other source statuses",
+        "Sub_Type__c": "CCCAP, DROP_IN, CCCAP_NOT_AUTHORIZED, or PRIVATE_PAY",
+        "Previous_Transaction__c": "Marks a previous/superseded transaction",
+        "RecordTypeId": "External transaction record-type identifier"
+      },
+      "relationships": [
+        { "target": "ChatsCase", "cardinality": "many_to_one", "via": "CHATS_Case__c -> T_SBSD_CASE__c.Id" },
+        { "target": "Schedule", "cardinality": "many_to_one", "via": "Schedule__c" }
+      ],
+      "status": "External transaction source returned as Attendance__r.records within getSchedules and normalized by MCP before Python analysis."
+    },
+    {
+      "name": "ServicePeriod",
+      "kind": "raw_salesforce",
+      "apex_action": "getServicePeriods",
+      "fields": {
+        "dateOn": "Query filter for the current service period",
+        "paymentAfter": "Query filter for the next payout period",
+        "limitOne": "Query filter to return a single period"
+      },
+      "relationships": [
+        { "target": "Provider", "cardinality": "none_confirmed", "via": "T_SERV_PERIOD__c has no provider lookup" }
+      ],
+      "status": "Response field schema (beyond query filters) not yet mapped."
+    },
+    {
+      "name": "Holiday",
+      "kind": "raw_salesforce",
+      "apex_action": "getHolidayList",
+      "fields": {
+        "Id": "Salesforce holiday record ID",
+        "Name": "Auto-number holiday ID",
+        "CDE_HOL__c": "Holiday code/picklist",
+        "CDE_YEAR__c": "Holiday year",
+        "DTE_HOL__c": "Holiday date",
+        "DTE_OBSERVED_HOL__c": "Observed holiday date"
+      },
+      "relationships": [
+        { "target": "County", "cardinality": "none_confirmed", "via": "T_YEAR_HOL__c has no county lookup" }
+      ],
+      "status": "Response field schema not yet mapped; combine only with a rate plan that allows paid holidays."
+    }
+  ]
+}

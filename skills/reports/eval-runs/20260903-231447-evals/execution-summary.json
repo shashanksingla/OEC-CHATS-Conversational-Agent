@@ -1,0 +1,28 @@
+{
+  "run_id": "20260903-231447-evals",
+  "completed_at": "2026-09-03T17:44:47Z",
+  "mode": "baseline",
+  "total": 2,
+  "executed": 0,
+  "skipped": 2,
+  "failures": 0,
+  "run_dir": "C:\\Users\\shsingla\\Downloads\\Child Care Agent\\Child Care Agent Final\\skills\\reports\\eval-runs\\20260903-231447-evals",
+  "results": [
+    {
+      "case_id": "denver-payout-baseline",
+      "config": "bare",
+      "status": "skipped",
+      "reason": "no runtime adapter configured",
+      "prompt_chars": 195,
+      "cwd": "bare\\denver-payout-baseline\\cwd"
+    },
+    {
+      "case_id": "denver-payout-baseline",
+      "config": "skill",
+      "status": "skipped",
+      "reason": "no runtime adapter configured",
+      "prompt_chars": 195,
+      "cwd": "skill\\denver-payout-baseline\\cwd"
+    }
+  ]
+}

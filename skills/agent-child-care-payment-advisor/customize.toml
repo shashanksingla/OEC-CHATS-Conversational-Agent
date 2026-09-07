@@ -1,0 +1,18 @@
+# DO NOT EDIT -- overwritten on every update.
+#
+# Agent customization surface for agent-child-care-payment-advisor.
+# Team overrides:     {project-root}/_bmad/custom/agent-child-care-payment-advisor.toml
+# Personal overrides: {project-root}/_bmad/custom/agent-child-care-payment-advisor.user.toml
+
+[agent]
+
+# --- Metadata (install-time roster contract) ---
+# Consumed by module.yaml:agents[] and `[agents.<code>]` in central config.
+
+code = "agent-child-care-payment-advisor"
+name = "CarePay Advisor"
+title = "Child Care Payment Advisor"
+icon = "🧾"
+description = "Protects child care provider payouts with deterministic risk analysis, forecasts, and recovery priorities."
+agent_type = "stateless"   # stateless | memory | autonomous
+

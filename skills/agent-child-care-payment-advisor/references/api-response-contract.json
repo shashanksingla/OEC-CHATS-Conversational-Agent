@@ -1,0 +1,182 @@
+{
+  "version": "1.0",
+  "description": "Client project contract for MCP routes, deterministic Python inputs, API response gaps, and derived outputs. Salesforce object and relationship truth lives in schema-mapping.json.",
+  "mcp_tools": [
+    "cccap_initialize_provider",
+    "cccap_get_cases",
+    "cccap_get_authorizations",
+    "cccap_get_attendance_analysis",
+    "cccap_get_county_rate_plans",
+    "cccap_get_schedules",
+    "cccap_get_fiscal_rates",
+    "cccap_get_service_periods",
+    "cccap_get_holidays",
+    "cccap_get_current_month_risk_snapshot",
+    "cccap_analyze_attendance_risk"
+  ],
+  "python_scripts": [
+    "scripts/evaluate_attendance_risks.py",
+    "scripts/analyze_attendance_transactions.py",
+    "scripts/calculate_payout.py",
+    "scripts/provider_risk_payment_engine.py"
+  ],
+  "canonical_provider_risk_payment_contract": {
+    "rule_version": "provider-risk-payment-v1",
+    "required_inputs": [
+      "service_period",
+      "authorizations",
+      "attendance_days",
+      "county_policies",
+      "fiscal_rates",
+      "existing_sub_payments"
+    ],
+    "attendance_day_fields": [
+      "authorization_id",
+      "service_date",
+      "authorized_hours",
+      "attended_hours",
+      "parent_confirmation",
+      "absence_parent_approved",
+      "care_not_offered",
+      "age_band"
+    ],
+    "result_statuses": [
+      "ok",
+      "blocked"
+    ],
+    "payment_statuses": [
+      "EXPECTED",
+      "CONDITIONAL",
+      "DUPLICATE_GUARD",
+      "BLOCKED"
+    ],
+    "provenance": "Every result returns the applied rule_version and source_readiness. Blocked and duplicate outcomes never include an amount."
+  },
+  "payout_calculator_status": {
+    "script": "scripts/calculate_payout.py",
+    "source_contract": "legacy_normalized_fixture",
+    "production_ready": false,
+    "blocker": "Live Apex responses do not yet provide the approved fiscal-rate, parent-confirmation, payment-status, and transaction-level fields required for a production payout calculation."
+  },
+  "canonical_engine_status": {
+    "script": "scripts/provider_risk_payment_engine.py",
+    "source_contract": "provider-risk-payment-v1",
+    "production_ready": false,
+    "blocker": "MCP response schemas do not yet supply complete normalized fiscal-rate, transaction, confirmation, payment-history, slot-contract, and parent-fee inputs."
+  },
+  "normalized_inputs": {
+    "case_identity": "T_SBSD_CASE__c.Id",
+    "transaction_case_key": "CHATS_Case__c",
+    "transaction_schedule_key": "Schedule__c",
+    "transaction_statuses": [
+      "PARENT_PENDING",
+      "PARENT_APPROVED",
+      "PENDING_PROVIDER",
+      "PARENT_REJECTED",
+      "VOID"
+    ],
+    "rate_resolution": "Provider -> active fiscal agreement -> rating-level rate schedule -> fiscal rate"
+  },
+  "attendance_analysis_source": {
+    "apex_action": "getSchedules",
+    "mcp_tool": "cccap_get_attendance_analysis",
+    "scope": "Configured provider identity is resolved by initialize; the client injects only provider IDs returned by initialization.",
+    "response": {
+      "required_fields": [
+        "schedules",
+        "transactions",
+        "service_period",
+        "source_freshness"
+      ],
+      "schedule_transaction_relationship": "Attendance__r",
+      "authorized_hours_source": "CI_Authorization_Hours__c",
+      "transaction_fields": [
+        "CI_Transaction_ID__c",
+        "Schedule__c",
+        "CI_Attendance_Date__c",
+        "CI_Attendance_Hours__c",
+        "CI_Transaction_Type__c",
+        "CI_Transaction_Result__c",
+        "Status__c",
+        "Sub_Type__c",
+        "Previous_Transaction__c"
+      ],
+      "missing_data_behavior": "A missing or incompatible Attendance__r collection emits a per-record data_quality_blockers entry. The deterministic analyzer excludes the affected schedule from attendance conclusions and returns the blocker."
+    },
+    "payment_status": "Fiscal agreement and rate-schedule headers do not enable a live amount or forecast; fiscal-rate rows remain required."
+  },
+  "api_response_gaps": {
+    "getProviderData": [
+      "Returns provider, fiscal agreement, nested rate-schedule, and closure records, but does not return fiscal-rate rows; rate-schedule external IDs are selected for the scoped fiscal-rate request.",
+      "Provider.Program_Name__c is used by getSchedules but is not included in the provider SELECT; getSchedules re-queries it.",
+      "Fiscal agreement external IDs are not selected in the response."
+    ],
+    "getCaseData": [
+      "Returns raw case records with Id, Name, county, external ID, and filtered CaseIndividuals__r children.",
+      "IDN_PROVR__c is used as a numeric provider filter but is not selected into the case response.",
+      "Case-individual rows expose client ID, demographic fields, caretaker flag, effective dates, and status, but not a normalized child object."
+    ],
+    "getAuthData": [
+      "Returns selected authorization fields plus related provider, child, county, slot-contract, facility, and child-name values as raw SObject output.",
+      "Authorization status is returned through an unaliased toLabel expression, so its serialized response key must be verified before normalization.",
+      "The response does not include fiscal-rate or parent-confirmation data."
+    ],
+    "getCountyData": [
+      "Returns a manually normalized county-rate-plan map rather than raw T_COUNTY_RATE__c records.",
+      "These plans provide attendance/drop-in/holiday policy, not provider reimbursement fiscal rates."
+    ],
+    "getServicePeriods": [
+      "Returns a DTO; if no stored row matches, it generates a computed period and payment dates instead of returning a Salesforce record."
+    ],
+    "getHolidayList": [
+      "Returns raw holiday records with selected code/date fields and no county relationship."
+    ],
+    "getSchedules": [
+      "Forwards the external schedules response; MCP normalizes the typed schedule fields used by Python.",
+      "Attendance transactions are returned under Attendance__r.records and are mapped by MCP from the existing response."
+    ],
+    "getFiscalRates": [
+      "Requires provider IDs and rate-schedule external IDs supplied by MCP from the authenticated provider initialization scope.",
+      "Re-derives active fiscal agreements and rate schedules server-side before returning batchsit_t_fiscal_rate__x rows and T_FISCAL_RAT_FEES__c rows.",
+      "Returns fiscal schedule headers, fiscal-rate rows, and fiscal-rate fee rows; this data does not by itself enable live payout amounts."
+    ]
+  },
+  "derived_outputs": {
+    "AttendanceRiskSnapshot": {
+      "produced_by": [
+        "cccap_get_current_month_risk_snapshot",
+        "cccap_analyze_attendance_risk"
+      ],
+      "derived_from": [
+        "Schedule",
+        "Transaction",
+        "County"
+      ],
+      "required_summary_categories": [
+        "pending_parent_confirmations",
+        "approaching_absence_limits",
+        "crossed_absence_limits"
+      ],
+      "child_detail_fields": [
+        "child_name",
+        "household_name",
+        "county",
+        "authorization_names",
+        "authorization_dates",
+        "note",
+        "potential_impact"
+      ]
+    },
+    "AttendanceTransactionAnalysis": {
+      "produced_by": [
+        "scripts/analyze_attendance_transactions.py"
+      ],
+      "derived_from": [
+        "Schedule",
+        "Transaction",
+        "County",
+        "ServicePeriod"
+      ]
+    }
+  }
+}
