@@ -317,14 +317,64 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         self.assertEqual(result["status"], "blocked")
         self.assertIn("service_period_dates", result["payment"]["missing_inputs"])
 
-    def test_nonmatching_rate_blocks_payment_conclusion(self) -> None:
+    def test_nonmatching_rate_excludes_authorization_from_payment_conclusion(self) -> None:
         payload = self._complete_input()
         payload["fiscal_rates"][0]["paid_tier"] = "FULL_TIME"
 
         result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
 
-        self.assertEqual(result["status"], "blocked")
-        self.assertIn("matching_fiscal_rate", result["payment"]["missing_inputs"])
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["payment"]["amount"], "0.00")
+        self.assertEqual(result["payment"]["excluded_authorizations"], 1)
+        self.assertEqual(result["payment"]["excluded_days"], 1)
+
+    def test_missing_authorization_rate_is_excluded_while_other_authorizations_calculate(self) -> None:
+        payload = self._complete_input()
+        payload["authorizations"].append({
+            "id": "auth-2",
+            "child_id": "child-2",
+            "county_id": "denver",
+            "quality_tier": 3,
+        })
+        payload["attendance_days"].append({
+            **payload["attendance_days"][0],
+            "authorization_id": "auth-2",
+            "child_name": "Excluded Child",
+        })
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["payment"]["amount"], "45.00")
+        self.assertEqual(result["payment"]["excluded_authorizations"], 1)
+        self.assertEqual(result["payment"]["excluded_days"], 1)
+        self.assertTrue(result["attendance"]["days"][1]["payment_excluded"])
+        self.assertIn("FISCAL_RATE_UNAVAILABLE", result["attendance"]["days"][1]["flags"])
+
+    def test_payment_summary_groups_actual_and_scheduled_rows(self) -> None:
+        payload = self._complete_input()
+        payload["calculation_mode"] = "CURRENT_WEEK_FORECAST"
+        payload["attendance_days"].append({
+            **payload["attendance_days"][0],
+            "service_date": "2026-09-03",
+            "attended_hours": 0,
+            "parent_confirmation": "PENDING",
+            "forecast_basis": "SCHEDULED",
+            "child_name": "Taylor Example",
+        })
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        summary = result["payment"]["summary"]
+        self.assertEqual(len(summary), 2)
+        self.assertEqual(summary[0]["basis"], "ACTUAL")
+        self.assertEqual(summary[0]["children_served"], 1)
+        self.assertEqual(summary[0]["hours"], "5.00")
+        self.assertEqual(summary[0]["amount"], "45.00")
+        self.assertEqual(summary[1]["basis"], "SCHEDULED")
+        self.assertEqual(summary[1]["children_served"], 1)
+        self.assertEqual(summary[1]["hours"], "5.00")
+        self.assertEqual(summary[1]["conditional_amount"], "45.00")
 
     def test_paid_payment_returns_duplicate_guard(self) -> None:
         payload = self._complete_input()

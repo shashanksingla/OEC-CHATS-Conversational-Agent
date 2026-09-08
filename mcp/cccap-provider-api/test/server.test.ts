@@ -217,6 +217,65 @@ test("attendance analysis preserves structured action scope for follow-ups", () 
   ]);
 });
 
+test("attendance analysis focuses pending-confirmation follow-ups", () => {
+  const result = formatAttendanceRiskResult({
+    scope: { dateFilter: "THIS_MONTH" },
+    riskFocus: "PARENT_CONFIRMATIONS",
+    attendanceRisk: {
+      pending_confirmation_days: 2,
+      probable_absence_days: 3,
+      risk_child_count: 1,
+      children: [
+        {
+          child_name: "Taylor Example",
+          pending_confirmation_days: 2,
+          probable_absence_days: 3,
+          risk_codes: [
+            "PARENT_CONFIRMATION_PENDING",
+            "ABSENCE_LIMIT_APPROACHING",
+          ],
+          note: "2 pending parent confirmation day(s) require review.",
+        },
+      ],
+    },
+  });
+
+  const text = result.content[0].text;
+  assert.match(text, /pending parent confirmation day\(s\)/);
+  assert.doesNotMatch(text, /absence-limit concern/);
+  assert.doesNotMatch(text, /county limit threshold/);
+});
+
+test("attendance analysis focuses absence-limit follow-ups", () => {
+  const result = formatAttendanceRiskResult({
+    scope: { dateFilter: "THIS_MONTH" },
+    riskFocus: "ABSENCE_LIMITS",
+    attendanceRisk: {
+      pending_confirmation_days: 2,
+      probable_absence_days: 5,
+      risk_child_count: 1,
+      children: [
+        {
+          child_name: "Absence Example",
+          county: "Denver",
+          pending_confirmation_days: 2,
+          probable_absence_days: 5,
+          risk_codes: [
+            "PARENT_CONFIRMATION_PENDING",
+            "ABSENCE_LIMIT_EXCEEDED",
+          ],
+          note: "5 probable absence day(s) exceed the county limit.",
+        },
+      ],
+    },
+  });
+
+  const text = result.content[0].text;
+  assert.match(text, /absence-limit concern/);
+  assert.match(text, /5 probable absence day\(s\)/);
+  assert.doesNotMatch(text, /pending parent confirmation day\(s\)/);
+});
+
 test("attendance absence follow-up points to county policy retrieval", () => {
   const result = formatAttendanceRiskResult({
     scope: { dateFilter: "THIS_MONTH" },
@@ -250,15 +309,11 @@ test("attendance absence follow-up points to county policy retrieval", () => {
 
 test("county policy formatter returns provider-facing absence limits", () => {
   const result = formatCountyPolicyResult({
-    countyRatePlans: [
+    county_plans: [
       {
-        countyName: "Denver",
-        effectiveBeginDate: "2026-01-01",
-        absenceDaysTier1: 5,
-        absenceDaysTier2: 7,
-        absenceDaysTier3: 9,
-        absenceDaysTier4: 11,
-        absenceDaysTier5: 13,
+        county_name: "Denver",
+        effective_start: "2026-01-01",
+        absence_days_by_tier: { "1": 5, "2": 7, "3": 9, "4": 11, "5": 13 },
       },
     ],
   });
@@ -274,6 +329,7 @@ test("normalizes nested getSchedules attendance records into the Python contract
       Id: "schedule-1",
       Type__c: "CCCAP_AUTHORIZED",
       Contact_Name__c: "YELLOWFOUR BALLOON",
+      Authorization__c: "auth-1",
       Authorization__r: {
         County__r: {
           County_Name__c: "Denver County",
@@ -290,6 +346,17 @@ test("normalizes nested getSchedules attendance records into the Python contract
         records: [
           {
             Id: "transaction-out",
+            CI_Transaction_ID__c: "transaction-out-canonical",
+            Reporting_Authorization_Id__c: "auth-reporting-1",
+            CI_Transaction_Type__c: 2,
+            CI_Transaction_Result__c: 1,
+            CI_Attendance_Hours__c: 9,
+            CI_Attendance_Date__c: "2026-08-18",
+            CI_Provider_ID__c: "provider-1",
+            CI_Client_Id__c: "client-1",
+            CI_Begin_Date__c: "2026-08-18",
+            CI_End_Date__c: "2026-08-18",
+            Denial_Status__c: undefined,
             Schedule__c: "schedule-1",
             Record_Type_Name__c: "Check-Out",
             Status__c: "PARENT_APPROVED",
@@ -299,6 +366,17 @@ test("normalizes nested getSchedules attendance records into the Python contract
           },
           {
             Id: "transaction-in",
+            CI_Transaction_ID__c: "transaction-in-canonical",
+            Reporting_Authorization_Id__c: "auth-1",
+            CI_Transaction_Type__c: 1,
+            CI_Transaction_Result__c: 1,
+            CI_Attendance_Hours__c: 0,
+            CI_Attendance_Date__c: "2026-08-18",
+            CI_Provider_ID__c: "provider-1",
+            CI_Client_Id__c: "client-1",
+            CI_Begin_Date__c: "2026-08-18",
+            CI_End_Date__c: "2026-08-18",
+            Denial_Status__c: undefined,
             Schedule__c: "schedule-1",
             Record_Type_Name__c: "Check-In",
             Status__c: "PARENT_APPROVED",
@@ -313,6 +391,7 @@ test("normalizes nested getSchedules attendance records into the Python contract
 
   assert.equal(normalized.schedules[0].schedule_id, "schedule-1");
   assert.equal(normalized.schedules[0].authorization_id, "auth-1");
+  assert.equal(normalized.schedules[0].authorization_name, "auth-1");
   assert.equal(normalized.schedules[0].county_id, "county-1");
   assert.equal(normalized.schedules[0].county_name, "Denver County");
   assert.equal(normalized.schedules[0].quality_tier, 5);
@@ -327,7 +406,10 @@ test("normalizes nested getSchedules attendance records into the Python contract
     [1, 2],
   );
   assert.equal(normalized.transactions[0].status, "PARENT_APPROVED");
-  assert.equal(normalized.transactions[0].authorization_id, "auth-1");
+  assert.equal(normalized.transactions[0].transaction_id, "transaction-out-canonical");
+  assert.equal(normalized.transactions[0].authorization_id, "auth-reporting-1");
+  assert.equal(normalized.transactions[0].client_id, "client-1");
+  assert.equal(normalized.transactions[0].result, 1);
 });
 
 test("normalizes stable payment-level status codes for duplicate guards", () => {
@@ -493,6 +575,87 @@ test("blocks attendance-day construction when enrichment is missing", () => {
   );
 });
 
+test("forecast attendance defaults missing confirmation to pending", () => {
+  assert.deepEqual(
+    normalizeAttendanceDays(
+      [{
+        authorization_id: "auth-1",
+        work_date: "2026-09-01",
+        ci_authorization_hours: 5,
+        raw_hours: 4,
+      }],
+      {
+        "auth-1": {
+          age_band: "OVER_36_MONTHS",
+          occupied_slot_contract: false,
+          care_not_offered: false,
+          observed_holiday: false,
+        },
+      },
+      { mode: "FORECAST", asOfDate: "2026-09-09" },
+    )[0]?.parent_confirmation,
+    "PENDING",
+  );
+});
+
+test("forecast attendance defaults missing actual hours to zero", () => {
+  assert.equal(
+    normalizeAttendanceDays(
+      [{
+        authorization_id: "auth-1",
+        work_date: "2026-09-01",
+        ci_authorization_hours: 5,
+      }],
+      {
+        "auth-1": {
+          age_band: "OVER_36_MONTHS",
+          occupied_slot_contract: false,
+          care_not_offered: false,
+          observed_holiday: false,
+        },
+      },
+      { mode: "FORECAST", asOfDate: "2026-09-09" },
+    )[0]?.attended_hours,
+    0,
+  );
+});
+
+test("future forecast rows retain authorized hours and ignore actual hours", () => {
+  assert.deepEqual(
+    normalizeAttendanceDays(
+      [{
+        authorization_id: "auth-1",
+        work_date: "2026-09-10",
+        ci_authorization_hours: 8,
+        raw_hours: 2,
+      }],
+      {
+        "auth-1": {
+          age_band: "OVER_36_MONTHS",
+          occupied_slot_contract: false,
+          care_not_offered: false,
+          observed_holiday: false,
+        },
+      },
+      { mode: "FORECAST", asOfDate: "2026-09-09" },
+    )[0],
+    {
+      authorization_id: "auth-1",
+      service_date: "2026-09-10",
+      authorized_hours: 8,
+      attended_hours: 0,
+      parent_confirmation: "PENDING",
+      absence_parent_approved: false,
+      age_band: "OVER_36_MONTHS",
+      slot_contract_present: false,
+      occupied_slot_contract: false,
+      care_not_offered: false,
+      observed_holiday: false,
+      forecast_basis: "SCHEDULED",
+    },
+  );
+});
+
 test("assembles the complete provider-risk-payment canonical payload", () => {
   const payload = buildCanonicalPaymentPayload({
     servicePeriod: {
@@ -537,6 +700,10 @@ test("derives age band, occupied slot, and observed holiday enrichment from sour
         care_not_offered: false,
       }],
       {
+        authorizations: [{
+          Id: "auth-1",
+          IDN_CLIENT__r: { DTE_DOB__c: "2024-09-02" },
+        }],
         encumbrances: [{
           idn_auth__c: "auth-1",
           dte_care__c: "2026-09-01",
@@ -570,6 +737,81 @@ test("derives age band, occupied slot, and observed holiday enrichment from sour
         observed_holiday_date: "2026-09-01",
       },
     },
+  );
+});
+
+test("derives age band from child DOB and care date", () => {
+  assert.deepEqual(
+    deriveAttendanceEnrichment(
+      [{ authorization_id: "auth-1", work_date: "2026-09-01", care_not_offered: false }],
+      {
+        authorizations: [{
+          Id: "auth-1",
+          IDN_CLIENT__r: { DTE_DOB__c: "2023-10-01" },
+        }],
+        encumbrances: [{
+          idn_auth__c: "auth-1",
+          dte_care__c: "2026-09-01",
+          cde_status_encmbr__c: "2",
+        }],
+        slotContracts: [],
+      },
+      { holidayList: [] },
+    )["auth-1"].age_band,
+    "ZERO_TO_36_MONTHS",
+  );
+});
+
+test("joins schedule DECL authorization references to Salesforce authorization names", () => {
+  assert.equal(
+    deriveAttendanceEnrichment(
+      [{
+        authorization_id: "a3ddl-decl-1",
+        authorization_name: 950289,
+        work_date: "2026-09-01",
+        care_not_offered: false,
+      }],
+      {
+        authorizations: [{
+          Id: "a0s-salesforce-1",
+          Name: "950289",
+          IDN_CLIENT__r: { DTE_DOB__c: "2023-10-01" },
+        }],
+        encumbrances: [{
+          idn_auth__c: "a0s-salesforce-1",
+          dte_care__c: "2026-09-01",
+          cde_status_encmbr__c: "2",
+        }],
+        slotContracts: [],
+      },
+      { holidayList: [] },
+    )["a3ddl-decl-1"].age_band,
+    "ZERO_TO_36_MONTHS",
+  );
+});
+
+test("joins encumbrances through either external authorization reference", () => {
+  assert.equal(
+    deriveAttendanceEnrichment(
+      [{ authorization_id: "auth-1", work_date: "2026-09-01", care_not_offered: false }],
+      {
+        authorizations: [{
+          Id: "auth-1",
+          IDN_EXTNL__c: "external-1",
+          Name: "958591",
+          IDN_CLIENT__r: { DTE_DOB__c: "2020-01-01" },
+        }],
+        encumbrances: [{
+          idn_auth__c: "unrelated-reference",
+          idn_encmbr_auth__c: "external-1",
+          dte_care__c: "2026-09-01",
+          cde_status_encmbr__c: "2",
+        }],
+        slotContracts: [],
+      },
+      { holidayList: [] },
+    )["auth-1"].age_band,
+    "OVER_36_MONTHS",
   );
 });
 
@@ -622,11 +864,14 @@ test("normalizes scheduled slot and ART fees from fiscal and slot-contract sourc
       [{
         fiscalScheduleId: "schedule-1",
         rateTypeCode: "1",
+        ageGroupCode: "5",
         careUnitCode: "3",
+        fiscalAgreementAmount: "45.00",
         providerAmount: "45.00",
       }],
       [{
         fiscalScheduleId: "schedule-1",
+        activityFiscalAgreementAmount: "10.00",
         activityProviderAmount: "10.00",
         activityFrequency: "MTH",
         activityMonths: "7,8",
@@ -641,6 +886,9 @@ test("normalizes scheduled slot and ART fees from fiscal and slot-contract sourc
         DTE_END_SLOT__c: "2026-09-30",
         CNT_DAYS_OF_MONTH__c: 20,
         CNT_DAYS_OF_WEEK__c: 5,
+      }, {
+        Id: "vacant-slot-1",
+        IDN_AUTH__c: null,
       }],
       { "auth-1": "schedule-1" },
     ),
@@ -658,6 +906,39 @@ test("normalizes scheduled slot and ART fees from fiscal and slot-contract sourc
       activity_frequency: "MTH",
       activity_months: "7,8",
     }],
+  );
+});
+
+test("does not let an ambiguous slot rate block authorization-level payment mapping", () => {
+  assert.deepEqual(
+    normalizePaymentFeeSchedules(
+      [{
+        fiscalScheduleId: "schedule-1",
+        rateTypeCode: "1",
+        ageGroupCode: "5",
+        careUnitCode: "3",
+        fiscalAgreementAmount: "45.00",
+        providerAmount: "45.00",
+      }, {
+        fiscalScheduleId: "schedule-1",
+        rateTypeCode: "1",
+        ageGroupCode: "6",
+        careUnitCode: "3",
+        fiscalAgreementAmount: "46.00",
+        providerAmount: "46.00",
+      }],
+      [{ fiscalScheduleId: "schedule-1" }],
+      [{
+        Id: "slot-ambiguous",
+        IDN_AUTH__c: "auth-1",
+        CDE_RATE_TYPE__c: "1",
+        CDE_CARE_UNIT__c: "3",
+        CDE_CARE_LEVEL__c: "7",
+        DTE_BEGIN_SLOT__c: "2026-09-01",
+      }],
+      { "auth-1": "schedule-1" },
+    ),
+    [],
   );
 });
 
@@ -702,7 +983,7 @@ test("payment results use a provider-facing table and preserve blocked states", 
     },
   });
 
-  assert.match(result.content[0].text, /Next payout detail: Blocked/);
+  assert.match(result.content[0].text, /Next payout summary: Blocked/);
   assert.match(result.content[0].text, /Services from/);
   assert.match(result.content[0].text, /2026-09-24/);
   assert.match(result.content[0].text, /fiscal_rates, parent_confirmations/);
@@ -732,9 +1013,64 @@ test("payment results show scheduled forecast rows for child drill-down", () => 
   });
 
   assert.match(result.content[0].text, /Current-week forecast: Conditional/);
-  assert.match(result.content[0].text, /Taylor Example \| denver \| 2026-09-09/);
+  assert.match(result.content[0].text, /Taylor Example \| Unavailable from the current source \| 2026-09-09/);
   assert.match(result.content[0].text, /Scheduled forecast \| SCHEDULED_FORECAST/);
   assert.equal(result.structuredContent?.calculationMode, "CURRENT_WEEK_FORECAST");
+});
+
+test("payment results show summary before child drill-down detail", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    payment: {
+      status: "CONDITIONAL",
+      amount: "90.00",
+      summary: [{
+        county_id: "denver",
+        county_name: "Denver",
+        paid_tier: "PART_TIME",
+        rate: "9.00",
+        basis: "ACTUAL",
+        children_served: 1,
+        hours: "10.00",
+        amount: "90.00",
+        conditional_amount: "90.00",
+      }],
+    },
+    attendance: { days: [{
+      child_name: "Taylor Example",
+      county_id: "denver",
+      service_date: "2026-09-09",
+      forecast_basis: "ACTUAL",
+      classification: "ATTENDED",
+      unit_hours: "10.00",
+      conditional: true,
+    }] },
+  });
+
+  const text = result.content[0].text;
+  assert.match(text, /Summary by county, tier, rate, and attendance basis:/);
+  assert.match(text, /Denver \| PART_TIME \| 9\.00 \| Actual \| 1 \| 10\.00 \| 90\.00 \| 90\.00/);
+  assert.ok(text.indexOf("Summary by county") < text.indexOf("Detail by child"));
+});
+
+test("payment detail reports its bounded page window", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    payment: { status: "EXPECTED", amount: "45.00" },
+    detailPagination: { page: 2, pageSize: 1, totalRows: 2, hasMore: false },
+    attendance: { days: [{
+      child_name: "Taylor Example",
+      county_id: "denver",
+      service_date: "2026-09-10",
+      forecast_basis: "ACTUAL",
+      classification: "ATTENDED",
+      unit_hours: "5.00",
+      conditional: false,
+    }] },
+  });
+
+  assert.match(result.content[0].text, /Showing detail rows 2-2 of 2 \(page 2; page size 1\)\./);
+  assert.deepEqual(result.structuredContent?.detailPagination, { page: 2, pageSize: 1, totalRows: 2, hasMore: false });
 });
 
 test("attendance detail caps the provider-facing table and reports the remainder", () => {
@@ -816,4 +1152,38 @@ test("risk snapshots join county by name from the DECL-sourced schedule, not by 
     },
     countyId: "a1441000004dc7KAAQ",
   }]);
+});
+
+test("canonicalizes DECL authorization references to Salesforce authorization IDs", () => {
+  assert.equal(
+    normalizeScheduleAttendance(
+      [{
+        CI_Authorization_Id__c: "941328",
+        CI_Authorization_Date__c: "2026-08-24",
+      }],
+      undefined,
+      undefined,
+      {
+        authorizations: [{ Id: "a0sPg000009BE0rIAG", Name: "941328" }],
+      },
+    ).schedules[0].authorization_id,
+    "a0sPg000009BE0rIAG",
+  );
+});
+
+test("payment summary omits detail rows but keeps period metadata", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    payment: { status: "EXPECTED", amount: "45.00" },
+    servicePeriod: { id: "period-1", start_date: "2026-09-07", end_date: "2026-09-13" },
+    detailPagination: { page: 0, pageSize: 0, totalRows: 182, hasMore: true },
+    attendance: { days: [] },
+  });
+
+  const text = result.content[0].text;
+  assert.match(text, /Next payout summary: Expected/);
+  assert.match(text, /Services from.*2026-09-07/);
+  assert.match(text, /Services through.*2026-09-13/);
+  assert.match(text, /Detail available: 182 child\/date rows/);
+  assert.doesNotMatch(text, /Detail by child and service date/);
 });

@@ -58,6 +58,20 @@ The MCP adapter must only construct this input from already authorized retrieval
 
 Before Salesforce deployment, approve and test the response paths for attendance transaction validity, absence classification and approval, Care Not Offered, rate-unit selection and copay adjustments, parent confirmation, payment status and history, service-period-to-payment-window anchoring, holidays, slot contracts, ART fees, source freshness, and every relationship key. Missing mappings block the affected calculation.
 
+## Confirmed Schema Decisions
+
+- Authorization identity is explicit: `Authorization.Id` is the Salesforce ID, `Authorization.Name` is the primary authorization reference for external authorization-related rows, and `Authorization.IDN_EXTNL__c` is the fallback external reference.
+- `T_SLOT_CONTRACT__c.IDN_AUTH__c` is a Salesforce authorization ID. `idn_auth__c` on encumbrances, authorization copays, and payment sub-payments is an authorization name, resolved through `Authorization.Name` and then `Authorization.IDN_EXTNL__c`.
+- `Attendance__r.records[].Schedule__c` is the transaction-to-schedule relationship. Confirmed attendance requires `Status__c = PARENT_APPROVED`; confirmed attendance hours use schedule `Hours__c`.
+- Authorization status codes are `1 = Pending`, `2 = Authorized`, `3 = Attended`, `4 = Paid`, and `5 = Care Not Offered`. Unknown authorization statuses block the affected calculation.
+- Supported schedule types are `CCCAP_AUTHORIZED` and `DROP_IN`. `CI_Authorization_Rate_Type__c` supplies one schedule rate type; fiscal schedules can contain multiple rate types, so the schedule value selects the matching fiscal row.
+- Fiscal-rate selection uses fiscal schedule `IDN_EXTNL__c`, rate type, age group, care unit, and care date. The latest effective match is selected. Payment uses `amt_fa__c`; provider and county amounts are not fallbacks.
+- Age-group codes are `1: 0-6 Months`, `2: 06-12 Months`, `3: 12-18 Months`, `4: 18-24 Months`, `5: 24-30 Months`, `6: 30-36 Months`, `7: 36 - School Age`, and `8: School Age`. The age is evaluated on the care date, with the third birthday included in the 0-36-month boundary as confirmed by the business mapping.
+- A slot is occupied when `IDN_AUTH__c` is non-null. Vacant-slot contracts are independent of authorization and do not receive holiday payment; their regular payment uses info code `12` and monthly quota controls. Occupied-slot payment uses authorization hours, attendance hours, holiday/absence rules, provider license, and care-not-offered/enrollment rules.
+- Regular authorized holidays use info code `1`; occupied slot-contract holidays use `9`. Vacant slots do not receive holiday payment.
+- Paid absence limits are monthly, child-scoped, and county/provider-quality based. An authorization-level drop-in limit takes precedence over the county limit; `Number_of_Drop_in_Days__c` is the authorization monthly limit. The county `drop_in_response` value `licensed` is the currently confirmed licensed-provider rule.
+- Payment status codes are `1 = Created`, `2 = In Progress`, `3 = Calculated`, and `4 = Paid`. Copay is monthly from the first day of the month. Date calculations currently use IST.
+
 ## Tool Selection
 
 Use the narrowest tools and filters that answer the provider's request. Call `cccap_initialize_provider` first, then only relevant counties, cases, authorizations, periods, schedules, and calendars. The model chooses tools and valid API filters; it never supplies provider identity, joins records, applies rules, counts days, or calculates money.

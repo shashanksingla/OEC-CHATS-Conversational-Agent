@@ -1,4 +1,7 @@
 import { spawn } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 const runSfCommand = (command, args, input) => new Promise((resolve, reject) => {
     const executable = process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : command;
     const commandArgs = process.platform === "win32"
@@ -71,6 +74,9 @@ export async function requestApexViaSf(targetOrg, action, body, run = runSfComma
     if (!allowedActions.has(action)) {
         throw new Error(`Unsupported CCCAP action: ${action}`);
     }
+    const directory = await mkdtemp(join(tmpdir(), "cccap-apex-"));
+    const bodyPath = join(directory, "request.json");
+    await writeFile(bodyPath, JSON.stringify(body), "utf8");
     try {
         const { stdout, exitCode } = await run("sf", [
             "api",
@@ -82,9 +88,9 @@ export async function requestApexViaSf(targetOrg, action, body, run = runSfComma
             "--method",
             "POST",
             "--body",
-            "-",
+            `@${bodyPath}`,
             "--json",
-        ], JSON.stringify(body));
+        ], "");
         const result = JSON.parse(stdout);
         const statusCode = result.result?.statusCode;
         const responseBody = result.result?.body;
@@ -94,13 +100,34 @@ export async function requestApexViaSf(targetOrg, action, body, run = runSfComma
             statusCode < 200 ||
             statusCode >= 300 ||
             !responseBody) {
-            throw new Error("Invalid Salesforce CLI response");
+            const body = typeof responseBody === "string"
+                ? responseBody
+                : responseBody && typeof responseBody === "object"
+                    ? JSON.stringify(responseBody)
+                    : undefined;
+            throw new Error(body || "Invalid Salesforce CLI response");
         }
         return typeof responseBody === "string"
             ? JSON.parse(responseBody)
             : responseBody;
     }
-    catch {
+    catch (error) {
+        if (error instanceof Error) {
+            try {
+                const response = JSON.parse(error.message);
+                if (typeof response.errorMessage === "string" && response.errorMessage.length > 0) {
+                    throw new Error(`Salesforce Apex ${action} failed: ${response.errorMessage}`);
+                }
+            }
+            catch (parseError) {
+                if (parseError instanceof Error && parseError.message.startsWith("Salesforce Apex")) {
+                    throw parseError;
+                }
+            }
+        }
         throw new Error(`Salesforce Apex request failed for ${action}`);
+    }
+    finally {
+        await rm(directory, { recursive: true, force: true });
     }
 }

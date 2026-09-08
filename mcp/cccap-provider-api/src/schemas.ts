@@ -118,6 +118,7 @@ export const attendanceAnalysisSchema = z
     dateFilter: dateFilterSchema,
     childNames: z.array(z.string().min(1)).min(1).optional(),
     authNames: z.array(z.string().min(1)).min(1).optional(),
+    riskFocus: z.enum(["PARENT_CONFIRMATIONS", "ABSENCE_LIMITS"]).optional(),
   })
   .strict()
   .superRefine(validateDateScope);
@@ -127,6 +128,10 @@ export const paymentAnalysisSchema = z
     ...dateScopeShape,
     dateFilter: dateFilterSchema.optional(),
     view: paymentViewSchema.optional(),
+    childNames: z.array(z.string().min(1)).min(1).optional(),
+    authNames: z.array(z.string().min(1)).min(1).optional(),
+    detailPage: z.number().int().positive().optional(),
+    detailPageSize: z.number().int().positive().max(100).optional(),
   })
   .strict()
   .superRefine((value, context) => {

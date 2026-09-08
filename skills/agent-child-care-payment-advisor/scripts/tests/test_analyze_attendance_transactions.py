@@ -263,7 +263,7 @@ class AnalyzeAttendanceTransactionsTests(unittest.TestCase):
         result = analyze(_payload([_schedule()]))
         rule_groups = {rule["rule_group"] for rule in result["unimplemented_rules"]}
         self.assertIn("County - Drop-In Limits", rule_groups)
-        self.assertIn("County - Absence", rule_groups)
+        self.assertNotIn("County - Absence", rule_groups)
 
     def test_missing_service_period_raises(self) -> None:
         with self.assertRaises(AttendanceTransactionError):

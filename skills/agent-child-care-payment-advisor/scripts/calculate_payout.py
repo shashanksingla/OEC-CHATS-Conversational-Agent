@@ -3,6 +3,9 @@
 # requires-python = ">=3.10"
 # ///
 
+# LEGACY FIXTURE ENGINE: not used by live MCP payment analysis. The canonical live
+# engine is provider_risk_payment_engine.py and consumes provider-risk-payment-v1.
+
 import argparse
 import json
 import sys

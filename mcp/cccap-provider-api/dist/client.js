@@ -42,24 +42,30 @@ export class CccapClient {
         });
     }
     async getAuthorizations(input) {
+        const { scheduleRateTypes, careDate: _careDate, ...request } = input;
         const data = await this.cachedCall("getAuthData", {
-            ...input,
-            countyIds: this.allowedCounties(input.countyIds),
+            ...request,
+            countyIds: this.allowedCounties(request.countyIds),
             providerIds: this.allowedProviders(),
         });
         const response = this.requireRecord(data, "getAuthData.data");
         const careDate = input.careDate ?? input.dateFrom ?? new Date().toISOString().slice(0, 10);
         const authorizations = response.authorizations;
-        const slotContracts = response.slotContracts;
         if (!Array.isArray(authorizations)) {
             return { ...response, normalizedAuthorizations: [] };
         }
         return {
             ...response,
-            normalizedAuthorizations: authorizations.map((authorization) => ({
-                authorization,
-                fiscalScheduleMatch: selectFiscalScheduleForAuthorization(authorization, slotContracts, this.fiscalSchedules, careDate),
-            })),
+            normalizedAuthorizations: authorizations.map((authorization) => {
+                const scheduleRateType = scheduleRateTypes?.[String(authorization.Id)]
+                    ?? scheduleRateTypes?.[String(authorization.Name)]
+                    ?? scheduleRateTypes?.[String(authorization.IDN_EXTNL__c)];
+                return {
+                    authorization,
+                    ...(scheduleRateType ? { rateTypeCode: scheduleRateType } : {}),
+                    fiscalScheduleMatch: selectFiscalScheduleForAuthorization(authorization, this.fiscalSchedules, careDate, scheduleRateType),
+                };
+            }),
         };
     }
     async getCountyData(input) {

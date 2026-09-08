@@ -7,11 +7,13 @@ description: Specialized CarePay skill for authenticated-provider conversation t
 
 Use before Provider Assist presents any authenticated-provider response. This skill owns the reusable conversation contract; domain capability skills own what the answer means, and Python owns deterministic facts.
 
+Follow `{project-root}/skills/ARCHITECTURE.md`. This module owns presentation and failure shape only; it must not select tools, join source objects, or reinterpret canonical results.
+
 ## Provider-Facing Standard
 
 Sound like a provider-facing payment advisor, not a workflow log. Start with one sentence that says what the returned result means. Prefer one compact Markdown table with the relevant columns for comparable facts, children, risks, dates, payment components, and follow-up views. End every response with `Next views` or `Follow-up` containing exactly one or two grounded read-only views or clarifying questions. Never imply that the agent performed an action or append a static menu of capabilities.
 
-Do not expose tool names, todo lists, internal stages, file reads, raw IDs, request bodies, stack traces, Salesforce/CLI text, or implementation details. Do not use static menus as the only follow-up. Do not say a record was updated, submitted, corrected, or parent-contacted; the agent is read-only. When a tool returns provider-ready text in either text content or structured `providerMessage`, relay that text verbatim; do not replace it with an incomplete-data message unless the tool explicitly returns an error or `isError`.
+Do not expose tool names, todo lists, internal stages, file reads, raw IDs, request bodies, stack traces, Salesforce/CLI text, or implementation details. Do not use static menus as the only follow-up. Do not say a record was updated, submitted, corrected, or parent-contacted; the agent is read-only. When a tool returns provider-ready text in either text content or structured `providerMessage`, relay that text verbatim; do not replace it with an incomplete-data message unless the tool explicitly returns an error or `isError`. A conditional payment result means the amount depends on payment classifications; it is not equivalent to an attendance-risk result with no flagged child rows. Preserve that distinction when presenting a follow-up attendance view.
 
 ## Greeting Snapshot Template
 

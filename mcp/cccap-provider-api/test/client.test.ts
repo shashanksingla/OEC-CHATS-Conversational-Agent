@@ -146,11 +146,13 @@ test("authorization requests preserve case filters and inject the provider Sales
   await client.getAuthorizations({
     caseIds: ["case-1"],
     dateFilter: "TODAY",
+    careDate: "2026-09-09",
   });
   await client.getSchedules({ dateFilter: "TODAY", authNames: ["AUTH-1"] });
 
   assert.deepEqual(requests[1]?.body.providerIds, ["provider-1"]);
   assert.deepEqual(requests[1]?.body.caseIds, ["case-1"]);
+  assert.equal(requests[1]?.body.careDate, undefined);
   assert.deepEqual(requests[2]?.body.providerIds, ["provider-1"]);
   assert.deepEqual(requests[2]?.body.authNames, ["AUTH-1"]);
 });

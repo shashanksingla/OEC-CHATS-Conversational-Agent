@@ -5,9 +5,20 @@ import {
   getAttendanceRiskAnalysis,
   getAttendanceRiskSnapshot,
   getCurrentMonthAttendanceSnapshot,
-  getPaymentAnalysis,
 } from "./attendance-snapshot.js";
+import { getPaymentAnalysis } from "./payment-orchestration.js";
 import { CccapClient } from "./client.js";
+import {
+  normalizeAuthorizations,
+  normalizeCases,
+  normalizeCountyPlans,
+  normalizeFiscalRates,
+  normalizeHolidays,
+  normalizePaymentHistory,
+  normalizeProviderInitialization,
+  normalizeSchedules,
+  normalizeServicePeriods,
+} from "./read-model-adapters.js";
 import {
   authorizationSchema,
   attendanceAnalysisSchema,
@@ -50,8 +61,8 @@ function result(data: unknown): ToolResult {
 
 export function formatCountyPolicyResult(data: unknown): ToolResult {
   const response = recordValue(data);
-  const plans = response && Array.isArray(response.countyRatePlans)
-    ? response.countyRatePlans.map(recordValue).filter(
+  const plans = response && Array.isArray(response.county_plans)
+    ? response.county_plans.map(recordValue).filter(
       (plan): plan is Record<string, unknown> => Boolean(plan),
     )
     : [];
@@ -76,8 +87,8 @@ export function formatCountyPolicyResult(data: unknown): ToolResult {
     `| County | Effective from | ${tierColumns.join(" | ")} |`,
     `| --- | --- | ${tierColumns.map(() => "---:").join(" | ")} |`,
     ...plans.map((plan) =>
-      `| ${tableValue(plan.countyName)} | ${tableValue(plan.effectiveBeginDate)} | ${[1, 2, 3, 4, 5]
-        .map((tier) => tableValue(plan[`absenceDaysTier${tier}`]))
+      `| ${tableValue(plan.county_name)} | ${tableValue(plan.effective_start)} | ${[1, 2, 3, 4, 5]
+        .map((tier) => tableValue(recordValue(plan.absence_days_by_tier)?.[String(tier)]))
         .join(" | ")} |`,
     ),
     "",
@@ -237,11 +248,21 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
     return result(data);
   }
 
-  const affectedChildren = children
+  const allAffectedChildren = children
     .map(recordValue)
     .filter((child): child is Record<string, unknown> => Boolean(child))
     .filter((child) => Array.isArray(child.risk_codes) && child.risk_codes.length > 0);
-  const pendingDays = numericValue(risk.pending_confirmation_days);
+  const riskFocus = analysis?.riskFocus;
+  const affectedChildren = riskFocus === "PARENT_CONFIRMATIONS"
+    ? allAffectedChildren.filter((child) =>
+      Array.isArray(child.risk_codes) && child.risk_codes.includes("PARENT_CONFIRMATION_PENDING"),
+    )
+    : riskFocus === "ABSENCE_LIMITS"
+      ? allAffectedChildren.filter(hasAbsenceLimitConcern)
+      : allAffectedChildren;
+  const pendingDays = riskFocus === "PARENT_CONFIRMATIONS"
+    ? affectedChildren.reduce((total, child) => total + numericValue(child.pending_confirmation_days), 0)
+    : riskFocus === "ABSENCE_LIMITS" ? 0 : numericValue(risk.pending_confirmation_days);
   const pendingChildren = affectedChildren.filter((child) =>
     Array.isArray(child.risk_codes) && child.risk_codes.includes("PARENT_CONFIRMATION_PENDING"),
   ).length;
@@ -249,7 +270,9 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
   const incompleteChildren = affectedChildren.filter((child) =>
     Array.isArray(child.risk_codes) && child.risk_codes.includes("INCOMPLETE_ATTENDANCE_RECORD"),
   ).length;
-  const probableAbsenceDays = numericValue(risk.probable_absence_days);
+  const probableAbsenceDays = riskFocus === "ABSENCE_LIMITS"
+    ? affectedChildren.reduce((total, child) => total + numericValue(child.probable_absence_days), 0)
+    : riskFocus === "PARENT_CONFIRMATIONS" ? 0 : numericValue(risk.probable_absence_days);
   const scopeLabel = attendanceScopeLabel(analysis.scope);
   const childPendingDays = affectedChildren.reduce(
     (total, child) => total + numericValue(child.pending_confirmation_days),
@@ -260,11 +283,11 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
     0,
   );
   const reportedRiskChildCount = numericValue(risk.risk_child_count);
-  if (
+  if (!riskFocus && (
     childPendingDays !== pendingDays ||
     childProbableAbsenceDays !== probableAbsenceDays ||
     (reportedRiskChildCount > 0 && reportedRiskChildCount !== affectedChildren.length)
-  ) {
+  )) {
     return sourceIntegrityError(
       analysis.scope,
       "Aggregate attendance risk totals do not match the returned child details.",
@@ -285,17 +308,17 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
       ? `${scopeLabel} attendance review found ${affectedChildren.length} child(ren) needing attention.`
       : `${scopeLabel} attendance review found no child-level attendance risks.`,
   ];
-  if (pendingDays > 0) {
+  if (riskFocus !== "ABSENCE_LIMITS" && pendingDays > 0) {
     lines.push(
       `${pendingDays} pending parent confirmation day(s) affect ${pendingChildren} child(ren).`,
     );
   }
-  if (absenceChildren > 0) {
+  if (riskFocus !== "PARENT_CONFIRMATIONS" && absenceChildren > 0) {
     lines.push(`${absenceChildren} child(ren) have an absence-limit concern${
       probableAbsenceDays > 0 ? ` (${probableAbsenceDays} probable absence day(s))` : ""
     }.`);
   }
-  if (incompleteChildren > 0) {
+  if (!riskFocus && incompleteChildren > 0) {
     lines.push(`${incompleteChildren} child(ren) have incomplete attendance records.`);
   }
 
@@ -319,15 +342,15 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
   }
 
   const nextActions = [];
-  if (pendingDays > 0) {
+  if ((riskFocus === "PARENT_CONFIRMATIONS" && pendingDays > 0) || (!riskFocus && pendingDays > 0)) {
     nextActions.push("Review pending parent confirmations in the provider system");
-    if (hasAuthorizationNames) {
+    if (!riskFocus && hasAuthorizationNames) {
       nextActions.push("Review authorization details for the affected children");
     }
   }
-  if (absenceChildren > 0 && hasCounties && nextActions.length < 2) {
+  if ((riskFocus === "ABSENCE_LIMITS" || !riskFocus) && absenceChildren > 0 && hasCounties && nextActions.length < 2) {
     nextActions.push("Review county absence limits for the affected children");
-  } else if ((absenceChildren > 0 || incompleteChildren > 0) && nextActions.length < 2) {
+  } else if (!riskFocus && (absenceChildren > 0 || incompleteChildren > 0) && nextActions.length < 2) {
     nextActions.push("Review the affected attendance records and county limits");
   }
   if (nextActions.length === 0) {
@@ -357,8 +380,10 @@ export function formatPaymentResult(data: unknown): ToolResult {
   if (!paymentResult || !payment) return result(data);
 
   const status = typeof payment.status === "string" ? payment.status.toUpperCase() : "BLOCKED";
+  const detailPagination = recordValue(paymentResult.detailPagination);
+  const detailPage = detailPagination && Number(detailPagination.page) > 0;
   const view = paymentResult.paymentView === "NEXT_PAYOUT"
-    ? "Next payout detail"
+    ? detailPage ? "Next payout detail" : "Next payout summary"
     : paymentResult.paymentView === "CURRENT_WEEK_FORECAST"
       ? "Current-week forecast"
       : "Payment status";
@@ -388,15 +413,16 @@ export function formatPaymentResult(data: unknown): ToolResult {
     `| Status | ${statusLabel} |`,
   ];
   if (servicePeriod) {
-    for (const [label, key] of [
-      ["Service period", "servicePeriodId"],
-      ["Services from", "serviceBeginDate"],
-      ["Services through", "serviceEndDate"],
-      ["Payment processing date", "paymentProcessingDate"],
-      ["Payment release date", "paymentReleaseDate"],
-      ["Service-period status", "status"],
+    for (const [label, keys] of [
+      ["Service period", ["servicePeriodId", "id"]],
+      ["Services from", ["serviceBeginDate", "start_date"]],
+      ["Services through", ["serviceEndDate", "end_date"]],
+      ["Payment processing date", ["paymentProcessingDate", "processing_date"]],
+      ["Payment release date", ["paymentReleaseDate", "release_date"]],
+      ["Service-period status", ["status", "service_period_status"]],
     ] as const) {
-      if (servicePeriod[key] !== undefined) lines.push(`| ${label} | ${tableValue(servicePeriod[key])} |`);
+      const value = keys.map((key) => servicePeriod[key]).find((candidate) => candidate !== undefined && candidate !== null);
+      if (value !== undefined) lines.push(`| ${label} | ${tableValue(value)} |`);
     }
   }
   if (status === "BLOCKED") {
@@ -411,19 +437,29 @@ export function formatPaymentResult(data: unknown): ToolResult {
       ["Gross amount", "gross_amount"],
       ["Amount at risk", "amount_at_risk"],
       ["Excluded days", "excluded_days"],
+      ["Excluded authorizations", "excluded_authorizations"],
       ["Existing payment status", "existing_status"],
     ] as const) {
       if (payment[key] !== undefined) lines.push(`| ${label} | ${String(payment[key])} |`);
     }
+    const summary = Array.isArray(payment.summary) ? payment.summary.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row)) : [];
+    if (summary.length > 0) {
+      lines.push("", "Summary by county, tier, rate, and attendance basis:", "| County | Tier | Applied rate(s) | Basis | Children | Hours | Amount | Conditional amount |", "| --- | --- | ---: | --- | ---: | ---: | ---: | ---: |", ...summary.map((row) => `| ${tableValue(row.county_name ?? "Unavailable from the current source")} | ${tableValue(row.paid_tier)} | ${tableValue(Array.isArray(row.rates) ? row.rates.join(", ") : row.rate)} | ${row.basis === "SCHEDULED" ? "Scheduled forecast" : "Actual"} | ${tableValue(row.children_served)} | ${tableValue(row.hours)} | ${tableValue(row.amount)} | ${tableValue(row.conditional_amount)} |`));
+    }
     if (attendance.length > 0) {
-      lines.push(
-        "",
-        "| Child | County | Service date | Basis | Classification | Units | Conditional |",
-        "| --- | --- | --- | --- | --- | ---: | --- |",
+      const pageLabel = detailPagination
+        ? `Showing detail rows ${((Number(detailPagination.page) - 1) * Number(detailPagination.pageSize)) + 1}-${Math.min(Number(detailPagination.page) * Number(detailPagination.pageSize), Number(detailPagination.totalRows))} of ${tableValue(detailPagination.totalRows)} (page ${tableValue(detailPagination.page)}; page size ${tableValue(detailPagination.pageSize)}).`
+        : "";
+      lines.push("", "Detail by child and service date:",
+        ...(pageLabel ? [pageLabel] : []),
+        "| Child | County | Service date | Basis | Classification | Units | Conditional | Payment |",
+        "| --- | --- | --- | --- | --- | ---: | --- | --- |",
         ...attendance.map((day) =>
-          `| ${tableValue(day.child_name ?? day.authorization_id)} | ${tableValue(day.county_id)} | ${tableValue(day.service_date)} | ${day.forecast_basis === "SCHEDULED" ? "Scheduled forecast" : "Actual"} | ${tableValue(day.classification)} | ${tableValue(day.unit_hours)} | ${day.conditional === true ? "Yes" : "No"} |`,
+          `| ${tableValue(day.child_name ?? day.authorization_id)} | ${tableValue(day.county_name ?? "Unavailable from the current source")} | ${tableValue(day.service_date)} | ${day.forecast_basis === "SCHEDULED" ? "Scheduled forecast" : "Actual"} | ${tableValue(day.classification)} | ${tableValue(day.unit_hours)} | ${day.conditional === true ? "Yes" : "No"} | ${day.payment_excluded === true ? "Excluded" : "Included"} |`,
         ),
       );
+    } else if (detailPagination && Number(detailPagination.totalRows) > 0) {
+      lines.push("", `Detail available: ${tableValue(detailPagination.totalRows)} child/date rows. Request a detail page to inspect them.`);
     }
   }
   lines.push(
@@ -434,6 +470,18 @@ export function formatPaymentResult(data: unknown): ToolResult {
       : "1. Review the attendance classifications supporting this result.",
   );
   const providerMessage = lines.join("\n");
+  const providerSummary = Array.isArray(payment.summary)
+    ? payment.summary.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row)).map((row) => ({
+        county: row.county_name ?? "Unavailable from the current source",
+        paidTier: row.paid_tier,
+        rates: Array.isArray(row.rates) ? row.rates : row.rate,
+        basis: row.basis,
+        childrenServed: row.children_served,
+        hours: row.hours,
+        amount: row.amount,
+        conditionalAmount: row.conditional_amount,
+      }))
+    : [];
   return {
     content: [{ type: "text" as const, text: providerMessage }],
     structuredContent: {
@@ -447,6 +495,8 @@ export function formatPaymentResult(data: unknown): ToolResult {
       calculationMode: paymentResult.calculation_mode,
       sourceRetrievedAt: paymentResult.sourceRetrievedAt,
       sourceReadiness: paymentResult.source_readiness,
+      summary: providerSummary,
+      detailPagination,
       status,
     },
   };
@@ -471,7 +521,7 @@ function toolError(capability: string, error: unknown): ToolResult {
                 ? "parent-confirmation attendance mapping"
                 : undefined;
   const userMessage = paymentFailure && paymentSource
-    ? `The next payout could not be verified because ${paymentSource} is incomplete or ambiguous.`
+    ? `The next payout could not be verified because ${paymentSource} is incomplete or ambiguous. Diagnostic: ${message}`
     : paymentFailure
       ? "The next payout could not be verified because one or more approved payment-source mappings were rejected."
       : `The ${capability} could not be completed. No verified result was produced.`;
@@ -493,6 +543,7 @@ function toolError(capability: string, error: unknown): ToolResult {
             code: paymentFailure ? "PAYMENT_DATA_INCOMPLETE" : "PROVIDER_DATA_UNAVAILABLE",
             capability,
             message: userMessage,
+            ...(paymentFailure && message ? { diagnostic: message } : {}),
             nextSteps,
           },
         }),
@@ -603,6 +654,7 @@ export function createServer(
             new Date().toISOString().slice(0, 10),
             input.childNames,
             input.authNames,
+            input.riskFocus,
           ),
         formatAttendanceRiskResult,
       ),
@@ -617,7 +669,10 @@ export function createServer(
       inputSchema: dateScopeSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute("provider initialization", () => client.initialize(input)),
+    async (input) => execute(
+      "provider initialization",
+      async () => normalizeProviderInitialization(await client.initialize(input)),
+    ),
   );
 
   server.registerTool(
@@ -629,7 +684,10 @@ export function createServer(
       inputSchema: caseSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute("cases and children retrieval", () => client.getCases(input)),
+    async (input) => execute(
+      "cases and children retrieval",
+      async () => normalizeCases(await client.getCases(input)),
+    ),
   );
 
   server.registerTool(
@@ -641,7 +699,10 @@ export function createServer(
       inputSchema: authorizationSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute("authorizations retrieval", () => client.getAuthorizations(input)),
+    async (input) => execute(
+      "authorizations retrieval",
+      async () => normalizeAuthorizations(await client.getAuthorizations(input)),
+    ),
   );
 
   server.registerTool(
@@ -661,7 +722,7 @@ export function createServer(
         "county policy retrieval",
         async () => {
           await client.initialize(scope);
-          return client.getCountyData(scope);
+          return normalizeCountyPlans(await client.getCountyData(scope));
         },
         formatCountyPolicyResult,
       );
@@ -677,7 +738,10 @@ export function createServer(
       inputSchema: servicePeriodSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute("service-period retrieval", () => client.getServicePeriods(input)),
+    async (input) => execute(
+      "service-period retrieval",
+      async () => normalizeServicePeriods(await client.getServicePeriods(input)),
+    ),
   );
 
   server.registerTool(
@@ -689,7 +753,10 @@ export function createServer(
       inputSchema: schedulesSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute("schedule and attendance retrieval", () => client.getSchedules(input)),
+    async (input) => execute(
+      "schedule and attendance retrieval",
+      async () => normalizeSchedules(await client.getSchedules(input)),
+    ),
   );
 
   server.registerTool(
@@ -701,7 +768,10 @@ export function createServer(
       inputSchema: fiscalRatesSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute("fiscal-rate retrieval", () => client.getFiscalRates(input)),
+    async (input) => execute(
+      "fiscal-rate retrieval",
+      async () => normalizeFiscalRates(await client.getFiscalRates(input)),
+    ),
   );
 
   server.registerTool(
@@ -713,7 +783,10 @@ export function createServer(
       inputSchema: dateScopeSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute("holiday-calendar retrieval", () => client.getHolidayList(input)),
+    async (input) => execute(
+      "holiday-calendar retrieval",
+      async () => normalizeHolidays(await client.getHolidayList(input)),
+    ),
   );
 
   server.registerTool(
@@ -724,7 +797,7 @@ export function createServer(
       inputSchema: paymentAnalysisSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute("payment analysis", () => getPaymentAnalysis(client, input, input.view), formatPaymentResult),
+    async (input) => execute("payment analysis", () => getPaymentAnalysis(client, input, input.view, undefined, { ...(input.childNames ? { childNames: input.childNames } : {}), ...(input.authNames ? { authNames: input.authNames } : {}), ...(input.detailPage ? { detailPage: input.detailPage } : {}), ...(input.detailPageSize ? { detailPageSize: input.detailPageSize } : {}) }), formatPaymentResult),
   );
 
   server.registerTool(
@@ -736,7 +809,10 @@ export function createServer(
       inputSchema: paymentHistorySchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute("payment-history retrieval", () => client.getPaymentHistory(input)),
+    async (input) => execute(
+      "payment-history retrieval",
+      async () => normalizePaymentHistory(await client.getPaymentHistory(input)),
+    ),
   );
 
   return server;
