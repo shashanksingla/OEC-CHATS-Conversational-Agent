@@ -44,7 +44,7 @@ Required calculation inputs are:
 - parent-confirmation status, deadline, and confirmation timestamp
 - source system, retrieved-at timestamp, rule version, and effective dates
 
-The current calculator consumes legacy fixture fields (`as_of_date`, `service_period`, `rate_plan`, and `parent_confirmation`) and returns `production_ready: false`; it must not support a live payout claim. Identity and provenance fields travel alongside its result for presentation and audit. A root `payment_cases` array requests facility aggregation. A production calculator remains blocked until live authorization, fiscal-rate, attendance, confirmation, and payment fields are normalized and approved.
+The legacy calculator consumes fixture fields (`as_of_date`, `service_period`, `rate_plan`, and `parent_confirmation`) and remains unsuitable for live payout claims. The approved provider-risk-payment engine consumes the canonical payload assembled from authorized MCP reads. Identity and provenance fields travel alongside its result for presentation and audit. A production calculation remains blocked for incomplete canonical inputs, while complete inputs support payment status, next-payout detail, and current-week actual-plus-scheduled forecasting.
 
 ## Canonical Provider Risk and Payment Contract
 
@@ -52,7 +52,7 @@ The current calculator consumes legacy fixture fields (`as_of_date`, `service_pe
 
 The engine returns provider-ready attendance-day classifications, facility-authorized county counters, rule version, and source readiness. An incomplete canonical input returns `status: blocked` with missing input names and no amount. A `PAID` or `REQUESTED` sub-payment matching an authorization and service period returns `DUPLICATE_GUARD` with no amount. Care Not Offered and No Care are never payable. An over-36 absence is payable only while under the county limit and not parent-approved; a zero-to-36-months absence becomes `ENROLLMENT_ABSENCE` only after that limit is exhausted. The observed-holiday occupied-slot path is `SLOT_CONTRACT_HOLIDAY`; for over-36 regular care, the paid tier uses the lower of authorized and attended hours and flags over-attendance.
 
-The MCP adapter must only construct this input from already authorized retrievals. It currently cannot do so because the live response contract lacks fiscal-rate, transaction, confirmation, payment-history, slot-contract, and parent-fee mappings. The intent router therefore continues to return a provider-safe blocked response for live payment and forecast requests rather than calling the engine with inferred values.
+The MCP adapter must only construct this input from already authorized retrievals. It calls the deterministic engine for payment status, `NEXT_PAYOUT`, and `CURRENT_WEEK_FORECAST`; incomplete mappings still produce a provider-safe blocked response rather than inferred values. Future forecast rows are explicitly classified as scheduled and conditional.
 
 ## Missing Production Mappings
 

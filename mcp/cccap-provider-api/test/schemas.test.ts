@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   attendanceDataSchema,
   dateScopeSchema,
+  paymentAnalysisSchema,
   paymentHistorySchema,
   servicePeriodSchema,
 } from "../src/schemas.js";
@@ -71,6 +72,22 @@ test("payment-history requests require a service-period date filter", () => {
   assert.equal(
     paymentHistorySchema.safeParse({ dateFilter: "LAST_N_MONTHS", periodCount: 2 })
       .success,
+    true,
+  );
+});
+
+test("payment views provide their own date selector", () => {
+  assert.equal(
+    paymentAnalysisSchema.safeParse({ view: "NEXT_PAYOUT" }).success,
+    true,
+  );
+  assert.equal(
+    paymentAnalysisSchema.safeParse({ view: "CURRENT_WEEK_FORECAST" }).success,
+    true,
+  );
+  assert.equal(paymentAnalysisSchema.safeParse({}).success, false);
+  assert.equal(
+    paymentAnalysisSchema.safeParse({ dateFilter: "THIS_MONTH" }).success,
     true,
   );
 });

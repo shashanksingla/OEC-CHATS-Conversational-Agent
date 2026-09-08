@@ -5,7 +5,7 @@ description: Specialized CarePay skill for source gaps, stale or conflicting dat
 
 # CarePay Data Quality
 
-Use with `carepay-conversation-templates` when CarePay Advisor needs to explain why a provider result is unavailable, uncertain, blocked, stale, conflicting, or missing required source support.
+Use with `carepay-conversation-templates` when Provider Assist needs to explain why a provider result is unavailable, uncertain, blocked, stale, conflicting, or missing required source support.
 
 The outcome is a concise, actionable account of the blocking data condition. Identify the affected provider-facing capability, the missing or conflicting source area, and the legitimate read-only next step. Include child, county, service period, or amount only when returned by an authorized source or deterministic Python output.
 

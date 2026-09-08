@@ -14,7 +14,8 @@
     "cccap_get_holidays",
     "cccap_get_current_month_risk_snapshot",
     "cccap_get_attendance_risk_snapshot",
-    "cccap_analyze_attendance_risk"
+    "cccap_analyze_attendance_risk",
+    "cccap_analyze_payment"
   ],
   "python_scripts": [
     "scripts/evaluate_attendance_risks.py",
@@ -53,6 +54,12 @@
       "BLOCKED"
     ],
     "provenance": "Every result returns the applied rule_version and source_readiness. Blocked and duplicate outcomes never include an amount."
+  },
+  "payment_analysis_views": {
+    "STATUS": "Analyze the requested service-period scope.",
+    "NEXT_PAYOUT": "Select the next unpaid service period after today and return service and payment dates plus deterministic amount status.",
+    "CURRENT_WEEK_FORECAST": "Analyze the service period containing today; actuals through today are combined with future scheduled hours as conditional SCHEDULED_FORECAST rows.",
+    "what_if": "Unsupported until an explicit scenario input schema and deterministic adapter are approved."
   },
   "payout_calculator_status": {
     "script": "scripts/calculate_payout.py",
@@ -105,7 +112,7 @@
       ],
       "missing_data_behavior": "A missing or incompatible Attendance__r collection emits a per-record data_quality_blockers entry. The deterministic analyzer excludes the affected schedule from attendance conclusions and returns the blocker."
     },
-    "payment_status": "Fiscal agreement and rate-schedule headers do not enable a live amount or forecast; fiscal-rate rows remain required."
+    "payment_status": "Payment status, next-payout detail, and current-week forecast require complete canonical fiscal, attendance, confirmation, and payment-history inputs; incomplete inputs fail closed without an amount."
   },
   "api_response_gaps": {
     "getProviderData": [

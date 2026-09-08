@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This workspace implements CarePay Advisor, a read-only GitHub Copilot agent for authenticated child care providers. It identifies attendance and payment risks, obtains live authorized Salesforce data through MCP, and explains deterministic calculation results.
+This workspace implements Provider Assist, a read-only GitHub Copilot agent for authenticated child care providers. It identifies attendance and payment risks, obtains live authorized Salesforce data through MCP, and explains deterministic calculation results.
 
 The pattern is reusable for any decision-support agent that must combine LLM judgment, protected operational data, and exact business rules.
 
@@ -21,23 +21,52 @@ Assign each responsibility to the layer that can perform it reliably and securel
 
 ```mermaid
 flowchart LR
-    P[Authenticated provider] --> C[GitHub Copilot: CarePay Advisor]
-    C -->|intent and filters| M[CCCAP MCP server]
+    P[Authenticated provider] --> C[GitHub Copilot: Provider Assist]
+    C -->|intent and narrow filters| SK[Skills and routing]
+    SK -->|one selected composite tool| M[CCCAP MCP server]
     M -->|fixed actions and scoped inputs| S[Salesforce Apex REST]
     S -->|raw authorized records| M
-    M --> A[Attendance risk evaluator]
-    A --> N[Payment normalizer: not yet implemented]
-    N --> R[Approved rule data]
-    N --> D[Python calculator]
-    D --> C
+    M --> N[Normalizers and adapters]
+    N --> A[Attendance risk evaluator]
+    N --> D[Payment calculator]
+    A --> M
+    D --> M
+    M -->|provider-ready result| C
     C -->|prioritized, traceable guidance| P
 ```
+
+## Guided End-to-End Call Chain
+
+The runtime path is easiest to understand with a provider request such as **“What is my next payout?”**. The agent, skills, MCP server, Salesforce API, normalizers, and Python engine each have a distinct job:
+
+1. **VS Code selects the agent.** [.github/agents/carepay-advisor.agent.md](.github/agents/carepay-advisor.agent.md) exposes the read-only **Provider Assist** and grants it only `cccapprovider/*` tools.
+2. **The agent loads its instructions.** It loads [skills/agent-child-care-payment-advisor/SKILL.md](skills/agent-child-care-payment-advisor/SKILL.md), then uses [skills/carepay-intent-routing/SKILL.md](skills/carepay-intent-routing/SKILL.md) and the relevant capability skill. Skills guide model behavior; they do not call Salesforce themselves.
+3. **Intent routing chooses one narrow capability.** For the next-payout request, the capability is payment analysis and the MCP request is `cccap_analyze_payment` with `{ "view": "NEXT_PAYOUT" }`. The agent does not assemble a dashboard by calling every low-level tool.
+4. **The MCP server dispatches the tool.** [mcp/cccap-provider-api/src/server.ts](mcp/cccap-provider-api/src/server.ts) validates the input, invokes the composite handler, catches failures, and formats provider-safe text plus structured content.
+5. **The client establishes provider scope.** The composite handler calls `getProviderData` through [mcp/cccap-provider-api/src/client.ts](mcp/cccap-provider-api/src/client.ts). The server injects the authenticated Salesforce `User.Id`, retains the authorized provider IDs, counties, and fiscal schedules, and rejects out-of-scope county filters locally.
+6. **The composite handler retrieves only required sources.** For `NEXT_PAYOUT`, it finds the next service period and then retrieves authorizations, county policies, schedules, fiscal rates, holidays, and payment history for that period. Attendance analysis similarly retrieves only county policies and schedules.
+7. **The MCP layer normalizes and joins records.** TypeScript adapters map Salesforce fields into stable attendance and payment inputs, match authorizations to fiscal schedules, normalize payment statuses, and fail closed on missing or ambiguous relationships.
+8. **Python applies deterministic rules.** The MCP server writes a temporary JSON payload and invokes `evaluate_attendance_risks.py` or `provider_risk_payment_engine.py` with `uv`. Python owns grouping, date logic, policy classification, attendance risk, payment math, and result status.
+9. **The MCP server returns a verified result.** Formatters such as `formatAttendanceRiskResult` and `formatPaymentResult` produce provider-facing text, structured metadata, next actions, freshness, and error status. Temporary evaluator files are removed.
+10. **The agent explains the result.** It verifies capability, scope, freshness, and completeness, then relays the result using the conversation-template skill. It does not recalculate, fill missing values, or perform provider actions.
+
+In short: **the agent decides what evidence is needed; MCP controls access and orchestration; Salesforce supplies records; normalizers create stable inputs; Python decides deterministic facts; the agent explains the verified result.**
+
+### Composite Tool Examples
+
+| Provider request | Agent call | MCP fan-out and evaluator |
+| --- | --- | --- |
+| First greeting | `cccap_get_current_month_risk_snapshot` with `{}` | Initializes provider scope, retrieves current-month county plans and schedules, runs the attendance-risk evaluator, and returns a complete greeting snapshot. |
+| Pending confirmations or child attendance detail | `cccap_analyze_attendance_risk` with the narrowest date and child scope | Retrieves county plans and schedules, runs `evaluate_attendance_risks.py`, and formats affected-child rows and next actions. |
+| Next payout | `cccap_analyze_payment` with `{ "view": "NEXT_PAYOUT" }` | Finds the next service period, retrieves payment inputs, builds the canonical payment payload, runs `provider_risk_payment_engine.py`, and returns expected, conditional, duplicate-guard, or blocked status. |
+
+Low-level tools such as `cccap_get_fiscal_rates` and `cccap_get_payment_history` remain available for an explicitly requested source view or a focused data-quality investigation. They are not prefetched when a composite tool can answer the provider's goal.
 
 ## What Exists Today
 
 ### Copilot Agent
 
-[.github/agents/carepay-advisor.agent.md](.github/agents/carepay-advisor.agent.md) creates the selectable **CarePay Advisor** agent in VS Code. Its frontmatter grants only the dedicated `cccapprovider/*` MCP tools, keeping workspace reads and command execution out of the provider workflow.
+[.github/agents/carepay-advisor.agent.md](.github/agents/carepay-advisor.agent.md) creates the selectable **Provider Assist** agent in VS Code. Its frontmatter grants only the dedicated `cccapprovider/*` MCP tools, keeping workspace reads and command execution out of the provider workflow.
 
 The agent loads [skills/agent-child-care-payment-advisor/SKILL.md](skills/agent-child-care-payment-advisor/SKILL.md), which defines its persona, risk priority, calculation boundary, shared failure policy, and routing to specialized skills. Reusable LLM behavior is split into [skills/carepay-conversation-templates/SKILL.md](skills/carepay-conversation-templates/SKILL.md), [skills/carepay-attendance-readiness/SKILL.md](skills/carepay-attendance-readiness/SKILL.md), [skills/carepay-payment-readiness/SKILL.md](skills/carepay-payment-readiness/SKILL.md), and [skills/carepay-data-quality/SKILL.md](skills/carepay-data-quality/SKILL.md). Its main functional commitments are:
 
@@ -64,6 +93,9 @@ The agent loads [skills/agent-child-care-payment-advisor/SKILL.md](skills/agent-
 | `cccap_get_schedules` | `getSchedules` | Retrieve schedule and check-in/check-out data. |
 | `cccap_get_service_periods` | `getServicePeriods` | Retrieve current/upcoming service and payment periods. |
 | `cccap_get_holidays` | `getHolidayList` | Retrieve holiday dates. |
+| `cccap_get_fiscal_rates` | `getFiscalRates` | Retrieve authorized fiscal schedules, rates, and fees. |
+| `cccap_get_payment_history` | `getPaymentHistory` | Retrieve service-period payment and sub-payment history. |
+| `cccap_analyze_payment` | `getServicePeriods` + `getAuthData` + `getCountyData` + `getSchedules` + `getFiscalRates` + `getHolidayList` + `getPaymentHistory` | Build a scoped canonical payment payload and run the deterministic payment engine. |
 
 `getProviderData` returns two provider keys with different downstream purposes. The MCP server retains both: the provider external `Name` is passed only to `getCaseData`, whose `IDN_PROVR__c` filter is numeric and unquoted; the Salesforce provider record `Id` is passed to `getAuthData` and `getSchedules`.
 
@@ -134,7 +166,7 @@ The canonical input contract is documented in [skills/agent-child-care-payment-a
 
 The normalizer must reject or flag incomplete check-in/check-out pairs, overlapping schedules, missing effective rate plans, mismatched authorization periods, missing confirmation data, stale data, and ambiguous record relationships. It must never infer missing values.
 
-**Current status:** the MCP tools return raw authorized data and the Python calculator accepts normalized JSON. A first-stage attendance evaluator now consumes current-month schedules and county rate plans; the broader normalizer that maps live responses to payment cases is not implemented yet. This is the next functional development milestone.
+**Current status:** the attendance and payment composite MCP tools now retrieve authorized live data, normalize the required source records, and invoke deterministic Python evaluators. Attendance risk uses `evaluate_attendance_risks.py`; payment analysis uses the `provider-risk-payment-v1` payload contract and `provider_risk_payment_engine.py`. The remaining work is primarily contract hardening, broader source fixtures, and production authorization validation rather than creating the first payment normalizer.
 
 ## Conversation Orchestration
 
@@ -162,17 +194,17 @@ This aggregation moves file creation and Python execution out of the Copilot age
 
 The evaluator groups daily schedule records by child and applies the following deterministic rules:
 
-- A day with zero check-ins and zero check-outs on or before $asOfDate - 9$ days is a probable absence after the confirmation window.
-- The same condition inside the nine-day window is pending confirmation, not an absence.
+- A day with zero check-ins and zero check-outs on or before $asOfDate - 5$ days is a probable absence after the confirmation window.
+- The same condition inside the five-day window is pending confirmation, not an absence.
 - A day with only one of check-in/check-out is incomplete attendance.
 - An absence limit is evaluated only when that child's county and quality tier map to an effective county rate plan. Otherwise, the output reports that the absence limit is unavailable rather than guessing across counties.
 
 The evaluator produces two separate snapshot sections from the same current-month schedule dataset:
 
 - **Today's snapshot:** unique children scheduled and checked in where service date equals `as_of_date`.
-- **Monthly payment-readiness risks:** probable absence days older than the nine-day window, pending confirmations within that window, incomplete attendance, absence-risk children, and attendance-concern children across all records through `as_of_date`.
+- **Monthly payment-readiness risks:** probable absence days at least five days old, pending confirmations within the five-day window, incomplete attendance, absence-risk children, and attendance-concern children across all records through `as_of_date`.
 
-The evaluator is deliberately not a payment calculator. It reports attendance risk counts and child-level risk codes; payments, authorization overages, parent fees, holidays, and service-period payout timing remain on-demand flows until complete payment-case normalization exists.
+The evaluator is deliberately not a payment calculator. It reports attendance risk counts and child-level risk codes. Payment analysis is a separate on-demand composite flow that performs its own source retrieval, normalization, payment enrichment, and deterministic calculation.
 
 ## Deterministic Calculation
 
@@ -202,13 +234,13 @@ Colorado source documents and county rate plans must be converted to versioned, 
 
 For “Show my payment risk this month,” the intended flow is:
 
-1. CarePay Advisor recognizes a payment-risk request and calls `cccap_initialize_provider` for `THIS_MONTH`.
-2. It retrieves rate plans, relevant cases, authorizations, schedules, service periods, and holidays only where needed.
-3. The normalizer validates and produces payment cases.
-4. Python evaluates every payment case and aggregates facility totals.
-5. The agent explains the result in this order: urgent attendance/confirmation risks, deadline, affected amount, expected/conditional/excluded totals, recovery actions, confidence and source freshness.
+1. Provider Assist recognizes a payment-risk request and calls the narrow composite tool `cccap_analyze_payment` with the requested date scope or payment view.
+2. The MCP handler initializes authenticated provider scope, then retrieves service periods and the required rate plans, authorizations, schedules, fiscal rates, holidays, and payment history only where needed.
+3. TypeScript normalizers validate relationships and produce the canonical `provider-risk-payment-v1` payload.
+4. `provider_risk_payment_engine.py` evaluates payment status, amount, conditional risk, exclusions, duplicate protection, and source readiness.
+5. The MCP formatter returns a provider-safe result, and the agent explains it in this order: urgent attendance/confirmation risks, deadline, affected amount, expected/conditional/excluded totals, recovery actions, confidence, and source freshness.
 
-For an upcoming payout request, it obtains the next service period with `paymentAfter: "TODAY"` and `limitOne: true`. For a what-if request, it retains all live inputs, changes only the explicitly requested scenario input, reruns Python, and labels the result as a scenario.
+For an upcoming payout request, `cccap_analyze_payment` obtains the next service period with `paymentAfter: "TODAY"` and `limitOne: true`. What-if requests are currently unsupported because there is no explicit scenario-input contract; the agent must offer a supported forecast or payout view instead of changing inputs implicitly.
 
 ## Technical Delivery Process
 
@@ -224,16 +256,16 @@ npm run build
 npm run protocol
 ```
 
-Then in VS Code run **MCP: Reset Cached Tools**, restart `cccapprovider` from **MCP: List Servers**, select **CarePay Advisor**, and make a provider-payment request.
+Then in VS Code run **MCP: Reset Cached Tools**, restart `cccapprovider` from **MCP: List Servers**, select **Provider Assist**, and make a provider-payment request.
 
 ### Tests and Validation Completed
 
 - Ten hermetic TypeScript unit tests cover request schema validation, split provider identifiers, user/provider injection, county scope denial, and sanitized Salesforce CLI failures.
 - Strict TypeScript typecheck passes.
-- An MCP protocol test establishes a stdio connection and asserts that exactly nine tools are advertised.
+- An MCP protocol test establishes a stdio connection and verifies provider-facing tool response text and structured scope metadata.
 - A live initialization smoke test against `CHATS_SIT` succeeded after provider mapping correction, returning aggregate counts only.
 - The Python calculator has tests for absence-cap behavior, confirmation status, deadline handling, and portfolio aggregation.
-- The attendance evaluator has tests for the nine-day confirmation cutoff, absence-limit evaluation, and unmapped county/tier behavior.
+- The attendance evaluator has tests for the five-day confirmation cutoff, absence-limit evaluation, and unmapped county/tier behavior.
 
 ### Required Next Tests
 

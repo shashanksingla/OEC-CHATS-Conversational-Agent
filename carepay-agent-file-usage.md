@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the file-usage map for the CarePay Advisor agent and its current MCP adapter. It covers agent files plus the MCP files required to expose authenticated, read-only tools. The organization implementation is an external plug-in behind MCP; Salesforce, Apex, and broader project-repository files are outside this map.
+This document is the file-usage map for the Provider Assist agent and its current MCP adapter. It covers agent files plus the MCP files required to expose authenticated, read-only tools. The organization implementation is an external plug-in behind MCP; Salesforce, Apex, and broader project-repository files are outside this map.
 
 ## Agent Boundary
 
@@ -74,7 +74,7 @@ Generated `__pycache__` folders, `node_modules`, and archived eval output are om
 
 | File or folder | Ownership | Purpose |
 | --- | --- | --- |
-| [.github/agents/carepay-advisor.agent.md](.github/agents/carepay-advisor.agent.md) | Agent-owned | Registers the CarePay Advisor, loads the main skills, and defines the allowed tool namespace. |
+| [.github/agents/carepay-advisor.agent.md](.github/agents/carepay-advisor.agent.md) | Agent-owned | Registers Provider Assist, loads the main skills, and defines the allowed tool namespace. |
 | [skills/agent-child-care-payment-advisor/SKILL.md](skills/agent-child-care-payment-advisor/SKILL.md) | Agent-owned | Defines persona, routing, shared response policy, failure policy, and capability boundaries. |
 | [skills/carepay-conversation-templates/SKILL.md](skills/carepay-conversation-templates/SKILL.md) | Agent-owned | Defines authenticated-provider response templates, drill-down structure, payment responses, failure responses, and next-action rules. |
 | [skills/carepay-intent-routing/SKILL.md](skills/carepay-intent-routing/SKILL.md) | Agent-owned | Classifies each provider message, resolves follow-ups, selects bounded data routes, and enforces read-only and digression guardrails. |

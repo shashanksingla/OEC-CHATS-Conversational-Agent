@@ -1,6 +1,6 @@
 ---
 name: carepay-intent-routing
-description: Helps CarePay Advisor interpret provider requests, preserve conversational context, and choose the narrowest authorized read-only capability.
+description: Helps Provider Assist interpret provider requests, preserve conversational context, and choose the narrowest authorized read-only capability.
 ---
 
 # CarePay Intent Routing
@@ -23,6 +23,8 @@ Before answering every provider message, privately maintain a small intent frame
 
 If the outcome, entity, or time scope is materially ambiguous, ask one concise clarifying question and make no data call. If the request contains enough information for a safe narrow answer, proceed without asking the provider to choose a tool or menu item.
 
+Do not execute a broad request such as "everything", "all", or "what's happening" as a dashboard. Ask which read-only view they want: attendance risk, parent confirmations/absence limits, authorization status, next payout timing, or payment status. Only combine views after the provider explicitly names the domains.
+
 An acknowledgment such as "sure", "thanks", or "okay" has no new data intent: acknowledge briefly or ask what the provider wants to review next, make no data call, and never imply that a read-only action was completed.
 
 ## Bounded action policy
@@ -37,15 +39,22 @@ Build filters from the intent frame:
 
 | Request shape | Allowed filter behavior |
 | --- | --- |
-| Initial greeting only | Call the current-month greeting snapshot with `{}`. Do not add dates, child names, counties, or authorization names. A later greeting does not refresh data unless the provider asks for an update. |
+| Initial greeting only | Call the current-month snapshot with `{}`. It includes today's scheduled and checked-in child counts plus current-month risks. Do not add dates, child names, counties, or authorization names. A later greeting does not refresh data unless the provider asks for an update. |
 | Facility attendance snapshot | Pass the exact date scope to `cccap_get_attendance_risk_snapshot`; use no child filter because the request is facility-wide. |
 | Attendance risk or child detail | Pass the exact date scope to `cccap_analyze_attendance_risk`; add `childNames` only for an explicitly named child or an unambiguous child returned in the immediately preceding result. |
+| Authorization-specific attendance detail | Pass the exact date scope and verified `authNames` to `cccap_analyze_attendance_risk`; never widen to all authorizations. |
 | County policy | Use only county IDs returned by authenticated provider initialization or a prior verified result. If the provider names a county that is not verified in scope, clarify or decline; never guess an ID. |
 | Authorization or case detail | Use only returned case IDs or authorization names when a filter is needed. Do not fetch all records to answer a question already answered by attendance output. |
-| Next payout | Use `paymentAfter: "TODAY"` and `limitOne: true`; do not substitute a generic historical date filter. |
+| Next payout detail | Use `cccap_analyze_payment` with only `view: "NEXT_PAYOUT"`; the view supplies the `paymentAfter: "TODAY"` selector. Relay the returned service-period/payment dates and amount status. |
+| Current-week forecast | Use `cccap_analyze_payment` with only `view: "CURRENT_WEEK_FORECAST"`; the view supplies the current-period selector. Distinguish actual days through today from future scheduled forecast days. |
 | Current service period | Use `dateOn: "TODAY"` when the provider asks about the period containing today. |
-| Payment status, forecast, explanation, or scenario | Pass the requested date scope to payment analysis. A scenario must contain explicit provider-proposed changes; do not invent them. |
+| Payment status or explanation | Pass the requested date scope to payment analysis. |
+| Forecast or scenario | Use `view: "CURRENT_WEEK_FORECAST"` for a current-week projection; what-if changes remain unsupported and must not be invented. |
 | Low-level source diagnostic | Use the required date filter and only the source filters needed to investigate the provider's stated issue. |
+
+An explicit policy question such as `What is the absence limit?`, `How many absence days are allowed?`, or `What is my county's absence rule?` is a county-policy request. Use `cccap_get_county_rate_plans` with `dateFilter: "THIS_MONTH"` for a current-policy question so the MCP client can reuse the current-month county-plan read already made by the snapshot. Do not reuse the preceding attendance-risk action or call `cccap_analyze_attendance_risk` unless the provider also asks about affected children or current attendance risk.
+
+When the immediately preceding result contains an action intent with `capability: "county-policy"` or `tool: "cccap_get_county_rate_plans"`, honor that intent directly. Do not reinterpret it as an attendance-risk drill-down, even when the provider replies with a number such as `2`.
 
 For facility-wide requests, omitted child/county filters are intentional provider scope. For a named entity that cannot be resolved, clarify or decline; never widen silently.
 
@@ -53,11 +62,13 @@ For facility-wide requests, omitted child/county filters are intentional provide
 
 | Provider goal | Capability |
 | --- | --- |
-| Greeting only | Current-month risk snapshot with no model-supplied filters. Relay the successful provider-ready result. |
+| Greeting only | Current-month risk snapshot with no model-supplied filters. Relay the successful provider-ready result, including today's scheduled and checked-in child counts. |
 | Facility attendance snapshot for a named period | Date-scoped attendance-risk snapshot with the provider's exact date filter. |
 | Parent confirmations, attendance exceptions, absence exposure, or child detail | Attendance risk analysis with the narrowest date and child scope. |
-| Next payout date, release date, or processing status | Service-period retrieval for the next payment after today. |
-| Payment amount, forecast, why payment changed, or what-if amount | Payment analysis with the requested date scope; present an amount only when the deterministic result is production-ready. |
+| Next payout date, release date, processing status, or payout detail | Payment analysis with `view: "NEXT_PAYOUT"`. |
+| Payment amount or why payment changed | Payment analysis with the requested date scope; present an amount only when the deterministic result is production-ready. |
+| Current-week forecast | Payment analysis with `view: "CURRENT_WEEK_FORECAST"`; show actual and scheduled-forecast rows separately. |
+| What-if amount | Explain that explicit scenario inputs are not yet supported; do not invent changes. |
 | Active fiscal-agreement counties, agreement status, or agreement end dates | Provider initialization context and its fiscal agreements. This is not fiscal-rate retrieval. |
 | County absence, drop-in, or holiday policy | County rate plans or holiday retrieval for the relevant authorized counties. |
 | Facility child list, case, enrollment, or explicit authorization detail | Cases or authorizations, only when attendance analysis or verified context cannot answer it. |

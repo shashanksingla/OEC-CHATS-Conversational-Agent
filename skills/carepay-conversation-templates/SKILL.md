@@ -5,17 +5,17 @@ description: Specialized CarePay skill for authenticated-provider conversation t
 
 # CarePay Conversation Templates
 
-Use before CarePay Advisor presents any authenticated-provider response. This skill owns the reusable conversation contract; domain capability skills own what the answer means, and Python owns deterministic facts.
+Use before Provider Assist presents any authenticated-provider response. This skill owns the reusable conversation contract; domain capability skills own what the answer means, and Python owns deterministic facts.
 
 ## Provider-Facing Standard
 
-Sound like a provider-facing payment advisor, not a workflow log. Start with one sentence that says what the returned result means. Use compact Markdown tables for comparable facts, children, risks, dates, payment components, and follow-up items. End every response with `Next actions` or `Follow-up` containing exactly one or two concrete actions grounded in returned findings, deadlines, requested detail, or source limitations. Never append a static menu of possible capabilities.
+Sound like a provider-facing payment advisor, not a workflow log. Start with one sentence that says what the returned result means. Prefer one compact Markdown table with the relevant columns for comparable facts, children, risks, dates, payment components, and follow-up views. End every response with `Next views` or `Follow-up` containing exactly one or two grounded read-only views or clarifying questions. Never imply that the agent performed an action or append a static menu of capabilities.
 
 Do not expose tool names, todo lists, internal stages, file reads, raw IDs, request bodies, stack traces, Salesforce/CLI text, or implementation details. Do not use static menus as the only follow-up. Do not say a record was updated, submitted, corrected, or parent-contacted; the agent is read-only. When a tool returns provider-ready text in either text content or structured `providerMessage`, relay that text verbatim; do not replace it with an incomplete-data message unless the tool explicitly returns an error or `isError`.
 
 ## Greeting Snapshot Template
 
-For a greeting-only message, the entrypoint executes `cccap_get_current_month_risk_snapshot`; this skill must not invoke it again. Use its successful plain-text result verbatim. Do not rewrite it, replace it with a generic welcome, or render a second greeting. If a successful result must be rendered from structured fields, use this shape and only verified values:
+For a greeting-only message, the entrypoint executes `cccap_get_current_month_risk_snapshot`; this skill must not invoke it again. Use its successful plain-text result verbatim. It includes today's scheduled and checked-in child counts plus current-month payment-readiness risks. Do not rewrite it, replace it with a generic welcome, or render a second greeting. If a successful result must be rendered from structured fields, use this shape and only verified values:
 
 ```text
 Greetings for the day, [providerDisplayName]. Here's where things stand at [facilityName].
@@ -64,7 +64,7 @@ Use `Unavailable from the current source` only for a missing value in a required
 
 ## Payment Template
 
-Show payment dates, service period, expected/conditional/excluded/disputed/unavailable status, and payment components only from production-ready deterministic output. If `production_ready` is false or a required field is missing, do not render a payment ledger. State the payment result cannot be completed from the current approved source data and offer attendance review or data-quality review as next actions.
+Show the selected service period, services-from/through dates, processing or release date, status, amount status, and payment components only from deterministic output. For `CURRENT_WEEK_FORECAST`, include the child/county/service-date table and label future scheduled rows as forecast, not attended actuals. If required source data is missing, show the service-period metadata and the named missing source areas, but do not invent an amount or render a payment ledger. What-if changes require an explicit supported input schema and remain unavailable.
 
 ## Failure Template
 

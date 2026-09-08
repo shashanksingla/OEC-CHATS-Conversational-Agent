@@ -1,4 +1,4 @@
-# CarePay Advisor Comprehensive Handoff
+# Provider Assist Comprehensive Handoff
 
 **Prepared:** 2026-09-05
 
@@ -6,7 +6,7 @@ Read this document before continuing work in a new chat. It records the product 
 
 ## Product Contract
 
-CarePay Advisor is a read-only, authenticated CCCAP assistant for child-care providers. It should tell a provider what matters first: attendance risks, parent confirmations, absence-limit exposure, then payment timing or forecasts when source data supports them.
+Provider Assist is a read-only, authenticated CCCAP assistant for child-care providers. It should tell a provider what matters first: attendance risks, parent confirmations, absence-limit exposure, then payment timing or forecasts when source data supports them.
 
 It must:
 
@@ -185,7 +185,7 @@ There are two attendance analyzers with distinct maturity:
 
 | Script | Status and responsibility |
 | --- | --- |
-| `evaluate_attendance_risks.py` | Current snapshot/general analyzer using schedule aggregate fields. Computes today's counts, nine-day confirmation window, probable absences, incomplete records, absence-limit categories, and drill-down metadata. |
+| `evaluate_attendance_risks.py` | Current snapshot/general analyzer using schedule aggregate fields. Computes today's counts, five-day confirmation window, probable absences, incomplete records, absence-limit categories, and drill-down metadata. |
 | `analyze_attendance_transactions.py` | Richer transaction-level analyzer from supplied attendance rules. Applies schedule validity, authorized hours, transaction validity/type, attended hours, drop-in, anomaly, and provider-scoped county rules. |
 
 Important evolution:

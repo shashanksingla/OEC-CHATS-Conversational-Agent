@@ -1,6 +1,6 @@
-# CarePay Advisor Setup Guide
+# Provider Assist Setup Guide
 
-CarePay Advisor is a stateless, read-only child care provider payment-risk agent. It retrieves authorized live data through MCP, delegates every deterministic join and calculation to Python, and presents attendance risks before payout detail.
+Provider Assist is a stateless, read-only child care provider payment-risk agent. It retrieves authorized live data through MCP, delegates every deterministic join and calculation to Python, and presents attendance risks before payout detail.
 
 ## Current Build
 

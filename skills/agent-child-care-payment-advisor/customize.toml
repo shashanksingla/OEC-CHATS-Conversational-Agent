@@ -10,8 +10,8 @@
 # Consumed by module.yaml:agents[] and `[agents.<code>]` in central config.
 
 code = "agent-child-care-payment-advisor"
-name = "CarePay Advisor"
-title = "Child Care Payment Advisor"
+name = "Provider Assist"
+title = "Provider Assist"
 icon = "🧾"
 description = "Protects child care provider payouts with deterministic risk analysis, forecasts, and recovery priorities."
 agent_type = "stateless"   # stateless | memory | autonomous

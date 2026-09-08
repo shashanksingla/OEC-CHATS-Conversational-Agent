@@ -75,6 +75,29 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         self.assertEqual(result["payment"]["amount_at_risk"], "45.00")
         self.assertEqual(result["attendance"]["county_counts"][0]["conditional_days"], 1)
 
+    def test_current_week_forecast_projects_future_scheduled_day_as_conditional(self) -> None:
+        payload = self._complete_input()
+        payload["calculation_mode"] = "CURRENT_WEEK_FORECAST"
+        payload["attendance_days"].append({
+            **payload["attendance_days"][0],
+            "service_date": "2026-09-09",
+            "attended_hours": 0,
+            "parent_confirmation": "PENDING",
+            "forecast_basis": "SCHEDULED",
+            "child_name": "Taylor Example",
+            "county_id": "denver",
+        })
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["calculation_mode"], "CURRENT_WEEK_FORECAST")
+        self.assertEqual(result["payment"]["status"], "CONDITIONAL")
+        self.assertEqual(result["payment"]["amount"], "90.00")
+        self.assertEqual(result["payment"]["amount_at_risk"], "45.00")
+        future_day = result["attendance"]["days"][1]
+        self.assertEqual(future_day["classification"], "SCHEDULED_FORECAST")
+        self.assertEqual(future_day["child_name"], "Taylor Example")
+
     def test_over_36_absence_over_limit_is_excluded_after_limit(self) -> None:
         payload = self._complete_input()
         payload["attendance_days"] = [

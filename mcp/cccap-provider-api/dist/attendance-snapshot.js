@@ -35,6 +35,17 @@ function nestedCountyName(schedule) {
     const countyName = county?.County_Name__c;
     return typeof countyName === "string" && countyName ? countyName : undefined;
 }
+// Schedule authorization identifiers may arrive as numbers from the DECL source.
+function authorizationKey(value) {
+    if (typeof value === "string" && value)
+        return value;
+    if (typeof value === "number" && Number.isFinite(value))
+        return String(value);
+    return undefined;
+}
+function isSalesforceId(value) {
+    return /^[A-Za-z0-9]{15}(?:[A-Za-z0-9]{3})?$/.test(value);
+}
 export function addDefaultCountyToSchedules(schedules, defaultCountyId) {
     if (!defaultCountyId)
         return schedules;
@@ -44,11 +55,22 @@ export function addDefaultCountyToSchedules(schedules, defaultCountyId) {
             return value;
         const sourceCounty = schedule.countyId ??
             schedule.County__c ??
-            schedule.CDE_COUNTY__c ??
-            nestedCountyName(schedule);
+            schedule.CDE_COUNTY__c;
         return typeof sourceCounty === "string" && sourceCounty
             ? schedule
             : { ...schedule, countyId: defaultCountyId };
+    });
+}
+export function addCanonicalCountyIdToSchedules(schedules) {
+    return schedules.map((value) => {
+        const schedule = asRecord(value);
+        if (!schedule || (typeof schedule.countyId === "string" && schedule.countyId)) {
+            return value;
+        }
+        const countyId = schedule.County__c ?? schedule.CDE_COUNTY__c;
+        return typeof countyId === "string" && countyId
+            ? { ...schedule, countyId }
+            : value;
     });
 }
 export function addProviderQualityTierToSchedules(schedules, providerQualityTier) {
@@ -135,6 +157,57 @@ export function normalizeScheduleAttendance(schedules, defaultCountyId, provider
     }
     return { schedules: normalizedSchedules, transactions };
 }
+export function addAuthorizationNamesToSchedules(schedules, authorizationData) {
+    const response = asRecord(authorizationData);
+    const authorizations = Array.isArray(response?.authorizations)
+        ? response.authorizations
+        : [];
+    const namesById = new Map();
+    for (const value of authorizations) {
+        const authorization = asRecord(value);
+        const id = authorizationKey(authorization?.Id);
+        const externalId = authorizationKey(authorization?.IDN_EXTNL__c);
+        const name = authorization?.Name;
+        if (id && typeof name === "string" && name) {
+            namesById.set(id, name);
+        }
+        if (externalId && typeof name === "string" && name) {
+            namesById.set(externalId, name);
+        }
+        if (typeof name === "string" && name) {
+            namesById.set(name, name);
+        }
+    }
+    return schedules.map((value) => {
+        const schedule = asRecord(value);
+        if (!schedule)
+            return value;
+        const existingName = schedule.authorization_name ?? schedule.Authorization_Name__c;
+        if (typeof existingName === "string" && existingName)
+            return schedule;
+        const authorizationId = authorizationKey(schedule.CI_Authorization_Id__c ??
+            schedule.Authorization__c ??
+            schedule.IDN_AUTH__c ??
+            schedule.Authorization_Id__c);
+        const name = authorizationId ? namesById.get(authorizationId) : undefined;
+        return name ? { ...schedule, authorization_name: name } : schedule;
+    });
+}
+// The schedule's nested Authorization__r/County__r come from the DECL source org, whose IDs
+// do not correspond to the main org's T_COUNTY_RATE__c IDs, so county must be joined by name.
+export function addNestedCountyIdToSchedules(schedules, countyIdByName) {
+    return schedules.map((value) => {
+        const schedule = asRecord(value);
+        if (!schedule)
+            return value;
+        const existingCounty = schedule.countyId ?? schedule.County__c ?? schedule.CDE_COUNTY__c;
+        if (typeof existingCounty === "string" && existingCounty)
+            return schedule;
+        const countyName = nestedCountyName(schedule);
+        const countyId = countyName ? countyIdByName[countyName] : undefined;
+        return countyId ? { ...schedule, countyId } : schedule;
+    });
+}
 export function livePaymentReadiness() {
     return {
         status: "BLOCKED",
@@ -218,23 +291,19 @@ export async function getAttendanceRiskSnapshot(client, providerDisplayName, sco
         nextActions.push("Review the affected children, county limits, and absence dates");
     }
     if (nextActions.length === 0) {
-        nextActions.push("Review attendance records for missing or incomplete check-ins");
+        nextActions.push("Review today's attendance records for missing or incomplete check-ins");
     }
-    nextActions.push("View next payout details");
     const isToday = (scope.dateFilter ?? "TODAY") === "TODAY";
-    const snapshotHeading = isToday ? "Today's snapshot" : `${attendancePeriodLabel(scope)} snapshot`;
-    const snapshotRows = isToday
-        ? [
-            "| Today | Count |",
-            "| --- | ---: |",
-            `| Children scheduled | ${today.scheduled_children} |`,
-            `| Children checked in | ${today.checked_in_children} |`,
-        ]
-        : [
-            "| Period measure | Count |",
-            "| --- | ---: |",
-            `| Scheduled days reviewed | ${numberValue(risk.scheduled_days)} |`,
-        ];
+    const snapshotHeading = "Today's snapshot";
+    const snapshotRows = [
+        "| Today | Count |",
+        "| --- | ---: |",
+        `| Children scheduled | ${today.scheduled_children} |`,
+        `| Children checked in | ${today.checked_in_children} |`,
+    ];
+    const riskHeading = isToday
+        ? "**Payment-readiness risks**"
+        : `**Payment-readiness risks (${attendancePeriodLabel(scope)})**`;
     return {
         ...snapshot,
         providerMessage: [
@@ -243,12 +312,12 @@ export async function getAttendanceRiskSnapshot(client, providerDisplayName, sco
             snapshotHeading,
             ...snapshotRows,
             "",
-            "**Payment-readiness risks**",
+            riskHeading,
             "| Area | Finding | Suggested next step |",
             "| --- | --- | --- |",
             ...riskRows,
             "",
-            "**Next actions**",
+            "**Next views**",
             ...nextActions.map((action, index) => `${index + 1}. ${action}`),
         ].join("\n"),
     };
@@ -256,7 +325,7 @@ export async function getAttendanceRiskSnapshot(client, providerDisplayName, sco
 export async function getCurrentMonthAttendanceSnapshot(client, providerDisplayName, asOfDate) {
     return getAttendanceRiskSnapshot(client, providerDisplayName, { dateFilter: "THIS_MONTH" }, asOfDate);
 }
-export async function getAttendanceRiskAnalysis(client, providerDisplayName, scope, asOfDate, childNames) {
+export async function getAttendanceRiskAnalysis(client, providerDisplayName, scope, asOfDate, childNames, authNames) {
     const initialization = requireRecord(await client.initialize(scope), "Provider context");
     const providers = requireArray(initialization.providers, "Provider facility");
     const provider = requireRecord(providers[0], "Provider facility");
@@ -265,21 +334,48 @@ export async function getAttendanceRiskAnalysis(client, providerDisplayName, sco
         throw new Error("Provider facility name is unavailable");
     }
     const providerTier = normalizeQualityTier(provider.TXT_CHATS_RATING__c, provider.CDE_TYPE_PROVR__c);
+    const fiscalAgreements = requireArray(initialization.fiscalAgreements, "Provider county agreements");
     const countyIds = [
-        ...new Set(requireArray(initialization.fiscalAgreements, "Provider county agreements")
+        ...new Set(fiscalAgreements
             .map((agreement) => requireRecord(agreement, "Provider county agreement").CDE_COUNTY__c)
             .filter((countyId) => typeof countyId === "string")),
     ];
     if (countyIds.length === 0) {
         throw new Error("Provider county agreements are unavailable");
     }
+    const countyIdByName = {};
+    for (const agreement of fiscalAgreements) {
+        const record = requireRecord(agreement, "Provider county agreement");
+        const id = record.CDE_COUNTY__c;
+        const name = asRecord(record.CDE_COUNTY__r)?.Name;
+        if (typeof id === "string" && id && typeof name === "string" && name) {
+            countyIdByName[name] = id;
+        }
+    }
     const [ratePlanData, scheduleData] = await Promise.all([
         client.getCountyData({ ...scope, countyIds }),
-        client.getSchedules(scope),
+        client.getSchedules({ ...scope, ...(authNames ? { authNames } : {}) }),
     ]);
     const ratePlans = requireArray(requireRecord(ratePlanData, "County rate plans").countyRatePlans, "County rate plans");
     const schedules = requireArray(requireRecord(scheduleData, "Schedules").schedules, "Schedules");
-    const scopedSchedules = addProviderQualityTierToSchedules(addDefaultCountyToSchedules(schedules, countyIds.length === 1 ? countyIds[0] : undefined), providerTier);
+    const authorizationIds = [
+        ...new Set(schedules
+            .map((value) => asRecord(value)?.CI_Authorization_Id__c)
+            .map(authorizationKey)
+            .filter((value) => Boolean(value))),
+    ];
+    const salesforceAuthorizationIds = authorizationIds.filter(isSalesforceId);
+    const authorizationData = authorizationIds.length > 0
+        ? await client.getAuthorizations({
+            ...scope,
+            ...(salesforceAuthorizationIds.length > 0
+                ? { authIds: salesforceAuthorizationIds }
+                : {}),
+        })
+        : undefined;
+    const schedulesWithAuthorizationNames = addAuthorizationNamesToSchedules(schedules, authorizationData);
+    const schedulesWithCounties = addNestedCountyIdToSchedules(schedulesWithAuthorizationNames, countyIdByName);
+    const scopedSchedules = addProviderQualityTierToSchedules(addCanonicalCountyIdToSchedules(addDefaultCountyToSchedules(schedulesWithCounties, countyIds.length === 1 ? countyIds[0] : undefined)), providerTier);
     const directory = await mkdtemp(join(tmpdir(), "carepay-snapshot-"));
     const inputPath = join(directory, "snapshot.json");
     try {
@@ -302,6 +398,7 @@ export async function getAttendanceRiskAnalysis(client, providerDisplayName, sco
             attendanceRisk: evaluated.result,
             paymentReadiness: livePaymentReadiness(),
             scope,
+            sourceRetrievedAt: new Date().toISOString(),
         };
     }
     finally {
@@ -355,7 +452,11 @@ export async function getAttendanceDataAnalysis(client, scope) {
         if (evaluated.status !== "ok" || !evaluated.result) {
             throw new Error(evaluated.error || "Attendance transaction analysis failed");
         }
-        return evaluated.result;
+        return {
+            ...evaluated.result,
+            scope,
+            sourceRetrievedAt: new Date().toISOString(),
+        };
     }
     finally {
         await rm(directory, { recursive: true, force: true });
@@ -366,7 +467,7 @@ function firstArrayRecord(value, label) {
         throw new Error(`${label} is unavailable`);
     return requireRecord(value[0], label);
 }
-export async function getPaymentAnalysis(client, scope) {
+export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDate = new Date().toISOString().slice(0, 10)) {
     const initialization = requireRecord(await client.initialize(scope), "Provider context");
     const providers = requireArray(initialization.providers, "Provider facility");
     const provider = firstArrayRecord(providers, "Provider facility");
@@ -376,16 +477,28 @@ export async function getPaymentAnalysis(client, scope) {
         .filter((value) => typeof value === "string");
     if (countyIds.length === 0)
         throw new Error("Provider county agreements are unavailable");
-    const [servicePeriodData, authorizationData, countyData, scheduleData, fiscalData, holidayData, paymentData] = await Promise.all([
-        client.getServicePeriods({ ...scope, limitOne: true, dateFilter: scope.dateFilter }),
-        client.getAuthorizations({ ...scope, countyIds, careDate: scope.dateFrom }),
-        client.getCountyData({ ...scope, countyIds }),
-        client.getSchedules(scope),
-        client.getFiscalRates(scope),
-        client.getHolidayList(scope),
-        client.getPaymentHistory(scope),
-    ]);
+    const servicePeriodData = await client.getServicePeriods(view === "NEXT_PAYOUT"
+        ? { paymentAfter: "TODAY", limitOne: true }
+        : view === "CURRENT_WEEK_FORECAST"
+            ? { dateOn: "TODAY", limitOne: true }
+            : { ...scope, limitOne: true, dateFilter: scope.dateFilter });
     const servicePeriod = firstArrayRecord(requireRecord(servicePeriodData, "Service periods").servicePeriods, "Service period");
+    const serviceBeginDate = servicePeriod.serviceBeginDate;
+    const serviceEndDate = servicePeriod.serviceEndDate;
+    if (typeof serviceBeginDate !== "string" || typeof serviceEndDate !== "string") {
+        throw new Error("Service period dates are unavailable");
+    }
+    const sourceScope = view === "STATUS"
+        ? scope
+        : { dateFilter: "DATE_RANGE", dateFrom: serviceBeginDate, dateTo: serviceEndDate };
+    const [authorizationData, countyData, scheduleData, fiscalData, holidayData, paymentData] = await Promise.all([
+        client.getAuthorizations({ ...sourceScope, countyIds, careDate: serviceBeginDate }),
+        client.getCountyData({ ...sourceScope, countyIds }),
+        client.getSchedules(sourceScope),
+        client.getFiscalRates(sourceScope),
+        client.getHolidayList(sourceScope),
+        client.getPaymentHistory(sourceScope),
+    ]);
     const authResponse = requireRecord(authorizationData, "Authorizations");
     const normalizedAuthorizations = requireArray(authResponse.normalizedAuthorizations, "Normalized authorizations");
     const authorizationMatches = {};
@@ -441,6 +554,8 @@ export async function getPaymentAnalysis(client, scope) {
         paymentHistory: paymentData,
         feeSchedules,
         feeHistory: normalizePaymentFeeHistory(paymentData),
+        mode: view === "CURRENT_WEEK_FORECAST" ? "FORECAST" : "STATUS",
+        asOfDate,
     });
     const authorizationCopays = normalizeAuthorizationCopays(authResponse.authorizationCopays);
     payload.authorization_copays = authorizationCopays;
@@ -452,7 +567,13 @@ export async function getPaymentAnalysis(client, scope) {
         const evaluated = JSON.parse(stdout);
         if (evaluated.status !== "ok" || !evaluated.result)
             throw new Error(evaluated.error || "Payment evaluation failed");
-        return evaluated.result;
+        return {
+            ...evaluated.result,
+            scope: sourceScope,
+            paymentView: view,
+            servicePeriod,
+            sourceRetrievedAt: new Date().toISOString(),
+        };
     }
     finally {
         await rm(directory, { recursive: true, force: true });

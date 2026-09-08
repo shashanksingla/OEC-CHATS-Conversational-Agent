@@ -98,6 +98,9 @@ export interface CanonicalAttendanceDay {
   occupied_slot_contract: boolean;
   care_not_offered: boolean;
   observed_holiday: boolean;
+  child_name?: string;
+  county_id?: string;
+  forecast_basis?: "SCHEDULED";
   holiday_name?: string;
   holiday_date?: string;
   observed_holiday_date?: string;
@@ -212,6 +215,7 @@ export function deriveAttendanceEnrichment(
 export function normalizeAttendanceDays(
   schedules: unknown[],
   enrichmentByAuthorization: Record<string, RecordValue>,
+  options: { mode?: "STATUS" | "FORECAST"; asOfDate?: string } = {},
 ): CanonicalAttendanceDay[] {
   return schedules.map((value, index) => {
     const schedule = asRecord(value, `schedules[${index}]`);
@@ -221,7 +225,12 @@ export function normalizeAttendanceDays(
     );
     const enrichment = enrichmentByAuthorization[authorizationId];
     if (!enrichment) throw new Error(`attendance enrichment is missing for ${authorizationId}`);
-    const parentConfirmation = schedule.parent_confirmation;
+    const serviceDate = requiredString(schedule.work_date, `schedules[${index}].work_date`);
+    const isFutureForecast =
+      options.mode === "FORECAST" &&
+      typeof options.asOfDate === "string" &&
+      serviceDate > options.asOfDate;
+    const parentConfirmation = isFutureForecast ? "PENDING" : schedule.parent_confirmation;
     if (parentConfirmation !== "CONFIRMED" && parentConfirmation !== "PENDING") {
       throw new Error(`schedules[${index}].parent_confirmation is required`);
     }
@@ -231,15 +240,14 @@ export function normalizeAttendanceDays(
     }
     return {
       authorization_id: authorizationId,
-      service_date: requiredString(schedule.work_date, `schedules[${index}].work_date`),
+      service_date: serviceDate,
       authorized_hours: requiredNonNegativeNumber(
         schedule.ci_authorization_hours,
         `schedules[${index}].ci_authorization_hours`,
       ),
-      attended_hours: requiredNonNegativeNumber(
-        schedule.raw_hours,
-        `schedules[${index}].raw_hours`,
-      ),
+      attended_hours: isFutureForecast
+        ? 0
+        : requiredNonNegativeNumber(schedule.raw_hours, `schedules[${index}].raw_hours`),
       parent_confirmation: parentConfirmation,
       absence_parent_approved: requiredBoolean(
         schedule.absence_parent_approved,
@@ -262,6 +270,9 @@ export function normalizeAttendanceDays(
         enrichment.observed_holiday,
         `attendance enrichment observed_holiday for ${authorizationId}`,
       ),
+      ...(typeof schedule.child_name === "string" ? { child_name: schedule.child_name } : {}),
+      ...(typeof schedule.county_id === "string" ? { county_id: schedule.county_id } : {}),
+      ...(isFutureForecast ? { forecast_basis: "SCHEDULED" as const } : {}),
       ...(typeof enrichment.holiday_name === "string" ? { holiday_name: enrichment.holiday_name } : {}),
       ...(typeof enrichment.holiday_date === "string" ? { holiday_date: enrichment.holiday_date } : {}),
       ...(typeof enrichment.observed_holiday_date === "string"
@@ -273,6 +284,7 @@ export function normalizeAttendanceDays(
 
 export interface CanonicalPaymentPayload {
   rule_version: "provider-risk-payment-v1";
+  calculation_mode?: "STATUS" | "CURRENT_WEEK_FORECAST";
   service_period: CanonicalServicePeriod;
   authorizations: RecordValue[];
   attendance_days: CanonicalAttendanceDay[];
@@ -438,14 +450,23 @@ export function buildCanonicalPaymentPayload(input: {
   paymentHistory: unknown;
   feeSchedules?: CanonicalPaymentFeeSchedule[];
   feeHistory?: RecordValue[];
+  mode?: "STATUS" | "FORECAST";
+  asOfDate?: string;
 }): CanonicalPaymentPayload {
   return {
     rule_version: "provider-risk-payment-v1",
+    ...(input.mode
+      ? { calculation_mode: input.mode === "FORECAST" ? "CURRENT_WEEK_FORECAST" as const : "STATUS" as const }
+      : {}),
     service_period: normalizeServicePeriod(input.servicePeriod),
     authorizations: requiredRecords(input.authorizations, "authorizations"),
     attendance_days: normalizeAttendanceDays(
       input.schedules,
       input.attendanceEnrichmentByAuthorization,
+      {
+        ...(input.mode ? { mode: input.mode } : {}),
+        ...(input.asOfDate ? { asOfDate: input.asOfDate } : {}),
+      },
     ),
     county_policies: requiredRecords(input.countyPolicies, "county policies"),
     fiscal_rates: requiredRecords(input.fiscalRates, "fiscal rates"),
@@ -457,14 +478,13 @@ export function buildCanonicalPaymentPayload(input: {
 
 export function normalizeQualityTier(
   providerQualityRating: unknown,
-  providerType: unknown,
+  _providerType: unknown,
 ): number {
-  if (providerType === "EXE") return 1;
-  if (providerQualityRating === "Level 1") return 2;
-  if (providerQualityRating === "Level 2") return 3;
-  if (providerQualityRating === "Level 3") return 4;
-  if (providerQualityRating === "Level 4") return 5;
-  if (providerQualityRating === "Level 5") return 6;
+  if (providerQualityRating === "Level 1") return 1;
+  if (providerQualityRating === "Level 2") return 2;
+  if (providerQualityRating === "Level 3") return 3;
+  if (providerQualityRating === "Level 4") return 4;
+  if (providerQualityRating === "Level 5") return 5;
   throw new Error("provider quality tier is unavailable or unsupported");
 }
 

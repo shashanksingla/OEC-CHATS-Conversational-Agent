@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any
 
 
+CONFIRMATION_WINDOW_DAYS = 5
+
+
 class AttendanceRiskError(ValueError):
     pass
 
@@ -79,7 +82,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         for plan in rate_plans
         if isinstance(plan, dict) and isinstance(plan.get("countyId"), str)
     }
-    cutoff_date = as_of_date - timedelta(days=9)
+    cutoff_date = as_of_date - timedelta(days=CONFIRMATION_WINDOW_DAYS)
     children: dict[str, dict[str, Any]] = defaultdict(
         lambda: {
             "scheduled_days": 0,

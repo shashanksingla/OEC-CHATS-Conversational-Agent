@@ -1,6 +1,6 @@
 # CCCAP Provider API MCP Server
 
-This local stdio MCP server gives CarePay Advisor read-only tools backed by `CccapPortalApiV1` in the Salesforce target org.
+This local stdio MCP server gives Provider Assist read-only tools backed by `CccapPortalApiV1` in the Salesforce target org.
 
 ## Authentication and Scope
 

@@ -103,6 +103,7 @@ export class CccapClient {
     input: DateScope & {
       caseIds?: string[] | undefined;
       countyIds?: string[] | undefined;
+      authIds?: string[] | undefined;
       authNames?: string[] | undefined;
       careDate?: string | undefined;
     },

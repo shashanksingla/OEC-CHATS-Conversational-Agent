@@ -12663,3 +12663,4 @@ CHATS_SIT/manifest/package.xml
 CHATS_SIT/scripts/apex/hello.apex
 CHATS_SIT/scripts/soql/account.soql
 _bmad/render/.gitignore
+CHATS_SIT/force-app/main/default/classes/CccapPortalApiV1.cls

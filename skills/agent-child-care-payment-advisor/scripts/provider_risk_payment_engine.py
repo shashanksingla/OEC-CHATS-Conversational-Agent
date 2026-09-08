@@ -351,9 +351,18 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
         county_id = authorization.get("county_id")
         flags: list[str] = []
         occupied_slot_contract = attendance_day.get("occupied_slot_contract") is True
+        scheduled_forecast = attendance_day.get("forecast_basis") == "SCHEDULED"
         unit_hours = Decimal("0")
         payment_type = "NONE"
-        if attendance_day.get("care_not_offered") is True:
+        if scheduled_forecast:
+            classification = "SCHEDULED_FORECAST"
+            payable = True
+            paid_tier = _tier_for_hours(authorized_hours)
+            unit_hours = authorized_hours
+            payment_type = "FORECAST"
+            info_code = "FORECAST"
+            flags.append("SCHEDULED_FUTURE_DAY")
+        elif attendance_day.get("care_not_offered") is True:
             classification = "CARE_NOT_OFFERED"
             payable = False
             paid_tier = None
@@ -518,6 +527,8 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
         results.append({
             "authorization_id": authorization_id,
             "service_date": service_date.isoformat(),
+            **({"child_name": attendance_day["child_name"]} if isinstance(attendance_day.get("child_name"), str) else {}),
+            **({"county_id": attendance_day["county_id"]} if isinstance(attendance_day.get("county_id"), str) else {}),
             "classification": classification,
             "payable": payable,
             "unit_hours": _money(unit_hours),
@@ -526,6 +537,7 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
             "occupied_slot_contract": occupied_slot_contract,
             "slot_contract_present": attendance_day.get("slot_contract_present") is True,
             "conditional": conditional,
+            **({"forecast_basis": "SCHEDULED"} if scheduled_forecast else {}),
             "paid_tier": paid_tier,
             "flags": sorted(flags),
         })
@@ -629,6 +641,7 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
     return {
         "status": "ok",
         "rule_version": RULE_VERSION,
+        "calculation_mode": payload.get("calculation_mode", "STATUS"),
         "source_readiness": "COMPLETE",
         "attendance": attendance,
         "payment": {

@@ -59,6 +59,35 @@ test("reuses identical provider reads but refreshes when the date scope changes"
   assert.deepEqual(requests, ["getProviderData", "getProviderData"]);
 });
 
+test("reuses current-month county plans across snapshot and policy reads", async () => {
+  const requests: string[] = [];
+  const requestApex: RequestApex = async (_targetOrg, action) => {
+    requests.push(action);
+    if (action === "getProviderData") {
+      return {
+        isSuccess: true,
+        data: {
+          providers: [{ Id: "provider-1", Name: "20260722" }],
+          fiscalAgreements: [{ CDE_COUNTY__c: "county-1" }],
+          providerClosures: [],
+        },
+      };
+    }
+    return { isSuccess: true, data: { countyRatePlans: [] } };
+  };
+  const client = new CccapClient({
+    targetOrg: "CHATS_SIT",
+    providerUserId: "user-1",
+    requestApex,
+  });
+
+  await client.initialize({ dateFilter: "THIS_MONTH" });
+  await client.getCountyData({ dateFilter: "THIS_MONTH" });
+  await client.getCountyData({ dateFilter: "THIS_MONTH" });
+
+  assert.deepEqual(requests, ["getProviderData", "getCountyData"]);
+});
+
 test("case requests inject the provider external name returned by initialization", async () => {
   const requests: Array<{ action: string; body: Record<string, unknown> }> = [];
   const requestApex: RequestApex = async (_targetOrg, action, body) => {
@@ -118,11 +147,12 @@ test("authorization requests preserve case filters and inject the provider Sales
     caseIds: ["case-1"],
     dateFilter: "TODAY",
   });
-  await client.getSchedules({ dateFilter: "TODAY" });
+  await client.getSchedules({ dateFilter: "TODAY", authNames: ["AUTH-1"] });
 
   assert.deepEqual(requests[1]?.body.providerIds, ["provider-1"]);
   assert.deepEqual(requests[1]?.body.caseIds, ["case-1"]);
   assert.deepEqual(requests[2]?.body.providerIds, ["provider-1"]);
+  assert.deepEqual(requests[2]?.body.authNames, ["AUTH-1"]);
 });
 
 test("out-of-scope counties are rejected before an API call", async () => {
@@ -287,4 +317,34 @@ test("fiscal-rate requests fail closed when initialization returns no schedules"
     /No authorized fiscal rate schedules/,
   );
   assert.equal(requestCount, 1);
+});
+
+test("authorization requests preserve scoped authorization IDs", async () => {
+  const requests: Array<{ action: string; body: Record<string, unknown> }> = [];
+  const requestApex: RequestApex = async (_targetOrg, action, body) => {
+    requests.push({ action, body });
+    if (action === "getProviderData") {
+      return {
+        isSuccess: true,
+        data: {
+          providers: [{ Id: "provider-1", Name: "20260722" }],
+          fiscalAgreements: [{ CDE_COUNTY__c: "county-1" }],
+        },
+      };
+    }
+    return { isSuccess: true, data: { authorizations: [], slotContracts: [] } };
+  };
+  const client = new CccapClient({
+    targetOrg: "CHATS_SIT",
+    providerUserId: "user-1",
+    requestApex,
+  });
+  await client.initialize({ dateFilter: "THIS_MONTH" });
+  await client.getAuthorizations({
+    dateFilter: "THIS_MONTH",
+    authIds: ["auth-1", "auth-2"],
+  });
+
+  assert.deepEqual(requests[1]?.body.authIds, ["auth-1", "auth-2"]);
+  assert.deepEqual(requests[1]?.body.providerIds, ["provider-1"]);
 });

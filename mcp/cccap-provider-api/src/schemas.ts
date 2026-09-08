@@ -71,6 +71,7 @@ export const authorizationSchema = z
     careDate: z.string().date().optional(),
     caseIds: z.array(z.string().min(1)).optional(),
     countyIds: z.array(z.string().min(1)).optional(),
+    authIds: z.array(z.string().min(1)).optional(),
     authNames: z.array(z.string().min(1)).optional(),
   })
   .strict()
@@ -97,6 +98,12 @@ export const paymentHistorySchema = z
   .strict()
   .superRefine(validateDateScope);
 
+export const paymentViewSchema = z.enum([
+  "STATUS",
+  "NEXT_PAYOUT",
+  "CURRENT_WEEK_FORECAST",
+]);
+
 export const attendanceDataSchema = z
   .object({
     ...dateScopeShape,
@@ -110,6 +117,7 @@ export const attendanceAnalysisSchema = z
     ...dateScopeShape,
     dateFilter: dateFilterSchema,
     childNames: z.array(z.string().min(1)).min(1).optional(),
+    authNames: z.array(z.string().min(1)).min(1).optional(),
   })
   .strict()
   .superRefine(validateDateScope);
@@ -117,10 +125,19 @@ export const attendanceAnalysisSchema = z
 export const paymentAnalysisSchema = z
   .object({
     ...dateScopeShape,
-    dateFilter: dateFilterSchema,
+    dateFilter: dateFilterSchema.optional(),
+    view: paymentViewSchema.optional(),
   })
   .strict()
-  .superRefine(validateDateScope);
+  .superRefine((value, context) => {
+    validateDateScope(value, context);
+    if (!value.view && !value.dateFilter) {
+      context.addIssue({
+        code: "custom",
+        message: "dateFilter is required when view is not specified",
+      });
+    }
+  });
 
 export const servicePeriodSchema = z
   .object({

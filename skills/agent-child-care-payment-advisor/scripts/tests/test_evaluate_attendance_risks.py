@@ -63,12 +63,12 @@ class EvaluateAttendanceRisksTests(unittest.TestCase):
         self.assertEqual(result["absence_risk_children"], 1)
         self.assertEqual(result["attendance_concern_children"], 2)
 
-    def test_flags_unattended_days_older_than_nine_days_as_probable_absences(self) -> None:
+    def test_flags_unattended_days_at_least_five_days_old_as_probable_absences(self) -> None:
         snapshot = {
             "as_of_date": "2026-09-15",
             "schedules": [
-                self._schedule("Ava", "2026-09-05", check_ins=0, check_outs=0),
                 self._schedule("Ava", "2026-09-10", check_ins=0, check_outs=0),
+                self._schedule("Ava", "2026-09-12", check_ins=0, check_outs=0),
             ],
         }
 

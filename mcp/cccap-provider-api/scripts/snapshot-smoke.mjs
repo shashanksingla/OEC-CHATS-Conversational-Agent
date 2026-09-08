@@ -26,7 +26,7 @@ try {
   if (response.isError) {
     throw new Error(String(response.content[0]?.text || "Snapshot tool failed"));
   }
-  const snapshot = JSON.parse(String(response.content[0]?.text));
+  const snapshot = response.structuredContent ?? {};
   const analysisResponse = await client.callTool({
     name: "cccap_analyze_attendance_risk",
     arguments: { dateFilter: "THIS_MONTH" },
@@ -34,27 +34,22 @@ try {
   if (analysisResponse.isError) {
     throw new Error(String(analysisResponse.content[0]?.text || "Attendance analysis failed"));
   }
-  const analysis = JSON.parse(String(analysisResponse.content[0]?.text));
-  if (!analysis.attendanceRisk || analysis.scope?.dateFilter !== "THIS_MONTH") {
-    throw new Error("Attendance analysis response is missing scope or risk data");
+  const analysisText = String(analysisResponse.content[0]?.text ?? "");
+  if (!analysisText.startsWith("Current-month attendance review")) {
+    throw new Error("Attendance analysis response is missing its provider-facing review");
   }
-  const risk = snapshot.attendanceRisk;
   if (typeof snapshot.providerMessage !== "string" || !snapshot.providerMessage.startsWith("Greetings for the day, Shashank.")) {
     throw new Error("Snapshot provider message is missing or malformed");
+  }
+  if (snapshot.scope?.dateFilter !== "THIS_MONTH" || !snapshot.providerMessage.includes("| Children scheduled |")) {
+    throw new Error("Today's snapshot is missing its daily scope or scheduled-child count");
   }
   console.log(
     JSON.stringify({
       providerDisplayName: snapshot.providerDisplayName,
       facilityName: snapshot.facilityName,
       providerMessage: snapshot.providerMessage,
-      today: risk.today,
-      scheduledDays: risk.scheduled_days,
-      probableAbsenceDays: risk.probable_absence_days,
-      pendingConfirmationDays: risk.pending_confirmation_days,
-      incompleteAttendanceDays: risk.incomplete_attendance_days,
-      absenceRiskChildren: risk.absence_risk_children,
-      attendanceConcernChildren: risk.attendance_concern_children,
-      riskChildCount: risk.risk_child_count,
+      scope: snapshot.scope,
     }),
   );
 } finally {
