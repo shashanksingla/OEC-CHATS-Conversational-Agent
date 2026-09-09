@@ -59,7 +59,7 @@ class EvaluateAttendanceRisksTests(unittest.TestCase):
             "scheduled_children": 3,
             "checked_in_children": 2,
         })
-        self.assertEqual(result["probable_absence_days"], 1)
+        self.assertEqual(result["absence_days"], 1)
         self.assertEqual(result["absence_risk_children"], 1)
         self.assertEqual(result["attendance_concern_children"], 2)
 
@@ -75,10 +75,10 @@ class EvaluateAttendanceRisksTests(unittest.TestCase):
         result = evaluate_attendance_risks.evaluate(snapshot)
 
         self.assertEqual(result["scheduled_days"], 2)
-        self.assertEqual(result["probable_absence_days"], 1)
+        self.assertEqual(result["absence_days"], 1)
         self.assertEqual(result["pending_confirmation_days"], 1)
         self.assertEqual(result["children"][0]["risk_codes"], [
-            "PROBABLE_ABSENCE_AFTER_CONFIRMATION_WINDOW",
+            "ABSENCE_AFTER_CONFIRMATION_WINDOW",
             "PARENT_CONFIRMATION_PENDING",
         ])
 
@@ -103,10 +103,10 @@ class EvaluateAttendanceRisksTests(unittest.TestCase):
 
         result = evaluate_attendance_risks.evaluate(snapshot)
 
-        self.assertEqual(result["children"][0]["probable_absence_days"], 2)
+        self.assertEqual(result["children"][0]["absence_days"], 2)
         self.assertEqual(result["children"][0]["absence_limit"], 1)
         self.assertEqual(result["children"][0]["risk_codes"], [
-            "PROBABLE_ABSENCE_AFTER_CONFIRMATION_WINDOW",
+            "ABSENCE_AFTER_CONFIRMATION_WINDOW",
             "ABSENCE_LIMIT_EXCEEDED",
         ])
 
@@ -124,7 +124,7 @@ class EvaluateAttendanceRisksTests(unittest.TestCase):
 
         self.assertIsNone(result["children"][0]["absence_limit"])
         self.assertEqual(result["children"][0]["risk_codes"], [
-            "PROBABLE_ABSENCE_AFTER_CONFIRMATION_WINDOW",
+            "ABSENCE_AFTER_CONFIRMATION_WINDOW",
             "ABSENCE_LIMIT_UNAVAILABLE",
         ])
 
@@ -218,7 +218,7 @@ class EvaluateAttendanceRisksTests(unittest.TestCase):
         self.assertEqual(ava["county"], "denver")
         self.assertEqual(ava["authorization_dates"], ["2026-09-01", "2026-09-02"])
         self.assertEqual(ava["authorization_names"], ["AUTH-AVA-1"])
-        self.assertIn("2 probable absence days", ava["note"])
+        self.assertIn("2 absence days", ava["note"])
         self.assertIn("1 more absence day", ava["potential_impact"])
 
     @staticmethod

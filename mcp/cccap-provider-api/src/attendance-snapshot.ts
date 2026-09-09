@@ -128,53 +128,58 @@ export async function getAttendanceRiskSnapshot(
   const crossedChildren = numberValue(crossed.children);
   const crossedCounties = numberValue(crossed.counties);
   const crossedDays = numberValue(crossed.maximum_days_over_limit);
+  const pendingAction = "Review pending parent confirmations in the provider system";
+  const absenceAction = "Review affected children and absence dates";
   const riskRows = [
     pendingDays > 0
-      ? `| Pending parent confirmations | ${pendingDays} day(s) for ${pendingChildren} child(ren) | Review and complete the pending confirmations |`
+      ? `| Pending parent confirmations | ${pendingDays} day(s) for ${pendingChildren} child(ren) may keep payment conditional | ${pendingAction} |`
       : "| Pending parent confirmations | No pending parent confirmations | None |",
     approachingChildren > 0
-      ? `| Children approaching county monthly absence limits | ${approachingFinding} | Review absence details before the next absence is recorded |`
+      ? `| Children approaching county monthly absence limits | ${approachingFinding}; payment may be affected by the next absence | ${absenceAction} |`
       : "| Children approaching county monthly absence limits | No children currently approaching county monthly absence limits | None |",
     crossedChildren > 0
-      ? `| Children crossed county absence limits | ${crossedChildren} child(ren) of ${crossedCounties} counties; ${crossedDays} day(s) over the limit | Review the affected absence records and county follow-up |`
+      ? `| Children crossed county absence limits | ${crossedChildren} child(ren) of ${crossedCounties} counties; ${crossedDays} day(s) over the limit may be excluded from payment | ${absenceAction} |`
       : "| Children crossed county absence limits | No children have crossed county monthly absence limits | None |",
   ];
   const nextActions = [];
-  if (pendingDays > 0) {
-    nextActions.push("Review pending parent confirmations in the provider system");
-  }
-  if (approachingChildren > 0 || crossedChildren > 0) {
-    nextActions.push("Review the affected children, county limits, and absence dates");
-  }
+  if (pendingDays > 0) nextActions.push(pendingAction);
+  if (approachingChildren > 0 || crossedChildren > 0) nextActions.push(absenceAction);
   if (nextActions.length === 0) {
-    nextActions.push("Review today's attendance records for missing or incomplete check-ins");
+    nextActions.push("No urgent attendance actions identified");
   }
+  const hasAttentionItems = pendingDays > 0 || approachingChildren > 0 || crossedChildren > 0;
+  const attentionLine = hasAttentionItems
+    ? "The following verified items require your attention. Details and recommended reviews are provided below."
+    : "No attendance or payment items require your attention today.";
   const isToday = (scope.dateFilter ?? "TODAY") === "TODAY";
   const snapshotHeading = "Today's snapshot";
-  const snapshotRows = [
-    "| Today | Count |",
-    "| --- | ---: |",
-    `| Children scheduled | ${today.scheduled_children} |`,
-    `| Children checked in | ${today.checked_in_children} |`,
-  ];
   const riskHeading = isToday
-    ? "**Payment-readiness risks**"
-    : `**Payment-readiness risks (${attendancePeriodLabel(scope)})**`;
+    ? "**Attendance and payment issues**"
+    : `**Attendance and payment issues (${attendancePeriodLabel(scope)})**`;
   return {
     ...snapshot,
     providerMessage: [
       `Greetings for the day, ${snapshot.providerDisplayName}. Here's where things stand at ${snapshot.facilityName}.`,
       "",
       snapshotHeading,
-      ...snapshotRows,
+      "| Today | Count |",
+      "| --- | ---: |",
+      `| Children scheduled | ${today.scheduled_children} |`,
+      `| Children checked in | ${today.checked_in_children} |`,
+      "",
+      attentionLine,
       "",
       riskHeading,
-      "| Area | Finding | Suggested next step |",
+      "The findings below are the verified issues for this period; the action in the last column explains the most useful read-only review.",
+      "| Area | Verified finding | Why it matters / next review |",
       "| --- | --- | --- |",
       ...riskRows,
       "",
-      "**Next views**",
-      ...nextActions.map((action, index) => `${index + 1}. ${action}`),
+      "**Next actions**",
+      ...nextActions.map((action) => `- ${action}`),
+      "",
+      "**Available options**",
+      "- Review the next payout summary",
     ].join("\n"),
   };
 }

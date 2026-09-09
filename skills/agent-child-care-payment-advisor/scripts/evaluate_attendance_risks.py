@@ -86,13 +86,14 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
     children: dict[str, dict[str, Any]] = defaultdict(
         lambda: {
             "scheduled_days": 0,
-            "probable_absence_days": 0,
+            "absence_days": 0,
             "pending_confirmation_days": 0,
             "incomplete_attendance_days": 0,
             "absence_limit": None,
             "counties": set(),
             "household_name": None,
             "authorization_dates": set(),
+            "absence_dates": set(),
             "authorization_names": set(),
         }
     )
@@ -158,7 +159,8 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
 
         if check_ins == 0 and check_outs == 0:
             if service_date <= cutoff_date:
-                child["probable_absence_days"] += 1
+                child["absence_days"] += 1
+                child["absence_dates"].add(service_date.isoformat())
             else:
                 child["pending_confirmation_days"] += 1
         elif check_ins == 0 or check_outs == 0:
@@ -167,54 +169,55 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
     child_results = []
     for child_name, child in sorted(children.items()):
         risk_codes = []
-        if child["probable_absence_days"]:
-            risk_codes.append("PROBABLE_ABSENCE_AFTER_CONFIRMATION_WINDOW")
+        if child["absence_days"]:
+            risk_codes.append("ABSENCE_AFTER_CONFIRMATION_WINDOW")
         if child["pending_confirmation_days"]:
             risk_codes.append("PARENT_CONFIRMATION_PENDING")
         if child["incomplete_attendance_days"]:
             risk_codes.append("INCOMPLETE_ATTENDANCE_RECORD")
         if (
-            child["probable_absence_days"]
+            child["absence_days"]
             and child["absence_limit"] is None
             and plans
         ):
             risk_codes.append("ABSENCE_LIMIT_UNAVAILABLE")
         elif (
             child["absence_limit"] is not None
-            and child["probable_absence_days"] > child["absence_limit"]
+            and child["absence_days"] > child["absence_limit"]
         ):
             risk_codes.append("ABSENCE_LIMIT_EXCEEDED")
         elif (
             child["absence_limit"] is not None
-            and child["probable_absence_days"] > 0
-            and child["probable_absence_days"] >= child["absence_limit"] - 2
+            and child["absence_days"] > 0
+            and child["absence_days"] >= child["absence_limit"] - 2
         ):
             risk_codes.append("ABSENCE_LIMIT_APPROACHING")
         counties = sorted(child.pop("counties"))
         authorization_dates = sorted(child.pop("authorization_dates"))
         authorization_names = sorted(child.pop("authorization_names"))
+        absence_dates = sorted(child.pop("absence_dates"))
         if child["pending_confirmation_days"]:
             note = f"{child['pending_confirmation_days']} pending parent confirmation day(s) require review."
             potential_impact = "Payment remains conditional until confirmation is completed."
-            if child["probable_absence_days"]:
-                note += f" {child['probable_absence_days']} probable absence day(s) are outside the confirmation window."
+            if child["absence_days"]:
+                note += f" {child['absence_days']} absence day(s) are outside the confirmation window."
         if (
             child["absence_limit"] is not None
-            and child["probable_absence_days"] > child["absence_limit"]
+            and child["absence_days"] > child["absence_limit"]
         ):
-            excess_days = child["probable_absence_days"] - child["absence_limit"]
-            absence_note = f"{child['probable_absence_days']} probable absence day(s) exceed the county limit."
+            excess_days = child["absence_days"] - child["absence_limit"]
+            absence_note = f"{child['absence_days']} absence day(s) exceed the county limit."
             absence_impact = f"Up to {excess_days} absence day(s) may be excluded from reimbursement."
             note = f"{note} {absence_note}" if child["pending_confirmation_days"] else absence_note
             potential_impact = f"{potential_impact} {absence_impact}" if child["pending_confirmation_days"] else absence_impact
-        elif child["absence_limit"] is not None and child["probable_absence_days"] >= child["absence_limit"] - 2:
-            days_until_exceeded = child["absence_limit"] - child["probable_absence_days"] + 1
-            note = f"{child['probable_absence_days']} probable absence days are within the county limit threshold."
+        elif child["absence_limit"] is not None and child["absence_days"] >= child["absence_limit"] - 2:
+            days_until_exceeded = child["absence_limit"] - child["absence_days"] + 1
+            note = f"{child['absence_days']} absence days are within the county limit threshold."
             potential_impact = (
                 f"The county limit may be exceeded after {days_until_exceeded} more absence day(s)."
             )
-        elif child["probable_absence_days"]:
-            note = f"{child['probable_absence_days']} probable absence day(s) require review."
+        elif child["absence_days"]:
+            note = f"{child['absence_days']} absence day(s) require review."
             potential_impact = "Payment may remain conditional until attendance is confirmed."
         else:
             note = f"{child['scheduled_days']} scheduled day(s) reviewed with no current category risk."
@@ -225,6 +228,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "county": counties[0] if len(counties) == 1 else ("Multiple" if counties else None),
             "authorization_names": authorization_names,
             "authorization_dates": authorization_dates,
+            "absence_dates": absence_dates,
             "note": note,
             "potential_impact": potential_impact,
             "risk_codes": risk_codes,
@@ -244,7 +248,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         return len({child["county"] for child in children if child["county"] not in (None, "Multiple")})
 
     absence_risk_codes = {
-        "PROBABLE_ABSENCE_AFTER_CONFIRMATION_WINDOW",
+        "ABSENCE_AFTER_CONFIRMATION_WINDOW",
         "ABSENCE_LIMIT_UNAVAILABLE",
         "ABSENCE_LIMIT_EXCEEDED",
         "ABSENCE_LIMIT_APPROACHING",
@@ -259,8 +263,8 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         "confirmation_cutoff_date": cutoff_date.isoformat(),
         "today": {key: len(value) for key, value in today.items()},
         "scheduled_days": sum(child["scheduled_days"] for child in child_results),
-        "probable_absence_days": sum(
-            child["probable_absence_days"] for child in child_results
+        "absence_days": sum(
+            child["absence_days"] for child in child_results
         ),
         "pending_confirmation_days": sum(
             child["pending_confirmation_days"] for child in child_results
@@ -287,7 +291,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
                 "counties": county_count(approaching_children),
                 "minimum_days_until_exceeded": min(
                     (
-                        child["absence_limit"] - child["probable_absence_days"] + 1
+                        child["absence_limit"] - child["absence_days"] + 1
                         for child in approaching_children
                     ),
                     default=None,
@@ -298,7 +302,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
                 "counties": county_count(crossed_children),
                 "maximum_days_over_limit": max(
                     (
-                        child["probable_absence_days"] - child["absence_limit"]
+                        child["absence_days"] - child["absence_limit"]
                         for child in crossed_children
                     ),
                     default=0,

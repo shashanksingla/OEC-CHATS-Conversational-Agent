@@ -63,7 +63,7 @@ test("attendance analysis returns affected child drill-down rows", () => {
           county: null,
           authorization_dates: ["2026-09-01", "2026-09-02"],
           pending_confirmation_days: 2,
-          probable_absence_days: 0,
+          absence_days: 0,
           note: "2 pending parent confirmation day(s) require review.",
           potential_impact: "Payment remains conditional until confirmation is completed.",
           risk_codes: ["PARENT_CONFIRMATION_PENDING"],
@@ -76,7 +76,7 @@ test("attendance analysis returns affected child drill-down rows", () => {
   assert.match(text, /Current-month attendance review found 1 child\(ren\) needing attention\./);
   assert.match(text, /2 pending parent confirmation day\(s\) affect 1 child\(ren\)\./);
   assert.match(text, /\| Child name \| Household name \| County \| Authorization name \| Service dates \| Note \| Potential impact \|/);
-  assert.match(text, /\| Taylor Example \| Example Household \| Unavailable from the current source \| Unavailable from the current source \| 2026-09-01, 2026-09-02 \|/);
+    assert.match(text, /\| Taylor Example \| Example Household \| Unavailable from the current source \| Unavailable from the current source \| 2026-09-01, 2026-09-02 \|/);
   assert.match(text, /1\. Review pending parent confirmations in the provider system/);
   assert.doesNotMatch(text, /View next payout details/);
   assert.equal(result.structuredContent?.providerMessage, text);
@@ -95,7 +95,7 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
           county: "denver",
           authorization_names: ["AUTH-ABSENCE-1"],
           authorization_dates: ["2026-09-01"],
-          note: "3 probable absence days exceed the county limit.",
+          note: "3 absence days exceed the county limit.",
           potential_impact: "Up to 1 absence day may be excluded from reimbursement.",
           risk_codes: ["ABSENCE_LIMIT_EXCEEDED"],
         },
@@ -115,7 +115,7 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
   const text = result.content[0].text;
   assert.match(text, /1 child\(ren\) have an absence-limit concern\./);
   assert.match(text, /1 child\(ren\) have incomplete attendance records\./);
-  assert.match(text, /1\. Review county absence limits for the affected children/);
+  assert.match(text, /1\. Review affected children and absence dates/);
   assert.doesNotMatch(text, /View next payout details/);
   assert.doesNotMatch(text, /Review and complete the pending parent confirmations/);
 
@@ -129,30 +129,27 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
           county: "denver",
           authorization_names: ["AUTH-ABSENCE-1"],
           authorization_dates: ["2026-09-01"],
-          note: "3 probable absence days exceed the county limit.",
+          note: "3 absence days exceed the county limit.",
           potential_impact: "Up to 1 absence day may be excluded from reimbursement.",
           risk_codes: ["ABSENCE_LIMIT_EXCEEDED"],
         },
       ],
     },
   });
-  assert.match(
-    countyPolicyResult.content[0].text,
-    /1\. Review county absence limits for the affected children/,
-  );
+  assert.match(countyPolicyResult.content[0].text, /1\. Review affected children and absence dates/);
 });
 
 test("attendance analysis does not label unavailable absence limits as concerns", () => {
   const result = formatAttendanceRiskResult({
     attendanceRisk: {
       pending_confirmation_days: 0,
-      probable_absence_days: 1,
+      absence_days: 1,
       risk_child_count: 1,
       children: [
         {
           child_name: "Unavailable Limit Example",
           county: "denver",
-          probable_absence_days: 1,
+          absence_days: 1,
           risk_codes: ["ABSENCE_LIMIT_UNAVAILABLE"],
         },
       ],
@@ -169,13 +166,13 @@ test("attendance analysis fails closed when aggregate totals contradict child de
     scope: { dateFilter: "LAST_MONTH" },
     attendanceRisk: {
       pending_confirmation_days: 4,
-      probable_absence_days: 25,
+      absence_days: 25,
       risk_child_count: 2,
       children: [
         {
           child_name: "Consistent Example",
           pending_confirmation_days: 0,
-          probable_absence_days: 0,
+          absence_days: 0,
           risk_codes: [],
         },
       ],
@@ -197,7 +194,7 @@ test("attendance analysis preserves structured action scope for follow-ups", () 
         {
           child_name: "Taylor Example",
           pending_confirmation_days: 2,
-          probable_absence_days: 0,
+          absence_days: 0,
           risk_codes: ["PARENT_CONFIRMATION_PENDING"],
         },
       ],
@@ -211,6 +208,7 @@ test("attendance analysis preserves structured action scope for follow-ups", () 
       actionId: "review-pending-parent-confirmations",
       capability: "attendance-risk-analysis",
       label: "Review pending parent confirmations in the provider system",
+      section: "next-actions",
       scope: { dateFilter: "LAST_MONTH" },
       childNames: ["Taylor Example"],
     },
@@ -223,13 +221,13 @@ test("attendance analysis focuses pending-confirmation follow-ups", () => {
     riskFocus: "PARENT_CONFIRMATIONS",
     attendanceRisk: {
       pending_confirmation_days: 2,
-      probable_absence_days: 3,
+      absence_days: 3,
       risk_child_count: 1,
       children: [
         {
           child_name: "Taylor Example",
           pending_confirmation_days: 2,
-          probable_absence_days: 3,
+          absence_days: 3,
           risk_codes: [
             "PARENT_CONFIRMATION_PENDING",
             "ABSENCE_LIMIT_APPROACHING",
@@ -252,19 +250,19 @@ test("attendance analysis focuses absence-limit follow-ups", () => {
     riskFocus: "ABSENCE_LIMITS",
     attendanceRisk: {
       pending_confirmation_days: 2,
-      probable_absence_days: 5,
+      absence_days: 5,
       risk_child_count: 1,
       children: [
         {
           child_name: "Absence Example",
           county: "Denver",
           pending_confirmation_days: 2,
-          probable_absence_days: 5,
+          absence_days: 5,
           risk_codes: [
             "PARENT_CONFIRMATION_PENDING",
             "ABSENCE_LIMIT_EXCEEDED",
           ],
-          note: "5 probable absence day(s) exceed the county limit.",
+          note: "5 absence day(s) exceed the county limit.",
         },
       ],
     },
@@ -272,22 +270,22 @@ test("attendance analysis focuses absence-limit follow-ups", () => {
 
   const text = result.content[0].text;
   assert.match(text, /absence-limit concern/);
-  assert.match(text, /5 probable absence day\(s\)/);
+  assert.match(text, /5 absence day\(s\)/);
   assert.doesNotMatch(text, /pending parent confirmation day\(s\)/);
 });
 
-test("attendance absence follow-up points to county policy retrieval", () => {
+test("attendance absence follow-up points to child-level attendance retrieval", () => {
   const result = formatAttendanceRiskResult({
     scope: { dateFilter: "THIS_MONTH" },
     attendanceRisk: {
       pending_confirmation_days: 0,
-      probable_absence_days: 5,
+      absence_days: 5,
       risk_child_count: 1,
       children: [
         {
           child_name: "Absence Example",
           county: "Denver",
-          probable_absence_days: 5,
+          absence_days: 5,
           absence_limit: 4,
           risk_codes: ["ABSENCE_LIMIT_EXCEEDED"],
         },
@@ -298,9 +296,11 @@ test("attendance absence follow-up points to county policy retrieval", () => {
   assert.deepEqual(result.structuredContent?.actionIntents, [
     {
       actionId: "review-absence-limit-risk",
-      capability: "county-policy",
-      tool: "cccap_get_county_rate_plans",
-      label: "Review county absence limits for the affected children",
+      capability: "attendance-risk-analysis",
+      tool: "cccap_analyze_attendance_risk",
+      label: "Review affected children and absence dates",
+      section: "next-actions",
+      riskFocus: "ABSENCE_LIMITS",
       scope: { dateFilter: "THIS_MONTH" },
       childNames: ["Absence Example"],
     },
@@ -391,7 +391,7 @@ test("normalizes nested getSchedules attendance records into the Python contract
 
   assert.equal(normalized.schedules[0].schedule_id, "schedule-1");
   assert.equal(normalized.schedules[0].authorization_id, "auth-1");
-  assert.equal(normalized.schedules[0].authorization_name, "auth-1");
+  assert.equal(normalized.schedules[0].authorization_name, undefined);
   assert.equal(normalized.schedules[0].county_id, "county-1");
   assert.equal(normalized.schedules[0].county_name, "Denver County");
   assert.equal(normalized.schedules[0].quality_tier, 5);
@@ -1013,8 +1013,9 @@ test("payment results show scheduled forecast rows for child drill-down", () => 
   });
 
   assert.match(result.content[0].text, /Current-week forecast: Conditional/);
-  assert.match(result.content[0].text, /Taylor Example \| Unavailable from the current source \| 2026-09-09/);
-  assert.match(result.content[0].text, /Scheduled forecast \| SCHEDULED_FORECAST/);
+  assert.match(result.content[0].text, /Taylor Example \| Unavailable from the current source \| Unavailable from the current source \| 2026-09-09/);
+  assert.match(result.content[0].text, /2026-09-09 \| SCHEDULED_FORECAST \| 5\.00/);
+  assert.doesNotMatch(result.content[0].text, /\| Scheduled forecast \|/);
   assert.equal(result.structuredContent?.calculationMode, "CURRENT_WEEK_FORECAST");
 });
 
@@ -1048,9 +1049,19 @@ test("payment results show summary before child drill-down detail", () => {
   });
 
   const text = result.content[0].text;
-  assert.match(text, /Summary by county, tier, rate, and attendance basis:/);
-  assert.match(text, /Denver \| PART_TIME \| 9\.00 \| Actual \| 1 \| 10\.00 \| 90\.00 \| 90\.00/);
-  assert.ok(text.indexOf("Summary by county") < text.indexOf("Detail by child"));
+  assert.match(text, /County payment totals:/);
+  assert.match(text, /The table below shows children served, care hours, and calculated payment by county\./);
+  assert.match(text, /Denver \| 1 \| 10 \| 90 \| 90/);
+  assert.ok(text.indexOf("County payment totals") < text.indexOf("Detail by child"));
+  assert.deepEqual(result.structuredContent?.actionIntents, [
+    {
+      actionId: "open-payment-detail",
+      capability: "payment-analysis",
+      tool: "cccap_analyze_payment",
+      label: "Open child-level payment detail starting with page 1",
+      input: { view: "NEXT_PAYOUT", detailPage: 1 },
+    },
+  ]);
 });
 
 test("payment detail reports its bounded page window", () => {
@@ -1073,6 +1084,37 @@ test("payment detail reports its bounded page window", () => {
   assert.deepEqual(result.structuredContent?.detailPagination, { page: 2, pageSize: 1, totalRows: 2, hasMore: false });
 });
 
+test("payment detail omits zero-value NO_CARE rows", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    payment: { status: "EXPECTED", amount: "45.00" },
+    attendance: { days: [
+      {
+        child_name: "Taylor Example",
+        authorization_name: "AUTH-2026-001",
+        county_name: "Denver",
+        service_date: "2026-09-09",
+        classification: "NO_CARE",
+        unit_hours: 0,
+        conditional: false,
+      },
+      {
+        child_name: "Taylor Example",
+        authorization_name: "AUTH-2026-001",
+        county_name: "Denver",
+        service_date: "2026-09-10",
+        classification: "ABSENCE",
+        unit_hours: 5,
+        conditional: false,
+      },
+    ] },
+  });
+
+  const text = result.content[0].text;
+  assert.doesNotMatch(text, /NO_CARE/);
+  assert.match(text, /2026-09-10 \| ABSENCE \| 5/);
+});
+
 test("attendance detail caps the provider-facing table and reports the remainder", () => {
   const result = formatAttendanceRiskResult({
     scope: { dateFilter: "THIS_MONTH" },
@@ -1082,7 +1124,7 @@ test("attendance detail caps the provider-facing table and reports the remainder
       children: Array.from({ length: 11 }, (_, index) => ({
         child_name: `Child ${index + 1}`,
         pending_confirmation_days: 1,
-        probable_absence_days: 0,
+        absence_days: 0,
         risk_codes: ["PARENT_CONFIRMATION_PENDING"],
       })),
     },
@@ -1186,4 +1228,25 @@ test("payment summary omits detail rows but keeps period metadata", () => {
   assert.match(text, /Services through.*2026-09-13/);
   assert.match(text, /Detail available: 182 child\/date rows/);
   assert.doesNotMatch(text, /Detail by child and service date/);
+});
+
+test("payment detail never exposes Salesforce record identifiers", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    payment: { status: "EXPECTED", amount: "45.00" },
+    detailPagination: { page: 1, pageSize: 1, totalRows: 1, hasMore: false },
+    attendance: { days: [{
+      child_name: "Taylor Example",
+      authorization_id: "a0sPg000009BE0rIAG",
+      county_name: "a1441000004dc7KAAQ",
+      service_date: "2026-09-10",
+      classification: "ATTENDED",
+      unit_hours: "5.00",
+      conditional: false,
+    }] },
+  });
+
+  const text = result.content[0].text;
+  assert.doesNotMatch(text, /a0sPg000009BE0rIAG|a1441000004dc7KAAQ/);
+  assert.match(text, /Unavailable from the current source/);
 });

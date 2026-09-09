@@ -130,9 +130,10 @@ export function normalizeScheduleAttendance(
       authorization_id:
         authorizationId,
       authorization_name:
-        schedule.CI_Authorization_Id__c ??
-        schedule.Authorization_Name__c ??
-        authorization?.Name,
+        authorizationRecord?.Name ??
+        authorization?.Name ??
+        schedule.authorization_name ??
+        schedule.Authorization_Name__c,
       child_name: schedule.Contact_Name__c,
       county_id: schedule.County__c
         ?? schedule.county_id

@@ -130,7 +130,8 @@ function snapshotResult(data: unknown): ToolResult {
       providerMessage,
       scope: snapshot.scope,
       sourceRetrievedAt: snapshot.sourceRetrievedAt,
-      actionIntents: risk ? actionMetadata(snapshot.scope, risk, children) : [],
+      actionIntents: risk ? actionMetadata(snapshot.scope, risk, children, true) : [],
+      actionControls: risk ? actionControls(actionMetadata(snapshot.scope, risk, children, true)) : [],
     },
   };
 }
@@ -143,12 +144,19 @@ function recordValue(value: unknown): Record<string, unknown> | undefined {
 
 function tableValue(value: unknown): string {
   if (typeof value === "string" && value.trim()) {
-    return value.replace(/[\r\n|]/g, " ").trim();
+    const normalized = value.replace(/[\r\n|]/g, " ").trim();
+    return isSalesforceRecordId(normalized)
+      ? "Unavailable from the current source"
+      : normalized;
   }
   if (typeof value === "number") {
     return String(value);
   }
   return "Unavailable from the current source";
+}
+
+function isSalesforceRecordId(value: string): boolean {
+  return /^[A-Za-z0-9]{15}(?:[A-Za-z0-9]{3})?$/.test(value);
 }
 
 function authorizationDates(value: unknown): string {
@@ -188,35 +196,161 @@ function actionMetadata(
   scope: unknown,
   risk: Record<string, unknown>,
   children: Record<string, unknown>[],
+  includePaymentAction = false,
 ): Record<string, unknown>[] {
   const childNamesFor = (code: string) => children
     .filter((child) => Array.isArray(child.risk_codes) && child.risk_codes.includes(code))
     .map((child) => child.child_name)
     .filter((name): name is string => typeof name === "string");
   const actions: Record<string, unknown>[] = [];
-  if (numericValue(risk.pending_confirmation_days) > 0) {
-    actions.push({
-      actionId: "review-pending-parent-confirmations",
-      capability: "attendance-risk-analysis",
-      label: "Review pending parent confirmations in the provider system",
-      scope,
-      childNames: childNamesFor("PARENT_CONFIRMATION_PENDING"),
-    });
-  }
   const absenceChildren = children.filter(hasAbsenceLimitConcern);
   if (absenceChildren.length > 0) {
     actions.push({
       actionId: "review-absence-limit-risk",
-      capability: "county-policy",
-      tool: "cccap_get_county_rate_plans",
-      label: "Review county absence limits for the affected children",
+      capability: "attendance-risk-analysis",
+      tool: "cccap_analyze_attendance_risk",
+      label: "Review affected children and absence dates",
+      section: "next-actions",
+      riskFocus: "ABSENCE_LIMITS",
       scope,
       childNames: absenceChildren
         .map((child) => child.child_name)
         .filter((name): name is string => typeof name === "string"),
     });
   }
+  if (numericValue(risk.pending_confirmation_days) > 0) {
+    actions.push({
+      actionId: "review-pending-parent-confirmations",
+      capability: "attendance-risk-analysis",
+      label: "Review pending parent confirmations in the provider system",
+      section: "next-actions",
+      scope,
+      childNames: childNamesFor("PARENT_CONFIRMATION_PENDING"),
+    });
+  }
+  if (actions.length === 0 && !includePaymentAction) {
+    actions.push({
+      actionId: "review-attendance-records",
+      capability: "attendance-risk-analysis",
+      tool: "cccap_analyze_attendance_risk",
+      label: "Review today's attendance records for missing or incomplete check-ins",
+      section: "next-actions",
+      scope,
+    });
+  }
+  if (includePaymentAction) {
+    actions.push({
+      actionId: "review-next-payout",
+      capability: "payment-analysis",
+      tool: "cccap_analyze_payment",
+      label: "Review the next payout summary",
+      section: "available-options",
+      view: "NEXT_PAYOUT",
+      scope,
+    });
+  }
   return actions;
+}
+
+function actionControls(actions: Record<string, unknown>[]): Record<string, unknown>[] {
+  return actions.map((action) => ({
+    type: "button",
+    actionId: action.actionId,
+    label: action.label,
+    section: action.section,
+    capability: action.capability,
+    ...(action.tool ? { tool: action.tool } : {}),
+    ...(action.input ? { input: action.input } : {}),
+    ...(action.scope ? { scope: action.scope } : {}),
+    ...(action.riskFocus ? { riskFocus: action.riskFocus } : {}),
+    ...(action.view ? { view: action.view } : {}),
+    ...(action.childNames ? { childNames: action.childNames } : {}),
+  }));
+}
+
+function paymentActionMetadata(
+  paymentResult: Record<string, unknown>,
+  payment: Record<string, unknown>,
+  detailPagination: Record<string, unknown> | undefined,
+  status: string,
+  detailPage: boolean,
+): Record<string, unknown>[] {
+  if (status === "BLOCKED") {
+    return [{
+      actionId: "retry-payment-analysis",
+      capability: "payment-analysis",
+      tool: "cccap_analyze_payment",
+      label: "Retry the payment review",
+      input: { view: paymentResult.paymentView ?? "STATUS" },
+    }];
+  }
+  const actions: Record<string, unknown>[] = [];
+  const attendance = recordValue(paymentResult.attendance);
+  const returnedRows = Array.isArray(attendance?.days) ? attendance.days.length : 0;
+  const totalRows = detailPagination
+    ? numericValue(detailPagination.totalRows)
+    : returnedRows;
+  const hasMore = detailPagination?.hasMore === true;
+  if (detailPage && hasMore) {
+    actions.push({
+      actionId: "next-payment-detail-page",
+      capability: "payment-analysis",
+      tool: "cccap_analyze_payment",
+      label: "Open the next child-level payment detail page",
+      input: {
+        view: paymentResult.paymentView ?? "NEXT_PAYOUT",
+        detailPage: numericValue(detailPagination?.page) + 1,
+      },
+    });
+  } else if (!detailPage && totalRows > 0) {
+    actions.push({
+      actionId: "open-payment-detail",
+      capability: "payment-analysis",
+      tool: "cccap_analyze_payment",
+      label: "Open child-level payment detail starting with page 1",
+      input: { view: paymentResult.paymentView ?? "NEXT_PAYOUT", detailPage: 1 },
+    });
+  }
+  if (numericValue(payment.excluded_days) > 0) {
+    actions.push({
+      actionId: "review-excluded-payment-days",
+      capability: "payment-analysis",
+      tool: "cccap_analyze_payment",
+      label: "Review excluded attendance days and their payment impact",
+      input: { view: paymentResult.paymentView ?? "NEXT_PAYOUT", detailPage: 1 },
+    });
+  }
+  if (actions.length === 0) {
+    actions.push({
+      actionId: "review-payment-summary",
+      capability: "payment-analysis",
+      label: "Review the payment summary by county and care unit",
+      input: { view: paymentResult.paymentView ?? "NEXT_PAYOUT" },
+    });
+  }
+  return actions.slice(0, 2);
+}
+
+function countyPaymentSummary(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  const byCounty = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    const county = typeof row.county_name === "string" && row.county_name.length > 0
+      ? row.county_name
+      : "Unavailable from the current source";
+    const current = byCounty.get(county) ?? {
+      county_name: county,
+      children_served: 0,
+      hours: 0,
+      amount: 0,
+      conditional_amount: 0,
+    };
+    current.children_served = Number(current.children_served) + Number(row.children_served ?? 0);
+    current.hours = Number(current.hours) + Number(row.hours ?? 0);
+    current.amount = Number(current.amount) + Number(row.amount ?? 0);
+    current.conditional_amount = Number(current.conditional_amount) + Number(row.conditional_amount ?? 0);
+    byCounty.set(county, current);
+  }
+  return [...byCounty.values()];
 }
 
 function sourceIntegrityError(scope: unknown, message: string): ToolResult {
@@ -271,15 +405,15 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
     Array.isArray(child.risk_codes) && child.risk_codes.includes("INCOMPLETE_ATTENDANCE_RECORD"),
   ).length;
   const probableAbsenceDays = riskFocus === "ABSENCE_LIMITS"
-    ? affectedChildren.reduce((total, child) => total + numericValue(child.probable_absence_days), 0)
-    : riskFocus === "PARENT_CONFIRMATIONS" ? 0 : numericValue(risk.probable_absence_days);
+    ? affectedChildren.reduce((total, child) => total + numericValue(child.absence_days), 0)
+    : riskFocus === "PARENT_CONFIRMATIONS" ? 0 : numericValue(risk.absence_days);
   const scopeLabel = attendanceScopeLabel(analysis.scope);
   const childPendingDays = affectedChildren.reduce(
     (total, child) => total + numericValue(child.pending_confirmation_days),
     0,
   );
   const childProbableAbsenceDays = affectedChildren.reduce(
-    (total, child) => total + numericValue(child.probable_absence_days),
+    (total, child) => total + numericValue(child.absence_days),
     0,
   );
   const reportedRiskChildCount = numericValue(risk.risk_child_count);
@@ -315,7 +449,7 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
   }
   if (riskFocus !== "PARENT_CONFIRMATIONS" && absenceChildren > 0) {
     lines.push(`${absenceChildren} child(ren) have an absence-limit concern${
-      probableAbsenceDays > 0 ? ` (${probableAbsenceDays} probable absence day(s))` : ""
+      probableAbsenceDays > 0 ? ` (${probableAbsenceDays} absence day(s))` : ""
     }.`);
   }
   if (!riskFocus && incompleteChildren > 0) {
@@ -324,15 +458,27 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
 
   if (affectedChildren.length > 0) {
     const displayedChildren = affectedChildren.slice(0, MAX_DISPLAY_CHILDREN);
-    lines.push(
-      "",
-      "| Child name | Household name | County | Authorization name | Service dates | Note | Potential impact |",
-      "| --- | --- | --- | --- | --- | --- | --- |",
-      ...displayedChildren.map(
-        (child) =>
-          `| ${tableValue(child.child_name)} | ${tableValue(child.household_name)} | ${tableValue(child.county)} | ${authorizationNames(child.authorization_names)} | ${authorizationDates(child.authorization_dates)} | ${tableValue(child.note)} | ${tableValue(child.potential_impact)} |`,
-      ),
-    );
+    if (riskFocus === "ABSENCE_LIMITS") {
+      lines.push(
+        "",
+        "| Child name | County | Authorization name | Absence dates | Absences used | Applicable limit | Note | Potential impact |",
+        "| --- | --- | --- | --- | ---: | ---: | --- | --- |",
+        ...displayedChildren.map(
+          (child) =>
+            `| ${tableValue(child.child_name)} | ${tableValue(child.county)} | ${authorizationNames(child.authorization_names)} | ${authorizationDates(child.absence_dates)} | ${tableValue(child.absence_days)} | ${tableValue(child.absence_limit)} | ${tableValue(child.note)} | ${tableValue(child.potential_impact)} |`,
+        ),
+      );
+    } else {
+      lines.push(
+        "",
+        "| Child name | Household name | County | Authorization name | Service dates | Note | Potential impact |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+        ...displayedChildren.map(
+          (child) =>
+            `| ${tableValue(child.child_name)} | ${tableValue(child.household_name)} | ${tableValue(child.county)} | ${authorizationNames(child.authorization_names)} | ${authorizationDates(child.authorization_dates)} | ${tableValue(child.note)} | ${tableValue(child.potential_impact)} |`,
+        ),
+      );
+    }
     if (affectedChildren.length > displayedChildren.length) {
       lines.push(
         "",
@@ -341,21 +487,10 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
     }
   }
 
-  const nextActions = [];
-  if ((riskFocus === "PARENT_CONFIRMATIONS" && pendingDays > 0) || (!riskFocus && pendingDays > 0)) {
-    nextActions.push("Review pending parent confirmations in the provider system");
-    if (!riskFocus && hasAuthorizationNames) {
-      nextActions.push("Review authorization details for the affected children");
-    }
-  }
-  if ((riskFocus === "ABSENCE_LIMITS" || !riskFocus) && absenceChildren > 0 && hasCounties && nextActions.length < 2) {
-    nextActions.push("Review county absence limits for the affected children");
-  } else if (!riskFocus && (absenceChildren > 0 || incompleteChildren > 0) && nextActions.length < 2) {
-    nextActions.push("Review the affected attendance records and county limits");
-  }
-  if (nextActions.length === 0) {
-    nextActions.push("Review attendance records for missing or incomplete check-ins");
-  }
+  const actionIntents = actionMetadata(analysis.scope, risk, affectedChildren);
+  const nextActions = actionIntents
+    .map((action) => action.label)
+    .filter((label): label is string => typeof label === "string");
   lines.push("", "**Next actions**", ...nextActions.map((action, index) => `${index + 1}. ${action}`));
   const providerMessage = lines.join("\n");
   return {
@@ -366,7 +501,8 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
       scope: analysis.scope,
       sourceRetrievedAt: analysis.sourceRetrievedAt,
       resultStatus: noAttendanceRecords ? "NO_ATTENDANCE_SCHEDULES" : "COMPLETED",
-      actionIntents: actionMetadata(analysis.scope, risk, affectedChildren),
+      actionIntents,
+      actionControls: actionControls(actionIntents),
       affectedChildNames: affectedChildren
         .map((child) => child.child_name)
         .filter((name): name is string => typeof name === "string"),
@@ -394,6 +530,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
     ? attendanceDays
         .map(recordValue)
         .filter((row): row is Record<string, unknown> => Boolean(row))
+        .filter((row) => row.classification !== "NO_CARE")
     : [];
   const missingInputs = Array.isArray(payment.missing_inputs)
     ? payment.missing_inputs.filter((value): value is string => typeof value === "string")
@@ -414,7 +551,6 @@ export function formatPaymentResult(data: unknown): ToolResult {
   ];
   if (servicePeriod) {
     for (const [label, keys] of [
-      ["Service period", ["servicePeriodId", "id"]],
       ["Services from", ["serviceBeginDate", "start_date"]],
       ["Services through", ["serviceEndDate", "end_date"]],
       ["Payment processing date", ["paymentProcessingDate", "processing_date"]],
@@ -444,7 +580,8 @@ export function formatPaymentResult(data: unknown): ToolResult {
     }
     const summary = Array.isArray(payment.summary) ? payment.summary.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row)) : [];
     if (summary.length > 0) {
-      lines.push("", "Summary by county, tier, rate, and attendance basis:", "| County | Tier | Applied rate(s) | Basis | Children | Hours | Amount | Conditional amount |", "| --- | --- | ---: | --- | ---: | ---: | ---: | ---: |", ...summary.map((row) => `| ${tableValue(row.county_name ?? "Unavailable from the current source")} | ${tableValue(row.paid_tier)} | ${tableValue(Array.isArray(row.rates) ? row.rates.join(", ") : row.rate)} | ${row.basis === "SCHEDULED" ? "Scheduled forecast" : "Actual"} | ${tableValue(row.children_served)} | ${tableValue(row.hours)} | ${tableValue(row.amount)} | ${tableValue(row.conditional_amount)} |`));
+      const countySummary = countyPaymentSummary(summary);
+      lines.push("", "County payment totals:", "The table below shows children served, care hours, and calculated payment by county.", "| County | Children served | Care hours | Calculated amount ($) | Conditional amount ($) |", "| --- | ---: | ---: | ---: | ---: |", ...countySummary.map((row) => `| ${tableValue(row.county_name)} | ${tableValue(row.children_served)} | ${tableValue(row.hours)} | ${tableValue(row.amount)} | ${tableValue(row.conditional_amount)} |`));
     }
     if (attendance.length > 0) {
       const pageLabel = detailPagination
@@ -452,36 +589,43 @@ export function formatPaymentResult(data: unknown): ToolResult {
         : "";
       lines.push("", "Detail by child and service date:",
         ...(pageLabel ? [pageLabel] : []),
-        "| Child | County | Service date | Basis | Classification | Units | Conditional | Payment |",
-        "| --- | --- | --- | --- | --- | ---: | --- | --- |",
+        "| Child | Authorization | County | Service date | Classification | Care hours | Conditional | Payment |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
         ...attendance.map((day) =>
-          `| ${tableValue(day.child_name ?? day.authorization_id)} | ${tableValue(day.county_name ?? "Unavailable from the current source")} | ${tableValue(day.service_date)} | ${day.forecast_basis === "SCHEDULED" ? "Scheduled forecast" : "Actual"} | ${tableValue(day.classification)} | ${tableValue(day.unit_hours)} | ${day.conditional === true ? "Yes" : "No"} | ${day.payment_excluded === true ? "Excluded" : "Included"} |`,
+          `| ${tableValue(day.child_name)} | ${tableValue(day.authorization_name)} | ${tableValue(day.county_name ?? "Unavailable from the current source")} | ${tableValue(day.service_date)} | ${tableValue(day.classification)} | ${tableValue(day.unit_hours)} | ${day.conditional === true ? "Yes" : "No"} | ${day.payment_excluded === true ? "Excluded" : "Included"} |`,
         ),
       );
     } else if (detailPagination && Number(detailPagination.totalRows) > 0) {
       lines.push("", `Detail available: ${tableValue(detailPagination.totalRows)} child/date rows. Request a detail page to inspect them.`);
     }
   }
-  lines.push(
-    "",
-    "**Next views**",
-    status === "BLOCKED"
-      ? "1. Review the named source data or retry the payment review."
-      : "1. Review the attendance classifications supporting this result.",
-  );
+  const actionIntents = paymentActionMetadata(paymentResult, payment, detailPagination, status, Boolean(detailPage));
+  const nextViews = actionIntents.map((action) => action.label).filter((label): label is string => typeof label === "string");
+  lines.push("", "**Available options**", ...nextViews.map((viewLabel) => `- ${viewLabel}`));
   const providerMessage = lines.join("\n");
   const providerSummary = Array.isArray(payment.summary)
-    ? payment.summary.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row)).map((row) => ({
-        county: row.county_name ?? "Unavailable from the current source",
-        paidTier: row.paid_tier,
-        rates: Array.isArray(row.rates) ? row.rates : row.rate,
-        basis: row.basis,
+    ? countyPaymentSummary(payment.summary.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row))).map((row) => ({
+        county: row.county_name,
         childrenServed: row.children_served,
         hours: row.hours,
         amount: row.amount,
         conditionalAmount: row.conditional_amount,
       }))
     : [];
+  const providerServicePeriod = servicePeriod
+    ? Object.fromEntries(Object.entries(servicePeriod).filter(([key]) => [
+        "serviceBeginDate",
+        "start_date",
+        "serviceEndDate",
+        "end_date",
+        "paymentProcessingDate",
+        "processing_date",
+        "paymentReleaseDate",
+        "release_date",
+        "status",
+        "service_period_status",
+      ].includes(key)))
+    : undefined;
   return {
     content: [{ type: "text" as const, text: providerMessage }],
     structuredContent: {
@@ -489,7 +633,9 @@ export function formatPaymentResult(data: unknown): ToolResult {
       providerMessage,
       scope: paymentResult.scope,
       paymentView: paymentResult.paymentView,
-      servicePeriod,
+      actionIntents,
+      actionControls: actionControls(actionIntents),
+      servicePeriod: providerServicePeriod,
       ruleVersion: paymentResult.rule_version,
       resultStatus: paymentResult.status,
       calculationMode: paymentResult.calculation_mode,
@@ -521,7 +667,7 @@ function toolError(capability: string, error: unknown): ToolResult {
                 ? "parent-confirmation attendance mapping"
                 : undefined;
   const userMessage = paymentFailure && paymentSource
-    ? `The next payout could not be verified because ${paymentSource} is incomplete or ambiguous. Diagnostic: ${message}`
+    ? `The next payout could not be verified because ${paymentSource} is incomplete or ambiguous.`
     : paymentFailure
       ? "The next payout could not be verified because one or more approved payment-source mappings were rejected."
       : `The ${capability} could not be completed. No verified result was produced.`;
@@ -543,7 +689,6 @@ function toolError(capability: string, error: unknown): ToolResult {
             code: paymentFailure ? "PAYMENT_DATA_INCOMPLETE" : "PROVIDER_DATA_UNAVAILABLE",
             capability,
             message: userMessage,
-            ...(paymentFailure && message ? { diagnostic: message } : {}),
             nextSteps,
           },
         }),
@@ -816,4 +961,15 @@ export function createServer(
   );
 
   return server;
+}
+
+function careUnitLabel(value: unknown): string {
+  switch (value) {
+    case "PART_TIME": return "Part-time care";
+    case "FULL_TIME": return "Full-time care";
+    case "FULL_TIME_PLUS_PART_TIME": return "Full-time + part-time care";
+    case "FULL_TIME_PLUS_FULL_TIME": return "Full-time + full-time care";
+    case "NO_PAYMENT": return "No payable care unit";
+    default: return tableValue(value);
+  }
 }

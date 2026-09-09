@@ -113,9 +113,10 @@ export function normalizeScheduleAttendance(schedules, defaultCountyId, provider
         const normalizedSchedule = {
             schedule_id: scheduleId,
             authorization_id: authorizationId,
-            authorization_name: schedule.CI_Authorization_Id__c ??
-                schedule.Authorization_Name__c ??
-                authorization?.Name,
+            authorization_name: authorizationRecord?.Name ??
+                authorization?.Name ??
+                schedule.authorization_name ??
+                schedule.Authorization_Name__c,
             child_name: schedule.Contact_Name__c,
             county_id: schedule.County__c
                 ?? schedule.county_id

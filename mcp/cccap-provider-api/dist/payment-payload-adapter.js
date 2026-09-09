@@ -214,6 +214,11 @@ export function normalizeAttendanceDays(schedules, enrichmentByAuthorization, op
             care_not_offered: requiredBoolean(enrichment.care_not_offered, `attendance enrichment care_not_offered for ${authorizationId}`),
             observed_holiday: requiredBoolean(enrichment.observed_holiday, `attendance enrichment observed_holiday for ${authorizationId}`),
             ...(typeof schedule.child_name === "string" ? { child_name: schedule.child_name } : {}),
+            ...(typeof schedule.authorization_name === "string"
+                ? { authorization_name: schedule.authorization_name }
+                : typeof schedule.Authorization_Name__c === "string"
+                    ? { authorization_name: schedule.Authorization_Name__c }
+                    : {}),
             ...(typeof schedule.county_id === "string" ? { county_id: schedule.county_id } : {}),
             ...(typeof schedule.county_name === "string" ? { county_name: schedule.county_name } : {}),
             ...(isFutureForecast ? { forecast_basis: "SCHEDULED" } : {}),

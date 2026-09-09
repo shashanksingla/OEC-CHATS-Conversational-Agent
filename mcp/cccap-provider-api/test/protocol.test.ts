@@ -95,9 +95,20 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
     arguments: {},
   });
   const text = response.content.find((item) => item.type === "text")?.text;
+  const structured = response.structuredContent as Record<string, unknown>;
 
   assert.match(text ?? "", /Children approaching county monthly absence limits/);
   assert.ok(text?.includes("1 child(ren) of 1 counties; within 2 day(s) of exceeding the limit"));
+  const actionControls = structured.actionControls as Array<Record<string, unknown>>;
+  assert.deepEqual(actionControls.map((control) => ({
+    actionId: control.actionId,
+    section: control.section,
+    type: control.type,
+  })), [
+    { actionId: "review-absence-limit-risk", section: "next-actions", type: "button" },
+    { actionId: "review-next-payout", section: "available-options", type: "button" },
+  ]);
+  assert.doesNotMatch(text ?? "", /\n\d+\. /);
 
   await client.close();
   await server.close();
