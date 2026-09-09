@@ -294,6 +294,56 @@ test("schedule normalizer matches numeric DECL authorization names", () => {
   assert.equal(normalized.schedules[0]?.county_id, "county-1");
 });
 
+test("schedule county reads the county from a normalized authorization wrapper", () => {
+  const normalized = normalizeScheduleAttendance(
+    [{
+      Id: "schedule-1",
+      CI_Authorization_Id__c: "950289",
+      CI_Authorization_Date__c: "2026-08-24",
+      Attendance__r: { records: [] },
+    }],
+    undefined,
+    undefined,
+    {
+      authorizations: [{
+        authorization: {
+          Id: "auth-1",
+          Name: "950289",
+          CDE_COUNTY__c: "county-1",
+        },
+        fiscalScheduleMatch: { status: "MATCHED" },
+      }],
+    },
+  );
+
+  assert.equal(normalized.schedules[0]?.authorization_id, "auth-1");
+  assert.equal(normalized.schedules[0]?.county_id, "county-1");
+});
+
+test("schedule county prefers the CCCAP authorization reference when another relationship is present", () => {
+  const normalized = normalizeScheduleAttendance(
+    [{
+      Id: "schedule-1",
+      Authorization__c: "unrelated-relationship",
+      CI_Authorization_Id__c: "950289",
+      CI_Authorization_Date__c: "2026-08-24",
+      Attendance__r: { records: [] },
+    }],
+    undefined,
+    undefined,
+    {
+      authorizations: [{
+        Id: "auth-1",
+        Name: "950289",
+        CDE_COUNTY__c: "county-1",
+      }],
+    },
+  );
+
+  assert.equal(normalized.schedules[0]?.authorization_id, "auth-1");
+  assert.equal(normalized.schedules[0]?.county_id, "county-1");
+});
+
 test("payment orchestration preserves initialization failures", async () => {
   const client = {
     initialize: async () => {

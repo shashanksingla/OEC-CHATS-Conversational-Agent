@@ -77,10 +77,20 @@ test("attendance analysis returns affected child drill-down rows", () => {
   assert.match(text, /2 pending parent confirmation day\(s\) affect 1 child\(ren\)\./);
   assert.match(text, /\| Child name \| Household name \| County \| Authorization name \| Service dates \| Note \| Potential impact \|/);
     assert.match(text, /\| Taylor Example \| Example Household \| Unavailable from the current source \| Unavailable from the current source \| 2026-09-01, 2026-09-02 \|/);
-  assert.match(text, /1\. Review pending parent confirmations in the provider system/);
+  assert.match(text, /Review 2 pending parent confirmation day\(s\)/);
+  assert.match(text, /\*\*Drill down\*\*/);
+  assert.match(text, /Attendance overview:/);
+  assert.match(text, /Attendance by county:/);
+  assert.match(text, /Recommended attendance views:/);
+  const structuredSummary = result.structuredContent?.attendanceSummary as Record<string, unknown>;
+  assert.equal(structuredSummary?.overview !== undefined, true);
+  assert.equal(structuredSummary?.children, undefined);
+  assert.equal(result.structuredContent?.availableViews, undefined);
+  assert.equal(result.structuredContent?.viewControls, undefined);
+  assert.equal(result.structuredContent?.actionIntents, undefined);
+  assert.equal(result.structuredContent?.affectedChildNames, undefined);
+  assert.equal(JSON.stringify(result.structuredContent).includes('"childNames"'), false);
   assert.doesNotMatch(text, /View next payout details/);
-  assert.equal(result.structuredContent?.providerMessage, text);
-  assert.match(String(result.structuredContent?.providerMessage), /Taylor Example/);
 });
 
 test("attendance analysis prioritizes absence and incomplete attendance review", () => {
@@ -115,7 +125,8 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
   const text = result.content[0].text;
   assert.match(text, /1 child\(ren\) have an absence-limit concern\./);
   assert.match(text, /1 child\(ren\) have incomplete attendance records\./);
-  assert.match(text, /1\. Review affected children and absence dates/);
+  assert.match(text, /Review 1 child\(ren\) near or over the absence limit/);
+  assert.match(text, /Review 1 incomplete attendance record\(s\)/);
   assert.doesNotMatch(text, /View next payout details/);
   assert.doesNotMatch(text, /Review and complete the pending parent confirmations/);
 
@@ -136,7 +147,7 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
       ],
     },
   });
-  assert.match(countyPolicyResult.content[0].text, /1\. Review affected children and absence dates/);
+  assert.match(countyPolicyResult.content[0].text, /Review 1 child\(ren\) near or over the absence limit/);
 });
 
 test("attendance analysis does not label unavailable absence limits as concerns", () => {
@@ -207,10 +218,26 @@ test("attendance analysis preserves structured action scope for follow-ups", () 
     {
       actionId: "review-pending-parent-confirmations",
       capability: "attendance-risk-analysis",
-      label: "Review pending parent confirmations in the provider system",
+      label: "Review 2 pending parent confirmation day(s)",
+      reason: "Unconfirmed attendance may keep payment conditional.",
+      priority: "high",
       section: "next-actions",
+      source: "current-result",
+      tool: "cccap_analyze_attendance_risk",
+      input: { riskFocus: "PARENT_CONFIRMATIONS", dateFilter: "LAST_MONTH", childNames: ["Taylor Example"] },
       scope: { dateFilter: "LAST_MONTH" },
-      childNames: ["Taylor Example"],
+    },
+    {
+      actionId: "open-attendance-detail",
+      capability: "attendance-risk-analysis",
+      tool: "cccap_analyze_attendance_risk",
+      label: "Open the highest-impact attendance details",
+      reason: "Inspect the affected children, dates, and payment implications behind the summary.",
+      priority: "medium",
+      section: "drill-down",
+      source: "current-result",
+      input: { dateFilter: "LAST_MONTH", childNames: ["Taylor Example"] },
+      scope: { dateFilter: "LAST_MONTH" },
     },
   ]);
 });
@@ -298,11 +325,26 @@ test("attendance absence follow-up points to child-level attendance retrieval", 
       actionId: "review-absence-limit-risk",
       capability: "attendance-risk-analysis",
       tool: "cccap_analyze_attendance_risk",
-      label: "Review affected children and absence dates",
+      label: "Review 1 child(ren) near or over the absence limit",
+      reason: "Absence-limit exposure may reduce reimbursable payment.",
+      priority: "high",
       section: "next-actions",
+      source: "current-result",
       riskFocus: "ABSENCE_LIMITS",
+      input: { riskFocus: "ABSENCE_LIMITS", dateFilter: "THIS_MONTH", childNames: ["Absence Example"] },
       scope: { dateFilter: "THIS_MONTH" },
-      childNames: ["Absence Example"],
+    },
+    {
+      actionId: "open-attendance-detail",
+      capability: "attendance-risk-analysis",
+      tool: "cccap_analyze_attendance_risk",
+      label: "Open the highest-impact attendance details",
+      reason: "Inspect the affected children, dates, and payment implications behind the summary.",
+      priority: "medium",
+      section: "drill-down",
+      source: "current-result",
+      input: { dateFilter: "THIS_MONTH", childNames: ["Absence Example"] },
+      scope: { dateFilter: "THIS_MONTH" },
     },
   ]);
 });
@@ -984,6 +1026,7 @@ test("payment results use a provider-facing table and preserve blocked states", 
   });
 
   assert.match(result.content[0].text, /Next payout summary: Blocked/);
+  assert.match(result.content[0].text, /⚠️ \*All amounts shown are estimated based on current system data and are subject to change; they do not represent confirmed or final payout amounts\.\*$/);
   assert.match(result.content[0].text, /Services from/);
   assert.match(result.content[0].text, /2026-09-24/);
   assert.match(result.content[0].text, /fiscal_rates, parent_confirmations/);
@@ -1012,7 +1055,8 @@ test("payment results show scheduled forecast rows for child drill-down", () => 
     }] },
   });
 
-  assert.match(result.content[0].text, /Current-week forecast: Conditional/);
+  assert.match(result.content[0].text, /Current service-period forecast: Conditional/);
+  assert.match(result.content[0].text, /⚠️ \*All amounts shown are estimated based on current system data and are subject to change; they do not represent confirmed or final payout amounts\.\*$/);
   assert.match(result.content[0].text, /Taylor Example \| Unavailable from the current source \| Unavailable from the current source \| 2026-09-09/);
   assert.match(result.content[0].text, /2026-09-09 \| SCHEDULED_FORECAST \| 5\.00/);
   assert.doesNotMatch(result.content[0].text, /\| Scheduled forecast \|/);
@@ -1051,14 +1095,18 @@ test("payment results show summary before child drill-down detail", () => {
   const text = result.content[0].text;
   assert.match(text, /County payment totals:/);
   assert.match(text, /The table below shows children served, care hours, and calculated payment by county\./);
-  assert.match(text, /Denver \| 1 \| 10 \| 90 \| 90/);
+  assert.match(text, /Denver \| 1 \| 10 \| ~ \$90\.00 \| ~ \$90\.00/);
   assert.ok(text.indexOf("County payment totals") < text.indexOf("Detail by child"));
   assert.deepEqual(result.structuredContent?.actionIntents, [
     {
       actionId: "open-payment-detail",
       capability: "payment-analysis",
       tool: "cccap_analyze_payment",
-      label: "Open child-level payment detail starting with page 1",
+      label: "Open the highest-impact child payment details",
+      reason: "Inspect the child and service-date rows behind this summary.",
+      priority: "high",
+      section: "drill-down",
+      source: "current-result",
       input: { view: "NEXT_PAYOUT", detailPage: 1 },
     },
   ]);
@@ -1132,9 +1180,9 @@ test("attendance detail caps the provider-facing table and reports the remainder
 
   const text = result.content[0].text;
   assert.match(text, /\| Child 1 \|/);
-  assert.match(text, /\| Child 10 \|/);
-  assert.doesNotMatch(text, /\| Child 11 \|/);
-  assert.match(text, /Showing the first 10 of 11 affected children/);
+  assert.match(text, /\| Child 7 \|/);
+  assert.doesNotMatch(text, /\| Child 8 \|/);
+  assert.match(text, /Showing the first 7 of 11 affected children/);
 });
 
 test("attendance schedules inherit authorization names from scoped authorizations", () => {
@@ -1249,4 +1297,39 @@ test("payment detail never exposes Salesforce record identifiers", () => {
   const text = result.content[0].text;
   assert.doesNotMatch(text, /a0sPg000009BE0rIAG|a1441000004dc7KAAQ/);
   assert.match(text, /Unavailable from the current source/);
+});
+
+test("payment drill-down targets the highest-impact child", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    highestImpactChildName: "Taylor Example",
+    payment: { status: "CONDITIONAL", amount: "90.00" },
+    detailPagination: { page: 0, pageSize: 0, totalRows: 2, hasMore: true },
+    attendance: { days: [] },
+  });
+
+  assert.deepEqual(result.structuredContent?.actionIntents, [{
+    actionId: "open-payment-detail",
+    capability: "payment-analysis",
+    tool: "cccap_analyze_payment",
+    label: "Open the highest-impact child payment details",
+    reason: "Inspect the child and service-date rows behind this summary.",
+    priority: "high",
+    section: "drill-down",
+    source: "current-result",
+    input: { view: "NEXT_PAYOUT", detailPage: 1, childNames: ["Taylor Example"] },
+  }]);
+});
+
+test("attendance formatter reports unmatched child filters", () => {
+  const result = formatAttendanceRiskResult({
+    scope: { dateFilter: "THIS_MONTH" },
+    riskFocus: "ABSENCE_LIMITS",
+    attendanceRisk: {
+      children: [],
+      unmatched_child_names: ["Missing Child"],
+    },
+  });
+
+  assert.match(result.content[0].text, /No attendance records were found for 1 requested child\(ren\)/);
 });

@@ -37,6 +37,7 @@ const allowedActions = new Set([
     "getHolidayList",
     "getFiscalRates",
     "getPaymentHistory",
+    "getVacantSlots",
 ]);
 export async function resolveAuthenticatedUserId(targetOrg, run = runSfCommand) {
     try {

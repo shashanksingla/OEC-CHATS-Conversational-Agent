@@ -58,7 +58,7 @@
   "payment_analysis_views": {
     "STATUS": "Analyze the requested service-period scope.",
     "NEXT_PAYOUT": "Select the next unpaid service period after today and return service and payment dates plus deterministic amount status.",
-    "CURRENT_WEEK_FORECAST": "Analyze the service period containing today; actuals through today are combined with future scheduled hours as conditional SCHEDULED_FORECAST rows.",
+    "CURRENT_WEEK_FORECAST": "Analyze the whole service period containing today; actuals through today are combined with future scheduled hours as conditional SCHEDULED_FORECAST rows.",
     "what_if": "Unsupported until an explicit scenario input schema and deterministic adapter are approved."
   },
   "payout_calculator_status": {

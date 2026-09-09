@@ -33,6 +33,18 @@ export interface CanonicalPaymentFeeSchedule {
   transportation_months?: string;
 }
 
+export interface CanonicalVacantSlotSchedule {
+  slot_contract_id: string;
+  county_id: string;
+  fiscal_schedule_id: string;
+  effective_start: string;
+  effective_end?: string;
+  days_of_month?: number;
+  days_of_week?: string | number;
+  slot_rate_amount: number;
+  provider_closure_dates?: string[];
+}
+
 export function normalizePaymentStatus(value: unknown): "PAID" | "REQUESTED" | undefined {
   const status = String(value ?? "").trim().toUpperCase();
   if (status === "4" || status === "PAID") return "PAID";

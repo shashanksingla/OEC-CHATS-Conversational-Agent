@@ -11,6 +11,7 @@ global with sharing class CccapPortalApiV1 {
     private static final String ACTION_FISCAL_RATES   = 'getFiscalRates';
     private static final String ACTION_PAYMENT_HISTORY = 'getPaymentHistory';
     private static final String ACTION_HOLIDAY_LIST    = 'getHolidayList';
+    private static final String ACTION_VACANT_SLOTS    = 'getVacantSlots';
     private static final String DECL_SCHEDULES_URL =
         'callout:DECL_Credential/services/apexrest/cccap/getSchedules/';
     
@@ -42,6 +43,7 @@ global with sharing class CccapPortalApiV1 {
             else if (ACTION_FISCAL_RATES.equals(action))   result = getFiscalRates(body);
             else if (ACTION_PAYMENT_HISTORY.equals(action)) result = getPaymentHistory(body);
             else if (ACTION_HOLIDAY_LIST.equals(action))    result = getHolidayList(body);
+            else if (ACTION_VACANT_SLOTS.equals(action))    result = getVacantSlots(body);
             
             
             else {
@@ -643,6 +645,48 @@ global with sharing class CccapPortalApiV1 {
             }
         }
     
+    // Returns raw active vacant slot contracts scoped to the authenticated provider and agreement counties.
+    private static CccapPortalApiV1ResponseWrapper.ApiResponse getVacantSlots(
+        Map<String, Object> params) {
+            List<String> providerIds = CCCAPGeneric.getStringList(params, 'providerIds');
+            List<String> countyIds = CCCAPGeneric.getStringList(params, 'countyIds');
+            if (providerIds.isEmpty()) {
+                return new CccapPortalApiV1ResponseWrapper.ApiResponse(
+                    'getVacantSlots requires providerIds');
+            }
+            if (countyIds.isEmpty()) {
+                return new CccapPortalApiV1ResponseWrapper.ApiResponse(
+                    'getVacantSlots requires countyIds');
+            }
+            try {
+                CCCAPGeneric.DateRange activeDateRange = CCCAPGeneric.resolveDateRangeOrToday(params);
+                Date activeStartDate = activeDateRange.startDate;
+                Date activeEndDate = activeDateRange.endDate;
+                List<T_SLOT_CONTRACT__c> vacantSlots = [
+                    SELECT Id, Name, IDN_PROVIDER__c, IDN_AUTH__c, IDN_ADDENDUM__c,
+                    CDE_COUNTY__c, CDE_CARE_UNIT__c, CDE_CARE_LEVEL__c, CDE_RATE_TYPE__c,
+                    CDE_PRG_TYPE__c, CNT_DAYS_OF_MONTH__c, CNT_DAYS_OF_WEEK__c,
+                    DTE_BEGIN_SLOT__c, DTE_END_SLOT__c, IND_OCCUPIED__c,
+                    IND_FUTURE_VACANT__c, IND_AVAILABLE__c, SLOT_CONTRACT_DESCRIPTION__c
+                    FROM T_SLOT_CONTRACT__c
+                    WHERE IDN_PROVIDER__c IN :providerIds
+                    AND CDE_COUNTY__c IN :countyIds
+                    AND IDN_AUTH__c = null
+                    AND DTE_BEGIN_SLOT__c <= :activeEndDate
+                    AND (DTE_END_SLOT__c = null OR DTE_END_SLOT__c >= :activeStartDate)
+                    WITH SYSTEM_MODE
+                    ORDER BY CDE_COUNTY__c ASC, DTE_BEGIN_SLOT__c ASC, Id ASC
+                ];
+                return new CccapPortalApiV1ResponseWrapper.ApiResponse(true,
+                    new Map<String, Object>{ 'vacantSlots' => vacantSlots });
+            } catch (Exception ex) {
+                ExceptionLoggingServices.captureExceptionLog(
+                    ex, new Map<String, Object>{ 'Class__c' => CLASS_NAME, 'Method__c' => 'getVacantSlots' });
+                return new CccapPortalApiV1ResponseWrapper.ApiResponse(
+                    'Vacant-slot source is unavailable');
+            }
+        }
+
     // Returns schedules for the requested scope via DECL schedules endpoint.
     private static CccapPortalApiV1ResponseWrapper.ApiResponse getSchedules(
         Map<String, Object> params) {

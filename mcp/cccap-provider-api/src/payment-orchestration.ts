@@ -16,6 +16,25 @@ const paymentEvaluatorPath = fileURLToPath(new URL(
 ));
 type RecordValue = Record<string, unknown>;
 
+function highestImpactChildName(impacts: unknown[], days: unknown[]): string | undefined {
+  const rankedImpacts = impacts
+    .map((value) => record(value, "Child payment impact"))
+    .filter((impact) => typeof impact.child_name === "string")
+    .map((impact) => [impact.child_name as string, Number(impact.amount_at_risk) || 0] as const)
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .at(0);
+  if (rankedImpacts && rankedImpacts[1] > 0) return rankedImpacts[0];
+  const fallback = new Map<string, number>();
+  for (const value of days) {
+    const day = record(value, "Attendance day");
+    if (typeof day.child_name !== "string") continue;
+    fallback.set(day.child_name, (fallback.get(day.child_name) ?? 0) + (Number(day.unit_hours) || 0));
+  }
+  return [...fallback.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .at(0)?.[0];
+}
+
 function record(value: unknown, label: string): RecordValue {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label} is unavailable`);
   return value as RecordValue;
@@ -77,7 +96,7 @@ export async function getPaymentAnalysis(
       ? [String(authorizationName)]
       : [];
   }))];
-  const [authorizationData, countyData, fiscalData, holidayData, paymentData] = await Promise.all([
+  const [authorizationData, countyData, fiscalData, holidayData, paymentData, vacantSlotData] = await Promise.all([
     client.getAuthorizations({
       ...sourceScope,
       countyIds,
@@ -88,6 +107,9 @@ export async function getPaymentAnalysis(
     client.getCountyData({ ...sourceScope, countyIds }),
     client.getFiscalRates(sourceScope),
     client.getHolidayList(sourceScope), client.getPaymentHistory(sourceScope),
+    typeof client.getVacantSlots === "function"
+      ? client.getVacantSlots({ ...sourceScope, countyIds })
+      : Promise.resolve({ vacantSlots: [] }),
   ]);
   const { payload, servicePeriod: canonicalServicePeriod } = normalizePaymentSourceBundle({
     initialization: providerContext,
@@ -98,6 +120,7 @@ export async function getPaymentAnalysis(
     fiscalData,
     holidayData,
     paymentData,
+    vacantSlotData,
     mode: view === "STATUS" ? "STATUS" : "FORECAST",
     asOfDate,
   });
@@ -119,6 +142,15 @@ export async function getPaymentAnalysis(
           : [];
       }),
     );
+    if (authNames && authorizationIdsByName.size === 0) {
+      throw new Error("Requested authorization filter did not match the selected provider scope and period.");
+    }
+    if (childNames && !payload.attendance_days.some((day) => {
+      const record = day as unknown as Record<string, unknown>;
+      return typeof record.child_name === "string" && childNames.has(record.child_name);
+    })) {
+      throw new Error("Requested child filter did not match the selected provider scope and period.");
+    }
     const selectedAuthorizations = new Set(
       payload.attendance_days
         .filter((day) => {
@@ -153,6 +185,11 @@ export async function getPaymentAnalysis(
       const day = record(value, "Attendance day");
       return day.classification !== "NO_CARE";
     });
+    const topChildName = highestImpactChildName(
+      Array.isArray(result.child_payment_impacts) ? result.child_payment_impacts : [],
+      displayableDays,
+    );
+    delete result.child_payment_impacts;
     const showDetail = filters.detailPage !== undefined || filters.detailPageSize !== undefined;
     const detailPage = filters.detailPage ?? 1;
     const detailPageSize = filters.detailPageSize ?? 25;
@@ -170,6 +207,12 @@ export async function getPaymentAnalysis(
         totalRows: displayableDays.length,
         hasMore: showDetail ? detailStart + detailPageSize < displayableDays.length : displayableDays.length > 0,
       },
+      filters: {
+        ...(filters.childNames ? { childNames: filters.childNames } : {}),
+        ...(filters.authNames ? { authNames: filters.authNames } : {}),
+        ...(filters.detailPageSize ? { detailPageSize: filters.detailPageSize } : {}),
+      },
+      ...(topChildName ? { highestImpactChildName: topChildName } : {}),
       scope: sourceScope,
       paymentView: view,
       servicePeriod: canonicalServicePeriod,

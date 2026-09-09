@@ -31,6 +31,45 @@ function asRecord(value: unknown): RecordValue | undefined {
     : undefined;
 }
 
+function calendarDates(initialization: RecordValue, holidayData: RecordValue): {
+  closureDates: string[];
+  holidayDates: string[];
+} {
+  const closureDates = (Array.isArray(initialization.providerClosures)
+    ? initialization.providerClosures
+    : Array.isArray(initialization.provider_closures) ? initialization.provider_closures : [])
+    .flatMap((value) => {
+      const closure = asRecord(value);
+      const active = closure?.IND_ACTIVE__c;
+      if (active === false || active === 0 || active === "0" || active === "false") return [];
+      const date = closure?.DTE_BEGIN_CLOSURE__c ?? closure?.closure_date;
+      return typeof date === "string" && date.length > 0 ? [date] : [];
+    });
+  const holidays = Array.isArray(holidayData.holidayList) ? holidayData.holidayList : [];
+  const holidayDates = holidays.flatMap((value) => {
+    const holiday = asRecord(value);
+    return [holiday?.DTE_HOL__c, holiday?.DTE_OBSERVED_HOL__c]
+      .filter((date): date is string => typeof date === "string" && date.length > 0);
+  });
+  return {
+    closureDates: [...new Set(closureDates)],
+    holidayDates: [...new Set(holidayDates)],
+  };
+}
+
+function providerLicenseStatus(initialization: RecordValue): string | undefined {
+  const providers = Array.isArray(initialization.providers) ? initialization.providers : [];
+  const provider = asRecord(providers[0]);
+  const value = provider?.CDE_TYPE_PROVR__c ?? provider?.provider_type;
+  return typeof value === "string" && value.length > 0 ? value.trim().toUpperCase() : undefined;
+}
+
+function getHolidayData(client: CccapClient, scope: DateScope): Promise<unknown> {
+  return typeof client.getHolidayList === "function"
+    ? client.getHolidayList(scope)
+    : Promise.resolve({ holidayList: [] });
+}
+
 export {
   addAuthorizationNamesToSchedules,
   addCanonicalCountyIdToSchedules,
@@ -227,18 +266,33 @@ export async function getAttendanceRiskAnalysis(
   }
   const { countyIds, countyIdByName, qualityTier: providerTier } = providerContext;
 
-  const [ratePlanData, scheduleData] = await Promise.all([
+  const [ratePlanData, scheduleData, holidayData] = await Promise.all([
     client.getCountyData({ ...scope, countyIds }),
     client.getSchedules({ ...scope, ...(authNames ? { authNames } : {}) }),
+    getHolidayData(client, scope),
   ]);
   const ratePlans = requireArray(
     requireRecord(ratePlanData, "County rate plans").countyRatePlans,
     "County rate plans",
   );
+  const calendar = calendarDates(initialization, requireRecord(holidayData, "Holiday list"));
   const schedules = requireArray(
     requireRecord(scheduleData, "Schedules").schedules,
     "Schedules",
   );
+  if (authNames && authNames.length > 0) {
+    const returnedAuthorizationNames = new Set(
+      schedules.flatMap((value) => {
+        const schedule = asRecord(value);
+        const name = authorizationKey(schedule?.authorization_name ?? schedule?.CI_Authorization_Id__c);
+        return name ? [name] : [];
+      }),
+    );
+    const unmatchedAuthorizationNames = authNames.filter((name) => !returnedAuthorizationNames.has(name));
+    if (unmatchedAuthorizationNames.length > 0) {
+      throw new Error("Requested authorization filter did not match the selected provider scope and period.");
+    }
+  }
   const authorizationIds = [
     ...new Set(
       schedules
@@ -250,8 +304,11 @@ export async function getAttendanceRiskAnalysis(
   const authorizationNames = [
     ...new Set(
       schedules
-        .map((value) => asRecord(value)?.authorization_name ?? asRecord(value)?.CI_Authorization_Id__c)
-        .filter((value): value is string => typeof value === "string" && value.length > 0),
+        .map((value) => {
+          const schedule = asRecord(value);
+          return authorizationKey(schedule?.authorization_name ?? schedule?.CI_Authorization_Id__c);
+        })
+        .filter((value): value is string => Boolean(value)),
     ),
   ];
   const scheduleRateTypes = Object.fromEntries(schedules.flatMap((value) => {
@@ -263,7 +320,7 @@ export async function getAttendanceRiskAnalysis(
       : [];
   }));
   const salesforceAuthorizationIds = authorizationIds.filter(isSalesforceId);
-  const authorizationData = authorizationIds.length > 0
+  const authorizationData = authorizationIds.length > 0 || authorizationNames.length > 0
     ? await client.getAuthorizations({
         ...scope,
         ...(salesforceAuthorizationIds.length > 0
@@ -289,6 +346,9 @@ export async function getAttendanceRiskAnalysis(
         as_of_date: asOfDate,
         schedules: scopedSchedules,
         county_rate_plans: ratePlans,
+        provider_closure_dates: calendar.closureDates,
+        holiday_dates: calendar.holidayDates,
+        provider_license_status: providerLicenseStatus(initialization),
         ...(childNames ? { child_names: childNames } : {}),
       }),
       "utf8",
@@ -325,20 +385,24 @@ export async function getAttendanceDataAnalysis(
   const provider = firstArrayRecord(initialization.providers, "Provider facility");
   const { countyIds, qualityTier: providerTier } = normalizeProviderContext(initialization);
 
-  const [ratePlanData, scheduleData] = await Promise.all([
+  const [ratePlanData, scheduleData, holidayData] = await Promise.all([
     client.getCountyData({ ...scope, countyIds }),
     client.getSchedules(scope),
+    getHolidayData(client, scope),
   ]);
   const rawSchedules = requireArray(
     requireRecord(scheduleData, "Schedules").schedules,
     "Schedules",
   );
   const authorizationIds = [...new Set(rawSchedules
-    .map((value) => asRecord(value)?.authorization_id)
-    .filter((value): value is string => typeof value === "string" && value.length > 0))];
+    .map((value) => authorizationKey(asRecord(value)?.authorization_id))
+    .filter((value): value is string => Boolean(value)))];
   const authorizationNames = [...new Set(rawSchedules
-    .map((value) => asRecord(value)?.authorization_name ?? asRecord(value)?.CI_Authorization_Id__c)
-    .filter((value): value is string => typeof value === "string" && value.length > 0))];
+    .map((value) => {
+      const schedule = asRecord(value);
+      return authorizationKey(schedule?.authorization_name ?? schedule?.CI_Authorization_Id__c);
+    })
+    .filter((value): value is string => Boolean(value)))];
   const authorizationData = authorizationIds.length > 0
     ? await client.getAuthorizations({ ...scope, authIds: authorizationIds, authNames: authorizationNames })
     : authorizationNames.length > 0
@@ -365,6 +429,7 @@ export async function getAttendanceDataAnalysis(
     requireRecord(ratePlanData, "County rate plans").countyRatePlans,
     "County rate plans",
   );
+  const calendar = calendarDates(initialization, requireRecord(holidayData, "Holiday list"));
   const directory = await mkdtemp(join(tmpdir(), "carepay-attendance-"));
   const inputPath = join(directory, "attendance.json");
   try {
@@ -375,6 +440,9 @@ export async function getAttendanceDataAnalysis(
         transactions: normalized.transactions,
         county_rate_plans: ratePlans,
         service_period: servicePeriod,
+        provider_closure_dates: calendar.closureDates,
+        holiday_dates: calendar.holidayDates,
+        provider_license_status: providerLicenseStatus(initialization),
       }),
       "utf8",
     );

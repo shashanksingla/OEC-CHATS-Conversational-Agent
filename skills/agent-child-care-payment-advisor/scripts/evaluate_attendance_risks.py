@@ -70,6 +70,14 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
     rate_plans = snapshot.get("county_rate_plans", [])
     if not isinstance(rate_plans, list):
         raise AttendanceRiskError("county_rate_plans must be an array")
+    closure_dates = snapshot.get("provider_closure_dates", [])
+    holiday_dates = snapshot.get("holiday_dates", [])
+    if not isinstance(closure_dates, list) or not all(isinstance(value, str) for value in closure_dates):
+        raise AttendanceRiskError("provider_closure_dates must be an array of ISO dates")
+    if not isinstance(holiday_dates, list) or not all(isinstance(value, str) for value in holiday_dates):
+        raise AttendanceRiskError("holiday_dates must be an array of ISO dates")
+    closure_date_set = {_date_value(value, "provider_closure_date") for value in closure_dates}
+    holiday_date_set = {_date_value(value, "holiday_date") for value in holiday_dates}
     requested_children = snapshot.get("child_names")
     if requested_children is not None:
         if not isinstance(requested_children, list) or not all(
@@ -90,6 +98,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "pending_confirmation_days": 0,
             "incomplete_attendance_days": 0,
             "absence_limit": None,
+            "conflicting_absence_limits": set(),
             "counties": set(),
             "household_name": None,
             "authorization_dates": set(),
@@ -101,6 +110,8 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         "scheduled_children": set(),
         "checked_in_children": set(),
     }
+    excluded_closure_dates: set[str] = set()
+    excluded_holiday_dates: set[str] = set()
 
     for schedule in schedules:
         if not isinstance(schedule, dict):
@@ -121,6 +132,12 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         check_outs = _non_negative_integer(
             schedule.get("Check_Out_Count__c"), "Check_Out_Count__c"
         )
+        if service_date in closure_date_set:
+            excluded_closure_dates.add(service_date.isoformat())
+            continue
+        if service_date in holiday_date_set and check_ins == 0 and check_outs == 0:
+            excluded_holiday_dates.add(service_date.isoformat())
+            continue
         if service_date == as_of_date:
             today["scheduled_children"].add(child_name)
             if check_ins:
@@ -151,11 +168,12 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         limit = _absence_limit(schedule, plans)
         if limit is not None:
             existing_limit = child["absence_limit"]
+            conflicting_limits = child.setdefault("conflicting_absence_limits", set())
             if existing_limit is not None and existing_limit != limit:
-                raise AttendanceRiskError(
-                    f"conflicting absence limits for child {child_name}"
-                )
-            child["absence_limit"] = limit
+                conflicting_limits.update((existing_limit, limit))
+                child["absence_limit"] = None
+            elif not conflicting_limits:
+                child["absence_limit"] = limit
 
         if check_ins == 0 and check_outs == 0:
             if service_date <= cutoff_date:
@@ -166,6 +184,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         elif check_ins == 0 or check_outs == 0:
             child["incomplete_attendance_days"] += 1
 
+    requested_child_names = sorted(requested_children) if requested_children is not None else []
     child_results = []
     for child_name, child in sorted(children.items()):
         risk_codes = []
@@ -175,8 +194,12 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             risk_codes.append("PARENT_CONFIRMATION_PENDING")
         if child["incomplete_attendance_days"]:
             risk_codes.append("INCOMPLETE_ATTENDANCE_RECORD")
+        conflicting_limits = child.get("conflicting_absence_limits", set())
+        if conflicting_limits:
+            risk_codes.append("ABSENCE_LIMIT_CONFLICT")
         if (
-            child["absence_days"]
+            not conflicting_limits
+            and child["absence_days"]
             and child["absence_limit"] is None
             and plans
         ):
@@ -189,14 +212,21 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         elif (
             child["absence_limit"] is not None
             and child["absence_days"] > 0
-            and child["absence_days"] >= child["absence_limit"] - 2
+            and child["absence_days"] <= child["absence_limit"]
+            and child["absence_limit"] - child["absence_days"] <= 2
         ):
             risk_codes.append("ABSENCE_LIMIT_APPROACHING")
         counties = sorted(child.pop("counties"))
         authorization_dates = sorted(child.pop("authorization_dates"))
         authorization_names = sorted(child.pop("authorization_names"))
         absence_dates = sorted(child.pop("absence_dates"))
-        if child["pending_confirmation_days"]:
+        conflicting_absence_limits = sorted(child.pop("conflicting_absence_limits", set()))
+        note = ""
+        potential_impact = ""
+        if conflicting_absence_limits:
+            note = "Conflicting absence limits were returned for this child across authorizations or counties."
+            potential_impact = "Absence-limit payment impact cannot be verified until the authorization data is corrected."
+        elif child["pending_confirmation_days"]:
             note = f"{child['pending_confirmation_days']} pending parent confirmation day(s) require review."
             potential_impact = "Payment remains conditional until confirmation is completed."
             if child["absence_days"]:
@@ -229,6 +259,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "authorization_names": authorization_names,
             "authorization_dates": authorization_dates,
             "absence_dates": absence_dates,
+            "conflicting_absence_limits": conflicting_absence_limits,
             "note": note,
             "potential_impact": potential_impact,
             "risk_codes": risk_codes,
@@ -252,6 +283,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         "ABSENCE_LIMIT_UNAVAILABLE",
         "ABSENCE_LIMIT_EXCEEDED",
         "ABSENCE_LIMIT_APPROACHING",
+        "ABSENCE_LIMIT_CONFLICT",
     }
     attendance_concern_codes = {
         "PARENT_CONFIRMATION_PENDING",
@@ -310,6 +342,12 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             },
         },
         "children": child_results,
+        "requested_child_names": requested_child_names,
+        "unmatched_child_names": sorted(
+            set(requested_child_names) - {child["child_name"] for child in child_results},
+        ),
+        "excluded_closure_dates": sorted(excluded_closure_dates),
+        "excluded_holiday_dates": sorted(excluded_holiday_dates),
     }
 
 

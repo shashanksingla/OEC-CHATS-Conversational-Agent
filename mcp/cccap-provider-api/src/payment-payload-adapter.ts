@@ -2,6 +2,7 @@ import {
   normalizePaymentStatus,
   type CanonicalExistingSubPayment,
   type CanonicalPaymentFeeSchedule,
+  type CanonicalVacantSlotSchedule,
   type CanonicalServicePeriod,
   type RecordValue,
 } from "./payment-schema.js";
@@ -357,6 +358,7 @@ export interface CanonicalPaymentPayload {
   authorization_copays?: RecordValue[];
   fee_schedules?: CanonicalPaymentFeeSchedule[];
   fee_history?: RecordValue[];
+  vacant_slot_schedules?: CanonicalVacantSlotSchedule[];
 }
 
 export function normalizeAuthorizationCopays(
@@ -535,6 +537,7 @@ export function buildCanonicalPaymentPayload(input: {
   authorizationRecords?: RecordValue[];
   feeSchedules?: CanonicalPaymentFeeSchedule[];
   feeHistory?: RecordValue[];
+  vacantSlotSchedules?: CanonicalVacantSlotSchedule[];
   mode?: "STATUS" | "FORECAST";
   asOfDate?: string;
 }): CanonicalPaymentPayload {
@@ -558,6 +561,7 @@ export function buildCanonicalPaymentPayload(input: {
     existing_sub_payments: normalizeExistingSubPayments(input.paymentHistory, input.authorizationRecords),
     ...(input.feeSchedules ? { fee_schedules: input.feeSchedules } : {}),
     ...(input.feeHistory ? { fee_history: input.feeHistory } : {}),
+    ...(input.vacantSlotSchedules ? { vacant_slot_schedules: input.vacantSlotSchedules } : {}),
   };
 }
 

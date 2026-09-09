@@ -108,6 +108,13 @@ export class CccapClient {
     async getHolidayList(input = {}) {
         return this.cachedCall("getHolidayList", input);
     }
+    async getVacantSlots(input = {}) {
+        return this.cachedCall("getVacantSlots", {
+            ...input,
+            providerIds: this.allowedProviders(),
+            countyIds: this.allowedCounties(input.countyIds),
+        });
+    }
     allowedProviders() {
         this.requireInitialized();
         return [...this.providerSalesforceIds];

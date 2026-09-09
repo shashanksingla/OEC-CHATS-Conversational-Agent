@@ -404,6 +404,7 @@ export function buildCanonicalPaymentPayload(input) {
         existing_sub_payments: normalizeExistingSubPayments(input.paymentHistory, input.authorizationRecords),
         ...(input.feeSchedules ? { fee_schedules: input.feeSchedules } : {}),
         ...(input.feeHistory ? { fee_history: input.feeHistory } : {}),
+        ...(input.vacantSlotSchedules ? { vacant_slot_schedules: input.vacantSlotSchedules } : {}),
     };
 }
 export { normalizeQualityTier } from "./provider-policy.js";

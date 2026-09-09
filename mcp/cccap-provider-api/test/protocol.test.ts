@@ -40,7 +40,7 @@ test("MCP protocol preserves attendance provider text and structured scope", asy
 
   assert.equal(response.isError, undefined);
   assert.match(text ?? "", /no attendance records for the requested period/i);
-  assert.equal(structured.providerMessage, text);
+  assert.equal(structured.providerMessage, undefined);
   assert.equal(structured.capability, "attendance-risk-analysis");
   assert.deepEqual(structured.scope, { dateFilter: "THIS_MONTH" });
 
@@ -99,15 +99,13 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
 
   assert.match(text ?? "", /Children approaching county monthly absence limits/);
   assert.ok(text?.includes("1 child(ren) of 1 counties; within 2 day(s) of exceeding the limit"));
-  const actionControls = structured.actionControls as Array<Record<string, unknown>>;
-  assert.deepEqual(actionControls.map((control) => ({
-    actionId: control.actionId,
-    section: control.section,
-    type: control.type,
-  })), [
-    { actionId: "review-absence-limit-risk", section: "next-actions", type: "button" },
-    { actionId: "review-next-payout", section: "available-options", type: "button" },
-  ]);
+  assert.equal(structured.responseMode, "SUMMARY");
+  assert.equal(structured.providerMessage, text);
+  assert.equal(structured.attendanceSummary, undefined);
+  assert.equal(structured.actionControls, undefined);
+  assert.equal(structured.availableViews, undefined);
+  assert.equal(structured.viewControls, undefined);
+  assert.equal(structured.actionIntents, undefined);
   assert.doesNotMatch(text ?? "", /\n\d+\. /);
 
   await client.close();

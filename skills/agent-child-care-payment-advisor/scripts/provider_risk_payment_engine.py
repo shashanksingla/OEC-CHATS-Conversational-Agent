@@ -131,50 +131,43 @@ def _history_count(
     return count
 
 
+def _holiday_paid_on_paired_date(
+    history: list[dict[str, Any]],
+    authorization_id: str,
+    service_date: date,
+    holiday_date: Any,
+    observed_holiday_date: Any,
+) -> bool:
+    actual_date = _date_value(holiday_date)
+    observed_date = _date_value(observed_holiday_date)
+    other_date = (
+        observed_date
+        if actual_date == service_date and observed_date != service_date
+        else actual_date
+        if observed_date == service_date and actual_date != service_date
+        else None
+    )
+    return bool(other_date) and any(
+        isinstance(item, dict)
+        and item.get("authorization_id") == authorization_id
+        and item.get("service_date") == other_date.isoformat()
+        and str(item.get("info_code", "")).strip() in {"1", "9"}
+        for item in history
+    )
+
+
 def _scheduled_fee_totals(payload: dict[str, Any], attendance_days: list[dict[str, Any]]) -> tuple[Decimal, Decimal, Decimal, Decimal]:
     schedules = payload.get("fee_schedules")
     if not isinstance(schedules, list):
         return Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0")
-    history = payload.get("fee_history") if isinstance(payload.get("fee_history"), list) else []
-    payable_by_auth_month: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
-    for day in attendance_days:
-        if day.get("payable") and isinstance(day.get("service_date"), str):
-            service_date = _date_value(day["service_date"])
-            if service_date:
-                payable_by_auth_month[(str(day.get("authorization_id")), _month_key(service_date))].append(day)
-    fee_totals = {"slot": Decimal("0"), "activity": Decimal("0"), "registration": Decimal("0"), "transportation": Decimal("0")}
+    history = [item for item in payload.get("fee_history", []) if isinstance(item, dict)]
+    fee_totals = {"activity": Decimal("0"), "registration": Decimal("0"), "transportation": Decimal("0")}
+    months = sorted({_month_key(_date_value(day["service_date"]) or date.min) for day in attendance_days if isinstance(day.get("service_date"), str)})
     for schedule in schedules:
-        if not isinstance(schedule, dict):
-            continue
-        authorization_id = schedule.get("authorization_id")
-        if not isinstance(authorization_id, str):
+        if not isinstance(schedule, dict) or not isinstance(schedule.get("authorization_id"), str):
             continue
         scheduled_months: dict[str, set[str]] = defaultdict(set)
-        for (auth_id, month), days in payable_by_auth_month.items():
-            if auth_id != authorization_id:
-                continue
-            eligible_days = [
-                day for day in days
-                if (
-                    day.get("slot_contract_present") is True
-                    or day.get("occupied_slot_contract") is True
-                )
-                and (
-                    (schedule.get("effective_start") is None
-                     or _date_value(day["service_date"]) >= _date_value(schedule["effective_start"]))
-                    and (schedule.get("effective_end") is None
-                         or _date_value(day["service_date"]) <= _date_value(schedule["effective_end"]))
-                )
-                and _weekday_allowed(schedule.get("days_of_week"), _date_value(day["service_date"]))
-            ]
-            eligible_days.sort(key=lambda day: day["service_date"])
-            if schedule.get("days_of_month") is not None:
-                monthly_limit = _hours(schedule["days_of_month"])
-                if monthly_limit is None:
-                    continue
-                eligible_days = eligible_days[: int(monthly_limit)]
-            if eligible_days:
-                fee_totals["slot"] += (_hours(schedule.get("slot_rate_amount")) or Decimal("0")) * len(eligible_days)
+        for month in months:
             month_date = _date_value(f"{month}-01")
             if not month_date:
                 continue
@@ -192,12 +185,63 @@ def _scheduled_fee_totals(payload: dict[str, Any], attendance_days: list[dict[st
     paid_totals = {
         fee_type: sum(
             (_signed_amount(item.get(f"{fee_type}_paid")) or Decimal("0")
-             for item in history if isinstance(item, dict) and item.get("deleted") is not True),
+             for item in history if item.get("deleted") is not True),
             Decimal("0"),
         )
-        for fee_type in ("slot", "activity", "registration", "transportation")
+        for fee_type in ("activity", "registration", "transportation")
     }
-    return tuple(max(fee_totals[key] - paid_totals[key], Decimal("0")) for key in ("slot", "activity", "registration", "transportation"))
+    return (
+        Decimal("0"),
+        max(fee_totals["activity"] - paid_totals["activity"], Decimal("0")),
+        max(fee_totals["registration"] - paid_totals["registration"], Decimal("0")),
+        max(fee_totals["transportation"] - paid_totals["transportation"], Decimal("0")),
+    )
+
+
+def _vacant_slot_fee_totals(payload: dict[str, Any]) -> tuple[Decimal, list[dict[str, Any]]]:
+    schedules = payload.get("vacant_slot_schedules")
+    period = payload.get("service_period")
+    if not isinstance(schedules, list) or not isinstance(period, dict):
+        return Decimal("0"), []
+    period_start = _date_value(period.get("start_date"))
+    period_end = _date_value(period.get("end_date"))
+    if not period_start or not period_end:
+        return Decimal("0"), []
+    total = Decimal("0")
+    rows: list[dict[str, Any]] = []
+    for schedule in schedules:
+        if not isinstance(schedule, dict):
+            continue
+        effective_start = _date_value(schedule.get("effective_start")) or period_start
+        effective_end = _date_value(schedule.get("effective_end")) or period_end
+        monthly_limit = _hours(schedule.get("days_of_month"))
+        if schedule.get("days_of_month") is not None and monthly_limit is None:
+            continue
+        current = min(effective_start, period_start.replace(day=1))
+        last_day = max(effective_end, period_end)
+        used_by_month: dict[str, int] = defaultdict(int)
+        closure_dates = {str(value)[:10] for value in schedule.get("provider_closure_dates", []) if isinstance(value, str)}
+        while current <= last_day:
+            eligible = (
+                effective_start <= current <= effective_end
+                and _weekday_allowed(schedule.get("days_of_week"), current)
+                and current.isoformat() not in closure_dates
+            )
+            month = _month_key(current)
+            if eligible and (monthly_limit is None or used_by_month[month] < int(monthly_limit)):
+                used_by_month[month] += 1
+                if period_start <= current <= period_end:
+                    amount = _hours(schedule.get("slot_rate_amount")) or Decimal("0")
+                    total += amount
+                    rows.append({
+                        "slot_contract_id": schedule.get("slot_contract_id"),
+                        "county_id": schedule.get("county_id"),
+                        "service_date": current.isoformat(),
+                        "amount": _money(amount),
+                        "classification": "VACANT_SLOT",
+                    })
+            current = current.fromordinal(current.toordinal() + 1)
+    return total, rows
 
 
 def _monthly_copay_total(payload: dict[str, Any], attendance_days: list[dict[str, Any]]) -> Decimal:
@@ -210,7 +254,6 @@ def _monthly_copay_total(payload: dict[str, Any], attendance_days: list[dict[str
         if (
             day.get("payable") is True
             and day.get("payment_type") == "REGULAR"
-            and day.get("occupied_slot_contract") is not True
         )
     }
     total = Decimal("0")
@@ -231,6 +274,135 @@ def _monthly_copay_total(payload: dict[str, Any], attendance_days: list[dict[str
         if matching:
             total += _hours(matching[0].get("amount")) or Decimal("0")
     return total
+
+
+def _build_payment_summary_view(
+    attendance_days: list[dict[str, Any]],
+    rates: dict[tuple[str, str], Decimal],
+    vacant_slot_days: list[dict[str, Any]],
+    gross_total: Decimal,
+    net_total: Decimal,
+    copay: Decimal,
+    conditional_total: Decimal,
+    excluded_days: int,
+) -> dict[str, Any]:
+    category_labels = {
+        "REGULAR": "Regular care",
+        "HOLIDAY": "Holiday",
+        "ABSENCE": "Paid absence",
+        "ENROLLMENT": "Enrollment absence",
+        "DROP_IN": "Drop-in",
+        "FORECAST": "Scheduled forecast",
+    }
+    categories: dict[str, dict[str, Any]] = {}
+    counties: dict[str, dict[str, Any]] = {}
+    children: dict[str, dict[str, Any]] = {}
+    actions: dict[str, dict[str, Any]] = {}
+
+    def bucket(store: dict[str, dict[str, Any]], key: str, label: str) -> dict[str, Any]:
+        return store.setdefault(key, {
+            "label": label,
+            "days": 0,
+            "hours": Decimal("0"),
+            "amount": Decimal("0"),
+            "conditional_amount": Decimal("0"),
+            "excluded_days": 0,
+        })
+
+    def add_action(action_id: str, label: str, reason: str, impact: Decimal, priority: str = "medium") -> None:
+        current = actions.get(action_id)
+        if current is None:
+            actions[action_id] = {
+                "action_id": action_id,
+                "label": label,
+                "reason": reason,
+                "priority": priority,
+                "amount_at_risk": impact,
+                "days": 1,
+            }
+        else:
+            current["amount_at_risk"] += impact
+            current["days"] += 1
+
+    for day in attendance_days:
+        payment_type = str(day.get("payment_type") or "NONE")
+        label = category_labels.get(payment_type, "Not paid")
+        paid_tier = day.get("paid_tier")
+        rate = rates.get((str(day.get("authorization_id")), str(paid_tier)))
+        if rate is None:
+            rate = rates.get((str(day.get("authorization_id")), "NO_PAYMENT"))
+        hours = _hours(day.get("unit_hours")) or Decimal("0")
+        amount = rate * hours if rate is not None else Decimal("0")
+        is_risk = day.get("conditional") is True or any(
+            flag in day.get("flags", [])
+            for flag in ("DROP_IN_LIMIT_EXCEEDED", "ABSENCE_LIMIT_EXCEEDED", "FISCAL_RATE_UNAVAILABLE")
+        )
+        county_key = str(day.get("county_id") or "UNKNOWN")
+        county_label = day.get("county_name") or "Unavailable from the current source"
+        child_key = str(day.get("child_name") or day.get("authorization_id") or "UNKNOWN")
+        child_label = day.get("child_name") or "Unavailable from the current source"
+        for store, key, item_label in (
+            (categories, payment_type, label),
+            (counties, county_key, county_label),
+            (children, child_key, child_label),
+        ):
+            item = bucket(store, key, item_label)
+            item["days"] += 1
+            item["hours"] += hours
+            if day.get("payable") is True and not day.get("payment_excluded") and rate is not None:
+                if is_risk:
+                    item["conditional_amount"] += amount
+                else:
+                    item["amount"] += amount
+            elif day.get("classification") not in {"NO_CARE", "CARE_NOT_OFFERED"}:
+                item["excluded_days"] += 1
+
+        if "FISCAL_RATE_UNAVAILABLE" in day.get("flags", []):
+            add_action("missing-fiscal-rate", "Review unmatched fiscal rates", "A payable day has no matching fiscal rate.", amount, "high")
+        if "ABSENCE_LIMIT_EXCEEDED" in day.get("flags", []):
+            add_action("review-absence-limit", "Review absence-limit days", "An absence exceeded the available county allowance.", amount, "high")
+        if "DROP_IN_LIMIT_EXCEEDED" in day.get("flags", []):
+            add_action("review-drop-in-limit", "Review drop-in-limit days", "A drop-in day exceeded the available allowance.", amount, "high")
+        if "PARENT_CONFIRMATION_PENDING" in day.get("flags", []):
+            add_action("confirm-pending-attendance", "Review pending attendance confirmation", "Confirmation is still pending and may affect the payable amount.", amount, "high")
+        if "HOLIDAY_NOT_IN_COUNTY_PLAN" in day.get("flags", []):
+            add_action("review-holiday-plan", "Review the county holiday plan", "The date was not found in the active county holiday plan.", amount, "medium")
+
+    def render_bucket(item: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "label": item["label"],
+            "days": item["days"],
+            "hours": _money(item["hours"]),
+            "amount": _money(item["amount"]),
+            "conditional_amount": _money(item["conditional_amount"]),
+            "excluded_days": item["excluded_days"],
+        }
+
+    return {
+        "overview": {
+            "gross_amount": _money(gross_total),
+            "net_amount": _money(net_total),
+            "parent_copay": _money(copay),
+            "amount_at_risk": _money(conditional_total),
+            "excluded_days": excluded_days,
+            "paid_days": sum(1 for day in attendance_days if day.get("payable") is True and not day.get("payment_excluded")),
+            "review_items": len(actions),
+        },
+        "categories": [render_bucket(item) for item in sorted(categories.values(), key=lambda value: value["label"])],
+        "counties": [
+            {"county": key, **render_bucket(item)}
+            for key, item in sorted(counties.items(), key=lambda value: value[0])
+        ],
+        "children": [
+            {"child": key, **render_bucket(item)}
+            for key, item in sorted(children.items(), key=lambda value: value[0])
+        ],
+        "vacant_slots": vacant_slot_days,
+        "next_actions": [
+            {**action, "amount_at_risk": _money(action["amount_at_risk"])}
+            for action in sorted(actions.values(), key=lambda value: (value["priority"], value["action_id"]))
+        ],
+    }
 
 
 def _blocked(missing_inputs: list[str], attendance: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -292,7 +464,7 @@ def _policy_by_authorization(
         policies[(county_id, quality_tier)] = policy
     return {
         authorization["id"]: policies.get(
-            (authorization.get("county_id"), authorization.get("quality_tier")),
+            (str(authorization.get("county_id", "")), int(authorization.get("quality_tier", -1))),
             {},
         )
         for authorization in authorizations
@@ -307,13 +479,17 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
     if not all(isinstance(value, list) for value in (authorizations, attendance_days, county_policies)):
         return {"days": [], "county_counts": [], "missing_inputs": ["attendance_inputs"]}
 
+    authorization_rows = [value for value in (authorizations or []) if isinstance(value, dict)]
+    attendance_rows = [value for value in (attendance_days or []) if isinstance(value, dict)]
+    county_policy_rows = [value for value in (county_policies or []) if isinstance(value, dict)]
+
     authorization_by_id = {
         authorization.get("id"): authorization
-        for authorization in authorizations
+        for authorization in authorization_rows
         if isinstance(authorization, dict) and isinstance(authorization.get("id"), str)
     }
-    policy_by_authorization = _policy_by_authorization(authorizations, county_policies)
-    history = payload.get("fee_history") if isinstance(payload.get("fee_history"), list) else []
+    policy_by_authorization = _policy_by_authorization(authorization_rows, county_policy_rows)
+    history = [item for item in payload.get("fee_history", []) if isinstance(item, dict)]
     absence_counts: dict[str, int] = defaultdict(int)
     drop_in_counts: dict[str, int] = defaultdict(int)
     county_counts: dict[str, dict[str, int]] = defaultdict(
@@ -322,7 +498,7 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
     results = []
 
     for attendance_day in sorted(
-        (day for day in attendance_days if isinstance(day, dict)),
+        attendance_rows,
         key=lambda day: (str(day.get("authorization_id")), str(day.get("service_date"))),
     ):
         authorization_id = attendance_day.get("authorization_id")
@@ -354,6 +530,13 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
         scheduled_forecast = attendance_day.get("forecast_basis") == "SCHEDULED"
         unit_hours = Decimal("0")
         payment_type = "NONE"
+        holiday_paid_on_other_date = _holiday_paid_on_paired_date(
+            history,
+            authorization_id,
+            service_date,
+            attendance_day.get("holiday_date"),
+            attendance_day.get("observed_holiday_date"),
+        )
         if scheduled_forecast:
             classification = "SCHEDULED_FORECAST"
             payable = True
@@ -367,16 +550,22 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
             payable = False
             paid_tier = None
             info_code = "14"
-        elif attendance_day.get("observed_holiday") is True:
-            holiday_code = "9" if occupied_slot_contract else "1"
+        elif (
+            attendance_day.get("observed_holiday") is True
+            and authorized_hours > 0
+            and attended_hours == 0
+            and not holiday_paid_on_other_date
+        ):
+            holiday_code = "1"
+            holiday_hours = authorized_hours
             holiday_already_paid = any(
                 isinstance(item, dict)
                 and item.get("authorization_id") == authorization_id
                 and item.get("service_date") == service_date.isoformat()
-                and str(item.get("info_code", "")).strip() == holiday_code
+                and str(item.get("info_code", "")).strip() in {"1", "9"}
                 for item in history
             )
-            classification = "SLOT_CONTRACT_HOLIDAY" if occupied_slot_contract else "HOLIDAY"
+            classification = "HOLIDAY"
             allow_paid_holidays = policy.get("allow_paid_holidays")
             holiday_list = policy.get("county_holiday_list")
             payable = (
@@ -389,9 +578,9 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
                     attendance_day.get("observed_holiday_date"),
                 )
             )
-            paid_tier = _tier_for_hours(authorized_hours)
-            unit_hours = authorized_hours
-            payment_type = "SLOT_CONTRACT" if occupied_slot_contract else "HOLIDAY"
+            paid_tier = _tier_for_hours(holiday_hours)
+            unit_hours = holiday_hours
+            payment_type = "HOLIDAY"
             info_code = holiday_code
             if not payable:
                 unit_hours = Decimal("0")
@@ -424,18 +613,15 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
                 flags.append("DROP_IN_NOT_ALLOWED")
             elif drop_in_counts[authorization_id] >= drop_in_limit:
                 payable = False
-                paid_tier = None
+                paid_tier = _tier_for_hours(attended_hours)
+                unit_hours = attended_hours
                 flags.append("DROP_IN_LIMIT_EXCEEDED")
             else:
                 payable = True
                 paid_tier = _tier_for_hours(attended_hours)
                 unit_hours = attended_hours
                 payment_type = "DROP_IN"
-            if occupied_slot_contract:
-                classification = "SLOT_CONTRACT_DROP_IN"
-                info_code = "10"
-            else:
-                info_code = "3"
+            info_code = "3"
         elif attended_hours > 0:
             classification = "ATTENDED"
             payable = True
@@ -443,10 +629,6 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
             unit_hours = min(authorized_hours, attended_hours)
             payment_type = "REGULAR"
             info_code = "0"
-            if occupied_slot_contract:
-                classification = "SLOT_CONTRACT_REGULAR"
-                payment_type = "SLOT_CONTRACT"
-                info_code = "8"
             if attended_hours > authorized_hours:
                 flags.append("OVER_ATTENDANCE")
         elif authorized_hours == 0:
@@ -457,6 +639,8 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
         else:
             classification = "ABSENCE"
             paid_tier = _tier_for_hours(authorized_hours)
+            if holiday_paid_on_other_date:
+                flags.append("HOLIDAY_ALREADY_PAID_ON_PAIRED_DATE")
             age_band = attendance_day.get("age_band")
             absence_limit = policy.get("absence_limit")
             parent_approved = attendance_day.get("absence_parent_approved")
@@ -494,17 +678,13 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
                 payment_type = "ENROLLMENT"
             elif age_band == "OVER_36_MONTHS":
                 payable = False
+                unit_hours = authorized_hours
                 flags.append("ABSENCE_LIMIT_EXCEEDED")
             else:
                 classification = "BLOCKED"
                 payable = False
                 flags.append("AGE_BAND_UNAVAILABLE")
-            if occupied_slot_contract and payable:
-                classification = "SLOT_CONTRACT_ABSENCE"
-                payment_type = "SLOT_CONTRACT"
-                info_code = "11"
-            else:
-                info_code = "13" if classification == "ENROLLMENT_ABSENCE" else "4"
+            info_code = "13" if classification == "ENROLLMENT_ABSENCE" else "4"
 
         confirmation = attendance_day.get("parent_confirmation")
         conditional = confirmation == "PENDING"
@@ -625,7 +805,24 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
     total = Decimal("0")
     conditional_total = Decimal("0")
     excluded_days = 0
+    child_payment_impact: dict[str, Decimal] = defaultdict(Decimal)
     for day in attendance["days"]:
+        rate = rates.get((day["authorization_id"], day["paid_tier"]))
+        if rate is None:
+            rate = rates.get((day["authorization_id"], "NO_PAYMENT"))
+        unit_hours = _hours(day.get("unit_hours")) or Decimal("0")
+        risk_day = day["conditional"] or any(
+            flag in day["flags"]
+            for flag in ("DROP_IN_LIMIT_EXCEEDED", "ABSENCE_LIMIT_EXCEEDED")
+        )
+        if (
+            isinstance(day.get("child_name"), str)
+            and rate is not None
+            and risk_day
+        ):
+            child_payment_impact[day["child_name"]] += rate * unit_hours
+        if rate is not None and risk_day:
+            conditional_total += rate * unit_hours
         if not day["payable"] or day["authorization_id"] in excluded_authorizations:
             excluded_days += 1
             if day["authorization_id"] in excluded_authorizations:
@@ -639,24 +836,25 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             excluded_days += 1
             continue
         unit_hours = _hours(day.get("unit_hours")) or Decimal("0")
-        if day.get("occupied_slot_contract") is True:
+        if risk_day:
             continue
         total += rate * unit_hours
-        if day["conditional"]:
-            if day.get("occupied_slot_contract") is not True:
-                conditional_total += rate * unit_hours
     slot_fee, activity_fee, registration_fee, transportation_fee = _scheduled_fee_totals(
         payload,
         attendance["days"],
     )
+    vacant_slot_fee, vacant_slot_days = _vacant_slot_fee_totals(payload)
     copay = _monthly_copay_total(payload, attendance["days"])
-    scheduled_fees = slot_fee + activity_fee + registration_fee + transportation_fee
+    scheduled_fees = vacant_slot_fee + activity_fee + registration_fee + transportation_fee
     gross_total = total + scheduled_fees
     net_total = max(gross_total - copay, Decimal("0"))
     payment_status = "CONDITIONAL" if conditional_total else "EXPECTED"
     summary_groups: dict[tuple[str, str, str], dict[str, Any]] = {}
     for day in attendance["days"]:
-        if not day["payable"] or day.get("payment_excluded") or day["occupied_slot_contract"] is True:
+        if (
+            not day["payable"]
+            or day.get("payment_excluded")
+        ):
             continue
         rate = rates.get((day["authorization_id"], day["paid_tier"]))
         if rate is None:
@@ -673,16 +871,31 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         amount = rate * unit_hours
         group["children_served"].add(day.get("child_name") or day["authorization_id"])
         group["hours"] += unit_hours
-        group["amount"] += amount
         if day["conditional"]:
             group["conditional_amount"] += amount
+        else:
+            group["amount"] += amount
     payment_summary = [{**{"county_id": group["county_id"]}, **({"county_name": group["county_name"]} if isinstance(group["county_name"], str) and group["county_name"] else {}), "paid_tier": group["paid_tier"], "rate": next(iter(group["rates"])) if len(group["rates"]) == 1 else "Multiple", "rates": sorted(group["rates"]), "basis": group["basis"], "children_served": len(group["children_served"]), "hours": _money(group["hours"]), "amount": _money(group["amount"]), "conditional_amount": _money(group["conditional_amount"])} for group in sorted(summary_groups.values(), key=lambda value: (value["county_id"], value["paid_tier"], value["basis"]))]
+    summary_view = _build_payment_summary_view(
+        attendance["days"],
+        rates,
+        vacant_slot_days,
+        gross_total,
+        net_total,
+        copay,
+        conditional_total,
+        excluded_days,
+    )
     return {
         "status": "ok",
         "rule_version": RULE_VERSION,
         "calculation_mode": payload.get("calculation_mode", "STATUS"),
         "source_readiness": "COMPLETE",
         "attendance": attendance,
+        "child_payment_impacts": [
+            {"child_name": child_name, "amount_at_risk": _money(amount)}
+            for child_name, amount in sorted(child_payment_impact.items())
+        ],
         "payment": {
             "status": payment_status,
             "amount": _money(net_total),
@@ -690,12 +903,15 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             "amount_at_risk": _money(conditional_total),
             "excluded_days": excluded_days,
             "excluded_authorizations": len(excluded_authorizations),
-            "slot_fee": _money(slot_fee),
+            "slot_fee": _money(vacant_slot_fee),
+            "vacant_slot_fee": _money(vacant_slot_fee),
+            "vacant_slot_days": vacant_slot_days,
             "activity_fee": _money(activity_fee),
             "registration_fee": _money(registration_fee),
             "transportation_fee": _money(transportation_fee),
             "parent_copay": _money(copay),
             "summary": payment_summary,
+            "summary_view": summary_view,
         },
     }
 

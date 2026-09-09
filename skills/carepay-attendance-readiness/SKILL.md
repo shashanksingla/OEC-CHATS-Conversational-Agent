@@ -9,7 +9,7 @@ Use with `carepay-conversation-templates` when Provider Assist needs a facility 
 
 Follow `{project-root}/skills/ARCHITECTURE.md`. This module owns attendance meaning and follow-up selection only. Source field mapping belongs to MCP normalizers; counts, dates, classifications, and absence-limit rules belong to the deterministic evaluator.
 
-The outcome is a provider-readable attendance-risk answer grounded in `cccapprovider/*` data and `skills/agent-child-care-payment-advisor/scripts/evaluate_attendance_risks.py`. Python owns all grouping, counting, date comparison, risk categorization, and absence-limit logic.
+The outcome is a provider-readable attendance-risk answer grounded in `cccapprovider/*` data and the deterministic attendance evaluators. Python owns all grouping, counting, date comparison, risk categorization, and absence-limit logic. Effective provider closure dates are `Care Not Offered` and are excluded from default child day tables, absence counts, and pending-confirmation counts. County actual and observed holiday dates are classified separately from absences. Detailed attendance uses the full drop-in rules, including actual hours, tier, county and authorization limits, and fail-closed handling when a licensed-only policy lacks provider license status. Parent approval does not replace the five-day basic risk cutoff.
 
 Load these project contracts only when needed for the requested answer:
 
