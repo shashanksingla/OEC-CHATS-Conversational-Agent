@@ -1,5 +1,9 @@
 # CCCAP Provider API MCP Server
 
+## Opaque Follow-Ups
+
+Composite responses include a process-local, provider-bound `contextRef`. Their action controls send only `{ contextRef, actionRef }` to the target composite tool; they never repeat child names, pagination rows, or server-side filters. Pass `refresh: true` with a valid reference to bypass the continuation and fetch current source data. References expire and are evicted under bounded in-memory limits, so callers must treat a failed continuation as unavailable rather than reconstructing hidden filters.
+
 This local stdio MCP server gives Provider Assist read-only tools backed by `CccapPortalApiV1` in the Salesforce target org.
 
 ## Authentication and Scope

@@ -49,6 +49,7 @@ test("MCP protocol preserves attendance provider text and structured scope", asy
 });
 
 test("current-month snapshot counts five-day-old unconfirmed absences toward county risk", async () => {
+  let scheduleReads = 0;
   const fakeClient = {
     async initialize() {
       return {
@@ -74,6 +75,7 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
       };
     },
     async getSchedules() {
+      scheduleReads += 1;
       return {
         schedules: ["2026-09-01", "2026-09-02", "2026-09-03"].map((date) => ({
           Contact_Name__c: "Ava Example",
@@ -102,11 +104,25 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   assert.equal(structured.responseMode, "SUMMARY");
   assert.equal(structured.providerMessage, text);
   assert.equal(structured.attendanceSummary, undefined);
-  assert.equal(structured.actionControls, undefined);
+  assert.equal(Array.isArray(structured.actionControls), true);
+  assert.equal(typeof structured.contextRef, "string");
+  assert.equal(JSON.stringify(structured.actionControls).includes("childNames"), false);
   assert.equal(structured.availableViews, undefined);
   assert.equal(structured.viewControls, undefined);
   assert.equal(structured.actionIntents, undefined);
   assert.doesNotMatch(text ?? "", /\n\d+\. /);
+
+  const absenceAction = (structured.actionControls as Array<Record<string, unknown>>).find(
+    (action) => action.actionId === "review-absence-limit-risk",
+  );
+  assert.ok(absenceAction);
+  const followUp = await client.callTool({
+    name: "cccap_analyze_attendance_risk",
+    arguments: absenceAction.input as Record<string, unknown>,
+  });
+  assert.equal(followUp.isError, undefined);
+  assert.match(followUp.content.find((item) => item.type === "text")?.text ?? "", /absence-limit concern/);
+  assert.equal(scheduleReads, 1);
 
   await client.close();
   await server.close();

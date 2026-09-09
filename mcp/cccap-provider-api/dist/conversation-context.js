@@ -1,0 +1,108 @@
+import { randomBytes } from "node:crypto";
+export class ConversationContextStore {
+    contexts = new Map();
+    sessionActions = new Map();
+    now;
+    ttlMs;
+    maxEntries;
+    maxBytes;
+    constructor(options = {}) {
+        this.now = options.now ?? Date.now;
+        this.ttlMs = options.ttlMs ?? 15 * 60 * 1000;
+        this.maxEntries = options.maxEntries ?? 100;
+        this.maxBytes = options.maxBytes ?? 1_000_000;
+    }
+    create(providerKey, capability, actions, result, resultTool, ruleVersion, actionMetadata = []) {
+        this.evict();
+        const contextRef = this.reference();
+        const actionRefs = actions.map(() => this.reference());
+        const actionMap = new Map(actionRefs.map((actionRef, index) => [actionRef, actions[index]]));
+        const bytes = Buffer.byteLength(JSON.stringify({ capability, ruleVersion, actions, result }), "utf8");
+        const now = this.now();
+        const providerActions = this.sessionActions.get(providerKey) ?? new Map();
+        for (const [index, action] of actionMetadata.entries()) {
+            const plan = actions[index];
+            if (!plan || typeof action.actionId !== "string")
+                continue;
+            providerActions.set(action.actionId, {
+                actionId: action.actionId,
+                metadata: action,
+                plan,
+                expiresAt: now + this.ttlMs,
+                lastUsed: now,
+            });
+        }
+        this.sessionActions.set(providerKey, providerActions);
+        this.contexts.set(contextRef, {
+            providerKey,
+            capability,
+            ...(resultTool ? { resultTool } : {}),
+            ...(result !== undefined ? { result } : {}),
+            ...(ruleVersion ? { ruleVersion } : {}),
+            expiresAt: now + this.ttlMs,
+            actions: actionMap,
+            bytes,
+            lastUsed: now,
+        });
+        this.evict();
+        return { contextRef, actionRefs };
+    }
+    getInheritedActions(providerKey, currentActions) {
+        this.evict();
+        const currentIds = new Set(currentActions.map((action) => action.actionId));
+        const actions = this.sessionActions.get(providerKey);
+        if (!actions)
+            return [];
+        return [...actions.values()]
+            .filter((action) => !currentIds.has(action.actionId))
+            .map((action) => {
+            action.lastUsed = this.now();
+            return action;
+        });
+    }
+    resolve(providerKey, contextRef, actionRef, capability, ruleVersion) {
+        if (!contextRef || !actionRef)
+            return undefined;
+        const context = this.contexts.get(contextRef);
+        if (!context || context.providerKey !== providerKey || context.capability !== capability || context.expiresAt <= this.now() || (ruleVersion && context.ruleVersion && context.ruleVersion !== ruleVersion)) {
+            this.contexts.delete(contextRef);
+            return undefined;
+        }
+        const plan = context.actions.get(actionRef);
+        if (!plan)
+            return undefined;
+        context.lastUsed = this.now();
+        return {
+            ...plan,
+            ...(context.result !== undefined ? { result: context.result } : {}),
+            ...(context.resultTool ? { resultTool: context.resultTool } : {}),
+        };
+    }
+    evict() {
+        const now = this.now();
+        for (const [reference, context] of this.contexts) {
+            if (context.expiresAt <= now)
+                this.contexts.delete(reference);
+        }
+        for (const [providerKey, actions] of this.sessionActions) {
+            for (const [actionId, action] of actions) {
+                if (action.expiresAt <= now)
+                    actions.delete(actionId);
+            }
+            if (actions.size === 0)
+                this.sessionActions.delete(providerKey);
+        }
+        while (this.contexts.size > this.maxEntries || this.totalBytes() > this.maxBytes) {
+            const oldest = [...this.contexts.entries()].sort((left, right) => left[1].lastUsed - right[1].lastUsed)[0];
+            if (!oldest)
+                return;
+            this.contexts.delete(oldest[0]);
+        }
+    }
+    totalBytes() {
+        return [...this.contexts.values()].reduce((total, context) => total + context.bytes, 0);
+    }
+    reference() {
+        return randomBytes(24).toString("base64url");
+    }
+}

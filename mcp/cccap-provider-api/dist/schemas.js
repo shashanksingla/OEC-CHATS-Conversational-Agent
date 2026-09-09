@@ -92,13 +92,21 @@ export const attendanceDataSchema = z
 export const attendanceAnalysisSchema = z
     .object({
     ...dateScopeShape,
-    dateFilter: dateFilterSchema,
+    dateFilter: dateFilterSchema.optional(),
     childNames: z.array(z.string().min(1)).min(1).optional(),
     authNames: z.array(z.string().min(1)).min(1).optional(),
-    riskFocus: z.enum(["PARENT_CONFIRMATIONS", "ABSENCE_LIMITS"]).optional(),
+    riskFocus: z.enum(["PARENT_CONFIRMATIONS", "ABSENCE_LIMITS", "INCOMPLETE_ATTENDANCE"]).optional(),
+    contextRef: z.string().min(1).optional(),
+    actionRef: z.string().min(1).optional(),
+    refresh: z.boolean().optional(),
 })
     .strict()
-    .superRefine(validateDateScope);
+    .superRefine((value, context) => {
+    validateDateScope(value, context);
+    if (!value.dateFilter && !(value.contextRef && value.actionRef)) {
+        context.addIssue({ code: "custom", message: "dateFilter is required when a continuation is not supplied" });
+    }
+});
 export const paymentAnalysisSchema = z
     .object({
     ...dateScopeShape,
@@ -108,11 +116,14 @@ export const paymentAnalysisSchema = z
     authNames: z.array(z.string().min(1)).min(1).optional(),
     detailPage: z.number().int().positive().optional(),
     detailPageSize: z.number().int().positive().max(100).optional(),
+    contextRef: z.string().min(1).optional(),
+    actionRef: z.string().min(1).optional(),
+    refresh: z.boolean().optional(),
 })
     .strict()
     .superRefine((value, context) => {
     validateDateScope(value, context);
-    if (!value.view && !value.dateFilter) {
+    if (!value.view && !value.dateFilter && !(value.contextRef && value.actionRef)) {
         context.addIssue({
             code: "custom",
             message: "dateFilter is required when view is not specified",

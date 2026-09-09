@@ -214,32 +214,8 @@ test("attendance analysis preserves structured action scope for follow-ups", () 
 
   assert.equal(result.structuredContent?.capability, "attendance-risk-analysis");
   assert.deepEqual(result.structuredContent?.scope, { dateFilter: "LAST_MONTH" });
-  assert.deepEqual(result.structuredContent?.actionIntents, [
-    {
-      actionId: "review-pending-parent-confirmations",
-      capability: "attendance-risk-analysis",
-      label: "Review 2 pending parent confirmation day(s)",
-      reason: "Unconfirmed attendance may keep payment conditional.",
-      priority: "high",
-      section: "next-actions",
-      source: "current-result",
-      tool: "cccap_analyze_attendance_risk",
-      input: { riskFocus: "PARENT_CONFIRMATIONS", dateFilter: "LAST_MONTH", childNames: ["Taylor Example"] },
-      scope: { dateFilter: "LAST_MONTH" },
-    },
-    {
-      actionId: "open-attendance-detail",
-      capability: "attendance-risk-analysis",
-      tool: "cccap_analyze_attendance_risk",
-      label: "Open the highest-impact attendance details",
-      reason: "Inspect the affected children, dates, and payment implications behind the summary.",
-      priority: "medium",
-      section: "drill-down",
-      source: "current-result",
-      input: { dateFilter: "LAST_MONTH", childNames: ["Taylor Example"] },
-      scope: { dateFilter: "LAST_MONTH" },
-    },
-  ]);
+  assert.equal(JSON.stringify(result.structuredContent).includes("childNames"), false);
+  assert.equal(Array.isArray(result.structuredContent?.actionControls), true);
 });
 
 test("attendance analysis focuses pending-confirmation follow-ups", () => {
@@ -320,33 +296,8 @@ test("attendance absence follow-up points to child-level attendance retrieval", 
     },
   });
 
-  assert.deepEqual(result.structuredContent?.actionIntents, [
-    {
-      actionId: "review-absence-limit-risk",
-      capability: "attendance-risk-analysis",
-      tool: "cccap_analyze_attendance_risk",
-      label: "Review 1 child(ren) near or over the absence limit",
-      reason: "Absence-limit exposure may reduce reimbursable payment.",
-      priority: "high",
-      section: "next-actions",
-      source: "current-result",
-      riskFocus: "ABSENCE_LIMITS",
-      input: { riskFocus: "ABSENCE_LIMITS", dateFilter: "THIS_MONTH", childNames: ["Absence Example"] },
-      scope: { dateFilter: "THIS_MONTH" },
-    },
-    {
-      actionId: "open-attendance-detail",
-      capability: "attendance-risk-analysis",
-      tool: "cccap_analyze_attendance_risk",
-      label: "Open the highest-impact attendance details",
-      reason: "Inspect the affected children, dates, and payment implications behind the summary.",
-      priority: "medium",
-      section: "drill-down",
-      source: "current-result",
-      input: { dateFilter: "THIS_MONTH", childNames: ["Absence Example"] },
-      scope: { dateFilter: "THIS_MONTH" },
-    },
-  ]);
+  assert.equal(JSON.stringify(result.structuredContent).includes("childNames"), false);
+  assert.equal(Array.isArray(result.structuredContent?.actionControls), true);
 });
 
 test("county policy formatter returns provider-facing absence limits", () => {
@@ -1332,4 +1283,37 @@ test("attendance formatter reports unmatched child filters", () => {
   });
 
   assert.match(result.content[0].text, /No attendance records were found for 1 requested child\(ren\)/);
+});
+
+test("incomplete attendance action returns child-level detail rows", () => {
+  const result = formatAttendanceRiskResult({
+    scope: { dateFilter: "THIS_MONTH" },
+    riskFocus: "INCOMPLETE_ATTENDANCE",
+    attendanceRisk: {
+      pending_confirmation_days: 4,
+      absence_days: 3,
+      children: [
+        {
+          child_name: "Incomplete Example",
+          household_name: "Example Household",
+          county: "denver",
+          authorization_names: ["AUTH-INCOMPLETE-1"],
+          authorization_dates: ["2026-09-02"],
+          service_dates: ["2026-09-02"],
+          note: "A check-in requires a matching check-out.",
+          potential_impact: "Review required.",
+          risk_codes: ["INCOMPLETE_ATTENDANCE_RECORD"],
+        },
+        {
+          child_name: "Pending Example",
+          risk_codes: ["PARENT_CONFIRMATION_PENDING"],
+        },
+      ],
+    },
+  });
+
+  const text = result.content[0].text;
+  assert.match(text, /Incomplete Example/);
+  assert.match(text, /A check-in requires a matching check-out/);
+  assert.doesNotMatch(text, /Pending Example/);
 });

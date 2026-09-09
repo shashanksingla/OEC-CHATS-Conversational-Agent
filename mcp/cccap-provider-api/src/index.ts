@@ -15,12 +15,13 @@ function requiredEnvironment(name: string): string {
 async function main(): Promise<void> {
   const targetOrg = requiredEnvironment("SF_TARGET_ORG");
   const providerDisplayName = requiredEnvironment("CCCAP_PROVIDER_DISPLAY_NAME");
+  const providerUserId = await resolveAuthenticatedUserId(targetOrg);
   const client = new CccapClient({
     targetOrg,
-    providerUserId: await resolveAuthenticatedUserId(targetOrg),
+    providerUserId,
     requestApex: requestApexViaSf,
   });
-  const server = createServer(client, providerDisplayName);
+  const server = createServer(client, providerDisplayName, undefined, providerUserId);
   await server.connect(new StdioServerTransport());
 }
 

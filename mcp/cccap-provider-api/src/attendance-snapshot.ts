@@ -244,14 +244,14 @@ export async function getAttendanceRiskAnalysis(
   asOfDate: string,
   childNames?: string[],
   authNames?: string[],
-  riskFocus?: "PARENT_CONFIRMATIONS" | "ABSENCE_LIMITS",
+  riskFocus?: "PARENT_CONFIRMATIONS" | "ABSENCE_LIMITS" | "INCOMPLETE_ATTENDANCE",
 ): Promise<{
   providerDisplayName: string;
   facilityName: string;
   attendanceRisk: unknown;
   paymentReadiness: RecordValue;
   scope: DateScope;
-  riskFocus: "PARENT_CONFIRMATIONS" | "ABSENCE_LIMITS" | undefined;
+  riskFocus: "PARENT_CONFIRMATIONS" | "ABSENCE_LIMITS" | "INCOMPLETE_ATTENDANCE" | undefined;
   sourceRetrievedAt: string;
 }> {
   const initialization = requireRecord(

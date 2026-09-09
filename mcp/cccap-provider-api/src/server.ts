@@ -8,6 +8,7 @@ import {
 } from "./attendance-snapshot.js";
 import { getPaymentAnalysis } from "./payment-orchestration.js";
 import { CccapClient } from "./client.js";
+import { ConversationContextStore, type ContinuationPlan } from "./conversation-context.js";
 import {
   normalizeAuthorizations,
   normalizeCases,
@@ -150,6 +151,7 @@ function snapshotResult(data: unknown): ToolResult {
       sourceRetrievedAt: snapshot.sourceRetrievedAt,
       responseMode: "SUMMARY",
       responseSections: ["summary", "next-actions", "drill-down", "available-views"],
+      actionControls: actionControls(actionIntents),
     },
   };
 }
@@ -176,6 +178,79 @@ function compactActionControls(actions: Record<string, unknown>[]): Record<strin
       } : {}),
     };
   });
+}
+
+function contextualize(
+  value: ToolResult,
+  store: ConversationContextStore,
+  providerKey: string,
+  capability: string,
+  result: unknown,
+  resultTool: ContinuationPlan["tool"],
+): ToolResult {
+  if (value.isError || !value.structuredContent) return value;
+  const actions = Array.isArray(value.structuredContent.actionControls)
+    ? value.structuredContent.actionControls.map(recordValue).filter((action): action is Record<string, unknown> => Boolean(action))
+    : Array.isArray(value.structuredContent.actionIntents)
+      ? value.structuredContent.actionIntents.map(recordValue).filter((action): action is Record<string, unknown> => Boolean(action))
+      : [];
+  const inheritedActions = store.getInheritedActions(providerKey, actions)
+    .map((action) => action.metadata);
+  const combinedActions = [...actions, ...inheritedActions];
+  if (combinedActions.length === 0) return value;
+  const plans: ContinuationPlan[] = combinedActions.flatMap((action) => {
+    const tool = action.tool;
+    const input = recordValue(action.input);
+    return (tool === "cccap_analyze_attendance_risk" || tool === "cccap_analyze_payment") && input
+      ? [{ tool, input }]
+      : [];
+  });
+  if (plans.length === 0) return value;
+  const ruleVersion = typeof value.structuredContent.ruleVersion === "string"
+    ? value.structuredContent.ruleVersion
+    : undefined;
+  const planActions = combinedActions.filter((action) => {
+    const input = recordValue(action.input);
+    return Boolean(input) && (action.tool === "cccap_analyze_attendance_risk" || action.tool === "cccap_analyze_payment");
+  });
+  const { contextRef, actionRefs } = store.create(
+    providerKey,
+    capability,
+    plans,
+    result,
+    resultTool,
+    ruleVersion,
+    planActions,
+  );
+  let actionIndex = 0;
+  const actionControls = combinedActions.map((action) => {
+    const input = recordValue(action.input);
+    if (!input || (action.tool !== "cccap_analyze_attendance_risk" && action.tool !== "cccap_analyze_payment")) return action;
+    const actionRef = actionRefs[actionIndex++];
+    return {
+      type: "button",
+      actionId: action.actionId,
+      label: action.label,
+      ...(action.reason ? { reason: action.reason } : {}),
+      ...(action.priority ? { priority: action.priority } : {}),
+      section: action.section,
+      capability: action.capability,
+      tool: action.tool,
+      input: { contextRef, actionRef },
+    };
+  });
+  const { actionIntents: _actionIntents, providerMessage, filters: _filters, responseContext: _responseContext, ...structuredContent } = value.structuredContent;
+  return {
+    ...value,
+    structuredContent: {
+      ...structuredContent,
+      ...(structuredContent.capability === "attendance-risk-snapshot" && typeof providerMessage === "string"
+        ? { providerMessage }
+        : {}),
+      contextRef,
+      actionControls,
+    },
+  };
 }
 
 function recordValue(value: unknown): Record<string, unknown> | undefined {
@@ -314,7 +389,8 @@ function actionMetadata(
       section: "next-actions",
       source: "current-result",
       scope,
-      input: Object.assign({}, scopeInput, { childNames: incompleteChildNames }),
+      riskFocus: "INCOMPLETE_ATTENDANCE",
+      input: Object.assign({ riskFocus: "INCOMPLETE_ATTENDANCE" }, scopeInput, { childNames: incompleteChildNames }),
     });
   }
   if (actions.length === 0 && !includePaymentAction) {
@@ -640,6 +716,20 @@ function paymentSummaryView(value: unknown): Record<string, unknown> | undefined
   return recordValue(value);
 }
 
+function compactPaymentSummaryView(value: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  if (!value) return undefined;
+  const compact: Record<string, unknown> = {};
+  const overview = recordValue(value.overview);
+  if (overview) compact.overview = overview;
+  for (const key of ["categories", "counties", "next_actions"]) {
+    const rows = Array.isArray(value[key]) ? value[key] : undefined;
+    if (rows && rows.length > 0) compact[key] = rows.length;
+  }
+  const vacantSlots = Array.isArray(value.vacant_slots) ? value.vacant_slots : undefined;
+  if (vacantSlots && vacantSlots.length > 0) compact.vacant_slot_count = vacantSlots.length;
+  return compact;
+}
+
 function summaryRows(value: unknown, key: string): Record<string, unknown>[] {
   const summary = paymentSummaryView(value);
   return summary && Array.isArray(summary[key])
@@ -696,10 +786,12 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
     )
     : riskFocus === "ABSENCE_LIMITS"
       ? allAffectedChildren.filter(hasAbsenceLimitConcern)
+      : riskFocus === "INCOMPLETE_ATTENDANCE"
+        ? allAffectedChildren.filter((child) => Array.isArray(child.risk_codes) && child.risk_codes.includes("INCOMPLETE_ATTENDANCE_RECORD"))
       : allAffectedChildren;
   const pendingDays = riskFocus === "PARENT_CONFIRMATIONS"
     ? affectedChildren.reduce((total, child) => total + numericValue(child.pending_confirmation_days), 0)
-    : riskFocus === "ABSENCE_LIMITS" ? 0 : numericValue(risk.pending_confirmation_days);
+    : riskFocus === "ABSENCE_LIMITS" || riskFocus === "INCOMPLETE_ATTENDANCE" ? 0 : numericValue(risk.pending_confirmation_days);
   const pendingChildren = affectedChildren.filter((child) =>
     Array.isArray(child.risk_codes) && child.risk_codes.includes("PARENT_CONFIRMATION_PENDING"),
   ).length;
@@ -709,7 +801,7 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
   ).length;
   const probableAbsenceDays = riskFocus === "ABSENCE_LIMITS"
     ? affectedChildren.reduce((total, child) => total + numericValue(child.absence_days), 0)
-    : riskFocus === "PARENT_CONFIRMATIONS" ? 0 : numericValue(risk.absence_days);
+    : riskFocus === "PARENT_CONFIRMATIONS" || riskFocus === "INCOMPLETE_ATTENDANCE" ? 0 : numericValue(risk.absence_days);
   const scopeLabel = attendanceScopeLabel(analysis.scope);
   const childPendingDays = affectedChildren.reduce(
     (total, child) => total + numericValue(child.pending_confirmation_days),
@@ -764,12 +856,12 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
   if (excludedHolidayDates.length > 0) {
     lines.push(`Excluded ${excludedHolidayDates.length} observed holiday date(s) from attendance counts: ${excludedHolidayDates.join(", ")}.`);
   }
-  if (riskFocus !== "ABSENCE_LIMITS" && pendingDays > 0) {
+  if (riskFocus !== "ABSENCE_LIMITS" && riskFocus !== "INCOMPLETE_ATTENDANCE" && pendingDays > 0) {
     lines.push(
       `${pendingDays} pending parent confirmation day(s) affect ${pendingChildren} child(ren).`,
     );
   }
-  if (riskFocus !== "PARENT_CONFIRMATIONS" && absenceChildren > 0) {
+  if (riskFocus !== "PARENT_CONFIRMATIONS" && riskFocus !== "INCOMPLETE_ATTENDANCE" && absenceChildren > 0) {
     lines.push(`${absenceChildren} child(ren) have an absence-limit concern${
       probableAbsenceDays > 0 ? ` (${probableAbsenceDays} absence day(s))` : ""
     }.`);
@@ -1015,7 +1107,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
       sourceRetrievedAt: paymentResult.sourceRetrievedAt,
       sourceReadiness: paymentResult.source_readiness,
       summary: providerSummary,
-      summaryView,
+      summaryView: compactPaymentSummaryView(summaryView),
       detailPagination,
       status,
       filters: paymentResult.filters,
@@ -1100,6 +1192,8 @@ async function execute(
 export function createServer(
   client: CccapClient,
   providerDisplayName: string,
+  contextStore = new ConversationContextStore(),
+  providerKey = providerDisplayName,
 ): McpServer {
   const server = new McpServer({
     name: "cccap-provider-api",
@@ -1125,7 +1219,7 @@ export function createServer(
             input,
             new Date().toISOString().slice(0, 10),
           ),
-        snapshotResult,
+        (data) => contextualize(snapshotResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_attendance_risk"),
       ),
   );
 
@@ -1147,7 +1241,7 @@ export function createServer(
             providerDisplayName,
             new Date().toISOString().slice(0, 10),
           ),
-        snapshotResult,
+        (data) => contextualize(snapshotResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_attendance_risk"),
       ),
   );
 
@@ -1176,21 +1270,43 @@ export function createServer(
       inputSchema: attendanceAnalysisSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) =>
-      execute(
+    async (input) => {
+      const continuation = contextStore.resolve(providerKey, input.contextRef, input.actionRef, "continuation");
+      const request = continuation?.tool === "cccap_analyze_attendance_risk"
+        ? continuation.input as typeof input
+        : input;
+      if (continuation?.tool !== "cccap_analyze_attendance_risk" && input.contextRef && input.actionRef && !input.dateFilter) {
+        return toolError("attendance-risk analysis", new Error("Continuation reference is unavailable or expired"));
+      }
+      if (!input.refresh && continuation?.resultTool === "cccap_analyze_attendance_risk" && continuation.result) {
+        const cachedResult = recordValue(continuation.result);
+        if (cachedResult) {
+          const continuationResult = { ...cachedResult, scope: request, riskFocus: request.riskFocus };
+          return contextualize(
+            formatAttendanceRiskResult(continuationResult),
+            contextStore,
+            providerKey,
+            "continuation",
+            continuationResult,
+            "cccap_analyze_attendance_risk",
+          );
+        }
+      }
+      return execute(
         "attendance-risk analysis",
         () =>
           getAttendanceRiskAnalysis(
             client,
             providerDisplayName,
-            input,
+            request,
             new Date().toISOString().slice(0, 10),
-            input.childNames,
-            input.authNames,
-            input.riskFocus,
+            request.childNames,
+            request.authNames,
+            request.riskFocus,
           ),
-        formatAttendanceRiskResult,
-      ),
+        (data) => contextualize(formatAttendanceRiskResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_attendance_risk"),
+      );
+    },
   );
 
   server.registerTool(
@@ -1330,7 +1446,39 @@ export function createServer(
       inputSchema: paymentAnalysisSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute("payment analysis", () => getPaymentAnalysis(client, input, input.view, undefined, { ...(input.childNames ? { childNames: input.childNames } : {}), ...(input.authNames ? { authNames: input.authNames } : {}), ...(input.detailPage ? { detailPage: input.detailPage } : {}), ...(input.detailPageSize ? { detailPageSize: input.detailPageSize } : {}) }), formatPaymentResult),
+    async (input) => {
+      const continuation = contextStore.resolve(providerKey, input.contextRef, input.actionRef, "continuation");
+      const request = continuation?.tool === "cccap_analyze_payment"
+        ? continuation.input as typeof input
+        : input;
+      if (continuation?.tool !== "cccap_analyze_payment" && input.contextRef && input.actionRef && !input.dateFilter && !input.view) {
+        return toolError("payment analysis", new Error("Continuation reference is unavailable or expired"));
+      }
+      if (!input.refresh && continuation?.resultTool === "cccap_analyze_payment" && continuation.result) {
+        const cachedResult = recordValue(continuation.result);
+        if (cachedResult) {
+          const continuationResult = { ...cachedResult, filters: request };
+          return contextualize(
+            formatPaymentResult(continuationResult),
+            contextStore,
+            providerKey,
+            "continuation",
+            continuationResult,
+            "cccap_analyze_payment",
+          );
+        }
+      }
+      return execute(
+        "payment analysis",
+        () => getPaymentAnalysis(client, request, request.view, undefined, {
+          ...(request.childNames ? { childNames: request.childNames } : {}),
+          ...(request.authNames ? { authNames: request.authNames } : {}),
+          ...(request.detailPage ? { detailPage: request.detailPage } : {}),
+          ...(request.detailPageSize ? { detailPageSize: request.detailPageSize } : {}),
+        }),
+        (data) => contextualize(formatPaymentResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
+      );
+    },
   );
 
   server.registerTool(
