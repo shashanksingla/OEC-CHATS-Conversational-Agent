@@ -149,13 +149,17 @@ export async function getPaymentAnalysis(
     const result = evaluated.result as RecordValue;
     const attendance = record(result.attendance, "Evaluated attendance");
     const allDays = Array.isArray(attendance.days) ? attendance.days : [];
+    const displayableDays = allDays.filter((value) => {
+      const day = record(value, "Attendance day");
+      return day.classification !== "NO_CARE";
+    });
     const showDetail = filters.detailPage !== undefined || filters.detailPageSize !== undefined;
     const detailPage = filters.detailPage ?? 1;
     const detailPageSize = filters.detailPageSize ?? 25;
     const detailStart = (detailPage - 1) * detailPageSize;
     const pagedAttendance = {
       ...attendance,
-      days: showDetail ? allDays.slice(detailStart, detailStart + detailPageSize) : [],
+      days: showDetail ? displayableDays.slice(detailStart, detailStart + detailPageSize) : [],
     };
     return {
       ...result,
@@ -163,8 +167,8 @@ export async function getPaymentAnalysis(
       detailPagination: {
         page: showDetail ? detailPage : 0,
         pageSize: showDetail ? detailPageSize : 0,
-        totalRows: allDays.length,
-        hasMore: showDetail ? detailStart + detailPageSize < allDays.length : allDays.length > 0,
+        totalRows: displayableDays.length,
+        hasMore: showDetail ? detailStart + detailPageSize < displayableDays.length : displayableDays.length > 0,
       },
       scope: sourceScope,
       paymentView: view,

@@ -49,7 +49,7 @@ Build filters from the intent frame:
 | Authorization-specific attendance detail | Pass the exact date scope and verified `authNames` to `cccap_analyze_attendance_risk`; never widen to all authorizations. |
 | County policy | Use only county IDs returned by authenticated provider initialization or a prior verified result. If the provider names a county that is not verified in scope, clarify or decline; never guess an ID. |
 | Authorization or case detail | Use only returned case IDs or authorization names when a filter is needed. Do not fetch all records to answer a question already answered by attendance output. |
-| Next payout detail | Use `cccap_analyze_payment` with only `view: "NEXT_PAYOUT"`; the view supplies the `paymentAfter: "TODAY"` selector. Relay the returned service-period/payment dates and amount status. |
+| Next payout detail | Use `cccap_analyze_payment` with only `view: "NEXT_PAYOUT"`; do not carry forward an attendance or policy `dateFilter`. The view supplies the `paymentAfter: "TODAY"` selector. Relay the returned service-period/payment dates and amount status. |
 | Current-week forecast | Use `cccap_analyze_payment` with only `view: "CURRENT_WEEK_FORECAST"`; the view supplies the current-period selector. Distinguish actual days through today from future scheduled forecast days. |
 | Current service period | Use `dateOn: "TODAY"` when the provider asks about the period containing today. |
 | Payment status or explanation | Pass the requested date scope to payment analysis. |
@@ -58,7 +58,7 @@ Build filters from the intent frame:
 
 An explicit policy question such as `What is the absence limit?`, `How many absence days are allowed?`, or `What is my county's absence rule?` is a county-policy request. Use `cccap_get_county_rate_plans` with `dateFilter: "THIS_MONTH"` for a current-policy question so the MCP client can reuse the current-month county-plan read already made by the snapshot. Do not reuse the preceding attendance-risk action or call `cccap_analyze_attendance_risk` unless the provider also asks about affected children or current attendance risk.
 
-When the immediately preceding result contains an action intent with `capability: "county-policy"` or `tool: "cccap_get_county_rate_plans"`, honor that intent directly. Do not reinterpret it as an attendance-risk drill-down, even when the provider replies with a number such as `2`.
+When the immediately preceding result contains action intents or action controls, use them as the grounded capability contract. Choose the most relevant intent from the provider's latest wording and current view, then execute the returned `tool` with its returned `input` fields; do not invent filters, page numbers, or a different capability. Prefer a selected structured control's `actionId`; otherwise resolve the provider's natural-language request against action labels, action IDs, section, and the current result before calling a tool. Do not rely on bare numbers, because separate action sections may contain repeated labels or bullets. For `NEXT_PAYOUT`, preserve the returned payment view and pagination input unless the provider explicitly names a supported child or authorization filter.
 
 For facility-wide requests, omitted child/county filters are intentional provider scope. For a named entity that cannot be resolved, clarify or decline; never widen silently.
 
