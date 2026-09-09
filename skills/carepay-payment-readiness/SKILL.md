@@ -5,7 +5,9 @@ description: Specialized CarePay skill for payout timing, next-payout detail, cu
 
 # CarePay Payment Readiness
 
-Use with `carepay-conversation-templates` when Provider Assist needs next payout, payout detail, a current-week forecast, a payment explanation, or an honest response to an unsupported what-if request.
+Use with `carepay-conversation-templates` when Provider Assist needs next payout, payout detail, a current-week forecast, a payment explanation, or an honest response to an unsupported what-if request. The conversation-template skill owns response shape and failure handling; this skill owns payment meaning and routing details.
+
+Follow `{project-root}/skills/ARCHITECTURE.md`. This module owns payment meaning and follow-up selection only. Source field mapping belongs to MCP normalizers; money, dates, status, and forecast rules belong to the deterministic evaluator.
 
 The outcome is a provider-readable payment answer grounded in authorized live data and deterministic Python output. Never calculate money, compare dates, join records, or apply policy in model reasoning.
 
@@ -23,4 +25,4 @@ When live payment calculation is blocked, say which calculation cannot be comple
 
 What-if scenarios remain unsupported because they require an explicit input-change schema and adapter. Do not invent scenario changes or call ordinary historical payment analysis a scenario; offer next-payout detail or the current-week forecast instead.
 
-If any retrieval, normalization, Python, or policy step fails, stop the affected response. Do not show partial ledgers, placeholder amounts, fallback tables, stale data, or technical error details.
+Use the shared conversation-template failure policy for failed or incomplete retrieval, normalization, evaluation, or policy data. Do not add a payment-specific fallback format here.

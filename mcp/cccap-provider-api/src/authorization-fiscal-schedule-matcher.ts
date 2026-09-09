@@ -12,7 +12,7 @@ export interface FiscalScheduleCandidate {
 export interface AuthorizationScheduleMatch {
   status: "MATCHED" | "UNRESOLVED";
   fiscalScheduleId?: string;
-  reason?: "MISSING_SLOT_CONTRACT_RATE_TYPE" | "NO_MATCH" | "AMBIGUOUS_MATCH";
+  reason?: "MISSING_SCHEDULE_RATE_TYPE" | "RATE_TYPE_CONFLICT" | "NO_MATCH" | "AMBIGUOUS_MATCH";
 }
 
 function record(value: unknown, label: string): RecordValue {
@@ -33,14 +33,21 @@ function containsDate(beginDate: string, endDate: string | undefined, date: stri
   return beginDate <= date && (endDate === undefined || endDate >= date);
 }
 
+function containsRateType(scheduleRateTypes: string, requestedRateType: string): boolean {
+  return scheduleRateTypes
+    .split(/[,;|\s]+/)
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0)
+    .includes(requestedRateType);
+}
+
 export function selectFiscalScheduleForAuthorization(
   authorizationValue: unknown,
-  slotContractsValue: unknown,
   schedules: FiscalScheduleCandidate[],
   careDate: string,
+  scheduleRateType?: string,
 ): AuthorizationScheduleMatch {
   const authorization = record(authorizationValue, "authorization");
-  const authorizationId = requiredString(authorization.Id, "authorization.Id");
   const countyId = requiredString(authorization.CDE_COUNTY__c, "authorization.CDE_COUNTY__c");
   const authorizationBegin = requiredString(
     authorization.DTE_BEGIN_EFFV_AUTH__c,
@@ -53,24 +60,13 @@ export function selectFiscalScheduleForAuthorization(
     return { status: "UNRESOLVED", reason: "NO_MATCH" };
   }
 
-  if (!Array.isArray(slotContractsValue)) {
-    throw new Error("slotContracts must be an array");
-  }
-  const slotContracts = slotContractsValue
-    .map((value, index) => record(value, `slotContracts[${index}]`))
-    .filter((slotContract) => slotContract.IDN_AUTH__c === authorizationId);
-  const rateTypes = new Set(
-    slotContracts
-      .map((slotContract) => slotContract.CDE_RATE_TYPE__c)
-      .filter((value): value is string => typeof value === "string" && value.length > 0),
-  );
-  if (rateTypes.size !== 1) {
-    return { status: "UNRESOLVED", reason: "MISSING_SLOT_CONTRACT_RATE_TYPE" };
+  if (!scheduleRateType) {
+    return { status: "UNRESOLVED", reason: "MISSING_SCHEDULE_RATE_TYPE" };
   }
 
   const matches = schedules.filter((schedule) =>
     schedule.countyId === countyId
-    && schedule.rateTypeCode === [...rateTypes][0]
+    && containsRateType(schedule.rateTypeCode, scheduleRateType)
     && containsDate(schedule.beginDate, schedule.endDate, careDate),
   );
   if (matches.length === 0) return { status: "UNRESOLVED", reason: "NO_MATCH" };
@@ -87,5 +83,5 @@ export function selectFiscalScheduleForAuthorization(
   }
   const selectedMatch = latestMatches[0];
   if (!selectedMatch) return { status: "UNRESOLVED", reason: "NO_MATCH" };
-  return { status: "MATCHED", fiscalScheduleId: selectedMatch.externalId };
+  return { status: "MATCHED", fiscalScheduleId: selectedMatch.id };
 }

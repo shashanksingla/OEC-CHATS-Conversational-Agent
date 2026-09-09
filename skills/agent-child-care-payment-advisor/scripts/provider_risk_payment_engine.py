@@ -610,18 +610,32 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         if rate_key in rates:
             return _blocked(["ambiguous_fiscal_rate"], attendance)
         rates[rate_key] = Decimal("0") if paid_tier == "NO_PAYMENT" else amount
+    excluded_authorizations: set[str] = set()
+    for day in attendance["days"]:
+        if not day["payable"]:
+            continue
+        authorization_id = day["authorization_id"]
+        if (
+            (authorization_id, day["paid_tier"]) not in rates
+            and (authorization_id, "NO_PAYMENT") not in rates
+        ):
+            excluded_authorizations.add(authorization_id)
     total = Decimal("0")
     conditional_total = Decimal("0")
     excluded_days = 0
     for day in attendance["days"]:
-        if not day["payable"]:
+        if not day["payable"] or day["authorization_id"] in excluded_authorizations:
             excluded_days += 1
+            if day["authorization_id"] in excluded_authorizations:
+                day["payment_excluded"] = True
+                day["flags"] = sorted({*day["flags"], "FISCAL_RATE_UNAVAILABLE"})
             continue
         rate = rates.get((day["authorization_id"], day["paid_tier"]))
         if rate is None:
             rate = rates.get((day["authorization_id"], "NO_PAYMENT"))
         if rate is None:
-            return _blocked(["matching_fiscal_rate"], attendance)
+            excluded_days += 1
+            continue
         unit_hours = _hours(day.get("unit_hours")) or Decimal("0")
         if day.get("occupied_slot_contract") is True:
             continue
@@ -638,6 +652,29 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
     gross_total = total + scheduled_fees
     net_total = max(gross_total - copay, Decimal("0"))
     payment_status = "CONDITIONAL" if conditional_total else "EXPECTED"
+    summary_groups: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for day in attendance["days"]:
+        if not day["payable"] or day.get("payment_excluded") or day["occupied_slot_contract"] is True:
+            continue
+        rate = rates.get((day["authorization_id"], day["paid_tier"]))
+        if rate is None:
+            rate = rates.get((day["authorization_id"], "NO_PAYMENT"))
+        if rate is None:
+            continue
+        county_id = day.get("county_id", "")
+        paid_tier = day.get("paid_tier") or "NO_PAYMENT"
+        basis = "SCHEDULED" if day.get("forecast_basis") == "SCHEDULED" else "ACTUAL"
+        key = (county_id, paid_tier, basis)
+        group = summary_groups.setdefault(key, {"county_id": county_id, "county_name": day.get("county_name"), "rates": set(), "paid_tier": paid_tier, "basis": basis, "children_served": set(), "hours": Decimal("0"), "amount": Decimal("0"), "conditional_amount": Decimal("0")})
+        group["rates"].add(_money(rate))
+        unit_hours = _hours(day.get("unit_hours")) or Decimal("0")
+        amount = rate * unit_hours
+        group["children_served"].add(day.get("child_name") or day["authorization_id"])
+        group["hours"] += unit_hours
+        group["amount"] += amount
+        if day["conditional"]:
+            group["conditional_amount"] += amount
+    payment_summary = [{**{"county_id": group["county_id"]}, **({"county_name": group["county_name"]} if isinstance(group["county_name"], str) and group["county_name"] else {}), "paid_tier": group["paid_tier"], "rate": next(iter(group["rates"])) if len(group["rates"]) == 1 else "Multiple", "rates": sorted(group["rates"]), "basis": group["basis"], "children_served": len(group["children_served"]), "hours": _money(group["hours"]), "amount": _money(group["amount"]), "conditional_amount": _money(group["conditional_amount"])} for group in sorted(summary_groups.values(), key=lambda value: (value["county_id"], value["paid_tier"], value["basis"]))]
     return {
         "status": "ok",
         "rule_version": RULE_VERSION,
@@ -650,11 +687,13 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             "gross_amount": _money(gross_total),
             "amount_at_risk": _money(conditional_total),
             "excluded_days": excluded_days,
+            "excluded_authorizations": len(excluded_authorizations),
             "slot_fee": _money(slot_fee),
             "activity_fee": _money(activity_fee),
             "registration_fee": _money(registration_fee),
             "transportation_fee": _money(transportation_fee),
             "parent_copay": _money(copay),
+            "summary": payment_summary,
         },
     }
 

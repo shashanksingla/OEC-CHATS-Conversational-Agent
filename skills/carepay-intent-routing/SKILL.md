@@ -7,6 +7,8 @@ description: Helps Provider Assist interpret provider requests, preserve convers
 
 Treat each provider message as part of an ongoing conversation, not as an isolated command. First understand what the provider is trying to decide, what facts are already verified in the conversation, and what new scope or freshness the request requires. Then choose one capability that can answer it.
 
+Follow `{project-root}/skills/ARCHITECTURE.md`. This module owns routing only: it selects one capability and constructs its scope; it does not fetch data, normalize source fields, calculate results, or format provider responses.
+
 ## Per-turn decision contract
 
 Before answering every provider message, privately maintain a small intent frame:
@@ -27,6 +29,8 @@ Do not execute a broad request such as "everything", "all", or "what's happening
 
 An acknowledgment such as "sure", "thanks", or "okay" has no new data intent: acknowledge briefly or ask what the provider wants to review next, make no data call, and never imply that a read-only action was completed.
 
+When the immediately preceding result is payment analysis and the provider says "show", "more", "details", "drill down", or an equivalent continuation without naming a different domain, preserve the payment result's service period and filters. Use `cccap_analyze_payment` with the same `view`; request the next `detailPage` when pagination metadata reports `hasMore`, otherwise ask which child or authorization scope they want. Do not switch to attendance-risk analysis from a terse continuation. If the provider explicitly asks about attendance risks, parent confirmations, or absence limits, then use the attendance capability and explain that its findings are separate from payment condition status.
+
 ## Bounded action policy
 
 Use zero calls for a context question answered by verified facts, one high-level call for a new request, or one justified supplement when the result explicitly lacks requested evidence. Composite tools initialize scope internally. Do not prefetch, repeat an identical call, widen scope, or decorate a complete answer with unrelated data.
@@ -41,7 +45,7 @@ Build filters from the intent frame:
 | --- | --- |
 | Initial greeting only | Call the current-month snapshot with `{}`. It includes today's scheduled and checked-in child counts plus current-month risks. Do not add dates, child names, counties, or authorization names. A later greeting does not refresh data unless the provider asks for an update. |
 | Facility attendance snapshot | Pass the exact date scope to `cccap_get_attendance_risk_snapshot`; use no child filter because the request is facility-wide. |
-| Attendance risk or child detail | Pass the exact date scope to `cccap_analyze_attendance_risk`; add `childNames` only for an explicitly named child or an unambiguous child returned in the immediately preceding result. |
+| Attendance risk or child detail | Pass the exact date scope to `cccap_analyze_attendance_risk`; add `childNames` only for an explicitly named child or an unambiguous child returned in the immediately preceding result. For pending-confirmation follow-ups, pass `riskFocus: "PARENT_CONFIRMATIONS"`; for absence-limit follow-ups, pass `riskFocus: "ABSENCE_LIMITS"`. |
 | Authorization-specific attendance detail | Pass the exact date scope and verified `authNames` to `cccap_analyze_attendance_risk`; never widen to all authorizations. |
 | County policy | Use only county IDs returned by authenticated provider initialization or a prior verified result. If the provider names a county that is not verified in scope, clarify or decline; never guess an ID. |
 | Authorization or case detail | Use only returned case IDs or authorization names when a filter is needed. Do not fetch all records to answer a question already answered by attendance output. |

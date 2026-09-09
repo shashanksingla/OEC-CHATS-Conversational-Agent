@@ -34,33 +34,12 @@ CONFIRMATION_WINDOW_DAYS = 5
 MAX_DAILY_HOURS = 24
 
 # Rules intentionally not encoded. Each is a real financial rule that either
-# contradicts an adjacent rule as transcribed, needs data this provider-scoped
-# dataset cannot see, or needs raw fields not yet in the normalized schema.
+# needs data this provider-scoped dataset cannot see or needs business approval.
 UNIMPLEMENTED_RULES = [
-    {
-        "rule_group": "Authorized Hours",
-        "rule": "Overnight schedules spanning midnight split hours across two calendar days.",
-        "reason": "Requires provider start/end timestamps and cross-midnight day-splitting logic not yet specified; deferred pending raw timestamp field confirmation.",
-    },
-    {
-        "rule_group": "Transaction Validity",
-        "rule": "Orphan transactions with no parent schedule are matched to an authorization by date, client, and provider to create a synthetic drop-in entry.",
-        "reason": "Requires an orphan-matching key and synthetic-schedule construction not yet defined; deferred pending matching-key confirmation.",
-    },
-    {
-        "rule_group": "Drop-In Rules",
-        "rule": "Orphan drop-in transactions are processed as if a schedule existed, with authorized hours forced to zero.",
-        "reason": "Depends on the orphan-matching rule above, which is deferred.",
-    },
-    {
-        "rule_group": "County - Absence",
-        "rule": "36-month-old enrollment-absence exception to the county absence limit.",
-        "reason": "The transcribed rule rows contradict each other on which age band is Not Payable versus a still-payable Enrollment Absence. Needs business clarification before encoding a payment-affecting age condition.",
-    },
     {
         "rule_group": "County - Drop-In Limits",
         "rule": "County-wide drop-in pool exhaustion across all providers in the county.",
-        "reason": "Requires the county's aggregate drop-in usage across every provider, which is outside any single provider's authorized dataset. Only a per-authorization (this facility's child+county) drop-in counter is implemented.",
+        "reason": "Requires the county's aggregate drop-in usage across every provider, which is outside any single provider's authorized dataset. Child-scoped county and authorization limits are supported.",
     },
     {
         "rule_group": "County - Summary",
@@ -415,6 +394,14 @@ def analyze(payload: dict[str, Any]) -> dict[str, Any]:
         drop_in_limit = None
         if plan is not None and isinstance(plan.get("dropInDayLimit"), int):
             drop_in_limit = plan["dropInDayLimit"]
+        authorization_limits = [
+            schedule.get("authorization_drop_in_limit")
+            for schedule, _day in day_entries
+            if isinstance(schedule.get("authorization_drop_in_limit"), int)
+        ]
+        if authorization_limits:
+            authorization_limit = min(authorization_limits)
+            drop_in_limit = authorization_limit if drop_in_limit is None else min(drop_in_limit, authorization_limit)
 
         absences_used = 0
         drop_in_days_used = 0

@@ -204,7 +204,7 @@ global with sharing class CccapPortalApiV1 {
                 List<batchsit_t_fiscal_rate__x> fiscalRates = scheduleExternalIds.isEmpty()
                     ? new List<batchsit_t_fiscal_rate__x>()
                     : [
-                        SELECT idn_fiscal_sch__c,
+                        SELECT Id, idn_fiscal_sch__c,
                         cde_age_group__c, cde_care_unit__c, cde_rate_type__c,
                         amt_cty__c, amt_fa__c, amt_provr__c
                         FROM batchsit_t_fiscal_rate__x
@@ -320,6 +320,7 @@ global with sharing class CccapPortalApiV1 {
                 
                 String soql =
                     'SELECT Id, Name, IDN_EXTNL__c, IDN_CASE__c, IDN_PROVR__c, IDN_CLIENT__c, '
+                    + 'IDN_CLIENT__r.DTE_DOB__c, '
                     + 'IDN_SLOT_CONTRACT__c, CDE_COUNTY__c, AMT_ACTV_AUTH__c, AMT_RGSTR_AUTH__c, AMT_TRANSP_AUTH__c, '
                     + 'CDE_TYPE_VERIF__c, CDE_TRANS_FEE__c, CDE_CHILD_ENROLLED_IN_UPK__c, '
                     + 'Contract_for_Slots_indicator__c, Do_we_need_to_allow_drop_in_days_for__c, '

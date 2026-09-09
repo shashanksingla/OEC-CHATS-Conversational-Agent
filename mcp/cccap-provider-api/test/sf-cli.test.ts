@@ -7,7 +7,7 @@ import {
   type RunSfCommand,
 } from "../src/sf-cli.js";
 
-test("Salesforce CLI sends an authenticated Apex request with body on stdin", async () => {
+test("Salesforce CLI sends an authenticated Apex request through a JSON body file", async () => {
   const calls: Array<{ command: string; args: string[]; input: string }> = [];
   const run: RunSfCommand = async (command, args, input) => {
     calls.push({ command, args, input });
@@ -31,25 +31,11 @@ test("Salesforce CLI sends an authenticated Apex request with body on stdin", as
     run,
   );
 
-  assert.deepEqual(calls, [
-    {
-      command: "sf",
-      args: [
-        "api",
-        "request",
-        "rest",
-        "/services/apexrest/CccapPortalApi/v1/getProviderData",
-        "--target-org",
-        "CHATS_SIT",
-        "--method",
-        "POST",
-        "--body",
-        "-",
-        "--json",
-      ],
-      input: '{"dateFilter":"TODAY"}',
-    },
-  ]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]?.command, "sf");
+  assert.equal(calls[0]?.args[8], "--body");
+  assert.match(calls[0]?.args[9] || "", /^@.+request\.json$/);
+  assert.equal(calls[0]?.input, "");
   assert.deepEqual(result, { isSuccess: true, data: { providers: [] } });
 });
 
@@ -81,7 +67,7 @@ test("Salesforce CLI sends fiscal-rate requests to the Apex endpoint", async () 
   assert.equal(calls[0]?.args[3], "/services/apexrest/CccapPortalApi/v1/getFiscalRates");
   assert.equal(
     calls[0]?.input,
-    '{"providerIds":["provider-1"],"fiscalScheduleIds":["schedule-1"]}',
+    "",
   );
 });
 
@@ -171,4 +157,21 @@ test("Salesforce CLI sends payment-history requests to the Apex endpoint", async
   );
 
   assert.equal(calls[0]?.args[3], "/services/apexrest/CccapPortalApi/v1/getPaymentHistory");
+});
+
+test("preserves the Apex diagnostic for a non-success response", async () => {
+  await assert.rejects(
+    () => requestApexViaSf("CHATS_SIT", "getAuthData", {}, async () => ({
+      stdout: JSON.stringify({
+        status: 0,
+        result: {
+          statusCode: 500,
+          body: { isSuccess: false, errorMessage: "getAuthData requires providerIds" },
+        },
+      }),
+      stderr: "",
+      exitCode: 0,
+    })),
+    /getAuthData requires providerIds/,
+  );
 });

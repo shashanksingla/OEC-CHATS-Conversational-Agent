@@ -1,4 +1,5 @@
-import { normalizePaymentStatus } from "./attendance-snapshot.js";
+import { normalizePaymentStatus, } from "./payment-schema.js";
+export { normalizePaymentStatus, } from "./payment-schema.js";
 function asRecord(value, label) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
         throw new Error(`${label} must be an object`);
@@ -11,6 +12,15 @@ function requiredString(value, label) {
     }
     return value;
 }
+function resolveAuthorizationId(value, authorizations, label) {
+    const reference = typeof value === "string" && value.length > 0 ? value : undefined;
+    if (!reference)
+        throw new Error(`${label} is required`);
+    if (authorizations.length === 0)
+        return reference;
+    const authorization = authorizations.find((candidate) => candidate.Name === reference || candidate.IDN_EXTNL__c === reference || candidate.Id === reference);
+    return requiredString(authorization?.Id, `${label} Salesforce authorization ID`);
+}
 export function normalizeServicePeriod(value) {
     const period = asRecord(value, "service period");
     return {
@@ -19,7 +29,7 @@ export function normalizeServicePeriod(value) {
         end_date: requiredString(period.serviceEndDate ?? period.end_date, "service period end date"),
     };
 }
-export function normalizeExistingSubPayments(value) {
+export function normalizeExistingSubPayments(value, authorizations = []) {
     const response = asRecord(value, "payment history response");
     const rows = response.subPayments;
     if (!Array.isArray(rows))
@@ -30,7 +40,7 @@ export function normalizeExistingSubPayments(value) {
         if (!status)
             throw new Error(`subPayments[${index}].cde_status_pmt_sub__c is unsupported`);
         return {
-            authorization_id: requiredString(row.idn_auth__c, `subPayments[${index}].idn_auth__c`),
+            authorization_id: resolveAuthorizationId(row.idn_auth__c, authorizations, `subPayments[${index}].idn_auth__c`),
             service_period_id: requiredString(row.idn_period_serv__c, `subPayments[${index}].idn_period_serv__c`),
             status,
         };
@@ -56,8 +66,40 @@ function dateMatches(value, date) {
 function sourceDate(value) {
     return typeof value === "string" && value.length > 0 ? value.slice(0, 10) : undefined;
 }
+function childIsUnder36Months(dateOfBirth, careDate, authorizationId) {
+    if (typeof dateOfBirth !== "string" || dateOfBirth.length === 0) {
+        throw new Error(`child date of birth is missing for ${authorizationId}`);
+    }
+    const birthDate = new Date(`${dateOfBirth.slice(0, 10)}T00:00:00Z`);
+    const careDateValue = new Date(`${careDate.slice(0, 10)}T00:00:00Z`);
+    if (Number.isNaN(birthDate.getTime()) || Number.isNaN(careDateValue.getTime())) {
+        throw new Error(`child date of birth or care date is invalid for ${authorizationId} on ${careDate}`);
+    }
+    const thirtySixMonthDate = new Date(birthDate);
+    thirtySixMonthDate.setUTCFullYear(thirtySixMonthDate.getUTCFullYear() + 3);
+    return careDateValue < thirtySixMonthDate;
+}
+function findAuthorizationForSchedule(schedule, authorizations) {
+    const references = [
+        schedule.authorization_id,
+        schedule.authorization_name,
+        schedule.CI_Authorization_Id__c,
+    ]
+        .filter((reference) => (typeof reference === "string" && reference.length > 0) || typeof reference === "number")
+        .map(String);
+    return authorizations.find((authorization) => references.some((reference) => authorization.Id === reference
+        || authorization.Name === reference
+        || authorization.IDN_EXTNL__c === reference));
+}
 export function deriveAttendanceEnrichment(schedules, authorizationData, holidayData) {
     const response = asRecord(authorizationData, "authorization enrichment");
+    const rawAuthorizations = Array.isArray(response.authorizations)
+        ? response.authorizations
+        : Array.isArray(response.normalizedAuthorizations)
+            ? response.normalizedAuthorizations.map((value) => asRecord(value, "normalized authorization").authorization)
+            : [];
+    const authorizationRecords = rawAuthorizations
+        .map((value, index) => asRecord(value, `authorizations[${index}]`));
     const slotContracts = Array.isArray(response.slotContracts) ? response.slotContracts : [];
     const encumbrances = Array.isArray(response.encumbrances) ? response.encumbrances : [];
     const holidays = asRecord(holidayData, "holiday enrichment").holidayList;
@@ -68,16 +110,28 @@ export function deriveAttendanceEnrichment(schedules, authorizationData, holiday
         const schedule = asRecord(value, `schedules[${index}]`);
         const authorizationId = requiredString(schedule.authorization_id, `schedules[${index}].authorization_id`);
         const serviceDate = requiredString(schedule.work_date, `schedules[${index}].work_date`);
+        const authorization = findAuthorizationForSchedule(schedule, authorizationRecords);
+        const authorizationReferences = new Set([
+            authorizationId,
+            authorization?.Id,
+            authorization?.Name,
+            authorization?.IDN_EXTNL__c,
+        ].filter((reference) => typeof reference === "string" && reference.length > 0));
         const matchingEncumbrances = encumbrances.filter((candidate) => {
             const row = asRecord(candidate, "authorization encumbrance");
-            return row.idn_auth__c === authorizationId && dateMatches(row.dte_care__c, serviceDate);
+            const references = [row.idn_auth__c, row.idn_encmbr_auth__c]
+                .filter((reference) => typeof reference === "string" && reference.length > 0);
+            return references.some((reference) => {
+                if (authorizationRecords.length === 0)
+                    return reference === authorizationId;
+                return authorizationReferences.has(reference);
+            }) && dateMatches(row.dte_care__c, serviceDate);
         });
-        const ageFlags = new Set(matchingEncumbrances
-            .map((candidate) => asRecord(candidate, "authorization encumbrance").ind_0_36_months__c)
-            .filter((flag) => typeof flag === "boolean"));
-        if (ageFlags.size !== 1) {
-            throw new Error(`age-band enrichment is ambiguous for ${authorizationId} on ${serviceDate}`);
-        }
+        const clientValue = authorization?.IDN_CLIENT__r;
+        const client = clientValue && typeof clientValue === "object" && !Array.isArray(clientValue)
+            ? asRecord(clientValue, "authorization client")
+            : undefined;
+        const ageBand = childIsUnder36Months(client?.DTE_DOB__c, serviceDate, authorizationId) ? "ZERO_TO_36_MONTHS" : "OVER_36_MONTHS";
         const encumbranceStatuses = new Set(matchingEncumbrances
             .map((candidate) => normalizeEncumbranceStatus(asRecord(candidate, "authorization encumbrance").cde_status_encmbr__c))
             .filter((status) => status !== undefined));
@@ -88,16 +142,11 @@ export function deriveAttendanceEnrichment(schedules, authorizationData, holiday
             const row = asRecord(candidate, "slot contract");
             const begins = row.DTE_BEGIN_SLOT__c;
             const ends = row.DTE_END_SLOT__c;
-            return row.IDN_AUTH__c === authorizationId
+            return authorizationReferences.has(String(row.IDN_AUTH__c))
                 && (!begins || String(begins).slice(0, 10) <= serviceDate)
                 && (!ends || String(ends).slice(0, 10) >= serviceDate);
         });
-        const occupiedFlags = new Set(matchingSlots
-            .map((candidate) => optionalBoolean(asRecord(candidate, "slot contract").IND_OCCUPIED__c))
-            .filter((flag) => flag !== undefined));
-        if (occupiedFlags.size !== 1) {
-            throw new Error(`slot occupancy enrichment is ambiguous for ${authorizationId} on ${serviceDate}`);
-        }
+        const occupiedSlotContract = matchingSlots.length > 0;
         const matchingHoliday = holidays.find((candidate) => {
             const holiday = asRecord(candidate, "holiday");
             return dateMatches(holiday.DTE_HOL__c, serviceDate)
@@ -105,11 +154,11 @@ export function deriveAttendanceEnrichment(schedules, authorizationData, holiday
         });
         const holiday = matchingHoliday ? asRecord(matchingHoliday, "holiday") : undefined;
         result[authorizationId] = {
-            age_band: ageFlags.has(true) ? "ZERO_TO_36_MONTHS" : "OVER_36_MONTHS",
+            age_band: ageBand,
             slot_contract_present: matchingSlots.length > 0,
-            occupied_slot_contract: occupiedFlags.has(true),
+            occupied_slot_contract: occupiedSlotContract,
             care_not_offered: encumbranceStatuses.has("CARE_NOT_OFFERED")
-                || requiredBoolean(schedule.care_not_offered, `schedules[${index}].care_not_offered`),
+                || optionalBoolean(schedule.care_not_offered) === true,
             observed_holiday: Boolean(holiday),
             ...(holiday?.CDE_HOL__c !== undefined ? { holiday_name: String(holiday.CDE_HOL__c) } : {}),
             ...(sourceDate(holiday?.DTE_HOL__c) ? { holiday_date: sourceDate(holiday?.DTE_HOL__c) } : {}),
@@ -128,10 +177,13 @@ export function normalizeAttendanceDays(schedules, enrichmentByAuthorization, op
         if (!enrichment)
             throw new Error(`attendance enrichment is missing for ${authorizationId}`);
         const serviceDate = requiredString(schedule.work_date, `schedules[${index}].work_date`);
-        const isFutureForecast = options.mode === "FORECAST" &&
+        const isForecast = options.mode === "FORECAST";
+        const isFutureForecast = isForecast &&
             typeof options.asOfDate === "string" &&
             serviceDate > options.asOfDate;
-        const parentConfirmation = isFutureForecast ? "PENDING" : schedule.parent_confirmation;
+        const parentConfirmation = isFutureForecast || (isForecast && schedule.parent_confirmation === undefined)
+            ? "PENDING"
+            : schedule.parent_confirmation;
         if (parentConfirmation !== "CONFIRMED" && parentConfirmation !== "PENDING") {
             throw new Error(`schedules[${index}].parent_confirmation is required`);
         }
@@ -145,9 +197,17 @@ export function normalizeAttendanceDays(schedules, enrichmentByAuthorization, op
             authorized_hours: requiredNonNegativeNumber(schedule.ci_authorization_hours, `schedules[${index}].ci_authorization_hours`),
             attended_hours: isFutureForecast
                 ? 0
-                : requiredNonNegativeNumber(schedule.raw_hours, `schedules[${index}].raw_hours`),
+                : typeof schedule.raw_hours === "number"
+                    ? requiredNonNegativeNumber(schedule.raw_hours, `schedules[${index}].raw_hours`)
+                    : isForecast
+                        ? 0
+                        : requiredNonNegativeNumber(schedule.raw_hours, `schedules[${index}].raw_hours`),
             parent_confirmation: parentConfirmation,
-            absence_parent_approved: requiredBoolean(schedule.absence_parent_approved, `schedules[${index}].absence_parent_approved`),
+            absence_parent_approved: typeof schedule.absence_parent_approved === "boolean"
+                ? schedule.absence_parent_approved
+                : isForecast
+                    ? false
+                    : requiredBoolean(schedule.absence_parent_approved, `schedules[${index}].absence_parent_approved`),
             age_band: ageBand,
             slot_contract_present: requiredBoolean(enrichment.slot_contract_present ?? enrichment.occupied_slot_contract, `attendance enrichment slot_contract_present for ${authorizationId}`),
             occupied_slot_contract: requiredBoolean(enrichment.occupied_slot_contract, `attendance enrichment occupied_slot_contract for ${authorizationId}`),
@@ -155,6 +215,7 @@ export function normalizeAttendanceDays(schedules, enrichmentByAuthorization, op
             observed_holiday: requiredBoolean(enrichment.observed_holiday, `attendance enrichment observed_holiday for ${authorizationId}`),
             ...(typeof schedule.child_name === "string" ? { child_name: schedule.child_name } : {}),
             ...(typeof schedule.county_id === "string" ? { county_id: schedule.county_id } : {}),
+            ...(typeof schedule.county_name === "string" ? { county_name: schedule.county_name } : {}),
             ...(isFutureForecast ? { forecast_basis: "SCHEDULED" } : {}),
             ...(typeof enrichment.holiday_name === "string" ? { holiday_name: enrichment.holiday_name } : {}),
             ...(typeof enrichment.holiday_date === "string" ? { holiday_date: enrichment.holiday_date } : {}),
@@ -164,12 +225,12 @@ export function normalizeAttendanceDays(schedules, enrichmentByAuthorization, op
         };
     });
 }
-export function normalizeAuthorizationCopays(value) {
+export function normalizeAuthorizationCopays(value, authorizations = []) {
     if (!Array.isArray(value))
         throw new Error("authorization copays must be an array");
     return value.map((item, index) => {
         const row = asRecord(item, `authorizationCopays[${index}]`);
-        const authorizationId = requiredString(row.idn_auth__c, `authorizationCopays[${index}].idn_auth__c`);
+        const authorizationId = resolveAuthorizationId(row.idn_auth__c, authorizations, `authorizationCopays[${index}].idn_auth__c`);
         const amount = row.amt_copay_auth__c;
         if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0) {
             throw new Error(`authorizationCopays[${index}].amt_copay_auth__c must be non-negative`);
@@ -195,7 +256,7 @@ function optionalFiniteNumber(value, label) {
     }
     return value;
 }
-export function normalizePaymentFeeHistory(value) {
+export function normalizePaymentFeeHistory(value, authorizations = []) {
     const response = asRecord(value, "payment history response");
     const subPayments = Array.isArray(response.subPayments) ? response.subPayments : [];
     const bySubPayment = new Map();
@@ -212,7 +273,7 @@ export function normalizePaymentFeeHistory(value) {
         const detail = asRecord(item, `payment detail[${index}]`);
         const subPayment = bySubPayment.get(String(detail.idn_pmt_sub__c));
         const normalized = {
-            authorization_id: requiredString(subPayment?.idn_auth__c, `payment detail[${index}].authorization_id`),
+            authorization_id: resolveAuthorizationId(subPayment?.idn_auth__c, authorizations, `payment detail[${index}].authorization_id`),
             service_date: requiredString(detail.dte_care__c, `payment detail[${index}].dte_care__c`),
             activity_paid: optionalFiniteNumber(detail.amt_act_paid__c, `payment detail[${index}].amt_act_paid__c`) ?? 0,
             registration_paid: optionalFiniteNumber(detail.amt_reg_paid__c, `payment detail[${index}].amt_reg_paid__c`) ?? 0,
@@ -242,22 +303,29 @@ export function normalizePaymentFeeSchedules(normalizedFiscalRates, normalizedFi
     const fees = requiredRecords(normalizedFiscalRateFees, "normalized fiscal rate fees");
     if (!Array.isArray(slotContracts))
         throw new Error("slot contracts must be an array");
-    return slotContracts.map((item, index) => {
+    return slotContracts
+        .filter((item) => {
+        const slot = asRecord(item, "slot contract");
+        return slot.IDN_AUTH__c !== null && slot.IDN_AUTH__c !== undefined;
+    })
+        .flatMap((item, index) => {
         const slot = asRecord(item, `slotContracts[${index}]`);
         const authorizationId = requiredString(slot.IDN_AUTH__c, `slotContracts[${index}].IDN_AUTH__c`);
         const fiscalScheduleId = authorizationMatches[authorizationId];
         if (!fiscalScheduleId)
-            throw new Error(`slot contract ${authorizationId} cannot be joined to a fiscal schedule`);
+            return [];
         const rateTypeCode = requiredString(slot.CDE_RATE_TYPE__c, `slotContracts[${index}].CDE_RATE_TYPE__c`);
         const careUnitCode = requiredString(slot.CDE_CARE_UNIT__c, `slotContracts[${index}].CDE_CARE_UNIT__c`);
+        const careLevelCode = requiredString(slot.CDE_CARE_LEVEL__c, `slotContracts[${index}].CDE_CARE_LEVEL__c`);
         const matchingRates = rates.filter((rate) => rate.fiscalScheduleId === fiscalScheduleId
             && rate.rateTypeCode === rateTypeCode
-            && rate.careUnitCode === careUnitCode);
+            && rate.careUnitCode === careUnitCode
+            && rate.ageGroupCode === careLevelCode);
         if (matchingRates.length !== 1)
-            throw new Error(`slot contract ${authorizationId} has an ambiguous fiscal rate`);
+            return [];
         const rate = matchingRates[0];
         if (!rate)
-            throw new Error(`slot contract ${authorizationId} has no fiscal rate`);
+            return [];
         const matchingFees = fees.filter((fee) => fee.fiscalScheduleId === fiscalScheduleId);
         if (matchingFees.length > 1)
             throw new Error(`fiscal schedule ${fiscalScheduleId} has ambiguous fee rows`);
@@ -268,7 +336,7 @@ export function normalizePaymentFeeSchedules(normalizedFiscalRates, normalizedFi
             slot_contract_id: requiredString(slot.Id, `slotContracts[${index}].Id`),
             care_level: requiredString(slot.CDE_CARE_LEVEL__c, `slotContracts[${index}].CDE_CARE_LEVEL__c`),
             effective_start: requiredString(slot.DTE_BEGIN_SLOT__c, `slotContracts[${index}].DTE_BEGIN_SLOT__c`),
-            slot_rate_amount: Number(rate.providerAmount),
+            slot_rate_amount: Number(rate.fiscalAgreementAmount),
         };
         const effectiveEnd = slot.DTE_END_SLOT__c;
         if (effectiveEnd !== undefined && effectiveEnd !== null) {
@@ -284,9 +352,9 @@ export function normalizePaymentFeeSchedules(normalizedFiscalRates, normalizedFi
             result.days_of_week = daysOfWeek;
         if (fee) {
             const amountFields = [
-                ["activityProviderAmount", "activity_amount"],
-                ["registrationProviderAmount", "registration_amount"],
-                ["transportationProviderAmount", "transportation_amount"],
+                ["activityFiscalAgreementAmount", "activity_amount"],
+                ["registrationFiscalAgreementAmount", "registration_amount"],
+                ["transportationFiscalAgreementAmount", "transportation_amount"],
             ];
             amountFields.forEach(([source, target]) => {
                 if (fee[source] !== undefined)
@@ -305,7 +373,7 @@ export function normalizePaymentFeeSchedules(normalizedFiscalRates, normalizedFi
                     result[target] = fee[source];
             });
         }
-        return result;
+        return [result];
     });
 }
 function requiredRecords(value, label) {
@@ -328,24 +396,12 @@ export function buildCanonicalPaymentPayload(input) {
         }),
         county_policies: requiredRecords(input.countyPolicies, "county policies"),
         fiscal_rates: requiredRecords(input.fiscalRates, "fiscal rates"),
-        existing_sub_payments: normalizeExistingSubPayments(input.paymentHistory),
+        existing_sub_payments: normalizeExistingSubPayments(input.paymentHistory, input.authorizationRecords),
         ...(input.feeSchedules ? { fee_schedules: input.feeSchedules } : {}),
         ...(input.feeHistory ? { fee_history: input.feeHistory } : {}),
     };
 }
-export function normalizeQualityTier(providerQualityRating, _providerType) {
-    if (providerQualityRating === "Level 1")
-        return 1;
-    if (providerQualityRating === "Level 2")
-        return 2;
-    if (providerQualityRating === "Level 3")
-        return 3;
-    if (providerQualityRating === "Level 4")
-        return 4;
-    if (providerQualityRating === "Level 5")
-        return 5;
-    throw new Error("provider quality tier is unavailable or unsupported");
-}
+export { normalizeQualityTier } from "./provider-policy.js";
 export function normalizeEncumbranceStatus(value) {
     const status = String(value ?? "").trim().toUpperCase();
     const statuses = {
@@ -363,21 +419,59 @@ export function normalizeEncumbranceStatus(value) {
     };
     return statuses[status];
 }
-export function normalizeFiscalRatesForPayment(normalizedFiscalRates, authorizationMatches) {
+export function normalizeFiscalRatesForPayment(normalizedFiscalRates, authorizationMatches, authorizationAgeGroupCodes = {}, authorizationRateTypeCodes = {}) {
     const rates = requiredRecords(normalizedFiscalRates, "normalized fiscal rates");
-    return rates.map((rate, index) => {
+    return rates.flatMap((rate, index) => {
         const scheduleId = requiredString(rate.fiscalScheduleId, `normalized fiscal rates[${index}].fiscalScheduleId`);
-        const authorizationId = Object.entries(authorizationMatches)
-            .find(([, matchedScheduleId]) => matchedScheduleId === scheduleId)?.[0];
+        const authorizationIds = Object.entries(authorizationMatches)
+            .filter(([, matchedScheduleId]) => matchedScheduleId === scheduleId)
+            .map(([authorizationId]) => authorizationId);
         const paidTier = rate.paidTier;
-        if (!authorizationId || typeof paidTier !== "string") {
-            throw new Error(`fiscal rate ${scheduleId} cannot be joined to an authorization and paid tier`);
+        if (authorizationIds.length === 0)
+            return [];
+        if (typeof paidTier !== "string") {
+            throw new Error(`fiscal rate ${scheduleId} cannot be joined to a paid tier`);
         }
-        return {
+        return authorizationIds
+            .filter((authorizationId) => {
+            const rateTypeCode = authorizationRateTypeCodes[authorizationId];
+            const ageGroups = authorizationAgeGroupCodes[authorizationId];
+            return (!rateTypeCode || rate.rateTypeCode === rateTypeCode)
+                && (!ageGroups || rate.ageGroupCode === undefined
+                    || ageGroups.includes(String(rate.ageGroupCode)));
+        })
+            .map((authorizationId) => ({
             authorization_id: authorizationId,
             paid_tier: paidTier,
-            amount: Number(rate.providerAmount),
+            amount: Number(rate.fiscalAgreementAmount),
             source_id: rate.sourceId,
-        };
+        }));
     });
+}
+export function deriveFiscalAgeGroupCodes(dateOfBirth, careDate) {
+    if (typeof dateOfBirth !== "string" || dateOfBirth.length === 0)
+        return undefined;
+    const birthDate = new Date(`${dateOfBirth.slice(0, 10)}T00:00:00Z`);
+    const careDateValue = new Date(`${careDate.slice(0, 10)}T00:00:00Z`);
+    if (Number.isNaN(birthDate.getTime()) || Number.isNaN(careDateValue.getTime()))
+        return undefined;
+    let months = (careDateValue.getUTCFullYear() - birthDate.getUTCFullYear()) * 12
+        + careDateValue.getUTCMonth() - birthDate.getUTCMonth();
+    if (careDateValue.getUTCDate() < birthDate.getUTCDate())
+        months -= 1;
+    if (months < 0)
+        return undefined;
+    if (months < 6)
+        return ["1"];
+    if (months < 12)
+        return ["2"];
+    if (months < 18)
+        return ["3"];
+    if (months < 24)
+        return ["4"];
+    if (months < 30)
+        return ["5"];
+    if (months < 36)
+        return ["6"];
+    return months < 60 ? ["7"] : ["8"];
 }

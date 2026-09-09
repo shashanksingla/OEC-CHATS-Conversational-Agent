@@ -3685,6 +3685,7 @@ CHATS_SIT/force-app/main/default/customMetadata/County_User.Larimer.md-meta.xml
 CHATS_SIT/force-app/main/default/customMetadata/County_User.Las_Animas.md-meta.xml
 CHATS_SIT/force-app/main/default/customMetadata/County_User.Lincoln.md-meta.xml
 CHATS_SIT/force-app/main/default/customMetadata/County_User.Logan.md-meta.xml
+.logs/
 CHATS_SIT/force-app/main/default/customMetadata/County_User.Mesa.md-meta.xml
 CHATS_SIT/force-app/main/default/customMetadata/County_User.Mineral.md-meta.xml
 CHATS_SIT/force-app/main/default/customMetadata/County_User.Moffat.md-meta.xml
