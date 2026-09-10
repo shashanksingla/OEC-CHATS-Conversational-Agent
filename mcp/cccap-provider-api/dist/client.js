@@ -11,6 +11,9 @@ export class CccapClient {
     fiscalScheduleIds = new Set();
     fiscalSchedules = [];
     readCache = new Map();
+    readCacheAt = new Map();
+    readCacheTtlMs = 15 * 60 * 1000;
+    readCacheMaxEntries = 100;
     constructor(options) {
         this.targetOrg = options.targetOrg;
         this.providerUserId = options.providerUserId;
@@ -137,6 +140,10 @@ export class CccapClient {
             return undefined;
         return this.countyNameById.get(countyId);
     }
+    clearReadCache() {
+        this.readCache.clear();
+        this.readCacheAt.clear();
+    }
     extractCountyNames(value) {
         const countyNameById = new Map();
         if (!Array.isArray(value))
@@ -218,11 +225,20 @@ export class CccapClient {
     }
     async cachedCall(action, body) {
         const key = `${action}:${JSON.stringify(body)}`;
-        if (this.readCache.has(key)) {
+        const cachedAt = this.readCacheAt.get(key);
+        if (cachedAt !== undefined && Date.now() - cachedAt < this.readCacheTtlMs && this.readCache.has(key)) {
             return this.readCache.get(key);
         }
         const data = await this.call(action, body);
         this.readCache.set(key, data);
+        this.readCacheAt.set(key, Date.now());
+        while (this.readCache.size > this.readCacheMaxEntries) {
+            const oldest = [...this.readCacheAt.entries()].sort((left, right) => left[1] - right[1])[0];
+            if (!oldest)
+                break;
+            this.readCache.delete(oldest[0]);
+            this.readCacheAt.delete(oldest[0]);
+        }
         return data;
     }
     requireRecord(value, label) {

@@ -56,6 +56,9 @@ export class CccapClient {
   private fiscalScheduleIds = new Set<string>();
   private fiscalSchedules: FiscalScheduleCandidate[] = [];
   private readonly readCache = new Map<string, unknown>();
+  private readonly readCacheAt = new Map<string, number>();
+  private readonly readCacheTtlMs = 15 * 60 * 1000;
+  private readonly readCacheMaxEntries = 100;
 
   public constructor(options: ClientOptions) {
     this.targetOrg = options.targetOrg;
@@ -228,6 +231,11 @@ export class CccapClient {
     return this.countyNameById.get(countyId);
   }
 
+  public clearReadCache(): void {
+    this.readCache.clear();
+    this.readCacheAt.clear();
+  }
+
   private extractCountyNames(value: unknown): Map<string, string> {
     const countyNameById = new Map<string, string>();
     if (!Array.isArray(value)) return countyNameById;
@@ -318,11 +326,19 @@ export class CccapClient {
 
   private async cachedCall(action: string, body: JsonRecord): Promise<unknown> {
     const key = `${action}:${JSON.stringify(body)}`;
-    if (this.readCache.has(key)) {
+    const cachedAt = this.readCacheAt.get(key);
+    if (cachedAt !== undefined && Date.now() - cachedAt < this.readCacheTtlMs && this.readCache.has(key)) {
       return this.readCache.get(key);
     }
     const data = await this.call(action, body);
     this.readCache.set(key, data);
+    this.readCacheAt.set(key, Date.now());
+    while (this.readCache.size > this.readCacheMaxEntries) {
+      const oldest = [...this.readCacheAt.entries()].sort((left, right) => left[1] - right[1])[0];
+      if (!oldest) break;
+      this.readCache.delete(oldest[0]);
+      this.readCacheAt.delete(oldest[0]);
+    }
     return data;
   }
 

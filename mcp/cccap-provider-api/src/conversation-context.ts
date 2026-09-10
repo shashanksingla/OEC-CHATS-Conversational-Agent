@@ -3,6 +3,8 @@ import { randomBytes } from "node:crypto";
 export type ContinuationPlan = {
   tool: "cccap_analyze_attendance_risk" | "cccap_analyze_payment";
   input: Record<string, unknown>;
+  compatibilityKey?: string;
+  provenance?: { capability: string; scope?: unknown };
 };
 
 export type ResolvedContinuation = ContinuationPlan & {
@@ -26,9 +28,11 @@ type ContextRecord = {
   actions: Map<string, ContinuationPlan>;
   bytes: number;
   lastUsed: number;
+  compatibilityKey: string;
 };
 
 type SessionActionRecord = ContinuationAction & {
+  contextRef: string;
   expiresAt: number;
   lastUsed: number;
 };
@@ -70,8 +74,15 @@ export class ConversationContextStore {
     this.evict();
     const contextRef = this.reference();
     const actionRefs = actions.map(() => this.reference());
-    const actionMap = new Map(actionRefs.map((actionRef, index) => [actionRef, actions[index]! ]));
-    const bytes = Buffer.byteLength(JSON.stringify({ capability, ruleVersion, actions, result }), "utf8");
+    const actionMap = new Map(actionRefs.map((actionRef, index) => {
+      const action = actions[index]!;
+      return [actionRef, {
+        ...action,
+        compatibilityKey: compatibilityKeyFor(action.tool, ruleVersion, [action]),
+      }];
+    }));
+    const compatibilityKey = compatibilityKeyFor(capability, ruleVersion, actions);
+    const bytes = Buffer.byteLength(JSON.stringify({ providerKey, capability, ruleVersion, actions, result, compatibilityKey }), "utf8");
     const now = this.now();
     const providerActions = this.sessionActions.get(providerKey) ?? new Map<string, SessionActionRecord>();
     for (const [index, action] of actionMetadata.entries()) {
@@ -81,6 +92,7 @@ export class ConversationContextStore {
         actionId: action.actionId,
         metadata: action,
         plan,
+        contextRef,
         expiresAt: now + this.ttlMs,
         lastUsed: now,
       });
@@ -96,6 +108,7 @@ export class ConversationContextStore {
       actions: actionMap,
       bytes,
       lastUsed: now,
+      compatibilityKey,
     });
     this.evict();
     return { contextRef, actionRefs };
@@ -107,14 +120,14 @@ export class ConversationContextStore {
     const actions = this.sessionActions.get(providerKey);
     if (!actions) return [];
     return [...actions.values()]
-      .filter((action) => !currentIds.has(action.actionId))
+      .filter((action) => !currentIds.has(action.actionId) && this.contextIsLive(action.contextRef))
       .map((action) => {
         action.lastUsed = this.now();
-        return action;
+        return { ...action, plan: publicPlan(action.plan) };
       });
   }
 
-  resolve(providerKey: string, contextRef: string | undefined, actionRef: string | undefined, capability: string, ruleVersion?: string): ResolvedContinuation | undefined {
+  resolve(providerKey: string, contextRef: string | undefined, actionRef: string | undefined, capability: string, ruleVersion?: string, requestedInput?: Record<string, unknown>): ResolvedContinuation | undefined {
     if (!contextRef || !actionRef) return undefined;
     const context = this.contexts.get(contextRef);
     if (!context || context.providerKey !== providerKey || context.capability !== capability || context.expiresAt <= this.now() || (ruleVersion && context.ruleVersion && context.ruleVersion !== ruleVersion)) {
@@ -122,10 +135,11 @@ export class ConversationContextStore {
       return undefined;
     }
     const plan = context.actions.get(actionRef);
-    if (!plan) return undefined;
+    if (!plan || (requestedInput && normalizeInput(requestedInput) !== normalizeInput(plan.input))) return undefined;
+    if (plan.compatibilityKey && plan.compatibilityKey !== compatibilityKeyFor(plan.tool, ruleVersion, [plan])) return undefined;
     context.lastUsed = this.now();
     return {
-      ...plan,
+      ...publicPlan(plan),
       ...(context.result !== undefined ? { result: context.result } : {}),
       ...(context.resultTool ? { resultTool: context.resultTool } : {}),
     };
@@ -146,14 +160,58 @@ export class ConversationContextStore {
       const oldest = [...this.contexts.entries()].sort((left, right) => left[1].lastUsed - right[1].lastUsed)[0];
       if (!oldest) return;
       this.contexts.delete(oldest[0]);
+      const actions = this.sessionActions.get(oldest[1].providerKey);
+      if (actions) {
+        for (const [actionId, action] of actions) {
+          if (action.contextRef === oldest[0]) actions.delete(actionId);
+        }
+        if (actions.size === 0) this.sessionActions.delete(oldest[1].providerKey);
+      }
     }
   }
 
   private totalBytes(): number {
-    return [...this.contexts.values()].reduce((total, context) => total + context.bytes, 0);
+    const contextBytes = [...this.contexts.values()].reduce((total, context) => total + context.bytes, 0);
+    const actionBytes = [...this.sessionActions.values()].reduce(
+      (total, actions) => total + [...actions.values()].reduce(
+        (actionTotal, action) => actionTotal + Buffer.byteLength(JSON.stringify({
+          actionId: action.actionId,
+          metadata: action.metadata,
+          contextRef: action.contextRef,
+        }), "utf8"),
+        0,
+      ),
+      0,
+    );
+    return contextBytes + actionBytes;
+  }
+
+  private contextIsLive(contextRef: string): boolean {
+    const context = this.contexts.get(contextRef);
+    if (!context || context.expiresAt <= this.now()) return false;
+    return true;
   }
 
   private reference(): string {
     return randomBytes(24).toString("base64url");
   }
+}
+
+function normalizeInput(input: Record<string, unknown>): string {
+  return stableJson(Object.fromEntries(Object.entries(input).filter(([key]) => key !== "contextRef" && key !== "actionRef" && key !== "refresh")));
+}
+
+function compatibilityKeyFor(capability: string, ruleVersion: string | undefined, actions: ContinuationPlan[]): string {
+  return stableJson({ capability, ruleVersion: ruleVersion ?? null, plans: actions.map((action) => ({ tool: action.tool, input: normalizeInput(action.input), provenance: action.provenance ?? null })) });
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right)).map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`).join(",")}}`;
+  return JSON.stringify(value) ?? "null";
+}
+
+function publicPlan(plan: ContinuationPlan): ContinuationPlan {
+  const { compatibilityKey: _compatibilityKey, ...visiblePlan } = plan;
+  return visiblePlan;
 }

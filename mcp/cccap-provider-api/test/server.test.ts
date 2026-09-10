@@ -213,9 +213,45 @@ test("attendance analysis preserves structured action scope for follow-ups", () 
   });
 
   assert.equal(result.structuredContent?.capability, "attendance-risk-analysis");
+  assert.equal(result.structuredContent?.providerMessage, undefined);
   assert.deepEqual(result.structuredContent?.scope, { dateFilter: "LAST_MONTH" });
   assert.equal(JSON.stringify(result.structuredContent).includes("childNames"), false);
   assert.equal(Array.isArray(result.structuredContent?.actionControls), true);
+});
+
+test("attendance continuation filters cached child details to the requested names", () => {
+  const result = formatAttendanceRiskResult({
+    scope: { dateFilter: "THIS_MONTH", childNames: ["Target Child"] },
+    riskFocus: "ABSENCE_LIMITS",
+    attendanceRisk: {
+      risk_child_count: 2,
+      children: [
+        {
+          child_name: "Target Child",
+          county: "Denver",
+          absence_days: 5,
+          absence_limit: 4,
+          absence_dates: ["2026-09-01"],
+          authorization_names: ["AUTH-1"],
+          risk_codes: ["ABSENCE_LIMIT_EXCEEDED"],
+        },
+        {
+          child_name: "Other Child",
+          county: "Denver",
+          absence_days: 5,
+          absence_limit: 4,
+          absence_dates: ["2026-09-01"],
+          authorization_names: ["AUTH-2"],
+          risk_codes: ["ABSENCE_LIMIT_EXCEEDED"],
+        },
+      ],
+    },
+  });
+
+  const text = result.content[0].text;
+  assert.match(text, /Target Child/);
+  assert.doesNotMatch(text, /Other Child/);
+  assert.equal(result.structuredContent?.providerMessage, undefined);
 });
 
 test("attendance analysis focuses pending-confirmation follow-ups", () => {
@@ -985,7 +1021,7 @@ test("payment results use a provider-facing table and preserve blocked states", 
   assert.match(result.content[0].text, /2026-09-24/);
   assert.match(result.content[0].text, /fiscal_rates, parent_confirmations/);
   assert.doesNotMatch(result.content[0].text, /amount \|/);
-  assert.equal(result.structuredContent?.providerMessage, result.content[0].text);
+  assert.equal(result.structuredContent?.providerMessage, undefined);
   assert.deepEqual(result.structuredContent?.scope, { dateFilter: "THIS_MONTH" });
 });
 
@@ -1255,8 +1291,7 @@ test("payment continuation metadata preserves the complete provider message", ()
     detailPagination: { page: 0, pageSize: 0, totalRows: 0, hasMore: false },
   });
 
-  assert.equal(result.structuredContent?.providerMessage, result.content[0].text);
-  assert.match(String(result.structuredContent?.providerMessage), /County payment composition \(potential amounts\)/);
+  assert.equal(result.structuredContent?.providerMessage, undefined);
   assert.equal((result.structuredContent?.summaryView as Record<string, unknown>)?.children, undefined);
 });
 

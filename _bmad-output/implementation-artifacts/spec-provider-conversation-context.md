@@ -2,7 +2,7 @@
 title: 'Provider conversation context and action references'
 type: 'feature'
 created: '2026-09-10'
-status: 'in-review'
+status: 'done'
 baseline_commit: '10f3b516d1daa370075f708b68ce451e137690c1'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -50,12 +50,13 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `mcp/cccap-provider-api/src/conversation-context.ts` -- added typed, provider-bound context/action store with opaque random IDs, compatibility checks, TTL, entry/byte caps, LRU eviction, and a testable clock -- continuation state is server-owned and bounded.
-- [x] `mcp/cccap-provider-api/src/schemas.ts` -- added optional `contextRef`, `actionRef`, and `refresh` inputs to attendance and payment composite schemas -- direct request shapes remain supported.
-- [x] `mcp/cccap-provider-api/src/index.ts` and `mcp/cccap-provider-api/src/server.ts` -- injected one store, registered successful attendance/payment results, resolved same-capability actions from cached results before fresh retrieval, and emit compact action controls using opaque action references -- rich Markdown tables and actions remain provider-facing text.
-- [x] `mcp/cccap-provider-api/src/attendance-snapshot.ts` and `mcp/cccap-provider-api/src/payment-orchestration.ts` -- preserved their evaluator and direct retrieval ownership; cached continuation rendering is handled at the server formatter boundary from their canonical composite results.
-- [x] `mcp/cccap-provider-api/test/conversation-context.test.ts`, `mcp/cccap-provider-api/test/server.test.ts`, and `mcp/cccap-provider-api/test/protocol.test.ts` -- added hermetic cache, provider binding, expiry, eviction, retained-result, continuation, and compact-envelope coverage -- prevents data leakage and agent-handoff regressions.
-- [x] `mcp/cccap-provider-api/README.md` and `.github/agents/carepay-advisor.agent.md` -- documented and directed opaque follow-up references with text-first result relay -- agent routing matches the server contract.
+- [x] `mcp/cccap-provider-api/src/conversation-context.ts` -- extended the provider-bound store with an immutable normalized compatibility key, inherited-action provenance, and metadata-aware byte accounting.
+- [x] `mcp/cccap-provider-api/src/schemas.ts` -- preserved direct attendance/payment inputs while enforcing all-or-none continuation references.
+- [x] `mcp/cccap-provider-api/src/client.ts` -- added bounded source-read freshness and explicit cache clearing for refresh.
+- [x] `mcp/cccap-provider-api/src/index.ts` and `mcp/cccap-provider-api/src/server.ts` -- resolved continuation plans through compatibility validation, failed closed for invalid references, preserved originating scope, and removed duplicated provider prose from structured output.
+- [x] `mcp/cccap-provider-api/src/attendance-snapshot.ts` and `mcp/cccap-provider-api/src/payment-orchestration.ts` -- retained evaluator and direct retrieval ownership.
+- [x] `mcp/cccap-provider-api/test/conversation-context.test.ts`, `mcp/cccap-provider-api/test/client.test.ts`, `mcp/cccap-provider-api/test/server.test.ts`, and `mcp/cccap-provider-api/test/protocol.test.ts` -- added hermetic coverage for continuation compatibility, refresh/cache bounds, malformed references, provenance, byte bounds, and text-only envelopes.
+- [x] `mcp/cccap-provider-api/README.md` and `.github/agents/carepay-advisor.agent.md` -- existing opaque-reference and text-first routing documentation remains aligned.
 
 **Acceptance Criteria:**
 - Given a successful greeting snapshot, when the provider chooses a returned action, then the action input contains only opaque references and the server returns the same scoped attendance/payment view without transmitting cached child rows or child-name arrays.
@@ -64,17 +65,32 @@ context:
 - Given a provider asks to refresh, when a matching context exists, then the server bypasses it, retrieves current approved sources, and returns a new context reference.
 - Given many contexts and large detail datasets, when cache limits are reached, then bounded eviction prevents unbounded memory growth and subsequent expired-reference requests remain provider-safe.
 - Given an attendance-to-payment or payment-to-attendance action, when it is resolved from context, then it preserves the originating provider scope and does not require raw identifiers or model-built child filters.
+- Given a continuation request with any changed compatibility-key field, when it is reused, then the cached result is not served under the changed projection and the server either executes the stored validated plan afresh or returns the shared safe error contract.
+- Given a continuation request with only one reference or an unresolvable reference pair plus direct filters, when it is received, then schema/dispatch rejects it without executing the direct filters.
+- Given `refresh: true`, when a continuation is resolved, then both canonical-result reuse and lower-level source-read reuse are bypassed and the returned context reflects a fresh retrieval attempt.
+- Given a structured MCP result, when it is relayed, then full provider prose appears only in `content[0].text`; structured metadata contains no `providerMessage`, canonical rows, child lists, raw identifiers, or duplicated prose.
 
 ## Implementation Notes
 
-- Added `ConversationContextStore` above the raw source-read cache. It stores a provider-bound continuation plan and the completed canonical composite result under opaque random references, with a 15-minute TTL, 100-entry cap, 1 MB cap, and least-recently-used eviction.
-- Same-capability attendance and payment actions now render from the stored composite result without repeating Salesforce source reads or Python evaluation. Cross-capability actions preserve their server-side scope through the opaque plan, then perform one new composite evaluation and create their own context.
-- `refresh: true` resolves the stored plan but bypasses the stored result, so a reference-only refresh correctly uses its original scope/view while retrieving current sources.
-- Structured action inputs now contain only `contextRef` and `actionRef`; rich provider-facing tables remain exclusively in `content[0].text`.
+- Existing `ConversationContextStore` is the starting point: retain its opaque references, provider binding, 15-minute TTL, 100-entry cap, 1 MB cap, LRU eviction, and process-local ownership while tightening compatibility and provenance checks.
+- The shared continuation boundary must distinguish same-capability cached projections from cross-capability fresh evaluation; the latter carries only an opaque plan and re-enters the target capability's authorization and normalization path.
+- Existing formatter-visible Markdown and deterministic evaluator ownership remain stable unless required to remove duplicated provider prose from structured output.
 
 ## Spec Change Log
 
+- 2026-09-10: Reconciled the implementation plan with the finalized architecture and current runtime review. Marked incomplete continuation compatibility, refresh, fail-closed, provenance, byte-bound, pagination, and envelope work as actionable tasks.
+
 ## Review Triage Log
+
+- `false` -- Blind hunter: refresh only clears the shared `CccapClient` read cache, which covers all lower-level provider reads; no separate cache path remains.
+- `patched` -- Blind hunter: continuation byte accounting previously counted action payloads through both context and session records; context storage now counts the canonical plan once and session metadata separately.
+- `false` -- Blind hunter: expired session actions are removed by `evict()` on every store operation and lookup path, so `contextIsLive()` does not leave them indefinitely resident.
+- `patched` -- Verification-gap reviewer: source-cache TTL, explicit clearing, and entry-bound eviction lacked behavioral tests; client tests now cover expiry, clearing, and the 100-entry bound.
+- `false` -- Blind hunter: child-name and county unmatched wording is existing formatter behavior outside this continuation change and is not caused by the reviewed diff.
+- `false` -- Blind hunter: removing duplicated `providerMessage` from structured output is an explicit approved contract requirement and is covered by protocol/formatter tests.
+- `false` -- Edge-case hunter: payment pagination is carried in the stored action plan and altered direct pagination fields are rejected by compatibility matching; the cited `omitPagination` path is not present.
+- `false` -- Edge-case hunter: refresh calls `clearReadCache()` before fresh retrieval, so lower-level cached reads are bypassed for both composite capabilities.
+- `false` -- Verification-gap reviewer: its missing-cache-test finding is resolved by the focused client tests added in this review pass.
 
 ## Design Notes
 

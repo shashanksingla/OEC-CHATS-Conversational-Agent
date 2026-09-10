@@ -74,3 +74,25 @@ test("provider session retains executable actions across capability drill-downs"
     input: { view: "NEXT_PAYOUT" },
   });
 });
+
+test("continuation compatibility ignores reference transport fields but rejects changed filters", () => {
+  const store = new ConversationContextStore();
+  const { contextRef, actionRefs } = store.create("provider-a", "continuation", [{
+    tool: "cccap_analyze_payment",
+    input: { dateFilter: "THIS_MONTH", view: "STATUS" },
+  }]);
+
+  assert.ok(store.resolve("provider-a", contextRef, actionRefs[0], "continuation", undefined));
+  assert.equal(store.resolve("provider-a", contextRef, actionRefs[0], "continuation", undefined, { dateFilter: "LAST_MONTH", view: "STATUS" }), undefined);
+});
+
+test("context byte accounting includes provenance and action metadata", () => {
+  let now = 0;
+  const store = new ConversationContextStore({ now: () => now++, maxBytes: 400 });
+  const first = store.create("provider-a", "continuation", [{
+    tool: "cccap_analyze_payment",
+    input: { view: "STATUS" },
+    provenance: { capability: "attendance-risk-analysis", scope: { dateFilter: "THIS_MONTH" } },
+  }], { large: "x".repeat(100) }, undefined, undefined, [{ actionId: "a", label: "A" }]);
+  assert.equal(store.resolve("provider-a", first.contextRef, first.actionRefs[0], "continuation"), undefined);
+});

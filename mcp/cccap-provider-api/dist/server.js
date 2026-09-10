@@ -36,7 +36,6 @@ export function formatCountyPolicyResult(data) {
                 }],
             structuredContent: {
                 capability: "county-policy",
-                providerMessage: "No verified county rate-plan limits were returned for the authorized provider scope.",
                 resultStatus: "NO_POLICY_DATA",
             },
         };
@@ -59,7 +58,6 @@ export function formatCountyPolicyResult(data) {
         content: [{ type: "text", text: providerMessage }],
         structuredContent: {
             capability: "county-policy",
-            providerMessage,
             resultStatus: "COMPLETED",
             policyCount: plans.length,
             scope: policyResponse.scope,
@@ -82,7 +80,7 @@ export function formatCasesResult(data, resolveCountyName = () => undefined) {
         const providerMessage = "No verified cases were returned for the authorized provider scope.";
         return {
             content: [{ type: "text", text: providerMessage }],
-            structuredContent: { capability: "cases", providerMessage, resultStatus: "NO_CASES" },
+            structuredContent: { capability: "cases", resultStatus: "NO_CASES" },
         };
     }
     const displayName = (record) => {
@@ -114,7 +112,6 @@ export function formatCasesResult(data, resolveCountyName = () => undefined) {
         content: [{ type: "text", text: providerMessage }],
         structuredContent: {
             capability: "cases",
-            providerMessage,
             resultStatus: "COMPLETED",
             caseCount: cases.length,
         },
@@ -133,7 +130,7 @@ export function formatAuthorizationsResult(data, resolveCountyName = () => undef
         const providerMessage = "No verified authorizations were returned for the authorized provider scope.";
         return {
             content: [{ type: "text", text: providerMessage }],
-            structuredContent: { capability: "authorizations", providerMessage, resultStatus: "NO_AUTHORIZATIONS" },
+            structuredContent: { capability: "authorizations", resultStatus: "NO_AUTHORIZATIONS" },
         };
     }
     const displayName = (record) => {
@@ -152,7 +149,6 @@ export function formatAuthorizationsResult(data, resolveCountyName = () => undef
         content: [{ type: "text", text: providerMessage }],
         structuredContent: {
             capability: "authorizations",
-            providerMessage,
             resultStatus: "COMPLETED",
             authorizationCount: authorizations.length,
         },
@@ -193,7 +189,6 @@ function snapshotResult(data) {
         content: [{ type: "text", text: renderedMessage }],
         structuredContent: {
             capability: "attendance-risk-snapshot",
-            providerMessage: renderedMessage,
             scope: snapshot.scope,
             sourceRetrievedAt: snapshot.sourceRetrievedAt,
             responseMode: "SUMMARY",
@@ -281,16 +276,11 @@ function contextualize(value, store, providerKey, capability, result, resultTool
             input: { contextRef, actionRef },
         };
     });
-    const { actionIntents: _actionIntents, providerMessage, filters: _filters, responseContext: _responseContext, ...structuredContent } = value.structuredContent;
-    const preserveProviderMessage = typeof providerMessage === "string"
-        && ["attendance-risk-analysis", "attendance-risk-snapshot", "payment-analysis"].includes(String(structuredContent.capability));
+    const { actionIntents: _actionIntents, providerMessage: _providerMessage, filters: _filters, responseContext: _responseContext, ...structuredContent } = value.structuredContent;
     return {
         ...value,
         structuredContent: {
             ...structuredContent,
-            ...(preserveProviderMessage
-                ? { providerMessage }
-                : {}),
             contextRef,
             actionControls,
         },
@@ -860,7 +850,7 @@ export function formatAttendanceRiskResult(data) {
         .filter((child) => Boolean(child))
         .filter((child) => Array.isArray(child.risk_codes) && child.risk_codes.length > 0);
     const riskFocus = analysis?.riskFocus;
-    const unmatchedChildNames = Array.isArray(risk.unmatched_child_names)
+    const sourceUnmatchedChildNames = Array.isArray(risk.unmatched_child_names)
         ? risk.unmatched_child_names.filter((name) => typeof name === "string")
         : [];
     const excludedClosureDates = Array.isArray(risk.excluded_closure_dates)
@@ -876,19 +866,29 @@ export function formatAttendanceRiskResult(data) {
             : riskFocus === "INCOMPLETE_ATTENDANCE"
                 ? allAffectedChildren.filter((child) => Array.isArray(child.risk_codes) && child.risk_codes.includes("INCOMPLETE_ATTENDANCE_RECORD"))
                 : allAffectedChildren;
+    const requestedChildNames = recordValue(analysis?.scope)?.childNames;
+    const requestedChildNameList = Array.isArray(requestedChildNames)
+        ? requestedChildNames.filter((name) => typeof name === "string" && name.length > 0)
+        : [];
+    const normalizedRequestedChildren = new Set(requestedChildNameList.map((name) => name.trim().toLowerCase()));
     const requestedCountyNames = Array.isArray(analysis?.countyNames)
         ? analysis.countyNames.filter((name) => typeof name === "string" && name.length > 0)
         : [];
     const normalizedRequestedCounties = new Set(requestedCountyNames.map((name) => name.trim().toLowerCase()));
-    // A county filter narrows an existing, already-scoped result (fresh or
-    // cached) to the requested counties; it never widens scope, so this is
-    // safe to apply on top of the riskFocus filter above without another
-    // source call.
-    const affectedChildren = normalizedRequestedCounties.size > 0
-        ? riskFocusedChildren.filter((child) => typeof child.county === "string" && normalizedRequestedCounties.has(child.county.trim().toLowerCase()))
+    // Child and county filters narrow an existing result, including cached
+    // continuations, without widening scope or requiring another source read.
+    const childScopedChildren = normalizedRequestedChildren.size > 0
+        ? riskFocusedChildren.filter((child) => typeof child.child_name === "string" && normalizedRequestedChildren.has(child.child_name.trim().toLowerCase()))
         : riskFocusedChildren;
+    const affectedChildren = normalizedRequestedCounties.size > 0
+        ? childScopedChildren.filter((child) => typeof child.county === "string" && normalizedRequestedCounties.has(child.county.trim().toLowerCase()))
+        : childScopedChildren;
+    const unmatchedChildNames = [
+        ...sourceUnmatchedChildNames,
+        ...requestedChildNameList.filter((name) => !riskFocusedChildren.some((child) => typeof child.child_name === "string" && child.child_name.trim().toLowerCase() === name.trim().toLowerCase())),
+    ].filter((name, index, names) => names.indexOf(name) === index);
     const unmatchedCountyNames = normalizedRequestedCounties.size > 0
-        ? requestedCountyNames.filter((name) => !riskFocusedChildren.some((child) => typeof child.county === "string" && child.county.trim().toLowerCase() === name.trim().toLowerCase()))
+        ? requestedCountyNames.filter((name) => !childScopedChildren.some((child) => typeof child.county === "string" && child.county.trim().toLowerCase() === name.trim().toLowerCase()))
         : [];
     const pendingDays = riskFocus === "PARENT_CONFIRMATIONS"
         ? affectedChildren.reduce((total, child) => total + numericValue(child.pending_confirmation_days), 0)
@@ -1150,7 +1150,6 @@ export function formatPaymentResult(data) {
         content: [{ type: "text", text: providerMessage }],
         structuredContent: {
             capability: "payment-analysis",
-            providerMessage,
             scope: paymentResult.scope,
             paymentView: paymentResult.paymentView,
             actionIntents,
@@ -1267,13 +1266,17 @@ export function createServer(client, providerDisplayName, contextStore = new Con
         inputSchema: attendanceAnalysisSchema.shape,
         annotations: readOnlyAnnotations,
     }, async (input) => {
-        const continuation = contextStore.resolve(providerKey, input.contextRef, input.actionRef, "continuation");
+        const hasContinuation = Boolean(input.contextRef || input.actionRef);
+        const directContinuationInput = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "contextRef" && key !== "actionRef" && key !== "refresh"));
+        const continuation = contextStore.resolve(providerKey, input.contextRef, input.actionRef, "continuation", undefined, Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
         const request = continuation?.tool === "cccap_analyze_attendance_risk"
             ? continuation.input
             : input;
-        if (continuation?.tool !== "cccap_analyze_attendance_risk" && input.contextRef && input.actionRef && !input.dateFilter) {
+        if (hasContinuation && (!continuation || continuation.tool !== "cccap_analyze_attendance_risk")) {
             return toolError("attendance-risk analysis", new Error("Continuation reference is unavailable or expired"));
         }
+        if (input.refresh)
+            client.clearReadCache();
         if (!input.refresh && continuation?.resultTool === "cccap_analyze_attendance_risk" && continuation.result) {
             const cachedResult = recordValue(continuation.result);
             if (cachedResult) {
@@ -1345,14 +1348,19 @@ export function createServer(client, providerDisplayName, contextStore = new Con
         inputSchema: paymentAnalysisSchema.shape,
         annotations: readOnlyAnnotations,
     }, async (input) => {
-        const continuation = contextStore.resolve(providerKey, input.contextRef, input.actionRef, "continuation");
+        const hasContinuation = Boolean(input.contextRef || input.actionRef);
+        const directContinuationInput = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "contextRef" && key !== "actionRef" && key !== "refresh"));
+        const continuation = contextStore.resolve(providerKey, input.contextRef, input.actionRef, "continuation", undefined, Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
         const request = continuation?.tool === "cccap_analyze_payment"
             ? continuation.input
             : input;
-        if (continuation?.tool !== "cccap_analyze_payment" && input.contextRef && input.actionRef && !input.dateFilter && !input.view) {
+        if (hasContinuation && (!continuation || continuation.tool !== "cccap_analyze_payment")) {
             return toolError("payment analysis", new Error("Continuation reference is unavailable or expired"));
         }
-        if (!input.refresh && continuation?.resultTool === "cccap_analyze_payment" && continuation.result) {
+        if (input.refresh)
+            client.clearReadCache();
+        const requestsDetailPage = request.detailPage !== undefined || request.detailPageSize !== undefined;
+        if (!input.refresh && !requestsDetailPage && continuation?.resultTool === "cccap_analyze_payment" && continuation.result) {
             const cachedResult = recordValue(continuation.result);
             if (cachedResult) {
                 const continuationResult = { ...cachedResult, filters: request };

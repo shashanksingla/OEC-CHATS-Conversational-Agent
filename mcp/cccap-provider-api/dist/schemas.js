@@ -5,6 +5,11 @@ import * as z from "zod/v4";
 const boundedIdentifier = z.string().min(1).max(200);
 const identifierList = z.array(boundedIdentifier).max(50);
 const continuationReference = z.string().min(1).max(64);
+function validateContinuation(value, context) {
+    if (Boolean(value.contextRef) !== Boolean(value.actionRef)) {
+        context.addIssue({ code: "custom", message: "contextRef and actionRef must be supplied together" });
+    }
+}
 export const dateFilterSchema = z.enum([
     "TODAY",
     "THIS_MONTH",
@@ -110,6 +115,7 @@ export const attendanceAnalysisSchema = z
     .strict()
     .superRefine((value, context) => {
     validateDateScope(value, context);
+    validateContinuation(value, context);
     if (!value.dateFilter && !(value.contextRef && value.actionRef)) {
         context.addIssue({ code: "custom", message: "dateFilter is required when a continuation is not supplied" });
     }
@@ -131,6 +137,7 @@ export const paymentAnalysisSchema = z
     .strict()
     .superRefine((value, context) => {
     validateDateScope(value, context);
+    validateContinuation(value, context);
     if (!value.view && !value.dateFilter && !(value.contextRef && value.actionRef)) {
         context.addIssue({
             code: "custom",
