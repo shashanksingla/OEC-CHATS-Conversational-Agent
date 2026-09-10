@@ -23,7 +23,7 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         )
 
         self.assertEqual(result["status"], "ok")
-        self.assertEqual(result["rule_version"], "provider-risk-payment-v1")
+        self.assertEqual(result["rule_version"], "provider-risk-payment-v3")
         self.assertEqual(result["attendance"]["days"][0]["classification"], "ATTENDED")
         self.assertEqual(result["attendance"]["days"][0]["paid_tier"], "PART_TIME")
         self.assertEqual(result["payment"]["status"], "EXPECTED")
@@ -76,6 +76,23 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         self.assertEqual(result["payment"]["amount_at_risk"], "45.00")
         self.assertEqual(result["attendance"]["county_counts"][0]["conditional_days"], 1)
 
+    def test_attendance_basis_totals_sum_actual_and_scheduled_hours(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"][0]["attendance_basis"] = "ACTUAL"
+        payload["attendance_days"].append({
+            **payload["attendance_days"][0],
+            "service_date": "2026-09-03",
+            "attended_hours": 0,
+            "attendance_basis": "SCHEDULED",
+            "forecast_basis": "SCHEDULED",
+            "parent_confirmation": "PENDING",
+        })
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+        self.assertEqual(result["attendance"]["actual_hours_total"], "5.00")
+        self.assertEqual(result["attendance"]["scheduled_hours_total"], "5.00")
+        self.assertEqual(result["attendance"]["days"][0]["attendance_basis"], "ACTUAL")
+        self.assertEqual(result["attendance"]["days"][1]["attendance_basis"], "SCHEDULED")
+
     def test_current_week_forecast_projects_future_scheduled_day_as_conditional(self) -> None:
         payload = self._complete_input()
         payload["calculation_mode"] = "CURRENT_WEEK_FORECAST"
@@ -117,7 +134,10 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         self.assertEqual(result["payment"]["excluded_days"], 1)
         self.assertIn("ABSENCE_LIMIT_EXCEEDED", result["attendance"]["days"][2]["flags"])
 
-    def test_parent_approved_over_36_absence_is_not_payable(self) -> None:
+    def test_absence_parent_approved_field_no_longer_gates_payability(self) -> None:
+        # v3 redesign: absence determination is holiday-list + confirmation-
+        # window driven, not gated by absence_parent_approved/age-band. The
+        # field may still be present on input but must have no effect.
         payload = self._complete_input()
         payload["attendance_days"][0].update({
             "attended_hours": 0,
@@ -128,20 +148,24 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
 
         day = result["attendance"]["days"][0]
         self.assertEqual(day["classification"], "ABSENCE")
-        self.assertFalse(day["payable"])
-        self.assertIn("PARENT_APPROVED_ABSENCE_NOT_PAYABLE", day["flags"])
-        self.assertEqual(result["payment"]["amount"], "0.00")
+        self.assertTrue(day["payable"])
+        self.assertNotIn("PARENT_APPROVED_ABSENCE_NOT_PAYABLE", day["flags"])
+        self.assertEqual(result["payment"]["amount"], "45.00")
 
-    def test_missing_absence_approval_blocks_payment_conclusion(self) -> None:
+    def test_missing_absence_approval_field_no_longer_blocks_absence(self) -> None:
+        # v3 redesign: absence_parent_approved is no longer read at all, so
+        # its absence must not block classification/payability.
         payload = self._complete_input()
         payload["attendance_days"][0]["attended_hours"] = 0
         del payload["attendance_days"][0]["absence_parent_approved"]
 
         result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
 
-        self.assertEqual(result["status"], "blocked")
-        self.assertIn("complete_attendance_inputs", result["payment"]["missing_inputs"])
-        self.assertNotIn("amount", result["payment"])
+        self.assertEqual(result["status"], "ok")
+        day = result["attendance"]["days"][0]
+        self.assertEqual(day["classification"], "ABSENCE")
+        self.assertTrue(day["payable"])
+        self.assertEqual(result["payment"]["amount"], "45.00")
 
     def test_cli_emits_structured_json(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -247,6 +271,10 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
             "occupied_slot_contract": True,
             "attended_hours": 0,
         })
+        # v3 redesign: classification requires a match against this county's
+        # specific paid-holiday list, not the generic observed_holiday flag.
+        payload["county_policies"][0]["allow_paid_holidays"] = True
+        payload["county_policies"][0]["county_holiday_list"] = ["2026-09-02"]
         payload["fee_schedules"] = [{
             "authorization_id": "auth-1",
             "effective_start": "2026-09-01",
@@ -364,7 +392,11 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         self.assertEqual(result["payment"]["parent_copay"], "12.00")
         self.assertEqual(result["payment"]["amount"], "39.00")
 
-    def test_holiday_requires_county_plan_date_when_county_list_is_present(self) -> None:
+    def test_date_not_on_county_holiday_list_falls_through_to_absence(self) -> None:
+        # v3 redesign: classification matches the county-specific holiday
+        # list directly; a date absent from that list is never classified
+        # HOLIDAY (no "holiday-but-unpayable" state) - it falls straight
+        # through to Absence.
         payload = self._complete_input()
         payload["attendance_days"][0].update({
             "observed_holiday": True,
@@ -375,13 +407,15 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
 
         result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
 
-        self.assertFalse(result["attendance"]["days"][0]["payable"])
-        self.assertIn("HOLIDAY_NOT_IN_COUNTY_PLAN", result["attendance"]["days"][0]["flags"])
+        day = result["attendance"]["days"][0]
+        self.assertEqual(day["classification"], "ABSENCE")
+        self.assertTrue(day["payable"])
 
     def test_holiday_can_match_county_plan_by_name_or_either_date(self) -> None:
         payload = self._complete_input()
         payload["attendance_days"][0].update({
             "observed_holiday": True,
+            "attended_hours": 0,
             "holiday_name": "Labor Day",
             "holiday_date": "2026-08-31",
             "observed_holiday_date": "2026-09-01",
@@ -391,7 +425,9 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
 
         result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
 
-        self.assertTrue(result["attendance"]["days"][0]["payable"])
+        day = result["attendance"]["days"][0]
+        self.assertEqual(day["classification"], "HOLIDAY")
+        self.assertTrue(day["payable"])
 
     def test_missing_confirmation_source_blocks_payment_conclusion(self) -> None:
         payload = self._complete_input()
@@ -669,10 +705,53 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
 
         self.assertTrue(result["attendance"]["days"][0]["payable"])
 
+    def test_child_payment_impacts_are_dollar_accurate_and_deterministically_rankable(self) -> None:
+        payload = self._complete_input()
+        payload["authorizations"].append({
+            "id": "auth-2",
+            "child_id": "child-2",
+            "county_id": "denver",
+            "quality_tier": 3,
+        })
+        payload["attendance_days"][0]["child_name"] = "Lower exposure"
+        payload["attendance_days"].append({
+            "authorization_id": "auth-2",
+            "service_date": "2026-09-03",
+            "authorized_hours": 3,
+            "attended_hours": 3,
+            "parent_confirmation": "CONFIRMED",
+            "absence_parent_approved": False,
+            "age_band": "OVER_36_MONTHS",
+            "child_name": "Higher exposure",
+            "county_id": "denver",
+        })
+        payload["fiscal_rates"].append({
+            "authorization_id": "auth-2",
+            "paid_tier": "PART_TIME",
+            "amount": "12.00",
+        })
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        impacts = result["child_payment_impacts"]
+        ranked = sorted(
+            impacts,
+            key=lambda row: (-float(row["amount_at_risk"]), -float(row["total_amount"]), row["child_name"]),
+        )
+        self.assertEqual([row["child_name"] for row in ranked], ["Lower exposure", "Higher exposure"])
+        amounts = {row["child_name"]: row for row in impacts}
+        self.assertEqual(amounts["Lower exposure"]["total_amount"], "45.00")
+        self.assertEqual(amounts["Higher exposure"]["total_amount"], "36.00")
+        self.assertEqual(
+            [row["total_amount"] for row in ranked],
+            ["45.00", "36.00"],
+        )
+
     @staticmethod
     def _complete_input() -> dict:
         return {
-            "rule_version": "provider-risk-payment-v1",
+            "rule_version": "provider-risk-payment-v3",
+            "as_of_date": "2026-09-30",
             "service_period": {
                 "id": "period-1",
                 "start_date": "2026-09-01",

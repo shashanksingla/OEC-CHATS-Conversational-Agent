@@ -5,10 +5,11 @@ export interface ScopeDiff {
 }
 
 interface DialogueRecord {
-  lastCapability: string;
-  lastScope: unknown;
-  lastFreshnessAt: string;
+  lastCapability?: string;
+  lastScope?: unknown;
+  lastFreshnessAt?: string;
   expiresAt: number;
+  glossaryShown?: boolean;
 }
 
 export interface DialogueStateOptions {
@@ -40,6 +41,24 @@ export class DialogueStateStore {
     this.maxEntries = options.maxEntries ?? 100;
   }
 
+  hasGlossary(providerKey: string): boolean {
+    this.evict();
+    return this.states.get(providerKey)?.glossaryShown === true;
+  }
+
+  markGlossary(providerKey: string): void {
+    this.evict();
+    const now = this.now();
+    const existing = this.states.get(providerKey);
+    this.states.set(providerKey, {
+      lastCapability: existing?.lastCapability ?? "",
+      lastScope: existing?.lastScope,
+      lastFreshnessAt: existing?.lastFreshnessAt ?? "",
+      expiresAt: existing?.expiresAt ?? now + this.ttlMs,
+      glossaryShown: true,
+    });
+  }
+
   recordAndDiff(providerKey: string, capability: string, scope: unknown, freshnessAt: string): ScopeDiff {
     this.evict();
     const now = this.now();
@@ -57,6 +76,7 @@ export class DialogueStateStore {
       lastScope: scope,
       lastFreshnessAt: freshnessAt,
       expiresAt: now + this.ttlMs,
+      ...(stillFresh && previous.glossaryShown !== undefined ? { glossaryShown: previous.glossaryShown } : {}),
     });
     return diff;
   }
@@ -80,4 +100,13 @@ export class DialogueStateStore {
       this.states.delete(oldest[0]);
     }
   }
+}
+const defaultDialogueStateStore = new DialogueStateStore();
+
+export function hasShownGlossary(providerKey: string): boolean {
+  return defaultDialogueStateStore.hasGlossary(providerKey);
+}
+
+export function markGlossaryShown(providerKey: string): void {
+  defaultDialogueStateStore.markGlossary(providerKey);
 }

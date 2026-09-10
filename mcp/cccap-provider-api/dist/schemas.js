@@ -125,6 +125,11 @@ export const attendanceAnalysisSchema = z
         context.addIssue({ code: "custom", message: "dateFilter is required when a continuation is not supplied" });
     }
 });
+export const paymentComparisonSchema = z.object({
+    periodOne: z.object({ dateFrom: isoDateSchema, dateTo: isoDateSchema }).strict(),
+    periodTwo: z.object({ dateFrom: isoDateSchema, dateTo: isoDateSchema }).strict(),
+    significantDeltaThresholdPct: z.number().nonnegative().max(1000).optional(),
+}).strict();
 export const paymentAnalysisSchema = z
     .object({
     ...dateScopeShape,
@@ -135,6 +140,10 @@ export const paymentAnalysisSchema = z
     countyNames: identifierList.min(1).optional(),
     detailPage: z.number().int().positive().max(10_000).optional(),
     detailPageSize: z.number().int().positive().max(100).optional(),
+    // Narrows the detail table to rows the payment engine excluded from
+    // payment (unpayable/excluded-authorization days), instead of the full
+    // attendance detail. Backs the "review excluded payment days" action.
+    excludedOnly: z.boolean().optional(),
     actionId: continuationReference.optional(),
     contextRef: continuationReference.optional(),
     actionRef: continuationReference.optional(),

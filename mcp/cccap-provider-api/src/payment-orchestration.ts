@@ -10,6 +10,7 @@ import { normalizePaymentSourceBundle } from "./payment-canonical-adapter.js";
 import { normalizeProviderContext } from "./provider-context.js";
 import { assertPaymentEnginePayload } from "./payment-schema.js";
 import { buildSituationEnvelope } from "./situation-envelope.js";
+import { computePayoutDate } from "./payout-date.js";
 
 const execFileAsync = promisify(execFile);
 const paymentEvaluatorPath = fileURLToPath(new URL(
@@ -41,23 +42,41 @@ async function runPaymentEvaluator(inputPath: string): Promise<{ stdout: string 
   }
 }
 
-function highestImpactChildName(impacts: unknown[], days: unknown[]): string | undefined {
-  const rankedImpacts = impacts
-    .map((value) => record(value, "Child payment impact"))
-    .filter((impact) => typeof impact.child_name === "string")
-    .map((impact) => [impact.child_name as string, Number(impact.amount_at_risk) || 0] as const)
+type HighestImpactChild = { name: string; rankedByDollars: boolean } | undefined;
+
+function rankByImpactField(impacts: Record<string, unknown>[], field: "amount_at_risk" | "total_amount"): readonly [string, number] | undefined {
+  return impacts
+    .map((impact) => [impact.child_name as string, Number(impact[field]) || 0] as const)
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
     .at(0);
-  if (rankedImpacts && rankedImpacts[1] > 0) return rankedImpacts[0];
+}
+
+function highestImpactChildName(impacts: unknown[], days: unknown[]): HighestImpactChild {
+  const rows = impacts
+    .map((value) => record(value, "Child payment impact"))
+    .filter((impact) => typeof impact.child_name === "string");
+  const byAmountAtRisk = rankByImpactField(rows, "amount_at_risk");
+  if (byAmountAtRisk && byAmountAtRisk[1] > 0) return { name: byAmountAtRisk[0], rankedByDollars: true };
+  // amount_at_risk is 0 for every child (no conditional/limit-exceeded days) -
+  // fall back to total dollar exposure across ALL rate-matched days before
+  // ever falling back to a non-dollar signal, so "highest impact" still
+  // reflects money whenever any verified dollar figure exists.
+  const byTotalAmount = rankByImpactField(rows, "total_amount");
+  if (byTotalAmount && byTotalAmount[1] > 0) return { name: byTotalAmount[0], rankedByDollars: true };
+  // No verified dollar amount exists for any child (e.g. no fiscal rate
+  // matched yet) - only a scheduled-hours proxy is available. Callers must
+  // label this explicitly as an hours-based fallback, never present it as a
+  // dollar-ranked "highest impact" result.
   const fallback = new Map<string, number>();
   for (const value of days) {
     const day = record(value, "Attendance day");
     if (typeof day.child_name !== "string") continue;
     fallback.set(day.child_name, (fallback.get(day.child_name) ?? 0) + (Number(day.unit_hours) || 0));
   }
-  return [...fallback.entries()]
+  const topByHours = [...fallback.entries()]
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
     .at(0)?.[0];
+  return topByHours ? { name: topByHours, rankedByDollars: false } : undefined;
 }
 
 function record(value: unknown, label: string): RecordValue {
@@ -80,7 +99,7 @@ export async function getPaymentAnalysis(
   scope: DateScope,
   view: PaymentView = "STATUS",
   asOfDate = new Date().toISOString().slice(0, 10),
-  filters: { childNames?: string[]; authNames?: string[]; countyNames?: string[]; detailPage?: number; detailPageSize?: number } = {},
+  filters: { childNames?: string[]; authNames?: string[]; countyNames?: string[]; detailPage?: number; detailPageSize?: number; excludedOnly?: boolean } = {},
 ): Promise<unknown> {
   const initialization = record(await client.initialize(scope), "Provider context");
   // CUSTOM_RANGE is an arbitrary provider-chosen span (validated to <= 31 days
@@ -246,9 +265,15 @@ export async function getPaymentAnalysis(
     const allDays = Array.isArray(attendance.days) ? attendance.days : [];
     const displayableDays = allDays.filter((value) => {
       const day = record(value, "Attendance day");
-      return day.classification !== "NO_CARE" && day.classification !== "CARE_NOT_OFFERED";
+      if (day.classification === "NO_CARE" || day.classification === "CARE_NOT_OFFERED") return false;
+      // Backs the "review excluded payment days" action: narrows to rows the
+      // payment engine actually excluded from payment (payment_excluded is
+      // tagged by the evaluator for every exclusion path), instead of the
+      // full attendance detail the action's label would otherwise mismatch.
+      if (filters.excludedOnly) return day.payment_excluded === true;
+      return true;
     });
-    const topChildName = highestImpactChildName(
+    const topChild = highestImpactChildName(
       Array.isArray(result.child_payment_impacts) ? result.child_payment_impacts : [],
       displayableDays,
     );
@@ -275,8 +300,9 @@ export async function getPaymentAnalysis(
         ...(filters.childNames ? { childNames: filters.childNames } : {}),
         ...(filters.authNames ? { authNames: filters.authNames } : {}),
         ...(filters.detailPageSize ? { detailPageSize: filters.detailPageSize } : {}),
+        ...(filters.excludedOnly ? { excludedOnly: true } : {}),
       },
-      ...(topChildName ? { highestImpactChildName: topChildName } : {}),
+      ...(topChild ? { highestImpactChildName: topChild.name, highestImpactRankedByDollars: topChild.rankedByDollars } : {}),
       ...(vacantSlotMappingGaps > 0 ? { vacantSlotMappingGaps } : {}),
       scope: sourceScope,
       paymentView: view,
@@ -285,4 +311,42 @@ export async function getPaymentAnalysis(
       situation: await buildSituationEnvelope(result.payment, "payment-analysis", sourceScope, sourceRetrievedAt),
     };
   } finally { await rm(directory, { recursive: true, force: true }); }
+}
+
+export type LedgerPeriodStatus = "IN_PROGRESS" | "PENDING_CONFIRMATION" | "EXPECTED_AWAITING_PAYOUT" | "PAID";
+export interface LedgerPeriodEntry { servicePeriodId: string; serviceBeginDate: string; serviceEndDate: string; payoutDate: string; periodStatus: LedgerPeriodStatus; netAmount: string; grossAmount: string; guaranteedAmount: string; amountAtRisk: string; }
+function utcDayDifference(from: string, to: string): number { return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000); }
+function utcPlusDays(date: string, days: number): string { const d = new Date(`${date}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); }
+export async function getServicePeriodLedger(client: CccapClient, scope: DateScope, asOfDate: string, options: { periodCount?: number } = {}): Promise<{ periods: LedgerPeriodEntry[]; sourceRetrievedAt: string }> {
+  // Five periods is enough to cover the current month plus one prior.
+  const count = options.periodCount ?? 5;
+  const response = record(await client.getServicePeriods({ ...scope, limitOne: false }), "Service periods");
+  const selected = array(response.servicePeriods, "Service periods").slice(0, count).map((value) => { const row = record(value, "Service period"); return { servicePeriodId: String(row.servicePeriodId), serviceBeginDate: String(row.serviceBeginDate), serviceEndDate: String(row.serviceEndDate) }; });
+  const results = await Promise.all(selected.map(async (period) => ({ period, result: record(await getPaymentAnalysis(client, { dateFilter: "DATE_RANGE", dateFrom: period.serviceBeginDate, dateTo: period.serviceEndDate }, "CUSTOM_RANGE", asOfDate), "Payment evaluation") })));
+  const periods = results.map(({ period, result }) => { const payment = record(result.payment, "Evaluated payment"); const payoutDate = typeof payment.payout_date === "string" ? payment.payout_date : computePayoutDate(period.serviceEndDate); // Fallback is non-fatal for older evaluator output.
+    const duplicatePaid = payment.status === "DUPLICATE_GUARD" && (payment.existing_status === "PAID" || payment.existing_status === "4");
+    const periodStatus: LedgerPeriodStatus = asOfDate < period.serviceEndDate ? "IN_PROGRESS" : duplicatePaid ? "PAID" : asOfDate < utcPlusDays(period.serviceEndDate, 5) ? "PENDING_CONFIRMATION" : asOfDate < payoutDate ? "EXPECTED_AWAITING_PAYOUT" : "EXPECTED_AWAITING_PAYOUT";
+    return { ...period, payoutDate, periodStatus, netAmount: String(payment.amount ?? "0.00"), grossAmount: String(payment.gross_amount ?? "0.00"), guaranteedAmount: String(payment.guaranteed_amount ?? "0.00"), amountAtRisk: String(payment.amount_at_risk ?? "0.00") }; });
+  return { periods, sourceRetrievedAt: new Date().toISOString() };
+}
+export async function getUpcomingPayoutDetail(client: CccapClient, scope: DateScope, asOfDate: string): Promise<{ entry: LedgerPeriodEntry | undefined; daysUntilPayout: number | undefined; sourceRetrievedAt: string }> {
+  const ledger = await getServicePeriodLedger(client, scope, asOfDate); const entry = ledger.periods.filter((period) => period.periodStatus !== "PAID" && period.payoutDate >= asOfDate).sort((a, b) => a.payoutDate.localeCompare(b.payoutDate))[0]; return { entry, daysUntilPayout: entry ? utcDayDifference(asOfDate, entry.payoutDate) : undefined, sourceRetrievedAt: ledger.sourceRetrievedAt };
+}
+
+export interface PeriodComparisonCategoryDelta { label: string; periodOneAmount: string; periodTwoAmount: string; deltaAmount: string; deltaPct: string | null; }
+export interface PeriodComparisonResult {
+  periodOne: { servicePeriodId: string; serviceBeginDate: string; serviceEndDate: string; netAmount: string; grossAmount: string };
+  periodTwo: { servicePeriodId: string; serviceBeginDate: string; serviceEndDate: string; netAmount: string; grossAmount: string };
+  netDeltaAmount: string; netDeltaPct: string | null; byCategory: PeriodComparisonCategoryDelta[]; byCounty: PeriodComparisonCategoryDelta[]; significantDeltaThresholdPct: number; flaggedDeltas: PeriodComparisonCategoryDelta[]; sourceRetrievedAt: string;
+}
+type ComparisonScope = { dateFrom: string; dateTo: string } | { servicePeriodId: string };
+function comparisonNumber(value: unknown): number { const n = typeof value === "number" ? value : Number(value); return Number.isFinite(n) ? n : 0; }
+function comparisonRows(value: unknown, key: string): Record<string, unknown>[] { const root = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined; const rows = root && Array.isArray(root[key]) ? root[key] : []; return rows.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object" && !Array.isArray(row)); }
+function comparisonRollup(result: RecordValue, key: "categories" | "counties"): Record<string, unknown>[] { const payment = record(result.payment, "Evaluated payment"); const view = payment.summary_view && typeof payment.summary_view === "object" && !Array.isArray(payment.summary_view) ? payment.summary_view : undefined; const rows = view ? comparisonRows(view, key) : []; return rows.length > 0 ? rows : (Array.isArray(payment.summary) ? payment.summary.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object" && !Array.isArray(row)) : []); }
+function comparisonDeltas(firstResult: RecordValue, secondResult: RecordValue, key: "categories" | "counties"): PeriodComparisonCategoryDelta[] { const firstRows = comparisonRollup(firstResult, key); const secondRows = comparisonRollup(secondResult, key); const map = new Map<string, [number, number]>(); for (const [index, rows] of [[0, firstRows], [1, secondRows]] as const) for (const row of rows) { const label = String(row.label ?? row.county_name ?? "Unavailable from the current source"); const pair = map.get(label) ?? [0, 0]; pair[index] += comparisonNumber(row.amount); map.set(label, pair); } return [...map.entries()].map(([label, [one, two]]) => { const delta = two - one; return { label, periodOneAmount: one.toFixed(2), periodTwoAmount: two.toFixed(2), deltaAmount: delta.toFixed(2), deltaPct: one === 0 ? null : ((delta / one) * 100).toFixed(1) }; }); }
+function comparisonPeriod(result: RecordValue): PeriodComparisonResult["periodOne"] { const payment = record(result.payment, "Evaluated payment"); const period = record(result.servicePeriod, "Service period"); return { servicePeriodId: String(period.servicePeriodId ?? period.id ?? ""), serviceBeginDate: String(period.serviceBeginDate ?? period.start_date ?? ""), serviceEndDate: String(period.serviceEndDate ?? period.end_date ?? ""), netAmount: String(payment.amount ?? "0.00"), grossAmount: String(payment.gross_amount ?? "0.00") }; }
+export async function comparePaymentPeriods(client: CccapClient, periodOneScope: ComparisonScope, periodTwoScope: ComparisonScope, asOfDate: string, options: { significantDeltaThresholdPct?: number } = {}): Promise<PeriodComparisonResult> {
+  const scope = (value: ComparisonScope): DateScope => { if ("servicePeriodId" in value) throw new Error("servicePeriodId comparison scope is not supported; use dateFrom and dateTo"); return { dateFilter: "DATE_RANGE", dateFrom: value.dateFrom, dateTo: value.dateTo }; };
+  const [firstResult, secondResult] = await Promise.all([getPaymentAnalysis(client, scope(periodOneScope), "CUSTOM_RANGE", asOfDate, { detailPage: 1 }), getPaymentAnalysis(client, scope(periodTwoScope), "CUSTOM_RANGE", asOfDate, { detailPage: 1 })]);
+  const first = record(firstResult, "Payment evaluation"); const second = record(secondResult, "Payment evaluation"); const one = comparisonPeriod(first); const two = comparisonPeriod(second); const netOne = comparisonNumber(one.netAmount); const netTwo = comparisonNumber(two.netAmount); const netDelta = netTwo - netOne; const threshold = options.significantDeltaThresholdPct ?? 15; const byCategory = comparisonDeltas(first, second, "categories"); const byCounty = comparisonDeltas(first, second, "counties"); const flaggedDeltas = [...byCategory, ...byCounty].filter((row) => row.deltaPct !== null && Math.abs(Number(row.deltaPct)) >= threshold).sort((a, b) => Math.abs(Number(b.deltaAmount)) - Math.abs(Number(a.deltaAmount))); return { periodOne: one, periodTwo: two, netDeltaAmount: netDelta.toFixed(2), netDeltaPct: netOne === 0 ? null : ((netDelta / netOne) * 100).toFixed(1), byCategory, byCounty, significantDeltaThresholdPct: threshold, flaggedDeltas, sourceRetrievedAt: new Date().toISOString() };
 }

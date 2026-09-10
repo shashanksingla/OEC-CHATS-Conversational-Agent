@@ -78,7 +78,7 @@ export { normalizeScheduleAttendance } from "./schedule-normalizer.js";
 export function livePaymentReadiness() {
     return {
         status: "BLOCKED",
-        ruleVersion: "provider-risk-payment-v1",
+        ruleVersion: "provider-risk-payment-v3",
         sourceReadiness: "BLOCKED_MISSING_REQUIRED_INPUTS",
         missingInputs: [
             "fiscal_rates",
@@ -224,7 +224,8 @@ export async function getAttendanceRiskAnalysis(client, providerDisplayName, sco
         // estimates never depend on a payment call having already run in this
         // session; a match failure below is fail-soft and never blocks the
         // underlying attendance-risk result.
-        typeof client.getFiscalRates === "function"
+        // Avoid an unnecessary Apex round-trip when the risk-amount estimate is not rendered for this risk focus.
+        typeof client.getFiscalRates === "function" && riskFocus === "ABSENCE_LIMITS"
             ? client.getFiscalRates(scope)
             : Promise.resolve({ normalizedFiscalRates: { fiscalRates: [] } }),
     ]);

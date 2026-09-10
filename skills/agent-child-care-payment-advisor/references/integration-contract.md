@@ -54,6 +54,41 @@ The engine returns provider-ready attendance-day classifications, facility-autho
 
 The MCP adapter must only construct this input from already authorized retrievals. It calls the deterministic engine for payment status, `NEXT_PAYOUT`, and `CURRENT_WEEK_FORECAST`; incomplete mappings still produce a provider-safe blocked response rather than inferred values. `CURRENT_WEEK_FORECAST` means the whole service period containing today, not a calendar week. Future forecast rows are explicitly classified as scheduled and conditional. Confirmed gross excludes conditional revenue; amount at risk includes pending confirmations and authorization-specific drop-in or absence limit exposure. Occupied slot contracts use the regular attendance route; only vacant slot contracts contribute separate slot-contract fees.
 
+## Payment Engine Output Addendum (provider-risk-payment-v2)
+
+The currently implemented Python engine sets `RULE_VERSION = "provider-risk-payment-v2"` (`scripts/provider_risk_payment_engine.py:17`). The fields below are additive output fields of that engine and are introduced under that rule version. `period_status` is not currently emitted by the Python engine; period-status classification remains a TypeScript concern and must not be documented as a Python output field until an implementation adds it.
+
+### Python provider-risk payment output
+
+| Location and field | Type | Presence and meaning | Introduced by |
+| --- | --- | --- | --- |
+| `payment.payout_date` | ISO date string | Present on a successful payment result; calculated as the service-period end plus eleven days (`provider_risk_payment_engine.py:1134-1136`, with the calculation at `:26-33`). | `provider-risk-payment-v2` |
+| `payment.guaranteed_amount` | Money/decimal serialized as a JSON number | Present on a successful payment result; total classified amount for guaranteed payment days (`provider_risk_payment_engine.py:1001-1003,1123-1134`). | `provider-risk-payment-v2` |
+| `attendance.days[].amount_incorrectly_at_risk` | Money/decimal serialized as a JSON number | Present only on entries in `holiday_classification_mismatches`; it is the amount exposed by that mismatch (`provider_risk_payment_engine.py:1007-1009`). Otherwise the per-day field is absent, not null. | `provider-risk-payment-v2` |
+| `holiday_classification_mismatches` | Array of per-day objects | Present on a successful result (empty when no mismatch exists); each member copies the day and adds `amount_incorrectly_at_risk` and `risk_code` (`provider_risk_payment_engine.py:954-955,1007-1009,1112-1114`). | `provider-risk-payment-v2` |
+| `total_amount_incorrectly_at_risk` | Money/decimal serialized as a JSON number | Present on a successful result (zero when no mismatch exists); sum of mismatch amounts (`provider_risk_payment_engine.py:954-955,1007-1009,1113-1114`). | `provider-risk-payment-v2` |
+| `payment.total_amount_incorrectly_at_risk` | Money/decimal serialized as a JSON number | Present on a successful result and mirrors the top-level total (`provider_risk_payment_engine.py:1123-1135`). | `provider-risk-payment-v2` |
+| `attendance.days[].confirm_by_date` | ISO date string | Present only while the explicit `as_of_date` is on or before the service date plus the confirmation window; otherwise absent (`provider-risk_payment_engine.py:834-839`). | `provider-risk-payment-v2` |
+| `attendance.days[].payment_type` | String classification | Present on every emitted attendance day. The payment-class mapping assigns `GUARANTEED` to holiday/vacant-slot categories and `ATTENDANCE_DEPENDENT` to regular, absence, enrollment, and drop-in categories (`provider-risk-payment_engine.py:807-815`); the final emitted value is selected at `:850-853`. | `provider-risk-payment-v2` |
+| `rule_version` | String | Present on blocked and successful engine results and equals `provider-risk-payment-v2` (`provider-risk_payment_engine.py:510-511,1107-1111`). | `provider-risk-payment-v2` |
+
+The Python engine does **not** currently emit a `period_status` field. Also, because the implementation's final day-level expression preserves `REGULAR` for an attended regular day (`provider_risk_payment_engine.py:850-853`), consumers must not assume every emitted `payment_type` is limited to only the two payment-class labels without applying that existing output rule.
+
+### Attendance-risk confirmation deadlines
+
+These fields are emitted by `scripts/evaluate_attendance_risks.py` and are Python attendance-risk output, not fields of the payment engine's `payment` object. They are documented under the same `provider-risk-payment-v2` governance handoff, although the attendance-risk script itself does not declare a separate `RULE_VERSION` constant.
+
+| Location and field | Type | Presence and meaning | Introduced by |
+| --- | --- | --- | --- |
+| `children[].next_confirmation_deadline` | ISO date string or null | Null when the child has no pending confirmation dates; otherwise the earliest pending date plus the confirmation window (`evaluate_attendance_risks.py:243-250,285-300`). | `provider-risk-payment-v2` |
+| `children[].confirmation_days_remaining` | Integer or null | Null without pending confirmations; otherwise calendar days from `as_of_date` to that child's next deadline (`evaluate_attendance_risks.py:244-250,295-296`). | `provider-risk-payment-v2` |
+| `earliest_confirmation_deadline` | ISO date string or null | Top-level minimum non-null child deadline, or null when no child has one (`evaluate_attendance_risks.py:337-345`). | `provider-risk-payment-v2` |
+| `earliest_confirmation_days_remaining` | Integer or null | Top-level minimum remaining-day value for children with a deadline, or null when none exists (`evaluate_attendance_risks.py:346-355`). | `provider-risk-payment-v2` |
+
+### TypeScript ledger-period contract status
+
+`mcp/cccap-provider-api/src/payment-orchestration.ts` currently contains no `LedgerPeriodEntry` or `LedgerPeriodStatus` declaration (no implementation was found when this contract was updated). Their field list and status values are therefore **planned, not yet implemented**, and are intentionally not documented as an active contract. If added later, those TypeScript fields will not be gated by `rule_version`; `rule_version` applies to the Python evaluator contract only.
+
 ## Missing Production Mappings
 
 Before Salesforce deployment, approve and test the response paths for attendance transaction validity, absence classification and approval, Care Not Offered, rate-unit selection and copay adjustments, parent confirmation, payment status and history, service-period-to-payment-window anchoring, holidays, slot contracts, ART fees, source freshness, and every relationship key. Missing mappings block the affected calculation.

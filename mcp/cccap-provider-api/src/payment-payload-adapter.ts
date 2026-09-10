@@ -101,6 +101,7 @@ export interface CanonicalAttendanceDay {
   county_id?: string;
   county_name?: string;
   forecast_basis?: "SCHEDULED";
+  attendance_basis?: "ACTUAL" | "SCHEDULED";
   holiday_name?: string;
   holiday_date?: string;
   observed_holiday_date?: string;
@@ -336,6 +337,10 @@ export function normalizeAttendanceDays(
           : {}),
       ...(typeof schedule.county_id === "string" ? { county_id: schedule.county_id } : {}),
       ...(typeof schedule.county_name === "string" ? { county_name: schedule.county_name } : {}),
+      attendance_basis: (typeof schedule.check_in_count === "number" && schedule.check_in_count > 0)
+        || schedule.attended_flag === true
+        ? "ACTUAL" as const
+        : "SCHEDULED" as const,
       ...(isFutureForecast ? { forecast_basis: "SCHEDULED" as const } : {}),
       ...(typeof enrichment.holiday_name === "string" ? { holiday_name: enrichment.holiday_name } : {}),
       ...(typeof enrichment.holiday_date === "string" ? { holiday_date: enrichment.holiday_date } : {}),
@@ -347,8 +352,9 @@ export function normalizeAttendanceDays(
 }
 
 export interface CanonicalPaymentPayload {
-  rule_version: "provider-risk-payment-v1";
+  rule_version: "provider-risk-payment-v3";
   calculation_mode?: "STATUS" | "CURRENT_WEEK_FORECAST";
+  as_of_date: string;
   service_period: CanonicalServicePeriod;
   authorizations: RecordValue[];
   attendance_days: CanonicalAttendanceDay[];
@@ -542,7 +548,8 @@ export function buildCanonicalPaymentPayload(input: {
   asOfDate?: string;
 }): CanonicalPaymentPayload {
   return {
-    rule_version: "provider-risk-payment-v1",
+    rule_version: "provider-risk-payment-v3",
+    as_of_date: requiredString(input.asOfDate, "as-of date"),
     ...(input.mode
       ? { calculation_mode: input.mode === "FORECAST" ? "CURRENT_WEEK_FORECAST" as const : "STATUS" as const }
       : {}),

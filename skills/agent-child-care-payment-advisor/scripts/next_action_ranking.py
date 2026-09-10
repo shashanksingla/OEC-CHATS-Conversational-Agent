@@ -21,14 +21,19 @@ from typing import Any
 
 RULE_VERSION = "provider-next-action-ranking-v1"
 
-# Scoring bands, highest first. Payment-impact actions always outrank
-# urgency-only actions, which always outrank source-data-recovery actions,
-# matching the documented rule order exactly. Within a band, the numeric
-# amount/day count is added so more severe instances of the same category
-# still sort ahead of milder ones without crossing a band boundary.
-_PAYMENT_IMPACT_BASE = 3000
-_URGENCY_BASE = 2000
-_SOURCE_RECOVERY_BASE = 1000
+URGENCY_WEIGHT = 5  # tunable - if real conversation data later suggests a different value, that's a config change, not a rewrite
+
+
+def rank_score(dollar_amount_at_risk: float, days_remaining: int) -> float:
+    """Hybrid dollar+urgency score.
+
+    The urgency multiplier makes equally sized items due sooner rank higher,
+    while retaining dollar magnitude as the primary signal for substantially
+    different risks.
+    """
+    days_remaining = max(days_remaining, 1)  # avoid div-by-zero / infinite same-day weighting
+    urgency_multiplier = 1 + (URGENCY_WEIGHT / days_remaining)
+    return dollar_amount_at_risk * urgency_multiplier
 
 
 def _amount(value: Any) -> float:
@@ -40,6 +45,10 @@ def _amount(value: Any) -> float:
 
 def _count(value: Any) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 0
+
+
+def _days_remaining(value: Any, default: int = 30) -> int:
+    return value if isinstance(value, int) and not isinstance(value, bool) else default
 
 
 def _action(
@@ -73,11 +82,15 @@ def _attendance_candidates(attendance_risk: dict[str, Any]) -> list[dict[str, An
         # outranks a same-band action sized only by child count, since it is a
         # more accurate measure of payment impact.
         crossed_amount = _amount(crossed.get("risk_amount_estimate"))
+        # No deadline field is guaranteed for this candidate; use a wide default.
         candidates.append(_action(
             "review-absence-limit-risk",
-            f"Review {crossed_children} child(ren) over the absence limit",
+            f"Review absence-limit risk — {crossed_children} children",
             "payment_impact",
-            _PAYMENT_IMPACT_BASE + (crossed_amount if crossed_amount > 0 else crossed_children),
+            rank_score(
+                crossed_amount,
+                _days_remaining(crossed.get("confirmation_days_remaining")),
+            ),
             "cccap_analyze_payment_risk",
             {"riskFocus": "ABSENCE_LIMITS"},
         ))
@@ -87,11 +100,15 @@ def _attendance_candidates(attendance_risk: dict[str, Any]) -> list[dict[str, An
     approaching_children = _count(approaching.get("children"))
     if approaching_children:
         approaching_amount = _amount(approaching.get("risk_amount_estimate"))
+        # No deadline field is guaranteed for this candidate; use a wide default.
         candidates.append(_action(
             "review-approaching-absence-limit",
-            f"Review {approaching_children} child(ren) approaching the absence limit",
+            f"Review approaching absence limits — {approaching_children} children",
             "urgency",
-            _URGENCY_BASE + (approaching_amount if approaching_amount > 0 else approaching_children),
+            rank_score(
+                approaching_amount,
+                _days_remaining(approaching.get("confirmation_days_remaining")),
+            ),
             "cccap_analyze_payment_risk",
             {"riskFocus": "ABSENCE_LIMITS"},
         ))
@@ -102,9 +119,10 @@ def _attendance_candidates(attendance_risk: dict[str, Any]) -> list[dict[str, An
     if pending_days:
         candidates.append(_action(
             "review-pending-parent-confirmations",
-            f"Review {pending_days} pending parent confirmation day(s)",
+            f"Review pending confirmations — {pending_days} days",
             "urgency",
-            _URGENCY_BASE + pending_days,
+            # No dollar signal is currently available for pending confirmations.
+            rank_score(0.0, _days_remaining(pending.get("confirmation_days_remaining"))),
             "cccap_analyze_payment_risk",
             {"riskFocus": "PARENT_CONFIRMATIONS"},
         ))
@@ -113,9 +131,10 @@ def _attendance_candidates(attendance_risk: dict[str, Any]) -> list[dict[str, An
     if incomplete_days:
         candidates.append(_action(
             "review-incomplete-attendance",
-            f"Review {incomplete_days} incomplete attendance record(s)",
+            f"Review incomplete attendance — {incomplete_days} records",
             "source_recovery",
-            _SOURCE_RECOVERY_BASE + incomplete_days,
+            # No dollar signal is currently available for incomplete attendance.
+            rank_score(0.0, 30),  # no deadline field; use a wide documented default
             "cccap_analyze_payment_risk",
             {"riskFocus": "INCOMPLETE_ATTENDANCE"},
         ))
@@ -132,9 +151,10 @@ def _payment_candidates(payment: dict[str, Any]) -> list[dict[str, Any]]:
         missing_count = len(missing_inputs) if isinstance(missing_inputs, list) else 0
         candidates.append(_action(
             "retry-payment-analysis",
-            "Retry the payment review with current provider data",
+            "Retry payment review",
             "source_recovery",
-            _SOURCE_RECOVERY_BASE + missing_count,
+            # No dollar signal or deadline is available for blocked payment review.
+            rank_score(0.0, 30),
             "cccap_analyze_payment",
             {},
         ))
@@ -144,9 +164,9 @@ def _payment_candidates(payment: dict[str, Any]) -> list[dict[str, Any]]:
     if amount_at_risk > 0:
         candidates.append(_action(
             "review-conditional-payment",
-            "Review the conditional amount at risk",
+            f"Review conditional payment — ~ ${amount_at_risk:,.2f}",
             "payment_impact",
-            _PAYMENT_IMPACT_BASE + amount_at_risk,
+            rank_score(amount_at_risk, _days_remaining(payment.get("confirmation_days_remaining"))),
             "cccap_analyze_payment",
             {"detailPage": 1},
         ))
@@ -155,11 +175,12 @@ def _payment_candidates(payment: dict[str, Any]) -> list[dict[str, Any]]:
     if excluded_days:
         candidates.append(_action(
             "review-excluded-payment-days",
-            "Review excluded attendance days and payment impact",
+            "Review excluded payment days",
             "urgency",
-            _URGENCY_BASE + excluded_days,
+            # No dollar signal is currently available for excluded payment days.
+            rank_score(0.0, payment.get("confirmation_days_remaining", 30)),
             "cccap_analyze_payment",
-            {"detailPage": 1},
+            {"detailPage": 1, "excludedOnly": True},
         ))
 
     summary_view = payment.get("summary_view")
@@ -181,7 +202,10 @@ def _payment_candidates(payment: dict[str, Any]) -> list[dict[str, Any]]:
                 action_id,
                 label,
                 "urgency",
-                _URGENCY_BASE + _amount(entry.get("amount_at_risk")),
+                rank_score(
+                    _amount(entry.get("amount_at_risk")),
+                    _days_remaining(entry.get("confirmation_days_remaining")),
+                ),
                 "cccap_analyze_payment",
                 {"detailPage": 1},
             ))

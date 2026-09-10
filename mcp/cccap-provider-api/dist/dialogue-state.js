@@ -19,6 +19,22 @@ export class DialogueStateStore {
         this.ttlMs = options.ttlMs ?? 15 * 60 * 1000;
         this.maxEntries = options.maxEntries ?? 100;
     }
+    hasGlossary(providerKey) {
+        this.evict();
+        return this.states.get(providerKey)?.glossaryShown === true;
+    }
+    markGlossary(providerKey) {
+        this.evict();
+        const now = this.now();
+        const existing = this.states.get(providerKey);
+        this.states.set(providerKey, {
+            lastCapability: existing?.lastCapability ?? "",
+            lastScope: existing?.lastScope,
+            lastFreshnessAt: existing?.lastFreshnessAt ?? "",
+            expiresAt: existing?.expiresAt ?? now + this.ttlMs,
+            glossaryShown: true,
+        });
+    }
     recordAndDiff(providerKey, capability, scope, freshnessAt) {
         this.evict();
         const now = this.now();
@@ -36,6 +52,7 @@ export class DialogueStateStore {
             lastScope: scope,
             lastFreshnessAt: freshnessAt,
             expiresAt: now + this.ttlMs,
+            ...(stillFresh && previous.glossaryShown !== undefined ? { glossaryShown: previous.glossaryShown } : {}),
         });
         return diff;
     }
@@ -60,4 +77,11 @@ export class DialogueStateStore {
             this.states.delete(oldest[0]);
         }
     }
+}
+const defaultDialogueStateStore = new DialogueStateStore();
+export function hasShownGlossary(providerKey) {
+    return defaultDialogueStateStore.hasGlossary(providerKey);
+}
+export function markGlossaryShown(providerKey) {
+    defaultDialogueStateStore.markGlossary(providerKey);
 }

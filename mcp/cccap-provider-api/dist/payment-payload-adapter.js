@@ -221,6 +221,10 @@ export function normalizeAttendanceDays(schedules, enrichmentByAuthorization, op
                     : {}),
             ...(typeof schedule.county_id === "string" ? { county_id: schedule.county_id } : {}),
             ...(typeof schedule.county_name === "string" ? { county_name: schedule.county_name } : {}),
+            attendance_basis: (typeof schedule.check_in_count === "number" && schedule.check_in_count > 0)
+                || schedule.attended_flag === true
+                ? "ACTUAL"
+                : "SCHEDULED",
             ...(isFutureForecast ? { forecast_basis: "SCHEDULED" } : {}),
             ...(typeof enrichment.holiday_name === "string" ? { holiday_name: enrichment.holiday_name } : {}),
             ...(typeof enrichment.holiday_date === "string" ? { holiday_date: enrichment.holiday_date } : {}),
@@ -389,7 +393,8 @@ function requiredRecords(value, label) {
 }
 export function buildCanonicalPaymentPayload(input) {
     return {
-        rule_version: "provider-risk-payment-v1",
+        rule_version: "provider-risk-payment-v3",
+        as_of_date: requiredString(input.asOfDate, "as-of date"),
         ...(input.mode
             ? { calculation_mode: input.mode === "FORECAST" ? "CURRENT_WEEK_FORECAST" : "STATUS" }
             : {}),

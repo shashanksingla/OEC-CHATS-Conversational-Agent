@@ -4,7 +4,7 @@ import test from "node:test";
 import { assertPaymentEnginePayload, normalizePaymentStatus } from "../src/payment-schema.js";
 
 const validPayload = {
-  rule_version: "provider-risk-payment-v1",
+  rule_version: "provider-risk-payment-v3",
   service_period: { id: "SP-1", start_date: "2026-09-01", end_date: "2026-09-07" },
   authorizations: [],
   attendance_days: [],
@@ -26,7 +26,7 @@ test("fails closed on a non-object payload", () => {
 test("fails closed on the wrong rule version", () => {
   assert.throws(
     () => assertPaymentEnginePayload({ ...validPayload, rule_version: "legacy-v0" }),
-    /rule_version must be provider-risk-payment-v1/,
+    /rule_version must be provider-risk-payment-v3/,
   );
 });
 

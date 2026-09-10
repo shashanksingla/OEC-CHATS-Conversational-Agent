@@ -215,7 +215,7 @@ test("payment adapter produces canonical input from source-shaped records", () =
     asOfDate: "2026-09-08",
   });
 
-  assert.equal(payload.rule_version, "provider-risk-payment-v1");
+  assert.equal(payload.rule_version, "provider-risk-payment-v3");
   assert.equal(payload.service_period.id, "period-1");
   assert.equal(payload.authorizations[0]?.id, "auth-1");
   assert.equal(payload.attendance_days[0]?.parent_confirmation, "CONFIRMED");

@@ -1,0 +1,253 @@
+User: Hi
+
+GitHub Copilot: Updated todo list
+
+I’ll load the provider’s current-month snapshot so I can greet you with the verified status for today.
+
+Ran Get Current-Month Payment Risk Snapshot 
+Completed with input: {}
+
+Greetings for the day, Shashank. Here's where things stand at Rising Star Early Learning Center.
+
+Today's snapshot
+
+| Today | Count |
+| --- | ---: |
+| Children scheduled | 23 |
+| Children checked in | 0 |
+
+The following verified items require your attention. Details and recommended reviews are provided below.
+
+**Attendance and payment issues (Current-month)**
+
+| Area | Verified finding | Why it matters / next review |
+| --- | --- | --- |
+| Pending parent confirmations | 55 day(s) for 23 child(ren) may keep payment conditional | Review pending parent confirmations in the provider system |
+| Children approaching county monthly absence limits | No children currently approaching county monthly absence limits | None |
+| Children crossed county absence limits | 23 child(ren) of 4 counties; 1 day(s) over the limit may be excluded from payment | Review affected children and absence dates |
+
+**Next actions**
+
+1. Review absence-limit risk — 23 children
+2. Confirm pending attendance — 55 days
+
+**Available views**
+
+- Open next payout summary
+
+**Next step**
+
+Ask about a specific child, authorization, county, date, or payment impact, or choose one of the reviews above.
+
+User: next payout summary
+
+GitHub Copilot: Updated todo list
+
+I’ll retrieve the verified next payout summary, including its service period and payment conditions.
+
+Ran Analyze CCCAP Payment 
+Completed with input: {
+  "view": "NEXT_PAYOUT"
+}
+
+Next payout summary: Conditional.
+
+| Measure | Result |
+| --- | --- |
+| Status | Conditional |
+| Services from | 2026-08-24 |
+| Services through | 2026-08-30 |
+| Net amount | ~ $0.00 |
+| Gross amount | ~ $0.00 |
+| Amount at risk | ~ $74949.27 |
+| Excluded days | 74 |
+| Excluded authorizations | 1 |
+
+County payment composition (potential amounts)  
+Potential amounts include confirmed and conditional amounts; the payable amount remains shown in the summary above.
+
+| County | Care hours | Care amount | Absence hours | Absence amount | Drop-in hours | Drop-in amount | Vacant slot days | Vacant slot amount | Paid holiday hours | Paid holiday amount | Potential total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Denver | 0.00 | ~ $0.00 | 704.00 | ~ $57118.47 | 0.00 | ~ $0.00 | 0 | ~ $0.00 | 0.00 | ~ $0.00 | ~ $57118.47 |
+| Jefferson | 0.00 | ~ $0.00 | 101.00 | ~ $8247.86 | 0.00 | ~ $0.00 | 0 | ~ $0.00 | 0.00 | ~ $0.00 | ~ $8247.86 |
+| Adams | 0.00 | ~ $0.00 | 32.00 | ~ $0.00 | 0.00 | ~ $0.00 | 0 | ~ $0.00 | 0.00 | ~ $0.00 | ~ $0.00 |
+| Arapahoe | 0.00 | ~ $0.00 | 64.00 | ~ $3272.32 | 0.00 | ~ $0.00 | 0 | ~ $0.00 | 0.00 | ~ $0.00 | ~ $3272.32 |
+
+Detail available: 130 child/date rows. Request a detail page to inspect them.
+
+**Next actions**
+
+1. Review excluded payment days
+
+**Drill down**
+
+- Open highest-impact child payment detail
+
+**Next step**
+
+Ask about a specific child, authorization, county, date, or payment impact, or choose one of the reviews above.
+
+⚠️ *All amounts shown are estimated based on current system data and are subject to change; they do not represent confirmed or final payout amounts.*
+
+User: 1
+
+GitHub Copilot: Updated todo list
+
+I’m opening the first listed next action from the payout result: the excluded payment-day details.
+
+Ran Analyze CCCAP Payment 
+Completed with input: {
+  "actionId": "review-excluded-payment-days",
+  "contextRef": "LbNlGjwCln2e1T4sKSwZv766JTSUq11I",
+  "actionRef": "mQ5S5s_iud_HwwTEAHX8ZPqoMTm_Q-ue"
+}
+
+The detail response is larger than the chat display, so I’m narrowing it to the first detail page to return the actionable rows cleanly.
+
+Ran Analyze CCCAP Payment 
+Completed with input: {
+  "actionId": "review-excluded-payment-days",
+  "contextRef": "LbNlGjwCln2e1T4sKSwZv766JTSUq11I",
+  "actionRef": "mQ5S5s_iud_HwwTEAHX8ZPqoMTm_Q-ue",
+  "detailPage": 1,
+  "detailPageSize": 25
+}
+
+The provider still marks the detail payload as large; I’m requesting a single-row page so the returned provider message fits directly in the response.
+
+Ran Analyze CCCAP Payment 
+Completed with input: {
+  "actionId": "review-excluded-payment-days",
+  "contextRef": "LbNlGjwCln2e1T4sKSwZv766JTSUq11I",
+  "actionRef": "mQ5S5s_iud_HwwTEAHX8ZPqoMTm_Q-ue",
+  "detailPage": 1,
+  "detailPageSize": 1
+}
+
+The excluded-payment-day review returned a detail payload that this interface could not display. The payout currently shows **74 excluded days** and **1 excluded authorization**.User: Hi
+
+GitHub Copilot: Updated todo list
+
+I’ll load the provider’s current-month snapshot so I can greet you with the verified status for today.
+
+Ran Get Current-Month Payment Risk Snapshot 
+Completed with input: {}
+
+Greetings for the day, Shashank. Here's where things stand at Rising Star Early Learning Center.
+
+Today's snapshot
+
+| Today | Count |
+| --- | ---: |
+| Children scheduled | 23 |
+| Children checked in | 0 |
+
+The following verified items require your attention. Details and recommended reviews are provided below.
+
+**Attendance and payment issues (Current-month)**
+
+| Area | Verified finding | Why it matters / next review |
+| --- | --- | --- |
+| Pending parent confirmations | 55 day(s) for 23 child(ren) may keep payment conditional | Review pending parent confirmations in the provider system |
+| Children approaching county monthly absence limits | No children currently approaching county monthly absence limits | None |
+| Children crossed county absence limits | 23 child(ren) of 4 counties; 1 day(s) over the limit may be excluded from payment | Review affected children and absence dates |
+
+**Next actions**
+
+1. Review absence-limit risk — 23 children
+2. Confirm pending attendance — 55 days
+
+**Available views**
+
+- Open next payout summary
+
+**Next step**
+
+Ask about a specific child, authorization, county, date, or payment impact, or choose one of the reviews above.
+
+User: next payout summary
+
+GitHub Copilot: Updated todo list
+
+I’ll retrieve the verified next payout summary, including its service period and payment conditions.
+
+Ran Analyze CCCAP Payment 
+Completed with input: {
+  "view": "NEXT_PAYOUT"
+}
+
+Next payout summary: Conditional.
+
+| Measure | Result |
+| --- | --- |
+| Status | Conditional |
+| Services from | 2026-08-24 |
+| Services through | 2026-08-30 |
+| Net amount | ~ $0.00 |
+| Gross amount | ~ $0.00 |
+| Amount at risk | ~ $74949.27 |
+| Excluded days | 74 |
+| Excluded authorizations | 1 |
+
+County payment composition (potential amounts)  
+Potential amounts include confirmed and conditional amounts; the payable amount remains shown in the summary above.
+
+| County | Care hours | Care amount | Absence hours | Absence amount | Drop-in hours | Drop-in amount | Vacant slot days | Vacant slot amount | Paid holiday hours | Paid holiday amount | Potential total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Denver | 0.00 | ~ $0.00 | 704.00 | ~ $57118.47 | 0.00 | ~ $0.00 | 0 | ~ $0.00 | 0.00 | ~ $0.00 | ~ $57118.47 |
+| Jefferson | 0.00 | ~ $0.00 | 101.00 | ~ $8247.86 | 0.00 | ~ $0.00 | 0 | ~ $0.00 | 0.00 | ~ $0.00 | ~ $8247.86 |
+| Adams | 0.00 | ~ $0.00 | 32.00 | ~ $0.00 | 0.00 | ~ $0.00 | 0 | ~ $0.00 | 0.00 | ~ $0.00 | ~ $0.00 |
+| Arapahoe | 0.00 | ~ $0.00 | 64.00 | ~ $3272.32 | 0.00 | ~ $0.00 | 0 | ~ $0.00 | 0.00 | ~ $0.00 | ~ $3272.32 |
+
+Detail available: 130 child/date rows. Request a detail page to inspect them.
+
+**Next actions**
+
+1. Review excluded payment days
+
+**Drill down**
+
+- Open highest-impact child payment detail
+
+**Next step**
+
+Ask about a specific child, authorization, county, date, or payment impact, or choose one of the reviews above.
+
+⚠️ *All amounts shown are estimated based on current system data and are subject to change; they do not represent confirmed or final payout amounts.*
+
+User: 1
+
+GitHub Copilot: Updated todo list
+
+I’m opening the first listed next action from the payout result: the excluded payment-day details.
+
+Ran Analyze CCCAP Payment 
+Completed with input: {
+  "actionId": "review-excluded-payment-days",
+  "contextRef": "LbNlGjwCln2e1T4sKSwZv766JTSUq11I",
+  "actionRef": "mQ5S5s_iud_HwwTEAHX8ZPqoMTm_Q-ue"
+}
+
+The detail response is larger than the chat display, so I’m narrowing it to the first detail page to return the actionable rows cleanly.
+
+Ran Analyze CCCAP Payment 
+Completed with input: {
+  "actionId": "review-excluded-payment-days",
+  "contextRef": "LbNlGjwCln2e1T4sKSwZv766JTSUq11I",
+  "actionRef": "mQ5S5s_iud_HwwTEAHX8ZPqoMTm_Q-ue",
+  "detailPage": 1,
+  "detailPageSize": 25
+}
+
+The provider still marks the detail payload as large; I’m requesting a single-row page so the returned provider message fits directly in the response.
+
+Ran Analyze CCCAP Payment 
+Completed with input: {
+  "actionId": "review-excluded-payment-days",
+  "contextRef": "LbNlGjwCln2e1T4sKSwZv766JTSUq11I",
+  "actionRef": "mQ5S5s_iud_HwwTEAHX8ZPqoMTm_Q-ue",
+  "detailPage": 1,
+  "detailPageSize": 1
+}
+
+The excluded-payment-day review returned a detail payload that this interface could not display. The payout currently shows **74 excluded days** and **1 excluded authorization**.

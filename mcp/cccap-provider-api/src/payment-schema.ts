@@ -66,8 +66,8 @@ export function assertPaymentEnginePayload(payload: unknown): void {
     throw new Error("Payment engine payload must be an object");
   }
   const record = payload as RecordValue;
-  if (record.rule_version !== "provider-risk-payment-v1") {
-    throw new Error("Payment engine payload rule_version must be provider-risk-payment-v1");
+  if (record.rule_version !== "provider-risk-payment-v3") {
+    throw new Error("Payment engine payload rule_version must be provider-risk-payment-v3");
   }
   const requiredArrayFields = [
     "authorizations",

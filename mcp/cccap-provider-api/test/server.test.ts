@@ -15,6 +15,7 @@ import {
   formatCountyPolicyResult,
   formatAttendanceRiskResult,
   formatPaymentResult,
+  formatServicePeriodLedgerResult,
 } from "../src/server.js";
 import {
   buildCanonicalPaymentPayload,
@@ -32,7 +33,7 @@ import {
 test("live payment readiness blocks amounts until canonical sources are available", () => {
   assert.deepEqual(livePaymentReadiness(), {
     status: "BLOCKED",
-    ruleVersion: "provider-risk-payment-v1",
+    ruleVersion: "provider-risk-payment-v3",
     sourceReadiness: "BLOCKED_MISSING_REQUIRED_INPUTS",
     missingInputs: [
       "fiscal_rates",
@@ -75,9 +76,12 @@ test("attendance analysis returns affected child drill-down rows", () => {
   const text = result.content[0].text;
   assert.match(text, /Current-month attendance review found 1 child\(ren\) needing attention\./);
   assert.match(text, /2 pending parent confirmation day\(s\) affect 1 child\(ren\)\./);
-  assert.match(text, /\| Child name \| Household name \| County \| Authorization name \| Service dates \| Note \| Potential impact \|/);
-    assert.match(text, /\| Taylor Example \| Example Household \| Unavailable from the current source \| Unavailable from the current source \| 2026-09-01, 2026-09-02 \|/);
-  assert.match(text, /Review 2 pending parent confirmation day\(s\)/);
+  // Column-hygiene fix: Outside window/Over limit/Est. risk are dropped when
+  // every displayed row lacks a value for them (this fixture only has a
+  // Pending count).
+  assert.match(text, /\| Child \| County \| Pending \|/);
+  assert.match(text, /\| Taylor Example \| Unavailable from the current source \| 2 \|/);
+  assert.match(text, /Review pending confirmations — 2 days/);
   assert.match(text, /\*\*Drill down\*\*/);
   assert.match(text, /Attendance overview:/);
   assert.match(text, /Attendance by county:/);
@@ -125,8 +129,8 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
   const text = result.content[0].text;
   assert.match(text, /1 child\(ren\) have an absence-limit concern\./);
   assert.match(text, /1 child\(ren\) have incomplete attendance records\./);
-  assert.match(text, /Review 1 child\(ren\) near or over the absence limit/);
-  assert.match(text, /Review 1 incomplete attendance record\(s\)/);
+  assert.match(text, /Review absence-limit risk — 1 children/);
+  assert.match(text, /Review incomplete attendance — 1 records/);
   assert.doesNotMatch(text, /View next payout details/);
   assert.doesNotMatch(text, /Review and complete the pending parent confirmations/);
 
@@ -147,7 +151,7 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
       ],
     },
   });
-  assert.match(countyPolicyResult.content[0].text, /Review 1 child\(ren\) near or over the absence limit/);
+  assert.match(countyPolicyResult.content[0].text, /Review absence-limit risk — 1 children/);
 });
 
 test("attendance analysis does not label unavailable absence limits as concerns", () => {
@@ -590,6 +594,7 @@ test("normalizes attendance days only when payment enrichments are authoritative
       occupied_slot_contract: false,
       care_not_offered: false,
       observed_holiday: false,
+      attendance_basis: "SCHEDULED",
     }],
   );
 });
@@ -684,6 +689,7 @@ test("future forecast rows retain authorized hours and ignore actual hours", () 
       occupied_slot_contract: false,
       care_not_offered: false,
       observed_holiday: false,
+      attendance_basis: "SCHEDULED",
       forecast_basis: "SCHEDULED",
     },
   );
@@ -716,9 +722,10 @@ test("assembles the complete provider-risk-payment canonical payload", () => {
     countyPolicies: [{ county_id: "county-1", quality_tier: 1, absence_limit: 2 }],
     fiscalRates: [{ authorization_id: "auth-1", paid_tier: "PART_TIME", amount: 45 }],
     paymentHistory: { subPayments: [] },
+    asOfDate: "2026-09-07",
   });
 
-  assert.equal(payload.rule_version, "provider-risk-payment-v1");
+  assert.equal(payload.rule_version, "provider-risk-payment-v3");
   assert.equal(payload.service_period.id, "SP-1");
   assert.equal(payload.attendance_days[0]?.authorization_id, "auth-1");
   assert.equal(payload.fiscal_rates[0]?.amount, 45);
@@ -1017,13 +1024,35 @@ test("payment results use a provider-facing table and preserve blocked states", 
   });
 
   assert.match(result.content[0].text, /Next payout summary: Blocked/);
-  assert.match(result.content[0].text, /⚠️ \*All amounts shown are estimated based on current system data and are subject to change; they do not represent confirmed or final payout amounts\.\*$/);
+  assert.match(result.content[0].text, /⚠️ \*Figures reflect the system's current data and are not an official payment notice\. Only your county portal or remittance advice is authoritative\.\*$/);
   assert.match(result.content[0].text, /Services from/);
   assert.match(result.content[0].text, /2026-09-24/);
   assert.match(result.content[0].text, /fiscal_rates, parent_confirmations/);
   assert.doesNotMatch(result.content[0].text, /amount \|/);
   assert.equal(result.structuredContent?.providerMessage, result.content[0].text);
   assert.deepEqual(result.structuredContent?.scope, { dateFilter: "THIS_MONTH" });
+});
+
+test("current week forecast renders actual and scheduled attendance basis split", () => {
+  const result = formatPaymentResult({
+    paymentView: "CURRENT_WEEK_FORECAST",
+    status: "ok",
+    payment: { status: "CONDITIONAL", amount: "90.00" },
+    detailPagination: { page: 1, pageSize: 25, totalRows: 2, hasMore: false },
+    attendance: {
+      actual_hours_total: "5.00",
+      scheduled_hours_total: "5.00",
+      days: [
+        { child_name: "Actual Child", service_date: "2026-09-09", classification: "ATTENDED", attendance_basis: "ACTUAL", unit_hours: "5.00", conditional: false },
+        { child_name: "Scheduled Child", service_date: "2026-09-10", classification: "SCHEDULED_FORECAST", attendance_basis: "SCHEDULED", unit_hours: "5.00", conditional: true },
+      ],
+    },
+  });
+  const text = result.content[0].text;
+  assert.match(text, /Actual \(checked in\): 5\.00 hours\. Scheduled \(projected\): 5\.00 hours\./);
+  assert.match(text, /Attendance type \| Basis \| Care hours/);
+  assert.match(text, /Actual Child .*Actual \(checked in\)/);
+  assert.match(text, /Scheduled Child .*Scheduled \(projected\)/);
 });
 
 test("payment results show scheduled forecast rows for child drill-down", () => {
@@ -1035,6 +1064,7 @@ test("payment results show scheduled forecast rows for child drill-down", () => 
     scope: { dateFilter: "DATE_RANGE", dateFrom: "2026-09-07", dateTo: "2026-09-13" },
     servicePeriod: { servicePeriodId: "SP-2026-09-07" },
     payment: { status: "CONDITIONAL", amount: "90.00", amount_at_risk: "45.00" },
+    detailPagination: { page: 1, pageSize: 25, totalRows: 1, hasMore: false },
     attendance: { days: [{
       child_name: "Taylor Example",
       county_id: "denver",
@@ -1047,9 +1077,9 @@ test("payment results show scheduled forecast rows for child drill-down", () => 
   });
 
   assert.match(result.content[0].text, /Current service-period forecast: Conditional/);
-  assert.match(result.content[0].text, /⚠️ \*All amounts shown are estimated based on current system data and are subject to change; they do not represent confirmed or final payout amounts\.\*$/);
-  assert.match(result.content[0].text, /Taylor Example \| Unavailable from the current source \| Unavailable from the current source \| 2026-09-09/);
-  assert.match(result.content[0].text, /2026-09-09 \| SCHEDULED_FORECAST \| 5\.00/);
+  assert.match(result.content[0].text, /⚠️ \*Figures reflect the system's current data and are not an official payment notice\. Only your county portal or remittance advice is authoritative\.\*$/);
+  assert.match(result.content[0].text, /Taylor Example \| Unavailable from the current source \| 2026-09-09/);
+  assert.match(result.content[0].text, /2026-09-09 \| Scheduled \(forecast\) \| 5\.00/);
   assert.doesNotMatch(result.content[0].text, /\| Scheduled forecast \|/);
   assert.equal(result.structuredContent?.calculationMode, "CURRENT_WEEK_FORECAST");
 });
@@ -1094,7 +1124,7 @@ test("payment results keep initial summary to the measure table and composition"
       actionId: "open-payment-detail",
       capability: "payment-analysis",
       tool: "cccap_analyze_payment",
-      label: "Open the highest-impact child payment details",
+      label: "Open highest-impact child payment detail",
       reason: "Inspect the child and service-date rows behind this summary.",
       priority: "high",
       section: "drill-down",
@@ -1109,15 +1139,26 @@ test("payment detail reports its bounded page window", () => {
     paymentView: "NEXT_PAYOUT",
     payment: { status: "EXPECTED", amount: "45.00" },
     detailPagination: { page: 2, pageSize: 1, totalRows: 2, hasMore: false },
-    attendance: { days: [{
-      child_name: "Taylor Example",
-      county_id: "denver",
-      service_date: "2026-09-10",
-      forecast_basis: "ACTUAL",
-      classification: "ATTENDED",
-      unit_hours: "5.00",
-      conditional: false,
-    }] },
+    attendance: { days: [
+      {
+        child_name: "Taylor Example",
+        county_id: "denver",
+        service_date: "2026-09-09",
+        forecast_basis: "ACTUAL",
+        classification: "ATTENDED",
+        unit_hours: "5.00",
+        conditional: false,
+      },
+      {
+        child_name: "Taylor Example",
+        county_id: "denver",
+        service_date: "2026-09-10",
+        forecast_basis: "ACTUAL",
+        classification: "ATTENDED",
+        unit_hours: "5.00",
+        conditional: false,
+      },
+    ] },
   });
 
   assert.match(result.content[0].text, /Showing detail rows 2-2 of 2 \(page 2; page size 1\)\./);
@@ -1128,6 +1169,7 @@ test("payment detail omits zero-value NO_CARE rows", () => {
   const result = formatPaymentResult({
     paymentView: "NEXT_PAYOUT",
     payment: { status: "EXPECTED", amount: "45.00" },
+    detailPagination: { page: 1, pageSize: 25, totalRows: 2, hasMore: false },
     attendance: { days: [
       {
         child_name: "Taylor Example",
@@ -1152,7 +1194,7 @@ test("payment detail omits zero-value NO_CARE rows", () => {
 
   const text = result.content[0].text;
   assert.doesNotMatch(text, /NO_CARE/);
-  assert.match(text, /2026-09-10 \| ABSENCE \| 5/);
+  assert.match(text, /2026-09-10 \| Absence \(paid\) \| 5/);
 });
 
 test("attendance detail caps the provider-facing table and reports the remainder", () => {
@@ -1322,21 +1364,91 @@ test("payment drill-down targets the highest-impact child", () => {
     paymentView: "NEXT_PAYOUT",
     highestImpactChildName: "Taylor Example",
     payment: { status: "CONDITIONAL", amount: "90.00" },
-    detailPagination: { page: 0, pageSize: 0, totalRows: 2, hasMore: true },
-    attendance: { days: [] },
+    attendance: { days: [
+      { child_name: "Taylor Example", service_date: "2026-09-01", classification: "ATTENDED", unit_hours: "5.00", conditional: false },
+      { child_name: "Taylor Example", service_date: "2026-09-02", classification: "ATTENDED", unit_hours: "5.00", conditional: false },
+    ] },
   });
 
   assert.deepEqual(result.structuredContent?.actionIntents, [{
     actionId: "open-payment-detail",
     capability: "payment-analysis",
     tool: "cccap_analyze_payment",
-    label: "Open the highest-impact child payment details",
+    label: "Open highest-impact child payment detail",
     reason: "Inspect the child and service-date rows behind this summary.",
     priority: "high",
     section: "drill-down",
     source: "current-result",
     input: { view: "NEXT_PAYOUT", detailPage: 1, childNames: ["Taylor Example"] },
   }]);
+});
+
+test("payment drill-down ranks the maximum amount at risk across all children", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    highestImpactChildName: "High at risk",
+    highestImpactRankedByDollars: true,
+    payment: { status: "EXPECTED", amount: "100.00" },
+    child_payment_impacts: [
+      { child_name: "High total", amount_at_risk: "5.00", total_amount: "500.00" },
+      { child_name: "High at risk", amount_at_risk: "75.00", total_amount: "100.00" },
+      { child_name: "No exposure", amount_at_risk: "0.00", total_amount: "0.00" },
+    ],
+    attendance: { days: [{ child_name: "High at risk", service_date: "2026-09-01", unit_hours: "5.00" }] },
+    detailPagination: { page: 0, pageSize: 0, totalRows: 1, hasMore: true },
+  });
+
+  const action = (result.structuredContent?.actionIntents as Record<string, unknown>[])
+    .find((candidate) => candidate.label === "Open highest-impact child payment detail");
+  assert.deepEqual((action?.input as Record<string, unknown>)?.childNames, ["High at risk"]);
+});
+
+test("payment drill-down ranks maximum total amount when amount at risk is zero", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    highestImpactChildName: "High total",
+    highestImpactRankedByDollars: true,
+    payment: { status: "EXPECTED", amount: "100.00" },
+    child_payment_impacts: [
+      { child_name: "High total", amount_at_risk: "0.00", total_amount: "250.00" },
+      { child_name: "Lower total", amount_at_risk: "0.00", total_amount: "50.00" },
+    ],
+    attendance: { days: [{ child_name: "High total", service_date: "2026-09-01", unit_hours: "5.00" }] },
+    detailPagination: { page: 0, pageSize: 0, totalRows: 1, hasMore: true },
+  });
+
+  const action = (result.structuredContent?.actionIntents as Record<string, unknown>[])
+    .find((candidate) => candidate.label === "Open highest-impact child payment detail");
+  assert.deepEqual((action?.input as Record<string, unknown>)?.childNames, ["High total"]);
+  // total_amount is a genuine dollar figure (tier 2 of the 3-tier ranking), so
+  // this is still a real dollar-ranked result — the hours-fallback caveat is
+  // reserved for highestImpactRankedByDollars === false (tier 3) only, per
+  // payment-formatter.ts. Asserting the caveat's ABSENCE here is the correct
+  // regression check: it must never render for a genuine dollar ranking.
+  assert.doesNotMatch(
+    result.content[0].text,
+    /A verified dollar amount at risk isn't available for this scope yet/,
+  );
+});
+
+test("payment drill-down uses the scheduled-hours fallback action without a dollar label", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    highestImpactChildName: "Most hours",
+    highestImpactRankedByDollars: false,
+    payment: { status: "EXPECTED", amount: "0.00" },
+    child_payment_impacts: [
+      { child_name: "Most hours", amount_at_risk: "0.00", total_amount: "0.00" },
+      { child_name: "Less hours", amount_at_risk: "0.00", total_amount: "0.00" },
+    ],
+    attendance: { days: [{ child_name: "Most hours", service_date: "2026-09-01", unit_hours: "8.00" }] },
+    detailPagination: { page: 0, pageSize: 0, totalRows: 1, hasMore: true },
+  });
+
+  const action = (result.structuredContent?.actionIntents as Record<string, unknown>[])[0];
+  assert.equal(action.actionId, "open-highest-hours-child-detail");
+  assert.notEqual(action.label, "Open highest-impact child payment detail");
+  assert.match(result.content[0].text, /A verified dollar amount at risk isn't available for this scope yet, so the drill-down below shows the child with the most scheduled hours instead of the highest dollar impact\./);
 });
 
 test("attendance formatter reports unmatched child filters", () => {
@@ -1381,7 +1493,9 @@ test("incomplete attendance action returns child-level detail rows", () => {
 
   const text = result.content[0].text;
   assert.match(text, /Incomplete Example/);
-  assert.match(text, /A check-in requires a matching check-out/);
+  // Column-hygiene fix: this fixture has no Pending/Outside window/Over
+  // limit/Est. risk value on any displayed row, so all four are dropped.
+  assert.match(text, /\| Child \| County \|/);
   assert.doesNotMatch(text, /Pending Example/);
 });
 
@@ -1411,10 +1525,10 @@ test("initial payment summary renders county composition columns", () => {
         county_composition: [{
           county: "Denver",
           care: { hours: "40.00", amount: "360.00" },
-          absence: { hours: "8.00", amount: "72.00" },
+          absence: { days: 8, hours: "8.00", amount: "72.00" },
           drop_in: { hours: "4.00", amount: "36.00" },
           vacant_slots: { days: 2, amount: "18.00" },
-          paid_holidays: { hours: "8.00", amount: "72.00" },
+          paid_holidays: { days: 1, hours: "8.00", amount: "72.00" },
           potential_total: "558.00",
         }],
       },
@@ -1424,11 +1538,28 @@ test("initial payment summary renders county composition columns", () => {
 
   const text = result.content[0].text;
   assert.match(text, /County payment composition \(potential amounts\)/);
-  assert.match(text, /Care hours \| Care amount/);
-  assert.match(text, /Absence hours \| Absence amount/);
-  assert.match(text, /Drop-in hours \| Drop-in amount/);
-  assert.match(text, /Vacant slot days \| Vacant slot amount/);
-  assert.match(text, /Paid holiday hours \| Paid holiday amount/);
-  assert.match(text, /\| Denver \| 40\.00 \| ~ \$360\.00/);
+  assert.match(text, /Care Amount \| Absence Amount \| Drop-in Amount \| Vacant Slot Amount \| Paid Holiday Amount/);
+  assert.match(text, /\| Denver \| ~ \$360\.00 \(40 Hours\)/);
+  assert.match(text, /~ \$72\.00 \(8 Days\)/);
+  assert.match(text, /~ \$36\.00 \(4 Hours\)/);
+  assert.match(text, /~ \$18\.00 \(2 Days\)/);
+  assert.match(text, /~ \$72\.00 \(1 Days\)/);
   assert.match(text, /~ \$558\.00/);
+});
+
+test("service period ledger formatter translates statuses and renders each payout row", () => {
+  const result = formatServicePeriodLedgerResult({ sourceRetrievedAt: "2026-09-01T00:00:00Z", periods: [
+    { servicePeriodId: "a0B000000000001AAA", serviceBeginDate: "2026-08-24", serviceEndDate: "2026-08-30", payoutDate: "2026-09-10", periodStatus: "EXPECTED_AWAITING_PAYOUT", netAmount: "125.50", grossAmount: "140.00", guaranteedAmount: "10.00", amountAtRisk: "4.50" },
+    { servicePeriodId: "a0B000000000002AAA", serviceBeginDate: "2026-08-17", serviceEndDate: "2026-08-23", payoutDate: "2026-09-03", periodStatus: "PAID", netAmount: "90.00", grossAmount: "90.00", guaranteedAmount: "0.00", amountAtRisk: "0.00" },
+  ] });
+  assert.match(result.content[0].text, /Expected, awaiting payout/);
+  assert.match(result.content[0].text, /Aug 24, 2026-Aug 30, 2026/);
+  assert.match(result.content[0].text, /~ \$125\.50/);
+  assert.match(result.content[0].text, /Paid/);
+});
+
+test("service period payout formatter renders countdown and verified-data absence", () => {
+  const entry = { servicePeriodId: "a0B000000000001AAA", serviceBeginDate: "2026-08-24", serviceEndDate: "2026-08-30", payoutDate: "2026-09-10", periodStatus: "EXPECTED_AWAITING_PAYOUT", netAmount: "125.50", grossAmount: "140.00", guaranteedAmount: "10.00", amountAtRisk: "0.00" } as const;
+  assert.match(formatServicePeriodLedgerResult({ entry, daysUntilPayout: 9, sourceRetrievedAt: "2026-09-01T00:00:00Z" }).content[0].text, /Payout in 9 days/);
+  assert.match(formatServicePeriodLedgerResult({ entry: undefined, daysUntilPayout: undefined, sourceRetrievedAt: "2026-09-01T00:00:00Z" }).content[0].text, /No upcoming payout is currently identified from verified data/);
 });

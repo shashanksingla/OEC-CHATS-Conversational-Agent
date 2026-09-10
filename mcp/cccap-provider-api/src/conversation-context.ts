@@ -135,7 +135,7 @@ export class ConversationContextStore {
       return undefined;
     }
     const plan = context.actions.get(actionRef);
-    if (!plan || (requestedInput && normalizeInput(requestedInput) !== normalizeInput(plan.input))) return undefined;
+    if (!plan || (requestedInput && !isCompatibleInput(requestedInput, plan.input))) return undefined;
     if (plan.compatibilityKey && plan.compatibilityKey !== compatibilityKeyFor(plan.tool, ruleVersion, [plan])) return undefined;
     context.lastUsed = this.now();
     return {
@@ -150,7 +150,7 @@ export class ConversationContextStore {
     this.evict();
     const action = this.sessionActions.get(providerKey)?.get(actionId);
     if (!action || action.plan.tool !== tool || action.expiresAt <= this.now()) return undefined;
-    if (requestedInput && normalizeInput(requestedInput) !== normalizeInput(action.plan.input)) return undefined;
+    if (requestedInput && !isCompatibleInput(requestedInput, action.plan.input)) return undefined;
     action.lastUsed = this.now();
     return { ...publicPlan(action.plan) };
   }
@@ -209,6 +209,34 @@ export class ConversationContextStore {
 
 function normalizeInput(input: Record<string, unknown>): string {
   return stableJson(Object.fromEntries(Object.entries(input).filter(([key]) => key !== "contextRef" && key !== "actionRef" && key !== "refresh")));
+}
+
+// Pagination-only fields a caller may add on top of a stored action/continuation
+// without that being treated as an incompatible/scope-widening request. Any key
+// NOT in this set must already be present in the stored plan input with an
+// identical value; only these keys may appear as new additions. This is what
+// lets a provider narrow detailPage/detailPageSize on an existing action
+// reference without the reference being rejected as expired/incompatible.
+const ADDITIVE_REFINEMENT_KEYS = new Set(["detailPage", "detailPageSize"]);
+
+// Compatible means: every key already present in the stored plan input keeps
+// its exact value (no scope override), and any extra key the caller adds is
+// limited to ADDITIVE_REFINEMENT_KEYS. This is deliberately looser than exact
+// equality (which rejected a valid actionRef merely because the caller added
+// detailPageSize) while still failing closed against a caller trying to widen
+// scope by adding an unrelated field.
+function isCompatibleInput(requestedInput: Record<string, unknown>, planInput: Record<string, unknown>): boolean {
+  const requested = Object.fromEntries(
+    Object.entries(requestedInput).filter(([key]) => key !== "contextRef" && key !== "actionRef" && key !== "refresh" && key !== "actionId"),
+  );
+  for (const [key, value] of Object.entries(requested)) {
+    if (key in planInput) {
+      if (stableJson(value) !== stableJson(planInput[key])) return false;
+    } else if (!ADDITIVE_REFINEMENT_KEYS.has(key)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function compatibilityKeyFor(capability: string, ruleVersion: string | undefined, actions: ContinuationPlan[]): string {

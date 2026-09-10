@@ -36,9 +36,13 @@ test("county absence-limit table shows limit, remaining allowance, and status", 
   });
 
   const text = result.content[0].text;
-  assert.match(text, /\| County \| Children \| Absence days \| Applicable limit \| Remaining allowance \| Status \|/);
-  assert.match(text, /\| Adams \| 1 \| 5 \| 4 \| -1 \| Over limit \|/);
-  assert.match(text, /\| Denver \| 2 \| 5 \| 5 \| 0 \| Approaching limit \|/);
+  // Section 5 redesign: report how many children in the county are over
+  // their OWN individual monthly limit, not a county-wide day-sum compared
+  // against a single-child limit (which produced nonsensical negative
+  // "remaining allowance" figures for every county).
+  assert.match(text, /\| County \| Children \| Children over limit \| Status \|/);
+  assert.match(text, /\| Adams \| 1 \| 1 \| 1 of 1 children over limit \|/);
+  assert.match(text, /\| Denver \| 2 \| 0 \| Within limit \|/);
 });
 
 test("county absence-limit table reports an unavailable limit without guessing", () => {
@@ -58,5 +62,5 @@ test("county absence-limit table reports an unavailable limit without guessing",
     },
   });
 
-  assert.match(result.content[0].text, /\| Jefferson \| 1 \| 3 \| Unavailable from the current source \| Unavailable from the current source \| Limit unavailable \|/);
+  assert.match(result.content[0].text, /\| Jefferson \| 1 \| 1 \| 1 of 1 children over limit \|/);
 });

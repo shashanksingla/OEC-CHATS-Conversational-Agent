@@ -113,7 +113,7 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   // Next actions are now numbered (capped to the top 2) rather than bulleted,
   // matching the drill-down action-list convention and avoiding an
   // open-ended pile of bullets across turns.
-  assert.match(text ?? "", /\n1\. Review 1 child\(ren\) near or over the absence limit/);
+  assert.match(text ?? "", /\n1\. Review absence-limit risk — 1 children/);
 
   const absenceAction = (structured.actionControls as Array<Record<string, unknown>>).find(
     (action) => action.actionId === "review-absence-limit-risk",

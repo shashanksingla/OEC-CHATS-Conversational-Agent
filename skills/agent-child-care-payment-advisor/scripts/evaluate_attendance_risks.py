@@ -115,6 +115,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "household_name": None,
             "authorization_dates": set(),
             "absence_dates": set(),
+            "pending_confirmation_dates": set(),
             "authorization_names": set(),
             "absence_risk_amount_estimate": 0.0,
             "absence_risk_amount_available": False,
@@ -199,6 +200,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
                     child["absence_risk_amount_available"] = True
             else:
                 child["pending_confirmation_days"] += 1
+                child["pending_confirmation_dates"].add(service_date.isoformat())
         elif check_ins == 0 or check_outs == 0:
             child["incomplete_attendance_days"] += 1
 
@@ -238,6 +240,14 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         authorization_dates = sorted(child.pop("authorization_dates"))
         authorization_names = sorted(child.pop("authorization_names"))
         absence_dates = sorted(child.pop("absence_dates"))
+        pending_confirmation_dates = sorted(child.pop("pending_confirmation_dates", set()))
+        next_confirmation_deadline = None
+        confirmation_days_remaining = None
+        if pending_confirmation_dates:
+            earliest_pending_date = date.fromisoformat(pending_confirmation_dates[0])
+            deadline_date = earliest_pending_date + timedelta(days=CONFIRMATION_WINDOW_DAYS)
+            next_confirmation_deadline = deadline_date.isoformat()
+            confirmation_days_remaining = (deadline_date - as_of_date).days
         conflicting_absence_limits = sorted(child.pop("conflicting_absence_limits", set()))
         absence_risk_amount_available = child.pop("absence_risk_amount_available")
         absence_risk_amount_estimate = child.pop("absence_risk_amount_estimate")
@@ -279,8 +289,11 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "authorization_names": authorization_names,
             "authorization_dates": authorization_dates,
             "absence_dates": absence_dates,
+            "pending_confirmation_dates": pending_confirmation_dates,
             "conflicting_absence_limits": conflicting_absence_limits,
             "note": note,
+            "next_confirmation_deadline": next_confirmation_deadline,
+            "confirmation_days_remaining": confirmation_days_remaining,
             "potential_impact": potential_impact,
             "risk_codes": risk_codes,
             "risk_amount_estimate": absence_risk_amount_estimate if absence_risk_amount_available else None,
@@ -295,6 +308,18 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
     crossed_children = [
         child for child in child_results if "ABSENCE_LIMIT_EXCEEDED" in child["risk_codes"]
     ]
+    county_aggregates: dict[str, dict[str, Any]] = {}
+    for child in child_results:
+        county = child["county"]
+        if county is None:
+            county = "Unavailable from the current source"
+        aggregate = county_aggregates.setdefault(
+            county,
+            {"county": county, "children": 0, "children_over_limit_count": 0},
+        )
+        aggregate["children"] += 1
+        if "ABSENCE_LIMIT_EXCEEDED" in child["risk_codes"]:
+            aggregate["children_over_limit_count"] += 1
 
     def county_count(children: list[dict[str, Any]]) -> int:
         return len({child["county"] for child in children if child["county"] not in (None, "Multiple")})
@@ -324,6 +349,22 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "as_of_date": as_of_date.isoformat(),
         "confirmation_cutoff_date": cutoff_date.isoformat(),
+        "earliest_confirmation_deadline": (
+            min(
+                (child["next_confirmation_deadline"] for child in child_results if child["next_confirmation_deadline"]),
+                default=None,
+            )
+        ),
+        "earliest_confirmation_days_remaining": (
+            min(
+                (
+                    child["confirmation_days_remaining"]
+                    for child in child_results
+                    if child["next_confirmation_deadline"] is not None
+                ),
+                default=None,
+            )
+        ),
         "today": {key: len(value) for key, value in today.items()},
         "scheduled_days": sum(child["scheduled_days"] for child in child_results),
         "absence_days": sum(
@@ -375,6 +416,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             },
         },
         "children": child_results,
+        "counties": sorted(county_aggregates.values(), key=lambda county: county["county"]),
         "requested_child_names": requested_child_names,
         "unmatched_child_names": sorted(
             set(requested_child_names) - {child["child_name"] for child in child_results},
