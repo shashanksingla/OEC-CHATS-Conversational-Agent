@@ -216,12 +216,45 @@ export async function getAttendanceRiskAnalysis(client, providerDisplayName, sco
         throw new Error("Provider facility name is unavailable");
     }
     const { countyIds, countyIdByName, qualityTier: providerTier } = providerContext;
-    const [ratePlanData, scheduleData, holidayData] = await Promise.all([
+    const [ratePlanData, scheduleData, holidayData, fiscalData] = await Promise.all([
         client.getCountyData({ ...scope, countyIds }),
         client.getSchedules({ ...scope, ...(authNames ? { authNames } : {}) }),
         getHolidayData(client, scope),
+        // Fetched independently of the payment capability so payment-risk dollar
+        // estimates never depend on a payment call having already run in this
+        // session; a match failure below is fail-soft and never blocks the
+        // underlying attendance-risk result.
+        typeof client.getFiscalRates === "function"
+            ? client.getFiscalRates(scope)
+            : Promise.resolve({ normalizedFiscalRates: { fiscalRates: [] } }),
     ]);
     const ratePlans = requireArray(requireRecord(ratePlanData, "County rate plans").countyRatePlans, "County rate plans");
+    // Best-effort rate_type_code -> daily amount lookup for payment-risk dollar
+    // estimates. This intentionally skips the full fiscal-schedule/authorization/
+    // quality-tier matching the payment engine requires for a payable amount
+    // (see payment-canonical-adapter.ts): that matching is fail-closed by design
+    // for money actually paid, while a risk estimate is explicitly approximate
+    // and must never block or throw. Any lookup failure here simply omits the
+    // amount rather than surfacing an error.
+    const rateTypeToDailyAmount = new Map();
+    try {
+        const fiscalRows = asRecord(asRecord(fiscalData)?.normalizedFiscalRates)?.fiscalRates;
+        if (Array.isArray(fiscalRows)) {
+            for (const value of fiscalRows) {
+                const rate = asRecord(value);
+                const rateType = rate?.rateTypeCode ?? rate?.CDE_RATE_TYPE__c;
+                const amount = rate?.fiscalAgreementAmount ?? rate?.AMT_FISCAL_AGRMT__c;
+                if (typeof rateType === "string" && rateType &&
+                    typeof amount === "number" && Number.isFinite(amount) && amount > 0 &&
+                    !rateTypeToDailyAmount.has(rateType)) {
+                    rateTypeToDailyAmount.set(rateType, amount);
+                }
+            }
+        }
+    }
+    catch {
+        // Fail-soft: an estimate map that could not be built simply stays empty.
+    }
     const calendar = calendarDates(initialization, requireRecord(holidayData, "Holiday list"));
     const schedules = requireArray(requireRecord(scheduleData, "Schedules").schedules, "Schedules");
     if (authNames && authNames.length > 0) {
@@ -274,6 +307,13 @@ export async function getAttendanceRiskAnalysis(client, providerDisplayName, sco
         countyIdByName,
         ...(countyIds.length === 1 ? { defaultCountyId: countyIds[0] } : {}),
         providerQualityTier: providerTier,
+    }).map((value) => {
+        const schedule = asRecord(value);
+        if (!schedule)
+            return value;
+        const rateType = schedule.rate_type_code ?? schedule.CI_Authorization_Rate_Type__c;
+        const dailyRateEstimate = typeof rateType === "string" ? rateTypeToDailyAmount.get(rateType) : undefined;
+        return dailyRateEstimate === undefined ? schedule : { ...schedule, daily_rate_estimate: dailyRateEstimate };
     });
     const directory = await mkdtemp(join(tmpdir(), "carepay-snapshot-"));
     const inputPath = join(directory, "snapshot.json");

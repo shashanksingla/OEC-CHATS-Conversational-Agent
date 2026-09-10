@@ -29,7 +29,7 @@ Load only the branch skill needed after intent is resolved:
 | --- | --- |
 | Intent, scope, freshness, or tool choice | `carepay-intent-routing` |
 | Provider-facing response or failure | `carepay-conversation-templates` |
-| Attendance, confirmations, absence, or child detail | `carepay-attendance-readiness` |
+| Attendance, confirmations, absence, payment-risk dollar exposure, or child detail | `carepay-payment-risk-readiness` |
 | Payout timing, payment explanation, current-week forecast, or an unsupported what-if request | `carepay-payment-readiness` |
 | Missing, stale, conflicting, or blocked source data | `carepay-data-quality` |
 

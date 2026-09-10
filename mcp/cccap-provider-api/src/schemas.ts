@@ -115,7 +115,12 @@ export const paymentViewSchema = z.enum([
   "STATUS",
   "NEXT_PAYOUT",
   "CURRENT_WEEK_FORECAST",
+  "CUSTOM_RANGE",
 ]);
+
+// CUSTOM_RANGE payouts are independent of any Salesforce ServicePeriod
+// record, so the span is bounded here rather than by a source-side limit.
+const CUSTOM_RANGE_MAX_DAYS = 31;
 
 export const attendanceDataSchema = z
   .object({
@@ -171,6 +176,30 @@ export const paymentAnalysisSchema = z
         code: "custom",
         message: "dateFilter is required when view is not specified",
       });
+    }
+    if (value.view === "CUSTOM_RANGE") {
+      if (!value.dateFrom || !value.dateTo) {
+        context.addIssue({
+          code: "custom",
+          message: "dateFrom and dateTo are required for view CUSTOM_RANGE",
+        });
+      } else if (value.dateFrom > value.dateTo) {
+        context.addIssue({
+          code: "custom",
+          message: "dateFrom cannot be later than dateTo",
+        });
+      } else {
+        const spanDays = Math.round(
+          (new Date(`${value.dateTo}T00:00:00Z`).getTime() - new Date(`${value.dateFrom}T00:00:00Z`).getTime())
+            / 86_400_000,
+        ) + 1;
+        if (spanDays > CUSTOM_RANGE_MAX_DAYS) {
+          context.addIssue({
+            code: "custom",
+            message: `CUSTOM_RANGE cannot span more than ${CUSTOM_RANGE_MAX_DAYS} days; narrow dateFrom/dateTo`,
+          });
+        }
+      }
     }
   });
 

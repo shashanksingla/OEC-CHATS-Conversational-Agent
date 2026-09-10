@@ -121,6 +121,9 @@ Use this shape for parent confirmations, attendance exceptions, absence-limit de
 | Child name | Household name | County | Authorization name | Service dates | Note | Potential impact |
 | --- | --- | --- | --- | --- | --- | --- |
 | [child] | [household or unavailable field marker] | [county or unavailable field marker] | [authorization or unavailable field marker] | [dates or unavailable field marker] | [precise count/date/status] | [conditional payment, possible exclusion, review required, or unavailable impact] |
+```
+
+When the evaluator result includes a `risk_amount_estimate` for the row's absence-limit category, express it in the `Potential impact` cell as an approximate `~ $` figure appended to the existing qualitative language (for example, `Up to 3 absence day(s) may be excluded from reimbursement (~ $135 estimated risk).`); omit the dollar figure entirely when no estimate is available rather than showing `$0` or `Unavailable`.
 
 Next actions
 
@@ -138,6 +141,10 @@ Show the selected service-period dates, processing or release date, status, amou
 
 Do not, under any circumstance, reduce this response to a hand-built shape such as a bare overview list (`Service period`, `Estimated conditional amount`, `Payable amount confirmed`, `Amount at risk`, a short county list from `summary[]`, and one paraphrased sentence about the top finding) — that shape is a rule violation even when every number in it is accurate, because it silently drops payment differences, categories, county/child detail rows, and the full ranked `Next actions`/`Drill down`/`Next step` sections that the real text already computed. If `content[0].text` is present on a successful result, relaying anything shorter than it is never acceptable.
 
+## Custom Payout Period Template
+
+Use this shape when `cccap_analyze_payment` was called with `view: "CUSTOM_RANGE"`. The result covers an arbitrary provider-selected date span (up to 31 days) that is independent of any Salesforce service period; treat it as a distinct capability shape, not a service-period payout. Label the period as `custom period` or by its exact date range in provider-facing text — never call it a 'service period', 'pay period', or 'upcoming payout', and never expose the internal synthetic period identifier. Otherwise follow the same Payment Template rules: show amounts only from deterministic output, use the `~ $` estimate convention, and include the same next-actions/drill-down/estimate-disclaimer sections the payment template requires. If the requested range exceeds 31 days (which the tool schema itself rejects before reaching this template), that is a validation failure to relay via the Failure Template — do not attempt to summarize a partial range.
+
 ## Failure Template
 
 If any MCP tool, Salesforce request, external service, Python analysis, normalization step, or processing step fails or returns incomplete data for the requested capability, stop the affected response. Use this shape:
@@ -151,4 +158,4 @@ Next actions
 2. Review data quality or contact support if it fails again.
 ```
 
-Never render a failed result as a dashboard with `Unavailable` values. Never fabricate provider name, facility, counts, risk rows, payment amounts, dates, or findings. Previously verified facts may appear only when labeled as earlier context and unrelated to the failed capability.
+Never render a failed result as a dashboard with `Unavailable` values. Never fabricate provider name, facility, counts, risk rows, payment amounts, dates, or findings. Previously verified facts may appear only when labeled as earlier context and unrelated to the failed capability. 

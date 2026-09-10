@@ -32,7 +32,7 @@ test("MCP protocol preserves attendance provider text and structured scope", asy
   await client.connect(clientTransport);
 
   const response = await client.callTool({
-    name: "cccap_analyze_attendance_risk",
+    name: "cccap_analyze_payment_risk",
     arguments: { dateFilter: "THIS_MONTH" },
   });
   const text = response.content.find((item) => item.type === "text")?.text;
@@ -40,7 +40,7 @@ test("MCP protocol preserves attendance provider text and structured scope", asy
 
   assert.equal(response.isError, undefined);
   assert.match(text ?? "", /no attendance records for the requested period/i);
-  assert.equal(structured.providerMessage, undefined);
+  assert.equal(structured.providerMessage, text);
   assert.equal(structured.capability, "attendance-risk-analysis");
   assert.deepEqual(structured.scope, { dateFilter: "THIS_MONTH" });
 
@@ -120,7 +120,7 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   );
   assert.ok(absenceAction);
   const followUp = await client.callTool({
-    name: "cccap_analyze_attendance_risk",
+    name: "cccap_analyze_payment_risk",
     arguments: absenceAction.input as Record<string, unknown>,
   });
   assert.equal(followUp.isError, undefined);

@@ -69,12 +69,16 @@ def _attendance_candidates(attendance_risk: dict[str, Any]) -> list[dict[str, An
     crossed = crossed if isinstance(crossed, dict) else {}
     crossed_children = _count(crossed.get("children"))
     if crossed_children:
+        # A real dollar figure (when the fiscal-rate fetch produced one) always
+        # outranks a same-band action sized only by child count, since it is a
+        # more accurate measure of payment impact.
+        crossed_amount = _amount(crossed.get("risk_amount_estimate"))
         candidates.append(_action(
             "review-absence-limit-risk",
             f"Review {crossed_children} child(ren) over the absence limit",
             "payment_impact",
-            _PAYMENT_IMPACT_BASE + crossed_children,
-            "cccap_analyze_attendance_risk",
+            _PAYMENT_IMPACT_BASE + (crossed_amount if crossed_amount > 0 else crossed_children),
+            "cccap_analyze_payment_risk",
             {"riskFocus": "ABSENCE_LIMITS"},
         ))
 
@@ -82,12 +86,13 @@ def _attendance_candidates(attendance_risk: dict[str, Any]) -> list[dict[str, An
     approaching = approaching if isinstance(approaching, dict) else {}
     approaching_children = _count(approaching.get("children"))
     if approaching_children:
+        approaching_amount = _amount(approaching.get("risk_amount_estimate"))
         candidates.append(_action(
             "review-approaching-absence-limit",
             f"Review {approaching_children} child(ren) approaching the absence limit",
             "urgency",
-            _URGENCY_BASE + approaching_children,
-            "cccap_analyze_attendance_risk",
+            _URGENCY_BASE + (approaching_amount if approaching_amount > 0 else approaching_children),
+            "cccap_analyze_payment_risk",
             {"riskFocus": "ABSENCE_LIMITS"},
         ))
 
@@ -100,7 +105,7 @@ def _attendance_candidates(attendance_risk: dict[str, Any]) -> list[dict[str, An
             f"Review {pending_days} pending parent confirmation day(s)",
             "urgency",
             _URGENCY_BASE + pending_days,
-            "cccap_analyze_attendance_risk",
+            "cccap_analyze_payment_risk",
             {"riskFocus": "PARENT_CONFIRMATIONS"},
         ))
 
@@ -111,7 +116,7 @@ def _attendance_candidates(attendance_risk: dict[str, Any]) -> list[dict[str, An
             f"Review {incomplete_days} incomplete attendance record(s)",
             "source_recovery",
             _SOURCE_RECOVERY_BASE + incomplete_days,
-            "cccap_analyze_attendance_risk",
+            "cccap_analyze_payment_risk",
             {"riskFocus": "INCOMPLETE_ATTENDANCE"},
         ))
 

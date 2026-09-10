@@ -57,7 +57,7 @@ try {
     throw new Error("Attendance detail did not return the expected analysis contract");
   }
 
-  const confirmationReview = await callTool("cccap_analyze_attendance_risk", {
+  const confirmationReview = await callTool("cccap_analyze_payment_risk", {
     dateFilter: "THIS_MONTH",
   });
   if (!confirmationReview.includes("**Next actions**")) {

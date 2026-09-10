@@ -275,11 +275,13 @@ class EvaluateAttendanceRisksTests(unittest.TestCase):
                 "children": 1,
                 "counties": 1,
                 "minimum_days_until_exceeded": 1,
+                "risk_amount_estimate": None,
             },
             "crossed_absence_limits": {
                 "children": 1,
                 "counties": 1,
                 "maximum_days_over_limit": 1,
+                "risk_amount_estimate": None,
             },
         })
         ava = result["children"][0]

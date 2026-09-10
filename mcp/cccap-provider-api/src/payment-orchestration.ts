@@ -73,7 +73,7 @@ function first(value: unknown, label: string): RecordValue {
   if (rows.length === 0) throw new Error(`${label} is unavailable`);
   return record(rows[0], label);
 }
-export type PaymentView = "STATUS" | "NEXT_PAYOUT" | "CURRENT_WEEK_FORECAST";
+export type PaymentView = "STATUS" | "NEXT_PAYOUT" | "CURRENT_WEEK_FORECAST" | "CUSTOM_RANGE";
 
 export async function getPaymentAnalysis(
   client: CccapClient,
@@ -83,16 +83,40 @@ export async function getPaymentAnalysis(
   filters: { childNames?: string[]; authNames?: string[]; countyNames?: string[]; detailPage?: number; detailPageSize?: number } = {},
 ): Promise<unknown> {
   const initialization = record(await client.initialize(scope), "Provider context");
-  const servicePeriodData = await client.getServicePeriods(
-    view === "NEXT_PAYOUT" ? { paymentAfter: "TODAY", limitOne: true } :
-      view === "CURRENT_WEEK_FORECAST" ? { dateOn: "TODAY", limitOne: true } :
-        { ...scope, limitOne: true, dateFilter: scope.dateFilter },
-  );
-  const servicePeriod = first(record(servicePeriodData, "Service periods").servicePeriods, "Service period");
+  // CUSTOM_RANGE is an arbitrary provider-chosen span (validated to <= 31 days
+  // by the request schema) independent of any Salesforce ServicePeriod
+  // record, so it never calls getServicePeriods; every other view still
+  // selects exactly one authoritative service period as before.
+  const servicePeriod = view === "CUSTOM_RANGE"
+    ? (() => {
+        if (typeof scope.dateFrom !== "string" || typeof scope.dateTo !== "string") {
+          throw new Error("dateFrom and dateTo are required for view CUSTOM_RANGE");
+        }
+        return {
+          servicePeriodId: `CUSTOM:${scope.dateFrom}:${scope.dateTo}`,
+          serviceBeginDate: scope.dateFrom,
+          serviceEndDate: scope.dateTo,
+        } as RecordValue;
+      })()
+    : first(
+        record(
+          await client.getServicePeriods(
+            view === "NEXT_PAYOUT" ? { paymentAfter: "TODAY", limitOne: true } :
+              view === "CURRENT_WEEK_FORECAST" ? { dateOn: "TODAY", limitOne: true } :
+                { ...scope, limitOne: true, dateFilter: scope.dateFilter },
+          ),
+          "Service periods",
+        ).servicePeriods,
+        "Service period",
+      );
   const serviceBeginDate = servicePeriod.serviceBeginDate;
   const serviceEndDate = servicePeriod.serviceEndDate;
   if (typeof serviceBeginDate !== "string" || typeof serviceEndDate !== "string") throw new Error("Service period dates are unavailable");
-  const sourceScope: DateScope = view === "STATUS" ? scope : { dateFilter: "DATE_RANGE", dateFrom: serviceBeginDate, dateTo: serviceEndDate };
+  const sourceScope: DateScope = view === "STATUS"
+    ? scope
+    : view === "CUSTOM_RANGE"
+      ? { dateFilter: "DATE_RANGE", dateFrom: serviceBeginDate, dateTo: serviceEndDate }
+      : { dateFilter: "DATE_RANGE", dateFrom: serviceBeginDate, dateTo: serviceEndDate };
   const providerContext = initialization;
   const { countyIds } = normalizeProviderContext(providerContext);
   const scheduleData = await client.getSchedules(sourceScope);

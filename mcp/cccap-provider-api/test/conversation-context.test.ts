@@ -7,12 +7,12 @@ test("context references are provider-bound, expiring, and action-bound", () => 
   let now = 0;
   const store = new ConversationContextStore({ now: () => now, ttlMs: 10 });
   const { contextRef, actionRefs } = store.create("provider-a", "continuation", [{
-    tool: "cccap_analyze_attendance_risk",
+    tool: "cccap_analyze_payment_risk",
     input: { dateFilter: "THIS_MONTH", childNames: ["Taylor Example"] },
   }]);
 
   assert.deepEqual(store.resolve("provider-a", contextRef, actionRefs[0], "continuation"), {
-    tool: "cccap_analyze_attendance_risk",
+    tool: "cccap_analyze_payment_risk",
     input: { dateFilter: "THIS_MONTH", childNames: ["Taylor Example"] },
   });
   assert.equal(store.resolve("provider-b", contextRef, actionRefs[0], "continuation"), undefined);
@@ -34,17 +34,17 @@ test("context stores the canonical result alongside its continuation plan", () =
   const result = { attendanceRisk: { scheduled_days: 4 } };
   const store = new ConversationContextStore();
   const { contextRef, actionRefs } = store.create("provider-a", "continuation", [{
-    tool: "cccap_analyze_attendance_risk",
+    tool: "cccap_analyze_payment_risk",
     input: { dateFilter: "THIS_MONTH", riskFocus: "PARENT_CONFIRMATIONS" },
-  }], result, "cccap_analyze_attendance_risk");
+  }], result, "cccap_analyze_payment_risk");
 
   assert.deepEqual(
     store.resolve("provider-a", contextRef, actionRefs[0], "continuation"),
     {
-      tool: "cccap_analyze_attendance_risk",
+      tool: "cccap_analyze_payment_risk",
       input: { dateFilter: "THIS_MONTH", riskFocus: "PARENT_CONFIRMATIONS" },
       result,
-      resultTool: "cccap_analyze_attendance_risk",
+      resultTool: "cccap_analyze_payment_risk",
     },
   );
 });
@@ -92,7 +92,7 @@ test("stable action ids resolve the selected tool plan", () => {
     { tool: "cccap_analyze_payment", input: { view: "NEXT_PAYOUT", detailPage: 1 } },
   );
   assert.equal(
-    store.resolveAction("provider-a", "review-excluded-payment-days", "cccap_analyze_attendance_risk"),
+    store.resolveAction("provider-a", "review-excluded-payment-days", "cccap_analyze_payment_risk"),
     undefined,
   );
 });

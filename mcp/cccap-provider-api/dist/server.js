@@ -245,7 +245,7 @@ function contextualize(value, store, providerKey, capability, result, resultTool
     const plans = combinedActions.flatMap((action) => {
         const tool = action.tool;
         const input = recordValue(action.input);
-        return (tool === "cccap_analyze_attendance_risk" || tool === "cccap_analyze_payment") && input
+        return (tool === "cccap_analyze_payment_risk" || tool === "cccap_analyze_payment") && input
             ? [{ tool, input }]
             : [];
     });
@@ -256,13 +256,13 @@ function contextualize(value, store, providerKey, capability, result, resultTool
         : undefined;
     const planActions = combinedActions.filter((action) => {
         const input = recordValue(action.input);
-        return Boolean(input) && (action.tool === "cccap_analyze_attendance_risk" || action.tool === "cccap_analyze_payment");
+        return Boolean(input) && (action.tool === "cccap_analyze_payment_risk" || action.tool === "cccap_analyze_payment");
     });
     const { contextRef, actionRefs } = store.create(providerKey, capability, plans, result, resultTool, ruleVersion, planActions);
     let actionIndex = 0;
     const actionControls = combinedActions.map((action) => {
         const input = recordValue(action.input);
-        if (!input || (action.tool !== "cccap_analyze_attendance_risk" && action.tool !== "cccap_analyze_payment"))
+        if (!input || (action.tool !== "cccap_analyze_payment_risk" && action.tool !== "cccap_analyze_payment"))
             return action;
         const actionRef = actionRefs[actionIndex++];
         return {
@@ -432,7 +432,7 @@ function actionMetadata(scope, risk, children, includePaymentAction = false, ris
         actions.push({
             actionId: "review-absence-limit-risk",
             capability: "attendance-risk-analysis",
-            tool: "cccap_analyze_attendance_risk",
+            tool: "cccap_analyze_payment_risk",
             label: `Review ${absenceChildren.length} child(ren) near or over the absence limit`,
             reason: "Absence-limit exposure may reduce reimbursable payment.",
             priority: "high",
@@ -455,7 +455,7 @@ function actionMetadata(scope, risk, children, includePaymentAction = false, ris
             section: "next-actions",
             source: "current-result",
             scope,
-            tool: "cccap_analyze_attendance_risk",
+            tool: "cccap_analyze_payment_risk",
             input: Object.assign({ riskFocus: "PARENT_CONFIRMATIONS" }, scopeInput, { childNames: pendingChildNames }),
         });
     }
@@ -463,7 +463,7 @@ function actionMetadata(scope, risk, children, includePaymentAction = false, ris
         actions.push({
             actionId: "review-incomplete-attendance",
             capability: "attendance-risk-analysis",
-            tool: "cccap_analyze_attendance_risk",
+            tool: "cccap_analyze_payment_risk",
             label: `Review ${incompleteChildNames.length} incomplete attendance record(s)`,
             reason: "A check-in or check-out is missing and may affect attendance verification.",
             priority: "high",
@@ -478,7 +478,7 @@ function actionMetadata(scope, risk, children, includePaymentAction = false, ris
         actions.push({
             actionId: "review-attendance-records",
             capability: "attendance-risk-analysis",
-            tool: "cccap_analyze_attendance_risk",
+            tool: "cccap_analyze_payment_risk",
             label: "Review attendance records for missing or incomplete check-ins",
             reason: "Incomplete records can affect attendance verification and payment.",
             priority: "medium",
@@ -497,7 +497,7 @@ function actionMetadata(scope, risk, children, includePaymentAction = false, ris
         actions.push({
             actionId: "open-attendance-detail",
             capability: "attendance-risk-analysis",
-            tool: "cccap_analyze_attendance_risk",
+            tool: "cccap_analyze_payment_risk",
             label: "Open the highest-impact attendance details",
             reason: "Inspect the affected children, dates, and payment implications behind the summary.",
             priority: "medium",
@@ -639,7 +639,7 @@ function attendanceSummary(risk, children, scope, unmatchedChildNames, excludedC
         available_views: availableViews.slice(0, 6).map((view) => ({
             actionId: `attendance-view-${String(view.viewId)}`,
             capability: "attendance-risk-analysis",
-            tool: "cccap_analyze_attendance_risk",
+            tool: "cccap_analyze_payment_risk",
             ...view,
         })),
     };
@@ -1272,23 +1272,23 @@ export function createServer(client, providerDisplayName, contextStore = new Con
     });
     server.registerTool("cccap_get_attendance_risk_snapshot", {
         title: "Get CCCAP Attendance Risk Snapshot",
-        description: "Get a provider-scoped attendance risk snapshot for the requested date range. Use this for current-month, last-month, or explicit date-range snapshot requests; use cccap_analyze_attendance_risk for child-level follow-up details.",
+        description: "Get a provider-scoped attendance risk snapshot for the requested date range. Use this for current-month, last-month, or explicit date-range snapshot requests; use cccap_analyze_payment_risk for child-level follow-up details.",
         inputSchema: dateScopeSchema.shape,
         annotations: readOnlyAnnotations,
-    }, async (input) => execute("attendance-risk snapshot", () => getAttendanceRiskSnapshot(client, providerDisplayName, input, new Date().toISOString().slice(0, 10)), (data) => attachDialogueState(contextualize(snapshotResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_attendance_risk"), dialogueStore, providerKey, "attendance-risk-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined)));
+    }, async (input) => execute("attendance-risk snapshot", () => getAttendanceRiskSnapshot(client, providerDisplayName, input, new Date().toISOString().slice(0, 10)), (data) => attachDialogueState(contextualize(snapshotResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment_risk"), dialogueStore, providerKey, "attendance-risk-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined)));
     server.registerTool("cccap_get_current_month_risk_snapshot", {
         title: "Get Current-Month Payment Risk Snapshot",
         description: "Get the authenticated provider's current-month payment-risk snapshot with today's scheduled and checked-in child counts at the top. Use this read-only provider-scoped tool first for a provider greeting.",
         inputSchema: {},
         annotations: readOnlyAnnotations,
-    }, async () => execute("current payment-risk snapshot", () => getCurrentMonthAttendanceSnapshot(client, providerDisplayName, new Date().toISOString().slice(0, 10)), (data) => attachDialogueState(contextualize(snapshotResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_attendance_risk"), dialogueStore, providerKey, "attendance-risk-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined)));
+    }, async () => execute("current payment-risk snapshot", () => getCurrentMonthAttendanceSnapshot(client, providerDisplayName, new Date().toISOString().slice(0, 10)), (data) => attachDialogueState(contextualize(snapshotResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment_risk"), dialogueStore, providerKey, "attendance-risk-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined)));
     server.registerTool("cccap_get_attendance_analysis", {
         title: "Get Attendance Transaction Diagnostics",
-        description: "Retrieve low-level authenticated-provider schedule and transaction diagnostics, including data-quality blockers. Do not use for pending parent confirmations, absence risk, child drill-downs, or a numbered action after the provider snapshot; use cccap_analyze_attendance_risk for those provider-facing requests.",
+        description: "Retrieve low-level authenticated-provider schedule and transaction diagnostics, including data-quality blockers. Do not use for pending parent confirmations, absence risk, child drill-downs, or a numbered action after the provider snapshot; use cccap_analyze_payment_risk for those provider-facing requests.",
         inputSchema: attendanceDataSchema.shape,
         annotations: readOnlyAnnotations,
     }, async (input) => execute("attendance detail analysis", () => getAttendanceDataAnalysis(client, input)));
-    server.registerTool("cccap_analyze_attendance_risk", {
+    server.registerTool("cccap_analyze_payment_risk", {
         title: "Review Parent Confirmations and Attendance Risk",
         description: "Provider-facing tool for pending parent confirmations, numbered attendance actions after a snapshot, child drill-downs, attendance exceptions, and absence-limit risk. Returns a ready-to-relay response with next actions. The server retrieves only the requested scope and runs the deterministic Python evaluator.",
         inputSchema: attendanceAnalysisSchema.shape,
@@ -1297,24 +1297,24 @@ export function createServer(client, providerDisplayName, contextStore = new Con
         const hasContinuation = Boolean(input.actionId || input.contextRef || input.actionRef);
         const directContinuationInput = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "actionId" && key !== "contextRef" && key !== "actionRef" && key !== "refresh"));
         const continuation = contextStore.resolve(providerKey, input.contextRef, input.actionRef, "continuation", undefined, Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
-        const actionContinuation = contextStore.resolveAction(providerKey, input.actionId, "cccap_analyze_attendance_risk", Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
+        const actionContinuation = contextStore.resolveAction(providerKey, input.actionId, "cccap_analyze_payment_risk", Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
         const resolvedContinuation = continuation ?? actionContinuation;
-        const request = resolvedContinuation?.tool === "cccap_analyze_attendance_risk"
+        const request = resolvedContinuation?.tool === "cccap_analyze_payment_risk"
             ? resolvedContinuation.input
             : input;
-        if (hasContinuation && (!resolvedContinuation || resolvedContinuation.tool !== "cccap_analyze_attendance_risk")) {
+        if (hasContinuation && (!resolvedContinuation || resolvedContinuation.tool !== "cccap_analyze_payment_risk")) {
             return toolError("attendance-risk analysis", new Error("Continuation reference is unavailable or expired"));
         }
         if (input.refresh)
             client.clearReadCache();
-        if (!input.refresh && continuation?.resultTool === "cccap_analyze_attendance_risk" && continuation.result) {
+        if (!input.refresh && continuation?.resultTool === "cccap_analyze_payment_risk" && continuation.result) {
             const cachedResult = recordValue(continuation.result);
             if (cachedResult) {
                 const continuationResult = { ...cachedResult, scope: request, riskFocus: request.riskFocus, countyNames: request.countyNames };
-                return attachDialogueState(contextualize(formatAttendanceRiskResult(continuationResult), contextStore, providerKey, "continuation", continuationResult, "cccap_analyze_attendance_risk"), dialogueStore, providerKey, "attendance-risk-analysis", request, typeof cachedResult.sourceRetrievedAt === "string" ? cachedResult.sourceRetrievedAt : undefined);
+                return attachDialogueState(contextualize(formatAttendanceRiskResult(continuationResult), contextStore, providerKey, "continuation", continuationResult, "cccap_analyze_payment_risk"), dialogueStore, providerKey, "attendance-risk-analysis", request, typeof cachedResult.sourceRetrievedAt === "string" ? cachedResult.sourceRetrievedAt : undefined);
             }
         }
-        return execute("attendance-risk analysis", () => getAttendanceRiskAnalysis(client, providerDisplayName, request, new Date().toISOString().slice(0, 10), request.childNames, request.authNames, request.riskFocus, request.countyNames), (data) => attachDialogueState(contextualize(formatAttendanceRiskResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_attendance_risk"), dialogueStore, providerKey, "attendance-risk-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
+        return execute("attendance-risk analysis", () => getAttendanceRiskAnalysis(client, providerDisplayName, request, new Date().toISOString().slice(0, 10), request.childNames, request.authNames, request.riskFocus, request.countyNames), (data) => attachDialogueState(contextualize(formatAttendanceRiskResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment_risk"), dialogueStore, providerKey, "attendance-risk-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
     });
     server.registerTool("cccap_initialize_provider", {
         title: "Initialize CCCAP Provider",

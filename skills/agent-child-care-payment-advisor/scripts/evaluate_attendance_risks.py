@@ -62,6 +62,18 @@ def _county_name(schedule: dict[str, Any]) -> str | None:
     return _optional_text(schedule, "county_name")
 
 
+def _rate_estimate(schedule: dict[str, Any]) -> float | None:
+    # Best-effort daily rate, attached per schedule row by the MCP orchestration
+    # layer (attendance-snapshot.ts) from an independent fiscal-rate fetch. This
+    # is an estimate for payment-risk sizing only, never a payable amount: a
+    # missing or non-numeric value means no estimate is available for that row,
+    # and callers must not treat that absence as a zero-dollar risk.
+    value = schedule.get("daily_rate_estimate")
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+        return None
+    return float(value)
+
+
 def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
     as_of_date = _date_value(snapshot.get("as_of_date"), "as_of_date")
     schedules = snapshot.get("schedules")
@@ -104,6 +116,8 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "authorization_dates": set(),
             "absence_dates": set(),
             "authorization_names": set(),
+            "absence_risk_amount_estimate": 0.0,
+            "absence_risk_amount_available": False,
         }
     )
     today = {
@@ -179,6 +193,10 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             if service_date <= cutoff_date:
                 child["absence_days"] += 1
                 child["absence_dates"].add(service_date.isoformat())
+                rate_estimate = _rate_estimate(schedule)
+                if rate_estimate is not None:
+                    child["absence_risk_amount_estimate"] += rate_estimate
+                    child["absence_risk_amount_available"] = True
             else:
                 child["pending_confirmation_days"] += 1
         elif check_ins == 0 or check_outs == 0:
@@ -221,6 +239,8 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         authorization_names = sorted(child.pop("authorization_names"))
         absence_dates = sorted(child.pop("absence_dates"))
         conflicting_absence_limits = sorted(child.pop("conflicting_absence_limits", set()))
+        absence_risk_amount_available = child.pop("absence_risk_amount_available")
+        absence_risk_amount_estimate = child.pop("absence_risk_amount_estimate")
         note = ""
         potential_impact = ""
         if conflicting_absence_limits:
@@ -263,6 +283,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "note": note,
             "potential_impact": potential_impact,
             "risk_codes": risk_codes,
+            "risk_amount_estimate": absence_risk_amount_estimate if absence_risk_amount_available else None,
         })
 
     pending_children = [
@@ -277,6 +298,16 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
 
     def county_count(children: list[dict[str, Any]]) -> int:
         return len({child["county"] for child in children if child["county"] not in (None, "Multiple")})
+
+    def _category_risk_amount_estimate(children: list[dict[str, Any]]) -> float | None:
+        # Sum only children with an available rate estimate; if none of the
+        # affected children have one, report None rather than a misleading $0.
+        available = [
+            child["risk_amount_estimate"]
+            for child in children
+            if child["risk_amount_estimate"] is not None
+        ]
+        return round(sum(available), 2) if available else None
 
     absence_risk_codes = {
         "ABSENCE_AFTER_CONFIRMATION_WINDOW",
@@ -328,6 +359,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
                     ),
                     default=None,
                 ),
+                "risk_amount_estimate": _category_risk_amount_estimate(approaching_children),
             },
             "crossed_absence_limits": {
                 "children": len(crossed_children),
@@ -339,6 +371,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
                     ),
                     default=0,
                 ),
+                "risk_amount_estimate": _category_risk_amount_estimate(crossed_children),
             },
         },
         "children": child_results,

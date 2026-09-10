@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 
 export type ContinuationPlan = {
-  tool: "cccap_analyze_attendance_risk" | "cccap_analyze_payment";
+  tool: "cccap_analyze_payment_risk" | "cccap_analyze_payment";
   input: Record<string, unknown>;
   compatibilityKey?: string;
   provenance?: { capability: string; scope?: unknown };

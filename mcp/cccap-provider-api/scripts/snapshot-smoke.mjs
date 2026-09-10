@@ -34,7 +34,7 @@ try {
     throw new Error("Snapshot structured content duplicates provider-facing output");
   }
   const analysisResponse = await client.callTool({
-    name: "cccap_analyze_attendance_risk",
+    name: "cccap_analyze_payment_risk",
     arguments: { dateFilter: "THIS_MONTH" },
   });
   if (analysisResponse.isError) {
