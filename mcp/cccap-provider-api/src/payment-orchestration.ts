@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 import { CccapClient, type DateScope } from "./client.js";
 import { normalizePaymentSourceBundle } from "./payment-canonical-adapter.js";
 import { normalizeProviderContext } from "./provider-context.js";
+import { assertPaymentEnginePayload } from "./payment-schema.js";
+import { buildSituationEnvelope } from "./situation-envelope.js";
 
 const execFileAsync = promisify(execFile);
 const paymentEvaluatorPath = fileURLToPath(new URL(
@@ -15,6 +17,29 @@ const paymentEvaluatorPath = fileURLToPath(new URL(
   import.meta.url,
 ));
 type RecordValue = Record<string, unknown>;
+
+const PAYMENT_EVALUATOR_TIMEOUT_MS = 30_000;
+const PAYMENT_EVALUATOR_MAX_BUFFER_BYTES = 10_000_000;
+
+async function runPaymentEvaluator(inputPath: string): Promise<{ stdout: string }> {
+  try {
+    return await execFileAsync("uv", ["run", paymentEvaluatorPath, inputPath], {
+      windowsHide: true,
+      timeout: PAYMENT_EVALUATOR_TIMEOUT_MS,
+      maxBuffer: PAYMENT_EVALUATOR_MAX_BUFFER_BYTES,
+      killSignal: "SIGKILL",
+    });
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
+    if (nodeError.code === "ENOENT") {
+      throw new Error("Payment engine is unavailable: the uv/python runtime could not be started.");
+    }
+    if (nodeError.killed || nodeError.signal === "SIGKILL" || nodeError.signal === "SIGTERM") {
+      throw new Error(`Payment engine is unavailable: evaluation exceeded ${PAYMENT_EVALUATOR_TIMEOUT_MS}ms and was terminated.`);
+    }
+    throw error;
+  }
+}
 
 function highestImpactChildName(impacts: unknown[], days: unknown[]): string | undefined {
   const rankedImpacts = impacts
@@ -55,7 +80,7 @@ export async function getPaymentAnalysis(
   scope: DateScope,
   view: PaymentView = "STATUS",
   asOfDate = new Date().toISOString().slice(0, 10),
-  filters: { childNames?: string[]; authNames?: string[]; detailPage?: number; detailPageSize?: number } = {},
+  filters: { childNames?: string[]; authNames?: string[]; countyNames?: string[]; detailPage?: number; detailPageSize?: number } = {},
 ): Promise<unknown> {
   const initialization = view === "STATUS"
     ? record(await client.initialize(scope), "Provider context")
@@ -111,7 +136,7 @@ export async function getPaymentAnalysis(
       ? client.getVacantSlots({ ...sourceScope, countyIds })
       : Promise.resolve({ vacantSlots: [] }),
   ]);
-  const { payload, servicePeriod: canonicalServicePeriod } = normalizePaymentSourceBundle({
+  const { payload, servicePeriod: canonicalServicePeriod, vacantSlotMappingGaps } = normalizePaymentSourceBundle({
     initialization: providerContext,
     servicePeriod,
     authorizationData,
@@ -126,6 +151,21 @@ export async function getPaymentAnalysis(
   });
   const childNames = filters.childNames ? new Set(filters.childNames) : undefined;
   const authNames = filters.authNames ? new Set(filters.authNames) : undefined;
+  const countyNames = filters.countyNames
+    ? new Set(filters.countyNames.map((name) => name.trim().toLowerCase()))
+    : undefined;
+  if (countyNames && !payload.attendance_days.some((day) => {
+    const record = day as unknown as Record<string, unknown>;
+    return typeof record.county_name === "string" && countyNames.has(record.county_name.trim().toLowerCase());
+  })) {
+    throw new Error("Requested county filter did not match the selected provider scope and period.");
+  }
+  if (countyNames) {
+    payload.attendance_days = payload.attendance_days.filter((day) => {
+      const record = day as unknown as Record<string, unknown>;
+      return typeof record.county_name === "string" && countyNames.has(record.county_name.trim().toLowerCase());
+    });
+  }
   if (childNames || authNames) {
     const normalizedAuthorizations = array(
       record(authorizationData, "Authorizations").normalizedAuthorizations,
@@ -171,11 +211,12 @@ export async function getPaymentAnalysis(
       return typeof record.authorization_id === "string" && selectedAuthorizations.has(record.authorization_id);
     });
   }
+  assertPaymentEnginePayload(payload);
   const directory = await mkdtemp(join(tmpdir(), "carepay-payment-"));
   const inputPath = join(directory, "payment.json");
   try {
     await writeFile(inputPath, JSON.stringify(payload), "utf8");
-    const { stdout } = await execFileAsync("uv", ["run", paymentEvaluatorPath, inputPath], { windowsHide: true });
+    const { stdout } = await runPaymentEvaluator(inputPath);
     const evaluated = JSON.parse(stdout) as { status?: string; result?: unknown; error?: string };
     if (evaluated.status !== "ok" || !evaluated.result) throw new Error(evaluated.error || "Payment evaluation failed");
     const result = evaluated.result as RecordValue;
@@ -198,6 +239,7 @@ export async function getPaymentAnalysis(
       ...attendance,
       days: showDetail ? displayableDays.slice(detailStart, detailStart + detailPageSize) : [],
     };
+    const sourceRetrievedAt = new Date().toISOString();
     return {
       ...result,
       attendance: pagedAttendance,
@@ -213,10 +255,12 @@ export async function getPaymentAnalysis(
         ...(filters.detailPageSize ? { detailPageSize: filters.detailPageSize } : {}),
       },
       ...(topChildName ? { highestImpactChildName: topChildName } : {}),
+      ...(vacantSlotMappingGaps > 0 ? { vacantSlotMappingGaps } : {}),
       scope: sourceScope,
       paymentView: view,
       servicePeriod: canonicalServicePeriod,
-      sourceRetrievedAt: new Date().toISOString(),
+      sourceRetrievedAt,
+      situation: await buildSituationEnvelope(result.payment, "payment-analysis", sourceScope, sourceRetrievedAt),
     };
   } finally { await rm(directory, { recursive: true, force: true }); }
 }

@@ -11,6 +11,11 @@ export function normalizeProviderContext(value) {
     if (!Array.isArray(providers) || providers.length === 0) {
         throw new Error("Provider facility is unavailable");
     }
+    // One authenticated provider user maps to exactly one canonical facility by
+    // design in this system; providers[0] is that facility. client.ts scopes
+    // downstream reads to ALL provider IDs returned for the user (which can
+    // include related records for that same facility), which is unrelated to
+    // this single-facility canonical context.
     const provider = record(providers[0], "Provider facility");
     const agreements = initialization.fiscalAgreements;
     if (!Array.isArray(agreements)) {

@@ -77,7 +77,11 @@ export interface PaymentSourceBundle {
 
 export function normalizePaymentSourceBundle(
   sources: PaymentSourceBundle,
-): { payload: CanonicalPaymentPayload; servicePeriod: ReturnType<typeof normalizeServicePeriod> } {
+): {
+  payload: CanonicalPaymentPayload;
+  servicePeriod: ReturnType<typeof normalizeServicePeriod>;
+  vacantSlotMappingGaps: number;
+} {
   const initialization = record(sources.initialization, "Provider context");
   const { qualityTier: providerTier, countyIds, countyIdByName } = normalizeProviderContext(initialization);
   const countyNameById = Object.fromEntries(
@@ -209,6 +213,7 @@ export function normalizePaymentSourceBundle(
   );
   const vacantSlotData = record(sources.vacantSlotData ?? { vacantSlots: [] }, "Vacant slots");
   const paymentHistory = sources.paymentData;
+  let vacantSlotMappingGaps = 0;
   const payload = buildCanonicalPaymentPayload({
     servicePeriod,
     schedules: schedulesWithCountyNames,
@@ -219,13 +224,17 @@ export function normalizePaymentSourceBundle(
     paymentHistory,
     authorizationRecords,
     feeSchedules,
-    vacantSlotSchedules: normalizeVacantSlotSchedules(
-      vacantSlotData.vacantSlots,
-      normalizedFiscal.fiscalRates,
-      countyIds,
-      providerTier,
-      sources.initialization,
-    ),
+    vacantSlotSchedules: (() => {
+      const resolved = normalizeVacantSlotSchedules(
+        vacantSlotData.vacantSlots,
+        normalizedFiscal.fiscalRates,
+        countyIds,
+        providerTier,
+        sources.initialization,
+      );
+      vacantSlotMappingGaps = countEligibleVacantSlots(vacantSlotData.vacantSlots) - resolved.length;
+      return resolved;
+    })(),
     feeHistory: normalizePaymentFeeHistory(paymentHistory, authorizationRecords),
     mode: sources.mode,
     asOfDate: sources.asOfDate,
@@ -234,7 +243,22 @@ export function normalizePaymentSourceBundle(
     authorizationData.authorizationCopays,
     authorizationRecords,
   );
-  return { payload, servicePeriod };
+  return { payload, servicePeriod, vacantSlotMappingGaps };
+}
+
+// A vacant slot that is genuinely occupied (IDN_AUTH__c set) is correctly
+// excluded by normalizeVacantSlotSchedules and is not a mapping gap. Any
+// other vacant slot that normalizeVacantSlotSchedules could not price
+// (no matching rate schedule) is a silent-drop risk: it contributes $0 to
+// the vacant-slot fee instead of surfacing as a data-quality gap. Track that
+// count here so callers can report it rather than let it vanish untraced.
+function countEligibleVacantSlots(slots: unknown): number {
+  if (!Array.isArray(slots)) return 0;
+  return slots.filter((value) => {
+    const slot = value && typeof value === "object" && !Array.isArray(value) ? value as RecordValue : undefined;
+    if (!slot) return false;
+    return slot.IDN_AUTH__c === null || slot.IDN_AUTH__c === undefined;
+  }).length;
 }
 
 export function normalizeVacantSlotSchedules(

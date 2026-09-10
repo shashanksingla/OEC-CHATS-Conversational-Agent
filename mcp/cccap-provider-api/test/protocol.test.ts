@@ -110,7 +110,10 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   assert.equal(structured.availableViews, undefined);
   assert.equal(structured.viewControls, undefined);
   assert.equal(structured.actionIntents, undefined);
-  assert.doesNotMatch(text ?? "", /\n\d+\. /);
+  // Next actions are now numbered (capped to the top 2) rather than bulleted,
+  // matching the drill-down action-list convention and avoiding an
+  // open-ended pile of bullets across turns.
+  assert.match(text ?? "", /\n1\. Review 1 child\(ren\) near or over the absence limit/);
 
   const absenceAction = (structured.actionControls as Array<Record<string, unknown>>).find(
     (action) => action.actionId === "review-absence-limit-risk",

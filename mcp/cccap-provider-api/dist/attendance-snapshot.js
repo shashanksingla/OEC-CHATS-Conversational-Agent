@@ -7,10 +7,33 @@ import { fileURLToPath } from "node:url";
 import { authorizationKey, isSalesforceId, normalizeAttendanceRiskSchedules, } from "./attendance-canonical-adapter.js";
 import { normalizeProviderContext } from "./provider-context.js";
 import { normalizeScheduleAttendance } from "./schedule-normalizer.js";
+import { buildSituationEnvelope } from "./situation-envelope.js";
 export { normalizePaymentStatus } from "./payment-schema.js";
 export { getPaymentAnalysis } from "./payment-orchestration.js";
 const execFileAsync = promisify(execFile);
 const evaluatorPath = fileURLToPath(new URL("../../../skills/agent-child-care-payment-advisor/scripts/evaluate_attendance_risks.py", import.meta.url));
+const ATTENDANCE_EVALUATOR_TIMEOUT_MS = 30_000;
+const ATTENDANCE_EVALUATOR_MAX_BUFFER_BYTES = 10_000_000;
+async function runAttendanceEvaluator(scriptPath, inputPath) {
+    try {
+        return await execFileAsync("uv", ["run", scriptPath, inputPath], {
+            windowsHide: true,
+            timeout: ATTENDANCE_EVALUATOR_TIMEOUT_MS,
+            maxBuffer: ATTENDANCE_EVALUATOR_MAX_BUFFER_BYTES,
+            killSignal: "SIGKILL",
+        });
+    }
+    catch (error) {
+        const nodeError = error;
+        if (nodeError.code === "ENOENT") {
+            throw new Error("Attendance engine is unavailable: the uv/python runtime could not be started.");
+        }
+        if (nodeError.killed || nodeError.signal === "SIGKILL" || nodeError.signal === "SIGTERM") {
+            throw new Error(`Attendance engine is unavailable: evaluation exceeded ${ATTENDANCE_EVALUATOR_TIMEOUT_MS}ms and was terminated.`);
+        }
+        throw error;
+    }
+}
 function asRecord(value) {
     return value && typeof value === "object" && !Array.isArray(value)
         ? value
@@ -104,7 +127,15 @@ export async function getAttendanceRiskSnapshot(client, providerDisplayName, sco
     const pending = requireRecord(categories.pending_parent_confirmations, "Pending parent confirmations");
     const approaching = requireRecord(categories.approaching_absence_limits, "Approaching absence limits");
     const crossed = requireRecord(categories.crossed_absence_limits, "Crossed absence limits");
-    const numberValue = (value) => typeof value === "number" ? value : 0;
+    // A non-numeric evaluator count is a data-quality failure, not a zero
+    // result; silently coercing it to 0 would present an unaffected snapshot
+    // to the provider when the underlying evaluation is actually invalid.
+    const numberValue = (value) => {
+        if (typeof value !== "number" || !Number.isFinite(value)) {
+            throw new Error("Attendance risk category count is unavailable or invalid");
+        }
+        return value;
+    };
     const pendingDays = numberValue(pending.days);
     const pendingChildren = numberValue(pending.children);
     const approachingChildren = numberValue(approaching.children);
@@ -176,7 +207,7 @@ export async function getAttendanceRiskSnapshot(client, providerDisplayName, sco
 export async function getCurrentMonthAttendanceSnapshot(client, providerDisplayName, asOfDate) {
     return getAttendanceRiskSnapshot(client, providerDisplayName, { dateFilter: "THIS_MONTH" }, asOfDate);
 }
-export async function getAttendanceRiskAnalysis(client, providerDisplayName, scope, asOfDate, childNames, authNames, riskFocus) {
+export async function getAttendanceRiskAnalysis(client, providerDisplayName, scope, asOfDate, childNames, authNames, riskFocus, countyNames) {
     const initialization = requireRecord(await client.initialize(scope), "Provider context");
     const providers = requireArray(initialization.providers, "Provider facility");
     const providerContext = normalizeProviderContext(initialization);
@@ -256,13 +287,13 @@ export async function getAttendanceRiskAnalysis(client, providerDisplayName, sco
             provider_license_status: providerLicenseStatus(initialization),
             ...(childNames ? { child_names: childNames } : {}),
         }), "utf8");
-        const { stdout } = await execFileAsync("uv", ["run", evaluatorPath, inputPath], {
-            windowsHide: true,
-        });
+        const { stdout } = await runAttendanceEvaluator(evaluatorPath, inputPath);
         const evaluated = JSON.parse(stdout);
         if (evaluated.status !== "ok" || !evaluated.result) {
             throw new Error(evaluated.error || "Attendance risk evaluation failed");
         }
+        const sourceRetrievedAt = new Date().toISOString();
+        const situation = await buildSituationEnvelope(evaluated.result, "attendance-risk-analysis", scope, sourceRetrievedAt);
         return {
             providerDisplayName,
             facilityName,
@@ -270,7 +301,9 @@ export async function getAttendanceRiskAnalysis(client, providerDisplayName, sco
             paymentReadiness: livePaymentReadiness(),
             scope,
             riskFocus,
-            sourceRetrievedAt: new Date().toISOString(),
+            countyNames,
+            sourceRetrievedAt,
+            situation,
         };
     }
     finally {
@@ -328,9 +361,7 @@ export async function getAttendanceDataAnalysis(client, scope) {
             provider_license_status: providerLicenseStatus(initialization),
         }), "utf8");
         const analyzerPath = fileURLToPath(new URL("../../../skills/agent-child-care-payment-advisor/scripts/analyze_attendance_transactions.py", import.meta.url));
-        const { stdout } = await execFileAsync("uv", ["run", analyzerPath, inputPath], {
-            windowsHide: true,
-        });
+        const { stdout } = await runAttendanceEvaluator(analyzerPath, inputPath);
         const evaluated = JSON.parse(stdout);
         if (evaluated.status !== "ok" || !evaluated.result) {
             throw new Error(evaluated.error || "Attendance transaction analysis failed");

@@ -69,7 +69,7 @@ Authorization responses include linked slot-contract, encumbrance, and authoriza
 
 Fiscal-rate normalization maps Salesforce age-group codes `1`-`8`, care-unit codes `1`-`5`, and the canonical rate-type codes (`1`, `13`, `19`, `25`, `31`, `37`, `43`, `55`, `91`) to their Salesforce labels. The R00393 lookup is also exposed as `1 -> 15650` and `ADD -> 5500`. Authorization responses include a fail-closed fiscal-schedule match using the schedule's `CI_Authorization_Rate_Type__c`, provider scope, county, authorization dates, and requested `careDate`; raw `getVacantSlots` rows instead map by fiscal-agreement county, rate type, care unit, and care level. Ties use the latest schedule start date, while no-match and conflicting results remain unresolved.
 
-Provider quality tiers follow the existing rate-schedule flow: provider type `EXE` maps to tier `1`; otherwise `Level 1` through `Level 5` map to tiers `2` through `6`. Unsupported or missing provider type/rating values remain unresolved.
+Provider quality tiers follow the existing rate-schedule flow: `Level 1` through `Level 5` map directly to tiers `1` through `5` from the provider quality rating alone; provider type is not part of this mapping. Unsupported or missing quality-rating values remain unresolved.
 
 Fiscal care-unit codes map to payment tiers as `PT -> PART_TIME`, `FT -> FULL_TIME`, `FTPT -> FULL_TIME_PLUS_PART_TIME`, and `FTFT -> FULL_TIME_PLUS_FULL_TIME`. `NP` maps to `NO_PAYMENT` and contributes zero base payment.
 

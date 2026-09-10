@@ -95,14 +95,14 @@ test("generic read models expose canonical fields without source object keys", (
   const paymentHistory = normalizePaymentHistory({ subPayments: [{ idn_pmt_sub__c: "sub-1" }] });
   const serialized = JSON.stringify({ initialization, cases, authorizations, countyPlans, schedules, fiscalRates, servicePeriods, holidays, paymentHistory });
 
-  assert.equal(initialization.fiscal_agreements[0]?.county_id, "county-1");
-  assert.equal(cases.cases[0]?.id, "case-1");
-  assert.equal(authorizations.authorizations[0]?.id, "auth-1");
-  assert.equal(countyPlans.county_plans[0]?.county_id, "county-1");
-  assert.equal(schedules.schedules[0]?.schedule_id, "schedule-1");
-  assert.equal(servicePeriods.service_periods[0]?.id, "period-1");
-  assert.equal(holidays.holidays[0]?.date, "2026-09-07");
-  assert.equal(paymentHistory.sub_payments[0]?.id, "sub-1");
+  assert.equal(((initialization as Record<string, unknown>).fiscal_agreements as Array<Record<string, unknown>>)[0]?.county_id, "county-1");
+  assert.equal(((cases as Record<string, unknown>).cases as Array<Record<string, unknown>>)[0]?.id, "case-1");
+  assert.equal(((authorizations as Record<string, unknown>).authorizations as Array<Record<string, unknown>>)[0]?.id, "auth-1");
+  assert.equal(((countyPlans as Record<string, unknown>).county_plans as Array<Record<string, unknown>>)[0]?.county_id, "county-1");
+  assert.equal(((schedules as Record<string, unknown>).schedules as Array<Record<string, unknown>>)[0]?.schedule_id, "schedule-1");
+  assert.equal(((servicePeriods as Record<string, unknown>).service_periods as Array<Record<string, unknown>>)[0]?.id, "period-1");
+  assert.equal(((holidays as Record<string, unknown>).holidays as Array<Record<string, unknown>>)[0]?.date, "2026-09-07");
+  assert.equal(((paymentHistory as Record<string, unknown>).sub_payments as Array<Record<string, unknown>>)[0]?.id, "sub-1");
   assert.equal(serialized.includes("CDE_COUNTY__c"), false);
   assert.equal(serialized.includes("CI_Authorization_Date__c"), false);
 });
@@ -349,7 +349,7 @@ test("payment orchestration preserves initialization failures", async () => {
     initialize: async () => {
       throw new Error("provider scope unavailable");
     },
-  } as Parameters<typeof getPaymentAnalysis>[0];
+  } as unknown as Parameters<typeof getPaymentAnalysis>[0];
 
   await assert.rejects(
     () => getPaymentAnalysis(client, {}),
@@ -374,7 +374,7 @@ test("next payout selects its service period before initializing provider scope"
       events.push(`initialize:${JSON.stringify(input)}`);
       throw new Error("provider scope unavailable");
     },
-  } as Parameters<typeof getPaymentAnalysis>[0];
+  } as unknown as Parameters<typeof getPaymentAnalysis>[0];
 
   await assert.rejects(
     () => getPaymentAnalysis(client, {}, "NEXT_PAYOUT"),
@@ -476,7 +476,7 @@ test("payment orchestration runs the canonical payload through the evaluator", a
     async getPaymentHistory() {
       return { subPayments: [] };
     },
-  } as Parameters<typeof getPaymentAnalysis>[0];
+  } as unknown as Parameters<typeof getPaymentAnalysis>[0];
 
   const result = await getPaymentAnalysis(
     client,
@@ -529,7 +529,7 @@ test("payment orchestration filters payment analysis by authorization name", asy
     async getFiscalRates() { return { normalizedFiscalRates: { fiscalRates: [{ fiscalScheduleId: "fiscal-1", rateTypeCode: "1", careUnitCode: "2", paidTier: "PART_TIME", fiscalAgreementAmount: 9, sourceId: "rate-1" }], fiscalRateFees: [{ fiscalScheduleId: "fiscal-1" }] } }; },
     async getHolidayList() { return { holidayList: [] }; },
     async getPaymentHistory() { return { subPayments: [] }; },
-  } as Parameters<typeof getPaymentAnalysis>[0];
+  } as unknown as Parameters<typeof getPaymentAnalysis>[0];
 
   const result = await getPaymentAnalysis(client, { dateFilter: "THIS_MONTH" }, "STATUS", "2026-09-08", { authNames: ["AUTH-ONE"] }) as Record<string, unknown>;
   const payment = result.payment as Record<string, unknown>;

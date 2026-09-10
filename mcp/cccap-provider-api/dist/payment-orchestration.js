@@ -6,8 +6,32 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizePaymentSourceBundle } from "./payment-canonical-adapter.js";
 import { normalizeProviderContext } from "./provider-context.js";
+import { assertPaymentEnginePayload } from "./payment-schema.js";
+import { buildSituationEnvelope } from "./situation-envelope.js";
 const execFileAsync = promisify(execFile);
 const paymentEvaluatorPath = fileURLToPath(new URL("../../../skills/agent-child-care-payment-advisor/scripts/provider_risk_payment_engine.py", import.meta.url));
+const PAYMENT_EVALUATOR_TIMEOUT_MS = 30_000;
+const PAYMENT_EVALUATOR_MAX_BUFFER_BYTES = 10_000_000;
+async function runPaymentEvaluator(inputPath) {
+    try {
+        return await execFileAsync("uv", ["run", paymentEvaluatorPath, inputPath], {
+            windowsHide: true,
+            timeout: PAYMENT_EVALUATOR_TIMEOUT_MS,
+            maxBuffer: PAYMENT_EVALUATOR_MAX_BUFFER_BYTES,
+            killSignal: "SIGKILL",
+        });
+    }
+    catch (error) {
+        const nodeError = error;
+        if (nodeError.code === "ENOENT") {
+            throw new Error("Payment engine is unavailable: the uv/python runtime could not be started.");
+        }
+        if (nodeError.killed || nodeError.signal === "SIGKILL" || nodeError.signal === "SIGTERM") {
+            throw new Error(`Payment engine is unavailable: evaluation exceeded ${PAYMENT_EVALUATOR_TIMEOUT_MS}ms and was terminated.`);
+        }
+        throw error;
+    }
+}
 function highestImpactChildName(impacts, days) {
     const rankedImpacts = impacts
         .map((value) => record(value, "Child payment impact"))
@@ -96,7 +120,7 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
             ? client.getVacantSlots({ ...sourceScope, countyIds })
             : Promise.resolve({ vacantSlots: [] }),
     ]);
-    const { payload, servicePeriod: canonicalServicePeriod } = normalizePaymentSourceBundle({
+    const { payload, servicePeriod: canonicalServicePeriod, vacantSlotMappingGaps } = normalizePaymentSourceBundle({
         initialization: providerContext,
         servicePeriod,
         authorizationData,
@@ -111,6 +135,21 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
     });
     const childNames = filters.childNames ? new Set(filters.childNames) : undefined;
     const authNames = filters.authNames ? new Set(filters.authNames) : undefined;
+    const countyNames = filters.countyNames
+        ? new Set(filters.countyNames.map((name) => name.trim().toLowerCase()))
+        : undefined;
+    if (countyNames && !payload.attendance_days.some((day) => {
+        const record = day;
+        return typeof record.county_name === "string" && countyNames.has(record.county_name.trim().toLowerCase());
+    })) {
+        throw new Error("Requested county filter did not match the selected provider scope and period.");
+    }
+    if (countyNames) {
+        payload.attendance_days = payload.attendance_days.filter((day) => {
+            const record = day;
+            return typeof record.county_name === "string" && countyNames.has(record.county_name.trim().toLowerCase());
+        });
+    }
     if (childNames || authNames) {
         const normalizedAuthorizations = array(record(authorizationData, "Authorizations").normalizedAuthorizations, "Normalized authorizations");
         const authorizationIdsByName = new Set(normalizedAuthorizations.flatMap((value) => {
@@ -149,11 +188,12 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
             return typeof record.authorization_id === "string" && selectedAuthorizations.has(record.authorization_id);
         });
     }
+    assertPaymentEnginePayload(payload);
     const directory = await mkdtemp(join(tmpdir(), "carepay-payment-"));
     const inputPath = join(directory, "payment.json");
     try {
         await writeFile(inputPath, JSON.stringify(payload), "utf8");
-        const { stdout } = await execFileAsync("uv", ["run", paymentEvaluatorPath, inputPath], { windowsHide: true });
+        const { stdout } = await runPaymentEvaluator(inputPath);
         const evaluated = JSON.parse(stdout);
         if (evaluated.status !== "ok" || !evaluated.result)
             throw new Error(evaluated.error || "Payment evaluation failed");
@@ -174,6 +214,7 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
             ...attendance,
             days: showDetail ? displayableDays.slice(detailStart, detailStart + detailPageSize) : [],
         };
+        const sourceRetrievedAt = new Date().toISOString();
         return {
             ...result,
             attendance: pagedAttendance,
@@ -189,10 +230,12 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
                 ...(filters.detailPageSize ? { detailPageSize: filters.detailPageSize } : {}),
             },
             ...(topChildName ? { highestImpactChildName: topChildName } : {}),
+            ...(vacantSlotMappingGaps > 0 ? { vacantSlotMappingGaps } : {}),
             scope: sourceScope,
             paymentView: view,
             servicePeriod: canonicalServicePeriod,
-            sourceRetrievedAt: new Date().toISOString(),
+            sourceRetrievedAt,
+            situation: await buildSituationEnvelope(result.payment, "payment-analysis", sourceScope, sourceRetrievedAt),
         };
     }
     finally {

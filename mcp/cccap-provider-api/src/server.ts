@@ -9,6 +9,7 @@ import {
 import { getPaymentAnalysis } from "./payment-orchestration.js";
 import { CccapClient } from "./client.js";
 import { ConversationContextStore, type ContinuationPlan } from "./conversation-context.js";
+import { DialogueStateStore } from "./dialogue-state.js";
 import {
   normalizeAuthorizations,
   normalizeCases,
@@ -111,6 +112,108 @@ export function formatCountyPolicyResult(data: unknown): ToolResult {
   };
 }
 
+/**
+ * Renders enrolled cases/children as safe provider-facing text. `id` on both
+ * the case and each child is a raw Salesforce record ID and is never placed
+ * in the rendered table; `name`/`external_id` (masked through `tableValue`
+ * as a backstop) are the only identifiers shown.
+ */
+export function formatCasesResult(
+  data: unknown,
+  resolveCountyName: (countyId: string | undefined) => string | undefined = () => undefined,
+): ToolResult {
+  const response = recordValue(data);
+  const cases = response && Array.isArray(response.cases)
+    ? response.cases.map(recordValue).filter((item): item is Record<string, unknown> => Boolean(item))
+    : [];
+  if (cases.length === 0) {
+    const providerMessage = "No verified cases were returned for the authorized provider scope.";
+    return {
+      content: [{ type: "text" as const, text: providerMessage }],
+      structuredContent: { capability: "cases", providerMessage, resultStatus: "NO_CASES" },
+    };
+  }
+  const displayName = (record: Record<string, unknown>): string => {
+    const name = tableValue(record.name);
+    return name !== "Unavailable from the current source" ? name : tableValue(record.external_id);
+  };
+  const countyLabel = (record: Record<string, unknown>): string =>
+    tableValue(resolveCountyName(typeof record.county_id === "string" ? record.county_id : undefined));
+  const lines = [
+    "**Enrolled cases**",
+    "",
+    "| Case | County | Enrolled children | Effective dates |",
+    "| --- | --- | --- | --- |",
+    ...cases.map((caseRow) => {
+      const children = Array.isArray(caseRow.children)
+        ? caseRow.children.map(recordValue).filter((child): child is Record<string, unknown> => Boolean(child))
+        : [];
+      const childNames = children.length > 0
+        ? children.map(displayName).join(", ")
+        : "Unavailable from the current source";
+      const dates = children
+        .map((child) => [child.effective_start, child.effective_end].filter((value) => typeof value === "string").join(" - "))
+        .filter((value) => value.length > 0)
+        .join("; ");
+      return `| ${displayName(caseRow)} | ${countyLabel(caseRow)} | ${childNames} | ${dates || "Unavailable from the current source"} |`;
+    }),
+  ];
+  const providerMessage = lines.join("\n");
+  return {
+    content: [{ type: "text" as const, text: providerMessage }],
+    structuredContent: {
+      capability: "cases",
+      providerMessage,
+      resultStatus: "COMPLETED",
+      caseCount: cases.length,
+    },
+  };
+}
+
+/**
+ * Renders authorizations as safe provider-facing text. `id`/`case_id` are
+ * raw Salesforce record IDs and are never placed in the rendered table.
+ */
+export function formatAuthorizationsResult(
+  data: unknown,
+  resolveCountyName: (countyId: string | undefined) => string | undefined = () => undefined,
+): ToolResult {
+  const response = recordValue(data);
+  const authorizations = response && Array.isArray(response.authorizations)
+    ? response.authorizations.map(recordValue).filter((item): item is Record<string, unknown> => Boolean(item))
+    : [];
+  if (authorizations.length === 0) {
+    const providerMessage = "No verified authorizations were returned for the authorized provider scope.";
+    return {
+      content: [{ type: "text" as const, text: providerMessage }],
+      structuredContent: { capability: "authorizations", providerMessage, resultStatus: "NO_AUTHORIZATIONS" },
+    };
+  }
+  const displayName = (record: Record<string, unknown>): string => {
+    const name = tableValue(record.name);
+    return name !== "Unavailable from the current source" ? name : tableValue(record.external_id);
+  };
+  const lines = [
+    "**Authorizations**",
+    "",
+    "| Authorization | County | Status | Effective start | Effective end |",
+    "| --- | --- | --- | --- | --- |",
+    ...authorizations.map((authorization) =>
+      `| ${displayName(authorization)} | ${tableValue(resolveCountyName(typeof authorization.county_id === "string" ? authorization.county_id : undefined))} | ${tableValue(authorization.status)} | ${tableValue(authorization.effective_start)} | ${tableValue(authorization.effective_end)} |`,
+    ),
+  ];
+  const providerMessage = lines.join("\n");
+  return {
+    content: [{ type: "text" as const, text: providerMessage }],
+    structuredContent: {
+      capability: "authorizations",
+      providerMessage,
+      resultStatus: "COMPLETED",
+      authorizationCount: authorizations.length,
+    },
+  };
+}
+
 function snapshotResult(data: unknown): ToolResult {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return result(data);
@@ -194,8 +297,20 @@ function contextualize(
     : Array.isArray(value.structuredContent.actionIntents)
       ? value.structuredContent.actionIntents.map(recordValue).filter((action): action is Record<string, unknown> => Boolean(action))
       : [];
+  // Inherited actions let a later turn still reach an older offered action
+  // (e.g. "you can still review attendance from here"), but they must not
+  // flood every subsequent response: exclude anything from the SAME domain
+  // capability as the current result (the current result's own actions
+  // already cover that domain) and cap the carryover to one supplementary
+  // cross-capability action so the response does not repeat a growing pile
+  // of stale buttons turn after turn.
+  const currentCapability = typeof value.structuredContent.capability === "string"
+    ? value.structuredContent.capability
+    : undefined;
   const inheritedActions = store.getInheritedActions(providerKey, actions)
-    .map((action) => action.metadata);
+    .map((action) => action.metadata)
+    .filter((action) => action.capability !== currentCapability)
+    .slice(0, 1);
   const combinedActions = [...actions, ...inheritedActions];
   if (combinedActions.length === 0) return value;
   const plans: ContinuationPlan[] = combinedActions.flatMap((action) => {
@@ -240,15 +355,45 @@ function contextualize(
     };
   });
   const { actionIntents: _actionIntents, providerMessage, filters: _filters, responseContext: _responseContext, ...structuredContent } = value.structuredContent;
+  const preserveProviderMessage = typeof providerMessage === "string"
+    && ["attendance-risk-analysis", "attendance-risk-snapshot", "payment-analysis"].includes(String(structuredContent.capability));
   return {
     ...value,
     structuredContent: {
       ...structuredContent,
-      ...(structuredContent.capability === "attendance-risk-snapshot" && typeof providerMessage === "string"
+      ...(preserveProviderMessage
         ? { providerMessage }
         : {}),
       contextRef,
       actionControls,
+    },
+  };
+}
+
+/**
+ * Attaches the dialogue-state diff (scopeChanged/capabilityChanged/
+ * sinceLastTurn) to a composite tool's structured content. This gives the
+ * conversational model a concrete, server-computed signal for turn
+ * classification (continuation vs. new request vs. refresh) instead of
+ * asking it to infer that purely from the raw transcript.
+ */
+function attachDialogueState(
+  value: ToolResult,
+  store: DialogueStateStore,
+  providerKey: string,
+  capability: string,
+  scope: unknown,
+  freshnessAt: string | undefined,
+): ToolResult {
+  if (value.isError || !value.structuredContent || typeof freshnessAt !== "string") return value;
+  const diff = store.recordAndDiff(providerKey, capability, scope, freshnessAt);
+  return {
+    ...value,
+    structuredContent: {
+      ...value.structuredContent,
+      scopeChanged: diff.scopeChanged,
+      capabilityChanged: diff.capabilityChanged,
+      ...(diff.sinceLastTurn ? { sinceLastTurn: diff.sinceLastTurn } : {}),
     },
   };
 }
@@ -280,6 +425,45 @@ function estimatedMoney(value: unknown): string {
       : undefined;
   const display = numeric === undefined ? tableValue(value) : numeric.toFixed(2);
   return display === "Unavailable from the current source" ? display : `~ $${display}`;
+}
+
+function renderCountyComposition(rows: Record<string, unknown>[]): string[] {
+  const component = (row: Record<string, unknown>, key: string): Record<string, unknown> =>
+    recordValue(row[key]) ?? {};
+  const headers = [
+    "County",
+    "Care hours", "Care amount",
+    "Absence hours", "Absence amount",
+    "Drop-in hours", "Drop-in amount",
+    "Vacant slot days", "Vacant slot amount",
+    "Paid holiday hours", "Paid holiday amount",
+    "Potential total",
+  ];
+  const separator = headers.map((header) => header === "County" ? "---" : "---:");
+  const renderedRows = rows.map((row) => {
+    const care = component(row, "care");
+    const absence = component(row, "absence");
+    const dropIn = component(row, "drop_in");
+    const vacantSlots = component(row, "vacant_slots");
+    const paidHolidays = component(row, "paid_holidays");
+    return [
+      tableValue(row.county),
+      tableValue(care.hours), estimatedMoney(care.amount),
+      tableValue(absence.hours), estimatedMoney(absence.amount),
+      tableValue(dropIn.hours), estimatedMoney(dropIn.amount),
+      tableValue(vacantSlots.days), estimatedMoney(vacantSlots.amount),
+      tableValue(paidHolidays.hours), estimatedMoney(paidHolidays.amount),
+      estimatedMoney(row.potential_total),
+    ].join(" | ");
+  });
+  return [
+    "",
+    "County payment composition (potential amounts)",
+    "Potential amounts include confirmed and conditional amounts; the payable amount remains shown in the summary above.",
+    `| ${headers.join(" | ")} |`,
+    `| ${separator.join(" | ")} |`,
+    ...renderedRows.map((row) => `| ${row} |`),
+  ];
 }
 
 function isSalesforceRecordId(value: string): boolean {
@@ -472,12 +656,25 @@ function attendanceSummary(
       pending_confirmation_days: 0,
       absence_days: 0,
       risk_children: 0,
+      absence_limit: undefined,
     };
     current.children = Number(current.children) + 1;
     current.pending_confirmation_days = Number(current.pending_confirmation_days) + numericValue(child.pending_confirmation_days);
     current.absence_days = Number(current.absence_days) + numericValue(child.absence_days);
     if (Array.isArray(child.risk_codes) && child.risk_codes.length > 0) {
       current.risk_children = Number(current.risk_children) + 1;
+    }
+    // A county's absence-day limit is the same value for every child sharing
+    // that county and provider tier, so the first verified value seen is
+    // authoritative for the county row; do not overwrite it with a
+    // conflicting value from a different child (leave it unresolved instead
+    // of silently picking one side of a real data conflict).
+    if (typeof child.absence_limit === "number") {
+      if (current.absence_limit === undefined) {
+        current.absence_limit = child.absence_limit;
+      } else if (current.absence_limit !== child.absence_limit) {
+        current.absence_limit = null;
+      }
     }
     counties.set(key, current);
   }
@@ -667,15 +864,23 @@ function paymentActionMetadata(
   return actions.slice(0, 2);
 }
 
+const MAX_NEXT_ACTIONS = 2;
+
 function renderActionSections(message: string, actions: Record<string, unknown>[]): string {
   const base = message.replace(/\n\*\*Next actions\*\*[\s\S]*$/, "");
-  const nextActions = actions.filter((action) => action.section === "next-actions");
+  // Cap to the two highest-priority next actions so the response names the
+  // one or two things that actually matter instead of listing every
+  // candidate action; numbered (not bulleted) to match the drill-down
+  // action-list convention and avoid the list reading as an open-ended pile.
+  const nextActions = actions
+    .filter((action) => action.section === "next-actions")
+    .slice(0, MAX_NEXT_ACTIONS);
   const drillDown = actions.filter((action) => action.section === "drill-down");
   const availableViews = actions.filter((action) => action.section === "available-options" || action.section === "available-views");
   const lines = [base, "", "**Next actions**"];
   lines.push(...(nextActions.length > 0
-    ? nextActions.map((action) => `- ${String(action.label)} (${String(action.reason)})`)
-    : ["- No urgent action identified from the current verified result."]));
+    ? nextActions.map((action, index) => `${index + 1}. ${String(action.label)} (${String(action.reason)})`)
+    : ["No urgent action identified from the current verified result."]));
   if (drillDown.length > 0) {
     lines.push("", "**Drill down**", ...drillDown.map((action) => `- ${String(action.label)}`));
   }
@@ -721,12 +926,14 @@ function compactPaymentSummaryView(value: Record<string, unknown> | undefined): 
   const compact: Record<string, unknown> = {};
   const overview = recordValue(value.overview);
   if (overview) compact.overview = overview;
-  for (const key of ["categories", "counties", "next_actions"]) {
+  for (const key of ["categories", "counties", "children", "vacant_slots", "next_actions"]) {
     const rows = Array.isArray(value[key]) ? value[key] : undefined;
-    if (rows && rows.length > 0) compact[key] = rows.length;
+    if (rows && rows.length > 0) compact[`${key}Count`] = rows.length;
   }
-  const vacantSlots = Array.isArray(value.vacant_slots) ? value.vacant_slots : undefined;
-  if (vacantSlots && vacantSlots.length > 0) compact.vacant_slot_count = vacantSlots.length;
+  const countyComposition = Array.isArray(value.county_composition)
+    ? value.county_composition.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row))
+    : undefined;
+  if (countyComposition && countyComposition.length > 0) compact.county_composition = countyComposition;
   return compact;
 }
 
@@ -780,7 +987,7 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
   const excludedHolidayDates = Array.isArray(risk.excluded_holiday_dates)
     ? risk.excluded_holiday_dates.filter((date): date is string => typeof date === "string")
     : [];
-  const affectedChildren = riskFocus === "PARENT_CONFIRMATIONS"
+  const riskFocusedChildren = riskFocus === "PARENT_CONFIRMATIONS"
     ? allAffectedChildren.filter((child) =>
       Array.isArray(child.risk_codes) && child.risk_codes.includes("PARENT_CONFIRMATION_PENDING"),
     )
@@ -789,6 +996,24 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
       : riskFocus === "INCOMPLETE_ATTENDANCE"
         ? allAffectedChildren.filter((child) => Array.isArray(child.risk_codes) && child.risk_codes.includes("INCOMPLETE_ATTENDANCE_RECORD"))
       : allAffectedChildren;
+  const requestedCountyNames = Array.isArray(analysis?.countyNames)
+    ? analysis.countyNames.filter((name): name is string => typeof name === "string" && name.length > 0)
+    : [];
+  const normalizedRequestedCounties = new Set(requestedCountyNames.map((name) => name.trim().toLowerCase()));
+  // A county filter narrows an existing, already-scoped result (fresh or
+  // cached) to the requested counties; it never widens scope, so this is
+  // safe to apply on top of the riskFocus filter above without another
+  // source call.
+  const affectedChildren = normalizedRequestedCounties.size > 0
+    ? riskFocusedChildren.filter((child) =>
+      typeof child.county === "string" && normalizedRequestedCounties.has(child.county.trim().toLowerCase()),
+    )
+    : riskFocusedChildren;
+  const unmatchedCountyNames = normalizedRequestedCounties.size > 0
+    ? requestedCountyNames.filter((name) =>
+      !riskFocusedChildren.some((child) => typeof child.county === "string" && child.county.trim().toLowerCase() === name.trim().toLowerCase()),
+    )
+    : [];
   const pendingDays = riskFocus === "PARENT_CONFIRMATIONS"
     ? affectedChildren.reduce((total, child) => total + numericValue(child.pending_confirmation_days), 0)
     : riskFocus === "ABSENCE_LIMITS" || riskFocus === "INCOMPLETE_ATTENDANCE" ? 0 : numericValue(risk.pending_confirmation_days);
@@ -812,7 +1037,11 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
     0,
   );
   const reportedRiskChildCount = numericValue(risk.risk_child_count);
-  if (!riskFocus && (
+  // A county filter is a valid narrowing of the same result (like riskFocus),
+  // so the affected-children subset is expected to sum to less than the
+  // facility-wide aggregate; only run the consistency check against the full,
+  // unnarrowed result.
+  if (!riskFocus && normalizedRequestedCounties.size === 0 && (
     childPendingDays !== pendingDays ||
     childProbableAbsenceDays !== probableAbsenceDays ||
     (reportedRiskChildCount > 0 && reportedRiskChildCount !== affectedChildren.length)
@@ -848,6 +1077,11 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
   if (unmatchedChildNames.length > 0) {
     lines.push(
       `No attendance records were found for ${unmatchedChildNames.length} requested child(ren) in the selected period.`,
+    );
+  }
+  if (unmatchedCountyNames.length > 0) {
+    lines.push(
+      `No affected children were found for the requested county/counties: ${unmatchedCountyNames.join(", ")}.`,
     );
   }
   if (excludedClosureDates.length > 0) {
@@ -920,13 +1154,35 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
     );
   }
   if (attendanceCounties.length > 0) {
-    lines.push(
-      "",
-      "Attendance by county:",
-      "| County | Children | Risk children | Pending confirmations | Absence days |",
-      "| --- | ---: | ---: | ---: | ---: |",
-      ...attendanceCounties.map((county) => `| ${tableValue(county.county)} | ${tableValue(county.children)} | ${tableValue(county.risk_children)} | ${tableValue(county.pending_confirmation_days)} | ${tableValue(county.absence_days)} |`),
-    );
+    if (riskFocus === "ABSENCE_LIMITS") {
+      lines.push(
+        "",
+        "Attendance by county:",
+        "| County | Children | Absence days | Applicable limit | Remaining allowance | Status |",
+        "| --- | ---: | ---: | ---: | ---: | --- |",
+        ...attendanceCounties.map((county) => {
+          const limit = county.absence_limit;
+          const absenceDays = numericValue(county.absence_days);
+          const remaining = typeof limit === "number" ? limit - absenceDays : undefined;
+          const countyStatus = typeof limit !== "number"
+            ? "Limit unavailable"
+            : absenceDays > limit
+              ? "Over limit"
+              : limit - absenceDays <= 2
+                ? "Approaching limit"
+                : "Within limit";
+          return `| ${tableValue(county.county)} | ${tableValue(county.children)} | ${tableValue(absenceDays)} | ${tableValue(limit)} | ${remaining !== undefined ? tableValue(remaining) : "Unavailable from the current source"} | ${countyStatus} |`;
+        }),
+      );
+    } else {
+      lines.push(
+        "",
+        "Attendance by county:",
+        "| County | Children | Risk children | Pending confirmations | Absence days |",
+        "| --- | ---: | ---: | ---: | ---: |",
+        ...attendanceCounties.map((county) => `| ${tableValue(county.county)} | ${tableValue(county.children)} | ${tableValue(county.risk_children)} | ${tableValue(county.pending_confirmation_days)} | ${tableValue(county.absence_days)} |`),
+      );
+    }
   }
   if (attendanceViews.length > 0) {
     lines.push("", "Recommended attendance views:", ...attendanceViews.slice(0, 4).map((view) => `- ${tableValue(view.label)}: ${tableValue(view.reason)}`));
@@ -1022,26 +1278,30 @@ export function formatPaymentResult(data: unknown): ToolResult {
       }
     }
     const summary = Array.isArray(payment.summary) ? payment.summary.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row)) : [];
-    if (summary.length > 0 && !summaryView) {
+    if (summary.length > 0 && !summaryView && detailPage) {
       const countySummary = countyPaymentSummary(summary);
       lines.push("", "County payment totals:", "The table below shows children served, care hours, and calculated payment by county.", "| County | Children served | Care hours | Calculated amount ($) | Conditional amount ($) |", "| --- | ---: | ---: | ---: | ---: |", ...countySummary.map((row) => `| ${tableValue(row.county_name)} | ${tableValue(row.children_served)} | ${tableValue(row.hours)} | ${estimatedMoney(row.amount)} | ${estimatedMoney(row.conditional_amount)} |`));
     }
     const overview = summaryView && recordValue(summaryView.overview);
     const categories = summaryRows(summaryView, "categories");
     const countyRollup = summaryRows(summaryView, "counties");
+    const countyComposition = summaryRows(summaryView, "county_composition");
     const childRollup = summaryRows(summaryView, "children");
     const vacantSlots = summaryRows(summaryView, "vacant_slots");
     const nextActions = summaryRows(summaryView, "next_actions");
-    if (overview) {
+    if (overview && detailPage) {
       lines.push("", "Payment differences:", "| Paid days | Review items | Excluded days | Amount at risk | Vacant-slot amount |", "| ---: | ---: | ---: | ---: | ---: |", `| ${tableValue(overview.paid_days)} | ${tableValue(overview.review_items)} | ${tableValue(overview.excluded_days)} | ${estimatedMoney(overview.amount_at_risk)} | ${estimatedMoney(payment.vacant_slot_fee)} |`);
     }
-    if (categories.length > 0) {
+    if (categories.length > 0 && detailPage) {
       lines.push("", "Payment by category:", "| Category | Days | Hours | Amount | Conditional | Excluded days |", "| --- | ---: | ---: | ---: | ---: | ---: |", ...categories.map((row) => `| ${tableValue(row.label)} | ${tableValue(row.days)} | ${tableValue(row.hours)} | ${estimatedMoney(row.amount)} | ${estimatedMoney(row.conditional_amount)} | ${tableValue(row.excluded_days)} |`));
     }
-    if (countyRollup.length > 0) {
+    if (countyRollup.length > 0 && detailPage) {
       lines.push("", "County detail:", "| County | Days | Hours | Amount | Conditional | Excluded days |", "| --- | ---: | ---: | ---: | ---: | ---: |", ...countyRollup.map((row) => `| ${tableValue(row.label)} | ${tableValue(row.days)} | ${tableValue(row.hours)} | ${estimatedMoney(row.amount)} | ${estimatedMoney(row.conditional_amount)} | ${tableValue(row.excluded_days)} |`));
     }
-    if (childRollup.length > 0) {
+    if (countyComposition.length > 0 && !detailPage) {
+      lines.push(...renderCountyComposition(countyComposition));
+    }
+    if (childRollup.length > 0 && detailPage) {
       lines.push("", "Child detail:", "| Child | Days | Hours | Amount | Conditional | Excluded days |", "| --- | ---: | ---: | ---: | ---: | ---: |", ...childRollup.map((row) => `| ${tableValue(row.label)} | ${tableValue(row.days)} | ${tableValue(row.hours)} | ${estimatedMoney(row.amount)} | ${estimatedMoney(row.conditional_amount)} | ${tableValue(row.excluded_days)} |`));
     }
     if (vacantSlots.length > 0) {
@@ -1194,6 +1454,7 @@ export function createServer(
   providerDisplayName: string,
   contextStore = new ConversationContextStore(),
   providerKey = providerDisplayName,
+  dialogueStore = new DialogueStateStore(),
 ): McpServer {
   const server = new McpServer({
     name: "cccap-provider-api",
@@ -1219,7 +1480,14 @@ export function createServer(
             input,
             new Date().toISOString().slice(0, 10),
           ),
-        (data) => contextualize(snapshotResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_attendance_risk"),
+        (data) => attachDialogueState(
+          contextualize(snapshotResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_attendance_risk"),
+          dialogueStore,
+          providerKey,
+          "attendance-risk-analysis",
+          recordValue(data)?.scope,
+          typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt as string : undefined,
+        ),
       ),
   );
 
@@ -1241,7 +1509,14 @@ export function createServer(
             providerDisplayName,
             new Date().toISOString().slice(0, 10),
           ),
-        (data) => contextualize(snapshotResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_attendance_risk"),
+        (data) => attachDialogueState(
+          contextualize(snapshotResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_attendance_risk"),
+          dialogueStore,
+          providerKey,
+          "attendance-risk-analysis",
+          recordValue(data)?.scope,
+          typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt as string : undefined,
+        ),
       ),
   );
 
@@ -1281,14 +1556,21 @@ export function createServer(
       if (!input.refresh && continuation?.resultTool === "cccap_analyze_attendance_risk" && continuation.result) {
         const cachedResult = recordValue(continuation.result);
         if (cachedResult) {
-          const continuationResult = { ...cachedResult, scope: request, riskFocus: request.riskFocus };
-          return contextualize(
-            formatAttendanceRiskResult(continuationResult),
-            contextStore,
+          const continuationResult = { ...cachedResult, scope: request, riskFocus: request.riskFocus, countyNames: request.countyNames };
+          return attachDialogueState(
+            contextualize(
+              formatAttendanceRiskResult(continuationResult),
+              contextStore,
+              providerKey,
+              "continuation",
+              continuationResult,
+              "cccap_analyze_attendance_risk",
+            ),
+            dialogueStore,
             providerKey,
-            "continuation",
-            continuationResult,
-            "cccap_analyze_attendance_risk",
+            "attendance-risk-analysis",
+            request,
+            typeof cachedResult.sourceRetrievedAt === "string" ? cachedResult.sourceRetrievedAt : undefined,
           );
         }
       }
@@ -1303,8 +1585,16 @@ export function createServer(
             request.childNames,
             request.authNames,
             request.riskFocus,
+            request.countyNames,
           ),
-        (data) => contextualize(formatAttendanceRiskResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_attendance_risk"),
+        (data) => attachDialogueState(
+          contextualize(formatAttendanceRiskResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_attendance_risk"),
+          dialogueStore,
+          providerKey,
+          "attendance-risk-analysis",
+          recordValue(data)?.scope,
+          typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt as string : undefined,
+        ),
       );
     },
   );
@@ -1336,6 +1626,7 @@ export function createServer(
     async (input) => execute(
       "cases and children retrieval",
       async () => normalizeCases(await client.getCases(input)),
+      (data) => formatCasesResult(data, (countyId) => client.getCountyName(countyId)),
     ),
   );
 
@@ -1351,6 +1642,7 @@ export function createServer(
     async (input) => execute(
       "authorizations retrieval",
       async () => normalizeAuthorizations(await client.getAuthorizations(input)),
+      (data) => formatAuthorizationsResult(data, (countyId) => client.getCountyName(countyId)),
     ),
   );
 
@@ -1458,13 +1750,20 @@ export function createServer(
         const cachedResult = recordValue(continuation.result);
         if (cachedResult) {
           const continuationResult = { ...cachedResult, filters: request };
-          return contextualize(
-            formatPaymentResult(continuationResult),
-            contextStore,
+          return attachDialogueState(
+            contextualize(
+              formatPaymentResult(continuationResult),
+              contextStore,
+              providerKey,
+              "continuation",
+              continuationResult,
+              "cccap_analyze_payment",
+            ),
+            dialogueStore,
             providerKey,
-            "continuation",
-            continuationResult,
-            "cccap_analyze_payment",
+            "payment-analysis",
+            recordValue(cachedResult.scope) ?? request,
+            typeof cachedResult.sourceRetrievedAt === "string" ? cachedResult.sourceRetrievedAt : undefined,
           );
         }
       }
@@ -1473,10 +1772,18 @@ export function createServer(
         () => getPaymentAnalysis(client, request, request.view, undefined, {
           ...(request.childNames ? { childNames: request.childNames } : {}),
           ...(request.authNames ? { authNames: request.authNames } : {}),
+          ...(request.countyNames ? { countyNames: request.countyNames } : {}),
           ...(request.detailPage ? { detailPage: request.detailPage } : {}),
           ...(request.detailPageSize ? { detailPageSize: request.detailPageSize } : {}),
         }),
-        (data) => contextualize(formatPaymentResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
+        (data) => attachDialogueState(
+          contextualize(formatPaymentResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
+          dialogueStore,
+          providerKey,
+          "payment-analysis",
+          recordValue(data)?.scope,
+          typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt as string : undefined,
+        ),
       );
     },
   );
@@ -1509,4 +1816,3 @@ function careUnitLabel(value: unknown): string {
     default: return tableValue(value);
   }
 }
-

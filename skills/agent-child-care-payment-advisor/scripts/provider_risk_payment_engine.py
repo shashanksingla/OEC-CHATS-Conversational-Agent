@@ -296,6 +296,7 @@ def _build_payment_summary_view(
     }
     categories: dict[str, dict[str, Any]] = {}
     counties: dict[str, dict[str, Any]] = {}
+    county_composition: dict[str, dict[str, Any]] = {}
     children: dict[str, dict[str, Any]] = {}
     actions: dict[str, dict[str, Any]] = {}
 
@@ -308,6 +309,33 @@ def _build_payment_summary_view(
             "conditional_amount": Decimal("0"),
             "excluded_days": 0,
         })
+
+    def composition_bucket(county_key: str, county_label: str) -> dict[str, Any]:
+        county = county_composition.setdefault(county_key, {
+            "county": county_label,
+            "care": {"hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
+            "absence": {"hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
+            "drop_in": {"hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
+            "vacant_slots": {"days": 0, "amount": Decimal("0")},
+            "paid_holidays": {"hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
+        })
+        if county["county"] == "Unavailable from the current source" and county_label != county["county"]:
+            county["county"] = county_label
+        return county
+
+    def add_attendance_component(
+        county: dict[str, Any],
+        component: str,
+        hours: Decimal,
+        amount: Decimal,
+        conditional: bool,
+    ) -> None:
+        if component not in county:
+            return
+        item = county[component]
+        item["hours"] += hours
+        item["amount"] += amount
+        item["conditional_amount" if conditional else "confirmed_amount"] += amount
 
     def add_action(action_id: str, label: str, reason: str, impact: Decimal, priority: str = "medium") -> None:
         current = actions.get(action_id)
@@ -341,6 +369,16 @@ def _build_payment_summary_view(
         county_label = day.get("county_name") or "Unavailable from the current source"
         child_key = str(day.get("child_name") or day.get("authorization_id") or "UNKNOWN")
         child_label = day.get("child_name") or "Unavailable from the current source"
+        component = {
+            "REGULAR": "care",
+            "ABSENCE": "absence",
+            "ENROLLMENT": "absence",
+            "DROP_IN": "drop_in",
+            "HOLIDAY": "paid_holidays",
+        }.get(payment_type)
+        if component:
+            county = composition_bucket(county_key, str(county_label))
+            add_attendance_component(county, component, hours, amount, bool(day.get("conditional")))
         for store, key, item_label in (
             (categories, payment_type, label),
             (counties, county_key, county_label),
@@ -356,6 +394,12 @@ def _build_payment_summary_view(
                     item["amount"] += amount
             elif day.get("classification") not in {"NO_CARE", "CARE_NOT_OFFERED"}:
                 item["excluded_days"] += 1
+
+    for vacant_slot in vacant_slot_days:
+        county_key = str(vacant_slot.get("county_id") or "UNKNOWN")
+        county = composition_bucket(county_key, str(vacant_slot.get("county_name") or "Unavailable from the current source"))
+        county["vacant_slots"]["days"] += 1
+        county["vacant_slots"]["amount"] += _hours(vacant_slot.get("amount")) or Decimal("0")
 
         if "FISCAL_RATE_UNAVAILABLE" in day.get("flags", []):
             add_action("missing-fiscal-rate", "Review unmatched fiscal rates", "A payable day has no matching fiscal rate.", amount, "high")
@@ -378,6 +422,29 @@ def _build_payment_summary_view(
             "excluded_days": item["excluded_days"],
         }
 
+    def render_composition(item: dict[str, Any]) -> dict[str, Any]:
+        rendered: dict[str, Any] = {"county": item["county"]}
+        for component in ("care", "absence", "drop_in", "paid_holidays"):
+            source = item[component]
+            rendered[component] = {
+                "hours": _money(source["hours"]),
+                "amount": _money(source["amount"]),
+                "confirmed_amount": _money(source["confirmed_amount"]),
+                "conditional_amount": _money(source["conditional_amount"]),
+            }
+        vacant_slots = item["vacant_slots"]
+        rendered["vacant_slots"] = {
+            "days": vacant_slots["days"],
+            "amount": _money(vacant_slots["amount"]),
+        }
+        rendered["potential_total"] = _money(
+            sum(
+                _hours(rendered[component]["amount"]) or Decimal("0")
+                for component in ("care", "absence", "drop_in", "paid_holidays")
+            ) + (_hours(rendered["vacant_slots"]["amount"]) or Decimal("0")),
+        )
+        return rendered
+
     return {
         "overview": {
             "gross_amount": _money(gross_total),
@@ -392,6 +459,10 @@ def _build_payment_summary_view(
         "counties": [
             {"county": key, **render_bucket(item)}
             for key, item in sorted(counties.items(), key=lambda value: value[0])
+        ],
+        "county_composition": [
+            render_composition(item)
+            for _, item in sorted(county_composition.items(), key=lambda value: value[0])
         ],
         "children": [
             {"child": key, **render_bucket(item)}
@@ -930,6 +1001,13 @@ def main() -> int:
         result = {"status": "ok", "result": evaluate_provider_risk_and_payment(payload)}
     except (OSError, json.JSONDecodeError, ValueError) as error:
         print(json.dumps({"status": "error", "error": str(error)}))
+        return 2
+    except Exception as error:  # noqa: BLE001 - fail closed on any unexpected evaluator defect
+        # A defensive field check elsewhere in this module can still miss an
+        # edge case; surface it as a clean JSON error instead of letting a
+        # raw traceback reach stdout, where the TypeScript caller would fail
+        # to parse it and report a confusing subprocess error.
+        print(json.dumps({"status": "error", "error": f"Payment engine failed unexpectedly: {error}"}))
         return 2
 
     rendered = json.dumps(result, indent=2)

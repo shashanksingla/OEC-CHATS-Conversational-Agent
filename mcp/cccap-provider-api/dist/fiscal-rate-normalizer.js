@@ -163,7 +163,10 @@ export function normalizeFiscalRateResponse(value) {
     return {
         fiscalRates,
         fiscalRateFees,
-        canonicalMappingStatus: "COMPLETE_CODE_MAPPING",
+        // Must reflect unresolvedMappings rather than a hardcoded literal: a
+        // caller (mapping_status in read-model-adapters.ts) trusts this field to
+        // know whether every code was resolved without inspecting the array itself.
+        canonicalMappingStatus: unresolvedMappings.length > 0 ? "PARTIAL_CODE_MAPPING" : "COMPLETE_CODE_MAPPING",
         unresolvedMappings,
         r00393Values: { ...R00393_VALUES },
     };

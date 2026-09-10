@@ -2,6 +2,13 @@ import { spawn } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+const CLI_TIMEOUT_MS = 60_000;
+const MAX_CAPTURED_OUTPUT_BYTES = 5_000_000;
+function truncate(value) {
+    return value.length > MAX_CAPTURED_OUTPUT_BYTES
+        ? `${value.slice(0, MAX_CAPTURED_OUTPUT_BYTES)}\n[truncated: output exceeded ${MAX_CAPTURED_OUTPUT_BYTES} bytes]`
+        : value;
+}
 const runSfCommand = (command, args, input) => new Promise((resolve, reject) => {
     const executable = process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : command;
     const commandArgs = process.platform === "win32"
@@ -10,20 +17,37 @@ const runSfCommand = (command, args, input) => new Promise((resolve, reject) => 
     const child = spawn(executable, commandArgs, {
         stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true,
+        timeout: CLI_TIMEOUT_MS,
+        killSignal: "SIGKILL",
     });
     let stdout = "";
     let stderr = "";
+    let timedOut = false;
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
     child.stdout.on("data", (chunk) => {
-        stdout += chunk;
+        if (stdout.length < MAX_CAPTURED_OUTPUT_BYTES)
+            stdout += chunk;
     });
     child.stderr.on("data", (chunk) => {
-        stderr += chunk;
+        if (stderr.length < MAX_CAPTURED_OUTPUT_BYTES)
+            stderr += chunk;
     });
-    child.on("error", reject);
-    child.on("close", (exitCode) => {
-        resolve({ stdout, stderr, exitCode: exitCode ?? 1 });
+    child.on("error", (error) => {
+        // ENOENT (missing sf CLI) and other spawn failures must fail closed
+        // with a clear error rather than an unhandled rejection.
+        reject(new Error(`Failed to start Salesforce CLI command: ${error.message}`));
+    });
+    child.on("close", (exitCode, signal) => {
+        if (signal === "SIGKILL" || signal === "SIGTERM")
+            timedOut = true;
+        resolve({
+            stdout: truncate(stdout),
+            stderr: timedOut
+                ? `${truncate(stderr)}\n[Salesforce CLI command timed out after ${CLI_TIMEOUT_MS}ms]`
+                : truncate(stderr),
+            exitCode: timedOut ? 124 : exitCode ?? 1,
+        });
     });
     child.stdin.end(input);
 });

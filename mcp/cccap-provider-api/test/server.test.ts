@@ -382,27 +382,30 @@ test("normalizes nested getSchedules attendance records into the Python contract
     },
   ], "county-1", 5);
 
-  assert.equal(normalized.schedules[0].schedule_id, "schedule-1");
-  assert.equal(normalized.schedules[0].authorization_id, "auth-1");
-  assert.equal(normalized.schedules[0].authorization_name, undefined);
-  assert.equal(normalized.schedules[0].county_id, "county-1");
-  assert.equal(normalized.schedules[0].county_name, "Denver County");
-  assert.equal(normalized.schedules[0].quality_tier, 5);
-  assert.equal(normalized.schedules[0].rate_type_code, "1");
-  assert.equal(normalized.schedules[0].auth_status, "APPROVED");
-  assert.equal(normalized.schedules[0].parent_confirmation, "CONFIRMED");
-  assert.equal(normalized.schedules[0].absence_parent_approved, true);
-  assert.equal(normalized.schedules[0].actual_start_ts, "2026-08-18T14:00:00.000+0000");
-  assert.equal(normalized.schedules[0].actual_end_ts, "2026-08-18T23:00:00.000+0000");
+  assert.equal(normalized.schedules[0]?.schedule_id, "schedule-1");
+  assert.equal(normalized.schedules[0]?.authorization_id, "auth-1");
+  assert.equal(normalized.schedules[0]?.authorization_name, undefined);
+  assert.equal(normalized.schedules[0]?.county_id, "county-1");
+  assert.equal(normalized.schedules[0]?.county_name, "Denver County");
+  assert.equal(normalized.schedules[0]?.quality_tier, 5);
+  assert.equal(normalized.schedules[0]?.rate_type_code, "1");
+  // No explicit Authorization_Status__c/authorization_status/expr0 value was
+  // returned for this schedule, so auth_status must fail closed to undefined
+  // rather than defaulting to APPROVED because Type__c is CCCAP_AUTHORIZED.
+  assert.equal(normalized.schedules[0]?.auth_status, undefined);
+  assert.equal(normalized.schedules[0]?.parent_confirmation, "CONFIRMED");
+  assert.equal(normalized.schedules[0]?.absence_parent_approved, true);
+  assert.equal(normalized.schedules[0]?.actual_start_ts, "2026-08-18T14:00:00.000+0000");
+  assert.equal(normalized.schedules[0]?.actual_end_ts, "2026-08-18T23:00:00.000+0000");
   assert.deepEqual(
     normalized.transactions.map((transaction) => transaction.type).sort(),
     [1, 2],
   );
-  assert.equal(normalized.transactions[0].status, "PARENT_APPROVED");
-  assert.equal(normalized.transactions[0].transaction_id, "transaction-out-canonical");
-  assert.equal(normalized.transactions[0].authorization_id, "auth-reporting-1");
-  assert.equal(normalized.transactions[0].client_id, "client-1");
-  assert.equal(normalized.transactions[0].result, 1);
+  assert.equal(normalized.transactions[0]?.status, "PARENT_APPROVED");
+  assert.equal(normalized.transactions[0]?.transaction_id, "transaction-out-canonical");
+  assert.equal(normalized.transactions[0]?.authorization_id, "auth-reporting-1");
+  assert.equal(normalized.transactions[0]?.client_id, "client-1");
+  assert.equal(normalized.transactions[0]?.result, 1);
 });
 
 test("normalizes stable payment-level status codes for duplicate guards", () => {
@@ -680,8 +683,8 @@ test("assembles the complete provider-risk-payment canonical payload", () => {
 
   assert.equal(payload.rule_version, "provider-risk-payment-v1");
   assert.equal(payload.service_period.id, "SP-1");
-  assert.equal(payload.attendance_days[0].authorization_id, "auth-1");
-  assert.equal(payload.fiscal_rates[0].amount, 45);
+  assert.equal(payload.attendance_days[0]?.authorization_id, "auth-1");
+  assert.equal(payload.fiscal_rates[0]?.amount, 45);
 });
 
 test("derives age band, occupied slot, and observed holiday enrichment from source rows", () => {
@@ -750,7 +753,7 @@ test("derives age band from child DOB and care date", () => {
         slotContracts: [],
       },
       { holidayList: [] },
-    )["auth-1"].age_band,
+    )["auth-1"]?.age_band,
     "ZERO_TO_36_MONTHS",
   );
 });
@@ -778,7 +781,7 @@ test("joins schedule DECL authorization references to Salesforce authorization n
         slotContracts: [],
       },
       { holidayList: [] },
-    )["a3ddl-decl-1"].age_band,
+    )["a3ddl-decl-1"]?.age_band,
     "ZERO_TO_36_MONTHS",
   );
 });
@@ -803,7 +806,7 @@ test("joins encumbrances through either external authorization reference", () =>
         slotContracts: [],
       },
       { holidayList: [] },
-    )["auth-1"].age_band,
+    )["auth-1"]?.age_band,
     "OVER_36_MONTHS",
   );
 });
@@ -1014,7 +1017,7 @@ test("payment results show scheduled forecast rows for child drill-down", () => 
   assert.equal(result.structuredContent?.calculationMode, "CURRENT_WEEK_FORECAST");
 });
 
-test("payment results show summary before child drill-down detail", () => {
+test("payment results keep initial summary to the measure table and composition", () => {
   const result = formatPaymentResult({
     paymentView: "NEXT_PAYOUT",
     payment: {
@@ -1044,10 +1047,11 @@ test("payment results show summary before child drill-down detail", () => {
   });
 
   const text = result.content[0].text;
-  assert.match(text, /County payment totals:/);
-  assert.match(text, /The table below shows children served, care hours, and calculated payment by county\./);
-  assert.match(text, /Denver \| 1 \| 10 \| ~ \$90\.00 \| ~ \$90\.00/);
-  assert.ok(text.indexOf("County payment totals") < text.indexOf("Detail by child"));
+  assert.doesNotMatch(text, /Payment differences:/);
+  assert.doesNotMatch(text, /Payment by category:/);
+  assert.doesNotMatch(text, /County detail:/);
+  assert.doesNotMatch(text, /County payment totals:/);
+  assert.match(text, /Next payout summary: Conditional/);
   assert.deepEqual(result.structuredContent?.actionIntents, [
     {
       actionId: "open-payment-detail",
@@ -1207,7 +1211,7 @@ test("canonicalizes DECL authorization references to Salesforce authorization ID
       {
         authorizations: [{ Id: "a0sPg000009BE0rIAG", Name: "941328" }],
       },
-    ).schedules[0].authorization_id,
+    ).schedules[0]?.authorization_id,
     "a0sPg000009BE0rIAG",
   );
 });
@@ -1227,6 +1231,33 @@ test("payment summary omits detail rows but keeps period metadata", () => {
   assert.match(text, /Services through.*2026-09-13/);
   assert.match(text, /Detail available: 182 child\/date rows/);
   assert.doesNotMatch(text, /Detail by child and service date/);
+});
+
+test("payment continuation metadata preserves the complete provider message", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    payment: {
+      status: "CONDITIONAL",
+      amount: "0.00",
+      summary_view: {
+        overview: { amount_at_risk: "100.00", excluded_days: 1 },
+        county_composition: [{
+          county: "Denver",
+          care: { hours: "40.00", amount: "360.00" },
+          absence: { hours: "8.00", amount: "72.00" },
+          drop_in: { hours: "0.00", amount: "0.00" },
+          vacant_slots: { days: 0, amount: "0.00" },
+          paid_holidays: { hours: "0.00", amount: "0.00" },
+          potential_total: "432.00",
+        }],
+      },
+    },
+    detailPagination: { page: 0, pageSize: 0, totalRows: 0, hasMore: false },
+  });
+
+  assert.equal(result.structuredContent?.providerMessage, result.content[0].text);
+  assert.match(String(result.structuredContent?.providerMessage), /County payment composition \(potential amounts\)/);
+  assert.equal((result.structuredContent?.summaryView as Record<string, unknown>)?.children, undefined);
 });
 
 test("payment detail never exposes Salesforce record identifiers", () => {
@@ -1316,4 +1347,52 @@ test("incomplete attendance action returns child-level detail rows", () => {
   assert.match(text, /Incomplete Example/);
   assert.match(text, /A check-in requires a matching check-out/);
   assert.doesNotMatch(text, /Pending Example/);
+});
+
+test("payment summary does not inline child rollup rows before detail is requested", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    payment: { status: "CONDITIONAL", amount: "0.00" },
+    summary_view: {
+      overview: { amount_at_risk: "100.00", excluded_days: 1 },
+      children: [{ label: "Taylor Example", days: 7, hours: "40.00", amount: "0.00" }],
+    },
+    detailPagination: { page: 0, pageSize: 0, totalRows: 7, hasMore: true },
+  });
+
+  const text = result.content[0].text;
+  assert.doesNotMatch(text, /Taylor Example/);
+  assert.match(text, /Detail available: 7 child\/date rows/);
+});
+
+test("initial payment summary renders county composition columns", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    payment: {
+      status: "CONDITIONAL",
+      amount: "0.00",
+      summary_view: {
+        county_composition: [{
+          county: "Denver",
+          care: { hours: "40.00", amount: "360.00" },
+          absence: { hours: "8.00", amount: "72.00" },
+          drop_in: { hours: "4.00", amount: "36.00" },
+          vacant_slots: { days: 2, amount: "18.00" },
+          paid_holidays: { hours: "8.00", amount: "72.00" },
+          potential_total: "558.00",
+        }],
+      },
+    },
+    detailPagination: { page: 0, pageSize: 0, totalRows: 0, hasMore: false },
+  });
+
+  const text = result.content[0].text;
+  assert.match(text, /County payment composition \(potential amounts\)/);
+  assert.match(text, /Care hours \| Care amount/);
+  assert.match(text, /Absence hours \| Absence amount/);
+  assert.match(text, /Drop-in hours \| Drop-in amount/);
+  assert.match(text, /Vacant slot days \| Vacant slot amount/);
+  assert.match(text, /Paid holiday hours \| Paid holiday amount/);
+  assert.match(text, /\| Denver \| 40\.00 \| ~ \$360\.00/);
+  assert.match(text, /~ \$558\.00/);
 });

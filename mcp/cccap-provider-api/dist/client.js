@@ -7,6 +7,7 @@ export class CccapClient {
     providerSalesforceIds = new Set();
     providerExternalNames = new Set();
     countyIds = new Set();
+    countyNameById = new Map();
     fiscalScheduleIds = new Set();
     fiscalSchedules = [];
     readCache = new Map();
@@ -24,6 +25,7 @@ export class CccapClient {
         this.providerSalesforceIds = this.extractIds(result.providers, "Id");
         this.providerExternalNames = this.extractIds(result.providers, "Name");
         this.countyIds = this.extractIds(result.fiscalAgreements, "CDE_COUNTY__c");
+        this.countyNameById = this.extractCountyNames(result.fiscalAgreements);
         this.fiscalScheduleIds = this.extractNestedIds(result.fiscalAgreements, "Rate_Schedules__r", "IDN_EXTNL__c");
         this.fiscalSchedules = this.extractFiscalSchedules(result.fiscalAgreements);
         if (this.providerSalesforceIds.size === 0 || this.providerExternalNames.size === 0) {
@@ -103,9 +105,15 @@ export class CccapClient {
         });
     }
     async getServicePeriods(input) {
+        // Service periods are not provider- or county-scoped source data, but every
+        // read must still occur only after the authenticated provider identity has
+        // been resolved and validated by initialize(); otherwise an unauthorized or
+        // misconfigured session could pull data before scope is ever established.
+        this.requireInitialized();
         return this.cachedCall("getServicePeriods", input);
     }
     async getHolidayList(input = {}) {
+        this.requireInitialized();
         return this.cachedCall("getHolidayList", input);
     }
     async getVacantSlots(input = {}) {
@@ -118,6 +126,33 @@ export class CccapClient {
     allowedProviders() {
         this.requireInitialized();
         return [...this.providerSalesforceIds];
+    }
+    /**
+     * Resolves a county ID to its provider-facing name, using the mapping
+     * captured at initialize() time. Returns undefined (never the raw ID)
+     * when no verified name is available for that ID.
+     */
+    getCountyName(countyId) {
+        if (typeof countyId !== "string" || countyId.length === 0)
+            return undefined;
+        return this.countyNameById.get(countyId);
+    }
+    extractCountyNames(value) {
+        const countyNameById = new Map();
+        if (!Array.isArray(value))
+            return countyNameById;
+        for (const agreementValue of value) {
+            const agreement = this.requireRecord(agreementValue, "fiscalAgreements");
+            const countyId = agreement.CDE_COUNTY__c;
+            const county = agreement.CDE_COUNTY__r;
+            const countyName = county && typeof county === "object" && !Array.isArray(county)
+                ? county.Name
+                : undefined;
+            if (typeof countyId === "string" && countyId && typeof countyName === "string" && countyName) {
+                countyNameById.set(countyId, countyName);
+            }
+        }
+        return countyNameById;
     }
     extractFiscalSchedules(value) {
         if (!Array.isArray(value))

@@ -20,6 +20,17 @@ function confirmationStatus(value: unknown): string | undefined {
   return normalized || undefined;
 }
 
+// Salesforce boolean fields can arrive as an actual boolean or as the
+// literal string "true"/"false" depending on the API layer. `Boolean("false")`
+// is `true` for any non-empty string, so a plain `Boolean(...)` coercion here
+// would silently invert a "false" string value; normalize known string forms
+// explicitly instead.
+function booleanValue(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value.trim().toLowerCase() === "true";
+  return Boolean(value);
+}
+
 function authorizationStatus(value: unknown): string | undefined {
   const normalized = String(value ?? "").trim().toUpperCase();
   if (normalized === "2" || normalized === "AUTHORIZED") return "APPROVED";
@@ -87,7 +98,7 @@ export function normalizeScheduleAttendance(
         status: confirmationStatus(record.Status__c),
         sub_type: record.Sub_Type__c,
         denial_reason: record.Denial_Status__c,
-        is_historical: Boolean(record.Previous_Transaction__c),
+        is_historical: booleanValue(record.Previous_Transaction__c),
         provider_id: record.CI_Provider_ID__c,
         entered_by: record.Creation_Source__c === "Provider" ? "PROVIDER" : record.Creation_Source__c,
       }));
@@ -157,8 +168,10 @@ export function normalizeScheduleAttendance(
       schedule_type: schedule.Type__c ?? schedule.schedule_type,
       is_deleted: false,
       denial_reason: undefined,
-      auth_status: authorizationStatus(authorizationStatusValue)
-        ?? (schedule.Type__c === "CCCAP_AUTHORIZED" ? "APPROVED" : undefined),
+      // Do not default an absent/unknown authorization status to APPROVED.
+      // A missing status must fail closed (undefined) so downstream evaluators
+      // treat the day as care-not-offered/blocked rather than silently approved.
+      auth_status: authorizationStatus(authorizationStatusValue),
       auth_begin_date: undefined,
       auth_end_date: undefined,
       ci_authorization_hours: schedule.CI_Authorization_Hours__c,

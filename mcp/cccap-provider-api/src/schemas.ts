@@ -1,5 +1,12 @@
 import * as z from "zod/v4";
 
+// Shared bound for a single request-scoped identifier or name string.
+// Salesforce IDs are 15-18 chars and provider-facing names are short; 200
+// is generous headroom while still rejecting an unbounded/oversized payload.
+const boundedIdentifier = z.string().min(1).max(200);
+const identifierList = z.array(boundedIdentifier).max(50);
+const continuationReference = z.string().min(1).max(64);
+
 export const dateFilterSchema = z.enum([
   "TODAY",
   "THIS_MONTH",
@@ -60,7 +67,7 @@ export const dateScopeSchema = z
 export const caseSchema = z
   .object({
     ...dateScopeShape,
-    countyIds: z.array(z.string().min(1)).optional(),
+    countyIds: identifierList.optional(),
   })
   .strict()
   .superRefine(validateDateScope);
@@ -69,10 +76,10 @@ export const authorizationSchema = z
   .object({
     ...dateScopeShape,
     careDate: z.string().date().optional(),
-    caseIds: z.array(z.string().min(1)).optional(),
-    countyIds: z.array(z.string().min(1)).optional(),
-    authIds: z.array(z.string().min(1)).optional(),
-    authNames: z.array(z.string().min(1)).optional(),
+    caseIds: identifierList.optional(),
+    countyIds: identifierList.optional(),
+    authIds: identifierList.optional(),
+    authNames: identifierList.optional(),
   })
   .strict()
   .superRefine(validateDateScope);
@@ -83,7 +90,7 @@ export const schedulesSchema = z
   .object({
     ...dateScopeShape,
     dateFilter: dateFilterSchema,
-    authNames: z.array(z.string().min(1)).optional(),
+    authNames: identifierList.optional(),
   })
   .strict()
   .superRefine(validateDateScope);
@@ -116,11 +123,12 @@ export const attendanceAnalysisSchema = z
   .object({
     ...dateScopeShape,
     dateFilter: dateFilterSchema.optional(),
-    childNames: z.array(z.string().min(1)).min(1).optional(),
-    authNames: z.array(z.string().min(1)).min(1).optional(),
+    childNames: identifierList.min(1).optional(),
+    authNames: identifierList.min(1).optional(),
+    countyNames: identifierList.min(1).optional(),
     riskFocus: z.enum(["PARENT_CONFIRMATIONS", "ABSENCE_LIMITS", "INCOMPLETE_ATTENDANCE"]).optional(),
-    contextRef: z.string().min(1).optional(),
-    actionRef: z.string().min(1).optional(),
+    contextRef: continuationReference.optional(),
+    actionRef: continuationReference.optional(),
     refresh: z.boolean().optional(),
   })
   .strict()
@@ -136,12 +144,13 @@ export const paymentAnalysisSchema = z
     ...dateScopeShape,
     dateFilter: dateFilterSchema.optional(),
     view: paymentViewSchema.optional(),
-    childNames: z.array(z.string().min(1)).min(1).optional(),
-    authNames: z.array(z.string().min(1)).min(1).optional(),
-    detailPage: z.number().int().positive().optional(),
+    childNames: identifierList.min(1).optional(),
+    authNames: identifierList.min(1).optional(),
+    countyNames: identifierList.min(1).optional(),
+    detailPage: z.number().int().positive().max(10_000).optional(),
     detailPageSize: z.number().int().positive().max(100).optional(),
-    contextRef: z.string().min(1).optional(),
-    actionRef: z.string().min(1).optional(),
+    contextRef: continuationReference.optional(),
+    actionRef: continuationReference.optional(),
     refresh: z.boolean().optional(),
   })
   .strict()

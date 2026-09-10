@@ -13,6 +13,7 @@ import {
 } from "./attendance-canonical-adapter.js";
 import { normalizeProviderContext } from "./provider-context.js";
 import { normalizeScheduleAttendance } from "./schedule-normalizer.js";
+import { buildSituationEnvelope, type SituationEnvelope } from "./situation-envelope.js";
 export { normalizePaymentStatus } from "./payment-schema.js";
 export { getPaymentAnalysis } from "./payment-orchestration.js";
 const execFileAsync = promisify(execFile);
@@ -22,6 +23,29 @@ const evaluatorPath = fileURLToPath(
     import.meta.url,
   ),
 );
+
+const ATTENDANCE_EVALUATOR_TIMEOUT_MS = 30_000;
+const ATTENDANCE_EVALUATOR_MAX_BUFFER_BYTES = 10_000_000;
+
+async function runAttendanceEvaluator(scriptPath: string, inputPath: string): Promise<{ stdout: string }> {
+  try {
+    return await execFileAsync("uv", ["run", scriptPath, inputPath], {
+      windowsHide: true,
+      timeout: ATTENDANCE_EVALUATOR_TIMEOUT_MS,
+      maxBuffer: ATTENDANCE_EVALUATOR_MAX_BUFFER_BYTES,
+      killSignal: "SIGKILL",
+    });
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
+    if (nodeError.code === "ENOENT") {
+      throw new Error("Attendance engine is unavailable: the uv/python runtime could not be started.");
+    }
+    if (nodeError.killed || nodeError.signal === "SIGKILL" || nodeError.signal === "SIGTERM") {
+      throw new Error(`Attendance engine is unavailable: evaluation exceeded ${ATTENDANCE_EVALUATOR_TIMEOUT_MS}ms and was terminated.`);
+    }
+    throw error;
+  }
+}
 
 type RecordValue = Record<string, unknown>;
 
@@ -153,8 +177,15 @@ export async function getAttendanceRiskSnapshot(
     categories.crossed_absence_limits,
     "Crossed absence limits",
   );
-  const numberValue = (value: unknown): number =>
-    typeof value === "number" ? value : 0;
+  // A non-numeric evaluator count is a data-quality failure, not a zero
+  // result; silently coercing it to 0 would present an unaffected snapshot
+  // to the provider when the underlying evaluation is actually invalid.
+  const numberValue = (value: unknown): number => {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      throw new Error("Attendance risk category count is unavailable or invalid");
+    }
+    return value;
+  };
   const pendingDays = numberValue(pending.days);
   const pendingChildren = numberValue(pending.children);
   const approachingChildren = numberValue(approaching.children);
@@ -245,6 +276,7 @@ export async function getAttendanceRiskAnalysis(
   childNames?: string[],
   authNames?: string[],
   riskFocus?: "PARENT_CONFIRMATIONS" | "ABSENCE_LIMITS" | "INCOMPLETE_ATTENDANCE",
+  countyNames?: string[],
 ): Promise<{
   providerDisplayName: string;
   facilityName: string;
@@ -252,7 +284,9 @@ export async function getAttendanceRiskAnalysis(
   paymentReadiness: RecordValue;
   scope: DateScope;
   riskFocus: "PARENT_CONFIRMATIONS" | "ABSENCE_LIMITS" | "INCOMPLETE_ATTENDANCE" | undefined;
+  countyNames: string[] | undefined;
   sourceRetrievedAt: string;
+  situation: SituationEnvelope;
 }> {
   const initialization = requireRecord(
     await client.initialize(scope),
@@ -353,13 +387,18 @@ export async function getAttendanceRiskAnalysis(
       }),
       "utf8",
     );
-    const { stdout } = await execFileAsync("uv", ["run", evaluatorPath, inputPath], {
-      windowsHide: true,
-    });
+    const { stdout } = await runAttendanceEvaluator(evaluatorPath, inputPath);
     const evaluated = JSON.parse(stdout) as { status?: string; result?: unknown; error?: string };
     if (evaluated.status !== "ok" || !evaluated.result) {
       throw new Error(evaluated.error || "Attendance risk evaluation failed");
     }
+    const sourceRetrievedAt = new Date().toISOString();
+    const situation = await buildSituationEnvelope(
+      evaluated.result,
+      "attendance-risk-analysis",
+      scope,
+      sourceRetrievedAt,
+    );
     return {
       providerDisplayName,
       facilityName,
@@ -367,7 +406,9 @@ export async function getAttendanceRiskAnalysis(
       paymentReadiness: livePaymentReadiness(),
       scope,
       riskFocus,
-      sourceRetrievedAt: new Date().toISOString(),
+      countyNames,
+      sourceRetrievedAt,
+      situation,
     };
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -452,9 +493,7 @@ export async function getAttendanceDataAnalysis(
         import.meta.url,
       ),
     );
-    const { stdout } = await execFileAsync("uv", ["run", analyzerPath, inputPath], {
-      windowsHide: true,
-    });
+    const { stdout } = await runAttendanceEvaluator(analyzerPath, inputPath);
     const evaluated = JSON.parse(stdout) as { status?: string; result?: unknown; error?: string };
     if (evaluated.status !== "ok" || !evaluated.result) {
       throw new Error(evaluated.error || "Attendance transaction analysis failed");
@@ -473,4 +512,3 @@ function firstArrayRecord(value: unknown, label: string): RecordValue {
   if (!Array.isArray(value) || value.length === 0) throw new Error(`${label} is unavailable`);
   return requireRecord(value[0], label);
 }
-
