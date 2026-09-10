@@ -102,7 +102,7 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   assert.match(text ?? "", /Children approaching county monthly absence limits/);
   assert.ok(text?.includes("1 child(ren) of 1 counties; within 2 day(s) of exceeding the limit"));
   assert.equal(structured.responseMode, "SUMMARY");
-  assert.equal(structured.providerMessage, undefined);
+  assert.equal(structured.providerMessage, text);
   assert.equal(structured.attendanceSummary, undefined);
   assert.equal(Array.isArray(structured.actionControls), true);
   assert.equal(typeof structured.contextRef, "string");

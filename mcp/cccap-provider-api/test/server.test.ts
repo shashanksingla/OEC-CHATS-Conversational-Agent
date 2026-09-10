@@ -1021,7 +1021,7 @@ test("payment results use a provider-facing table and preserve blocked states", 
   assert.match(result.content[0].text, /2026-09-24/);
   assert.match(result.content[0].text, /fiscal_rates, parent_confirmations/);
   assert.doesNotMatch(result.content[0].text, /amount \|/);
-  assert.equal(result.structuredContent?.providerMessage, undefined);
+  assert.equal(result.structuredContent?.providerMessage, result.content[0].text);
   assert.deepEqual(result.structuredContent?.scope, { dateFilter: "THIS_MONTH" });
 });
 
@@ -1291,7 +1291,7 @@ test("payment continuation metadata preserves the complete provider message", ()
     detailPagination: { page: 0, pageSize: 0, totalRows: 0, hasMore: false },
   });
 
-  assert.equal(result.structuredContent?.providerMessage, undefined);
+  assert.equal(result.structuredContent?.providerMessage, result.content[0].text);
   assert.equal((result.structuredContent?.summaryView as Record<string, unknown>)?.children, undefined);
 });
 

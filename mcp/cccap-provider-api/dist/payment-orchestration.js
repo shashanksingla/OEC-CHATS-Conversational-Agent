@@ -69,9 +69,7 @@ function first(value, label) {
     return record(rows[0], label);
 }
 export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDate = new Date().toISOString().slice(0, 10), filters = {}) {
-    const initialization = view === "STATUS"
-        ? record(await client.initialize(scope), "Provider context")
-        : undefined;
+    const initialization = record(await client.initialize(scope), "Provider context");
     const servicePeriodData = await client.getServicePeriods(view === "NEXT_PAYOUT" ? { paymentAfter: "TODAY", limitOne: true } :
         view === "CURRENT_WEEK_FORECAST" ? { dateOn: "TODAY", limitOne: true } :
             { ...scope, limitOne: true, dateFilter: scope.dateFilter });
@@ -81,7 +79,7 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
     if (typeof serviceBeginDate !== "string" || typeof serviceEndDate !== "string")
         throw new Error("Service period dates are unavailable");
     const sourceScope = view === "STATUS" ? scope : { dateFilter: "DATE_RANGE", dateFrom: serviceBeginDate, dateTo: serviceEndDate };
-    const providerContext = initialization ?? record(await client.initialize(sourceScope), "Provider context");
+    const providerContext = initialization;
     const { countyIds } = normalizeProviderContext(providerContext);
     const scheduleData = await client.getSchedules(sourceScope);
     const scheduleRows = array(record(scheduleData, "Schedules").schedules, "Schedules");

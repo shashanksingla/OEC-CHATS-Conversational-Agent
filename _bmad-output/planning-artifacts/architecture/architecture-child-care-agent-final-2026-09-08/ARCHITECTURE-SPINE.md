@@ -7,7 +7,7 @@ paradigm: layered capability-oriented architecture
 scope: Provider Assist agent, MCP adapter, deterministic evaluators, and Salesforce source boundary
 status: final
 created: 2026-09-08
-updated: 2026-09-08
+updated: 2026-09-10
 binds: [Provider Assist, attendance risk, parent confirmations, absence limits, payment readiness]
 sources: [architecture.md, carepay-agent-file-usage.md, CHAT_HANDOFF.md]
 companions: []
@@ -90,6 +90,42 @@ flowchart TD
 - **Prevents:** hand-edited runtime drift and historical fixtures being mistaken for active behavior
 - **Rule:** `mcp/cccap-provider-api/dist` is rebuilt from `src`. `skills/reports/eval-runs` is historical output. Runtime changes occur only in source files and are validated before rebuilding.
 
+### AD-8 — Continuations are server-owned projections [ADOPTED]
+
+- **Binds:** attendance and payment follow-ups, action controls, cached-result reuse
+- **Prevents:** replayed summaries, model-built filters, and divergent continuation behavior between capabilities
+- **Rule:** An opaque action reference resolves inside MCP to a validated capability, normalized scope, filters, focus/view, and pagination projection. The model never owns continuation state or resends cached data.
+
+### AD-9 — Compatible continuations are cache-first [ADOPTED]
+
+- **Binds:** canonical-result reuse, detail pages, refresh behavior, and cache invalidation
+- **Prevents:** unnecessary source reads, stale projections, and incorrectly scoped detail
+- **Rule:** Serve a continuation from the provider-bound canonical result only when an immutable normalized compatibility key matches provider scope, capability, date scope, filters, focus/view, rule version, freshness policy, projection type, page, and page size. Bypass cache for explicit refresh, expiry, incompatible state, or missing projection data.
+
+### AD-10 — Provider response ownership is text-only [ADOPTED]
+
+- **Binds:** MCP result envelopes and agent/UI relay behavior
+- **Prevents:** oversized handoffs, duplicated prose, and competing response sources
+- **Rule:** `content[0].text` is the sole provider-facing response channel. `structuredContent` contains only compact status, scope, pagination, and opaque action controls; it never carries canonical rows, child lists, raw identifiers, or duplicated provider prose.
+
+### AD-11 — Continuation resolution fails closed [ADOPTED]
+
+- **Binds:** malformed, expired, unknown, and capability-mismatched action references
+- **Prevents:** accidental scope widening and stale-action replay
+- **Rule:** When continuation fields are present, an invalid or incompatible reference returns the shared safe error contract and never falls back to model-supplied direct filters.
+
+### AD-12 — Cross-capability actions preserve originating scope [ADOPTED]
+
+- **Binds:** attendance-to-payment and payment-to-attendance actions
+- **Prevents:** inherited actions widening provider or county scope
+- **Rule:** Cross-capability actions carry only opaque references. MCP resolves the originating bounded scope, and the target capability performs its own authorization and compatibility validation before retrieval.
+
+### AD-13 — Continuation storage is bounded and refreshable [ADOPTED]
+
+- **Binds:** continuation lifecycle, freshness, and process-memory limits
+- **Prevents:** unbounded memory, stale reads, and refresh no-ops
+- **Rule:** Continuation storage uses provider-scoped process memory with TTL, LRU entry, and byte caps. Explicit refresh bypasses canonical-result reuse and creates a new compatible context.
+
 ## Consistency Conventions
 
 | Concern | Convention |
@@ -99,7 +135,7 @@ flowchart TD
 | Dates and money | ISO dates and explicit decimal/currency handling at the evaluator boundary. |
 | Scope | Every composite flow initializes or reuses authenticated provider scope and validates county and related-record relationships. |
 | Errors | Provider-safe structured errors include capability, no-result status, and recovery actions; never expose tokens, IDs, raw payloads, stack traces, or CLI output. |
-| Cache | Process-memory cache is provider-scoped and keyed by action plus exact request scope; it is not durable storage. |
+| Cache | Process-memory cache stores provider-bound canonical results and continuation plans; immutable compatibility keys govern reuse, projections are cache-first, and the cache is not durable storage. |
 | Source of truth | Runtime source is `.github/agents`, `skills`, `mcp/cccap-provider-api/src`, evaluator scripts, and `CHATS_SIT` Apex. |
 | Capability module shape | Each capability exposes one request entrypoint, one canonical input adapter, one evaluator invocation, and one provider-safe result contract. Internal helpers may split mapping and formatting without changing that boundary. |
 | Validation ownership | MCP schemas validate request shape; TypeScript normalizers validate source relationships and canonical evaluator inputs; Python validates deterministic rule inputs. The first failing layer returns the shared blocked/error contract. |
@@ -186,7 +222,7 @@ CHATS_SIT/force-app/main/default/classes/
 
 - **Transport:** VS Code launches a local stdio MCP process that calls Salesforce through `sf api request rest`.
 - **Identity:** MCP resolves the authenticated Salesforce CLI user at process startup.
-- **Cache:** Provider-scoped, request-keyed, in-memory cache; restart clears it.
+- **Cache:** Provider-scoped, bounded in-memory cache of canonical results and opaque continuation plans; compatible projections reuse it, while restart clears it.
 - **Compute:** One local MCP process serves the authenticated provider context for the session.
 - **Data flow:** Read-only; no writes, notifications, background jobs, or scenario mutation.
 
@@ -207,3 +243,5 @@ CHATS_SIT/force-app/main/default/classes/
 - Full transaction-level attendance activation until the required source fields and relationships are available live.
 - Live provider payout amounts until the canonical payment source contract is complete.
 - Durable cache, background jobs, writes, notifications, and scenario mutation.
+- MCP envelope alignment and source-read cache parity remain implementation work; they must not weaken the continuation compatibility, refresh, or fail-closed rules above.
+- Source-read cache parity and production deployment topology remain implementation concerns; they must not weaken the continuation compatibility, refresh, or fail-closed rules above.

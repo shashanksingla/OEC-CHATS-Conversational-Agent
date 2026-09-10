@@ -249,6 +249,7 @@ function snapshotResult(data: unknown): ToolResult {
       sourceRetrievedAt: snapshot.sourceRetrievedAt,
       responseMode: "SUMMARY",
       responseSections: ["summary", "next-actions", "drill-down", "available-views"],
+      providerMessage: renderedMessage,
       actionControls: actionControls(actionIntents),
     },
   };
@@ -349,7 +350,7 @@ function contextualize(
       input: { contextRef, actionRef },
     };
   });
-  const { actionIntents: _actionIntents, providerMessage: _providerMessage, filters: _filters, responseContext: _responseContext, ...structuredContent } = value.structuredContent;
+  const { actionIntents: _actionIntents, filters: _filters, responseContext: _responseContext, ...structuredContent } = value.structuredContent;
   return {
     ...value,
     structuredContent: {
@@ -1373,6 +1374,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
       summaryView: compactPaymentSummaryView(summaryView),
       detailPagination,
       status,
+        providerMessage,
       filters: paymentResult.filters,
       responseSections: ["summary", "next-actions", "drill-down", "available-views"],
       responseContext: {
@@ -1389,9 +1391,22 @@ export function formatPaymentResult(data: unknown): ToolResult {
 function toolError(capability: string, error: unknown): ToolResult {
   const message = error instanceof Error ? error.message : "";
   const paymentFailure = capability === "payment analysis";
+  const paymentDiagnostic = paymentFailure && message.length > 0
+    ? message
+      .replace(/[a-zA-Z0-9]{15,18}/g, "[redacted-id]")
+      .slice(0, 240)
+    : undefined;
   const filterFailure = message.startsWith("Requested ") && message.includes("filter did not match");
   const paymentSource = paymentFailure && message.includes("Service period")
     ? "service-period dates"
+    : paymentFailure && message.includes("Authorization fiscal schedule mapping")
+      ? "authorization-to-fiscal-schedule mapping"
+      : paymentFailure && message.includes("County policy")
+        ? "county-policy mapping"
+        : paymentFailure && (message.includes("attendance") || message.includes("Schedules"))
+          ? "attendance-source mapping"
+          : paymentFailure && message.includes("Payment engine payload")
+            ? "payment-engine input mapping"
     : paymentFailure && (message.includes("Fiscal") || message.includes("fiscal") || message.includes("rate"))
       ? "fiscal-rate mapping"
       : paymentFailure && message.includes("subPayments")
@@ -1433,6 +1448,7 @@ function toolError(capability: string, error: unknown): ToolResult {
             capability,
             message: userMessage,
             nextSteps,
+            ...(paymentDiagnostic ? { diagnostic: paymentDiagnostic } : {}),
           },
         }),
       },
@@ -1777,7 +1793,7 @@ export function createServer(
           );
         }
       }
-      return execute(
+      const runPaymentAnalysis = () => execute(
         "payment analysis",
         () => getPaymentAnalysis(client, request, request.view, undefined, {
           ...(request.childNames ? { childNames: request.childNames } : {}),
@@ -1795,6 +1811,12 @@ export function createServer(
           typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt as string : undefined,
         ),
       );
+      const paymentResult = await runPaymentAnalysis();
+      if (paymentResult.isError && !hasContinuation && !input.refresh) {
+        client.clearReadCache();
+        return runPaymentAnalysis();
+      }
+      return paymentResult;
     },
   );
 

@@ -193,6 +193,7 @@ function snapshotResult(data) {
             sourceRetrievedAt: snapshot.sourceRetrievedAt,
             responseMode: "SUMMARY",
             responseSections: ["summary", "next-actions", "drill-down", "available-views"],
+            providerMessage: renderedMessage,
             actionControls: actionControls(actionIntents),
         },
     };
@@ -276,7 +277,7 @@ function contextualize(value, store, providerKey, capability, result, resultTool
             input: { contextRef, actionRef },
         };
     });
-    const { actionIntents: _actionIntents, providerMessage: _providerMessage, filters: _filters, responseContext: _responseContext, ...structuredContent } = value.structuredContent;
+    const { actionIntents: _actionIntents, filters: _filters, responseContext: _responseContext, ...structuredContent } = value.structuredContent;
     return {
         ...value,
         structuredContent: {
@@ -1164,6 +1165,7 @@ export function formatPaymentResult(data) {
             summaryView: compactPaymentSummaryView(summaryView),
             detailPagination,
             status,
+            providerMessage,
             filters: paymentResult.filters,
             responseSections: ["summary", "next-actions", "drill-down", "available-views"],
             responseContext: {
@@ -1179,22 +1181,35 @@ export function formatPaymentResult(data) {
 function toolError(capability, error) {
     const message = error instanceof Error ? error.message : "";
     const paymentFailure = capability === "payment analysis";
+    const paymentDiagnostic = paymentFailure && message.length > 0
+        ? message
+            .replace(/[a-zA-Z0-9]{15,18}/g, "[redacted-id]")
+            .slice(0, 240)
+        : undefined;
     const filterFailure = message.startsWith("Requested ") && message.includes("filter did not match");
     const paymentSource = paymentFailure && message.includes("Service period")
         ? "service-period dates"
-        : paymentFailure && (message.includes("Fiscal") || message.includes("fiscal") || message.includes("rate"))
-            ? "fiscal-rate mapping"
-            : paymentFailure && message.includes("subPayments")
-                ? "existing payment-history rows"
-                : paymentFailure && (message.includes("slot") || message.includes("Slot"))
-                    ? "slot-contract mapping"
-                    : paymentFailure && message.includes("holiday")
-                        ? "holiday-payment mapping"
-                        : paymentFailure && (message.includes("age-band") || message.includes("encumbrance"))
-                            ? "authorization age-band or encumbrance mapping"
-                            : paymentFailure && (message.includes("parent_confirmation") || message.includes("confirmation"))
-                                ? "parent-confirmation attendance mapping"
-                                : undefined;
+        : paymentFailure && message.includes("Authorization fiscal schedule mapping")
+            ? "authorization-to-fiscal-schedule mapping"
+            : paymentFailure && message.includes("County policy")
+                ? "county-policy mapping"
+                : paymentFailure && (message.includes("attendance") || message.includes("Schedules"))
+                    ? "attendance-source mapping"
+                    : paymentFailure && message.includes("Payment engine payload")
+                        ? "payment-engine input mapping"
+                        : paymentFailure && (message.includes("Fiscal") || message.includes("fiscal") || message.includes("rate"))
+                            ? "fiscal-rate mapping"
+                            : paymentFailure && message.includes("subPayments")
+                                ? "existing payment-history rows"
+                                : paymentFailure && (message.includes("slot") || message.includes("Slot"))
+                                    ? "slot-contract mapping"
+                                    : paymentFailure && message.includes("holiday")
+                                        ? "holiday-payment mapping"
+                                        : paymentFailure && (message.includes("age-band") || message.includes("encumbrance"))
+                                            ? "authorization age-band or encumbrance mapping"
+                                            : paymentFailure && (message.includes("parent_confirmation") || message.includes("confirmation"))
+                                                ? "parent-confirmation attendance mapping"
+                                                : undefined;
     const userMessage = filterFailure
         ? message
         : paymentFailure && paymentSource
@@ -1223,6 +1238,7 @@ function toolError(capability, error) {
                         capability,
                         message: userMessage,
                         nextSteps,
+                        ...(paymentDiagnostic ? { diagnostic: paymentDiagnostic } : {}),
                     },
                 }),
             },
@@ -1367,13 +1383,19 @@ export function createServer(client, providerDisplayName, contextStore = new Con
                 return attachDialogueState(contextualize(formatPaymentResult(continuationResult), contextStore, providerKey, "continuation", continuationResult, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(cachedResult.scope) ?? request, typeof cachedResult.sourceRetrievedAt === "string" ? cachedResult.sourceRetrievedAt : undefined);
             }
         }
-        return execute("payment analysis", () => getPaymentAnalysis(client, request, request.view, undefined, {
+        const runPaymentAnalysis = () => execute("payment analysis", () => getPaymentAnalysis(client, request, request.view, undefined, {
             ...(request.childNames ? { childNames: request.childNames } : {}),
             ...(request.authNames ? { authNames: request.authNames } : {}),
             ...(request.countyNames ? { countyNames: request.countyNames } : {}),
             ...(request.detailPage ? { detailPage: request.detailPage } : {}),
             ...(request.detailPageSize ? { detailPageSize: request.detailPageSize } : {}),
         }), (data) => attachDialogueState(contextualize(formatPaymentResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
+        const paymentResult = await runPaymentAnalysis();
+        if (paymentResult.isError && !hasContinuation && !input.refresh) {
+            client.clearReadCache();
+            return runPaymentAnalysis();
+        }
+        return paymentResult;
     });
     server.registerTool("cccap_get_payment_history", {
         title: "Get CCCAP Payment History",
