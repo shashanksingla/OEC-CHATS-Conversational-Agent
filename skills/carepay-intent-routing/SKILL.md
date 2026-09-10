@@ -5,7 +5,7 @@ description: Helps Provider Assist interpret provider requests, preserve convers
 
 # CarePay Intent Routing
 
-Treat each provider message as part of an ongoing conversation, not as an isolated command. First understand what the provider is trying to decide, what facts are already verified in the conversation, and what new scope or freshness the request requires. Then choose one capability that can answer it.
+Treat each provider message as part of an ongoing conversation, not as an isolated command. First understand what the provider is trying to decide, what facts are already verified in the conversation, and what new scope or freshness the request requires. Then choose the narrowest single capability, or the smallest justified set of capabilities when the provider explicitly requests multiple evidence domains.
 
 Follow `{project-root}/skills/ARCHITECTURE.md`. This module owns routing only: it selects one capability and constructs its scope; it does not fetch data, normalize source fields, calculate results, or format provider responses.
 
@@ -16,7 +16,7 @@ Before answering every provider message, privately maintain a small intent frame
 | Field | Resolve from | Required behavior |
 | --- | --- | --- |
 | User outcome | The provider's actual question or decision | Name the decision the answer must support, not just the topic word. |
-| Conversation mode | The immediately preceding answer, actions, and returned entities | Classify the turn as continuation, new request, correction, refresh, or ambiguous. When the latest composite tool result's `structuredContent` includes `scopeChanged`, `capabilityChanged`, and `sinceLastTurn`, treat them as a confirmed signal rather than re-deriving the classification purely from transcript text: `scopeChanged: false` and `capabilityChanged: false` together confirm a same-scope continuation; either `true` confirms a new request or correction. Use `sinceLastTurn` only to note staleness, never to invent a refresh the provider did not request. |
+| Conversation mode | The immediately preceding answer, actions, and returned entities | Classify the turn as continuation, new request, correction, refresh, or ambiguous from the provider's words and the latest verified result. Preserve unchanged scope; fetch again only when the provider requests a new view, changed scope, or refresh. |
 | Entity scope | Explicit child, county, authorization, facility, or all-authorized-provider scope | Never widen scope because a broader tool is available. Provider identity comes only from MCP. |
 | Time scope | Explicit dates, relative period, or the capability's documented default | Preserve explicit dates. Resolve relative language against the current date and pass the resulting filter to the tool. Never silently replace a historical period with current month. |
 | Freshness | Whether the provider asks for current, refreshed, or previously retrieved information | Reuse a verified result only when entity, time, and freshness all match. Otherwise fetch the smallest changed slice. |
@@ -27,7 +27,15 @@ If the outcome, entity, or time scope is materially ambiguous, ask one concise c
 
 Before querying on a follow-up, resolve the child, authorization, county, date, period, and requested view against the immediately preceding response context and cached scope. If any required filter remains ambiguous, ask one clarification and make no data call. Do not guess from similar names or widen to the provider-wide scope.
 
-Do not execute a broad request such as "everything", "all", or "what's happening" as a dashboard. Ask which read-only view they want: attendance risk, parent confirmations/absence limits, authorization status, next payout timing, or payment status. Only combine views after the provider explicitly names the domains.
+Do not execute a broad request such as "everything", "all", or "what's happening" as a dashboard. Ask which read-only view they want: attendance risk, parent confirmations/absence limits, authorization status, next payout timing, or payment status. An explicit multi-domain request is different from a broad request: identify each named evidence domain, preserve one shared verified scope, and call only the smallest set of capabilities needed to answer those domains. Reuse a successful result already in context when its entity, period, filters, and freshness match; do not repeat a capability merely because its topic was named again. Never use a greeting-shaped snapshot for a non-greeting request.
+
+Apply this turn policy to every request:
+
+1. A greeting-only message is the only mode that may use the greeting snapshot. A message containing a business question, requested view, entity, period, action, correction, or refresh is not a greeting, even if it also says hello.
+2. A follow-up inherits the immediately preceding verified scope and result only when the provider does not change the entity, period, filters, view, or freshness. Resolve references such as `that`, `these`, `the next one`, `show more`, and `why` against that result; ask one clarification when resolution is not unique.
+3. A new request or correction replaces only the changed part of scope. Keep unchanged verified facts, but fetch the smallest capability and period needed for the new question. A refresh explicitly invalidates matching cached evidence and must set `refresh: true`.
+4. For explicit multi-domain requests, call each required domain capability at most once, using the same resolved scope. If one domain is already verified and current, reuse it. Present one answer with separate domain findings and a short supported relationship between them; never merge unrelated counts or imply that one domain recalculated the other.
+5. After every tool call, continue the same turn. If a multi-domain call fails, report that domain as unverified while retaining earlier verified context, and do not conceal the failure with a greeting, stale replacement, or invented result.
 
 An acknowledgment such as "sure", "thanks", or "okay" has no new data intent: acknowledge briefly or ask what the provider wants to review next, make no data call, and never imply that a read-only action was completed.
 
@@ -37,7 +45,7 @@ When the immediately preceding result is payment analysis and the provider says 
 
 Use zero calls for a context question answered by verified facts, one high-level call for a new request, or one justified supplement when the result explicitly lacks requested evidence. Composite tools initialize scope internally. Do not prefetch, repeat an identical call, widen scope, or decorate a complete answer with unrelated data.
 
-Prefer the process cache when the exact provider scope, request filters, period, and freshness match the current intent. A refresh request, changed scope, stale source timestamp, or missing evidence is sufficient reason to retrieve again; otherwise answer from the verified cached result or its structured action intent.
+Prefer the process cache when the exact provider scope, request filters, period, and freshness match the current intent. A refresh request, changed scope, stale source timestamp, or missing evidence is sufficient reason to retrieve again; otherwise answer from the verified cached result.
 
 After each tool result, check capability, scope, freshness, completeness, and errors against the intent frame. If the result is for the wrong period or entity, do not rewrite it as the requested answer; stop and report that no verified result was produced, then offer a retry or a precise clarification.
 
@@ -49,6 +57,7 @@ Build filters from the intent frame:
 | --- | --- |
 | Initial greeting only | Call the current-month snapshot with `{}`. It includes today's scheduled and checked-in child counts plus current-month risks. Do not add dates, child names, counties, or authorization names. A later greeting does not refresh data unless the provider asks for an update. |
 | Facility attendance snapshot | Pass the exact date scope to `cccap_get_attendance_risk_snapshot`; use no child filter because the request is facility-wide. |
+| Combined attendance and payment risks | If a successful payment result for the requested period is already in context, reuse it and call only `cccap_analyze_attendance_risk`; otherwise call both analysis capabilities with the same explicit date scope and use `view: "STATUS"` for payment. Do not call a greeting snapshot. |
 | Attendance risk or child detail | Pass the exact date scope to `cccap_analyze_attendance_risk`; add `childNames` only for an explicitly named child or an unambiguous child returned in the immediately preceding result. For pending-confirmation follow-ups, pass `riskFocus: "PARENT_CONFIRMATIONS"`; for absence-limit follow-ups, pass `riskFocus: "ABSENCE_LIMITS"`. For a request naming one or more counties instead of a child (e.g. `show children for Adams and Denver`), pass those exact names as `countyNames`; this narrows the current result's child rows to the named counties and does not require widening scope or a fresh source call. |
 | Authorization-specific attendance detail | Pass the exact date scope and verified `authNames` to `cccap_analyze_attendance_risk`; never widen to all authorizations. |
 | County policy | Use only county IDs returned by authenticated provider initialization or a prior verified result. If the provider names a county that is not verified in scope, clarify or decline; never guess an ID. |
@@ -62,7 +71,7 @@ Build filters from the intent frame:
 
 An explicit policy question such as `What is the absence limit?`, `How many absence days are allowed?`, or `What is my county's absence rule?` is a county-policy request. Use `cccap_get_county_rate_plans` with `dateFilter: "THIS_MONTH"` for a current-policy question so the MCP client can reuse the current-month county-plan read already made by the snapshot. Do not reuse the preceding attendance-risk action or call `cccap_analyze_attendance_risk` unless the provider also asks about affected children or current attendance risk.
 
-When the immediately preceding result contains action intents or action controls, use them as the grounded capability contract. Choose the most relevant intent from the provider's latest wording and current view, then execute the returned `tool` with its returned `input` fields; do not invent filters, page numbers, or a different capability. Prefer a selected structured control's `actionId`; otherwise resolve the provider's natural-language request against action labels, action IDs, section, and the current result before calling a tool. Do not rely on bare numbers, because separate action sections may contain repeated labels or bullets. For `NEXT_PAYOUT`, preserve the returned payment view and pagination input unless the provider explicitly names a supported child or authorization filter.
+When the immediately preceding result contains action labels or controls, use them as conversational guidance only. Resolve the provider's natural-language request against the current result, then construct a fresh call using only documented inputs and verified scope. For `review pending parent confirmations`, use `cccap_analyze_attendance_risk` with the current verified period and `riskFocus: "PARENT_CONFIRMATIONS"`; use the analogous risk focus for absence limits or incomplete attendance. For `NEXT_PAYOUT`, use `cccap_analyze_payment` with `view: "NEXT_PAYOUT"`. Do not rely on bare numbers when labels are ambiguous, and ask one clarification instead of guessing. Do not replay an older action payload.
 
 For facility-wide requests, omitted child/county filters are intentional provider scope. For a named entity that cannot be resolved, clarify or decline; never widen silently.
 

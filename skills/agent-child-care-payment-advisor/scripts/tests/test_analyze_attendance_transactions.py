@@ -84,6 +84,8 @@ class AnalyzeAttendanceTransactionsTests(unittest.TestCase):
         day = result["children"][0]["days"][0]
         self.assertEqual(day["status"], "CARE_NOT_OFFERED")
         self.assertEqual(day["authorized_hours"], 0.0)
+        self.assertEqual(result["counties"][0]["scheduled_days"], 0)
+        self.assertEqual(result["counties"][0]["care_not_offered_days"], 1)
 
     def test_auth_end_date_in_past_is_care_not_offered(self) -> None:
         result = analyze(_payload([_schedule(auth_end_date="2026-09-01")]))

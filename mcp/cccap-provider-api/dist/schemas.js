@@ -108,6 +108,7 @@ export const attendanceAnalysisSchema = z
     authNames: identifierList.min(1).optional(),
     countyNames: identifierList.min(1).optional(),
     riskFocus: z.enum(["PARENT_CONFIRMATIONS", "ABSENCE_LIMITS", "INCOMPLETE_ATTENDANCE"]).optional(),
+    actionId: continuationReference.optional(),
     contextRef: continuationReference.optional(),
     actionRef: continuationReference.optional(),
     refresh: z.boolean().optional(),
@@ -116,7 +117,7 @@ export const attendanceAnalysisSchema = z
     .superRefine((value, context) => {
     validateDateScope(value, context);
     validateContinuation(value, context);
-    if (!value.dateFilter && !(value.contextRef && value.actionRef)) {
+    if (!value.dateFilter && !(value.contextRef && value.actionRef) && !value.actionId) {
         context.addIssue({ code: "custom", message: "dateFilter is required when a continuation is not supplied" });
     }
 });
@@ -130,6 +131,7 @@ export const paymentAnalysisSchema = z
     countyNames: identifierList.min(1).optional(),
     detailPage: z.number().int().positive().max(10_000).optional(),
     detailPageSize: z.number().int().positive().max(100).optional(),
+    actionId: continuationReference.optional(),
     contextRef: continuationReference.optional(),
     actionRef: continuationReference.optional(),
     refresh: z.boolean().optional(),
@@ -138,7 +140,7 @@ export const paymentAnalysisSchema = z
     .superRefine((value, context) => {
     validateDateScope(value, context);
     validateContinuation(value, context);
-    if (!value.view && !value.dateFilter && !(value.contextRef && value.actionRef)) {
+    if (!value.view && !value.dateFilter && !(value.contextRef && value.actionRef) && !value.actionId) {
         context.addIssue({
             code: "custom",
             message: "dateFilter is required when view is not specified",

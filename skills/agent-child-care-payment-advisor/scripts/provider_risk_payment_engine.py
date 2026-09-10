@@ -353,6 +353,13 @@ def _build_payment_summary_view(
             current["days"] += 1
 
     for day in attendance_days:
+        if (
+            day.get("classification") == "CARE_NOT_OFFERED"
+            and (_hours(day.get("authorized_hours")) or Decimal("0")) == 0
+            and (_hours(day.get("unit_hours")) or Decimal("0")) == 0
+            and day.get("payable") is False
+        ):
+            continue
         payment_type = str(day.get("payment_type") or "NONE")
         label = category_labels.get(payment_type, "Not paid")
         paid_tier = day.get("paid_tier")
@@ -778,6 +785,7 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
         results.append({
             "authorization_id": authorization_id,
             "service_date": service_date.isoformat(),
+            "authorized_hours": _money(authorized_hours),
             **({"child_name": attendance_day["child_name"]} if isinstance(attendance_day.get("child_name"), str) else {}),
             **({"authorization_name": attendance_day["authorization_name"]} if isinstance(attendance_day.get("authorization_name"), str) else {}),
             **({"county_id": attendance_day["county_id"]} if isinstance(attendance_day.get("county_id"), str) else {}),
@@ -878,6 +886,13 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
     excluded_days = 0
     child_payment_impact: dict[str, Decimal] = defaultdict(Decimal)
     for day in attendance["days"]:
+        if (
+            day.get("classification") == "CARE_NOT_OFFERED"
+            and (_hours(day.get("authorized_hours")) or Decimal("0")) == 0
+            and (_hours(day.get("unit_hours")) or Decimal("0")) == 0
+            and day.get("payable") is False
+        ):
+            continue
         rate = rates.get((day["authorization_id"], day["paid_tier"]))
         if rate is None:
             rate = rates.get((day["authorization_id"], "NO_PAYMENT"))

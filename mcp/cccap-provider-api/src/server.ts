@@ -347,7 +347,7 @@ function contextualize(
       section: action.section,
       capability: action.capability,
       tool: action.tool,
-      input: { contextRef, actionRef },
+      input: { actionId: action.actionId, contextRef, actionRef },
     };
   });
   const { actionIntents: _actionIntents, filters: _filters, responseContext: _responseContext, ...structuredContent } = value.structuredContent;
@@ -1205,6 +1205,7 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
       riskFocus,
       actionControls: compactActionControls(actionIntents),
       attendanceSummary: compactAttendanceSummary(attendanceView),
+      providerMessage,
     },
   };
 }
@@ -1396,6 +1397,7 @@ function toolError(capability: string, error: unknown): ToolResult {
       .replace(/[a-zA-Z0-9]{15,18}/g, "[redacted-id]")
       .slice(0, 240)
     : undefined;
+  const continuationFailure = message === "Continuation reference is unavailable or expired";
   const filterFailure = message.startsWith("Requested ") && message.includes("filter did not match");
   const paymentSource = paymentFailure && message.includes("Service period")
     ? "service-period dates"
@@ -1420,14 +1422,18 @@ function toolError(capability: string, error: unknown): ToolResult {
               : paymentFailure && (message.includes("parent_confirmation") || message.includes("confirmation"))
                 ? "parent-confirmation attendance mapping"
                 : undefined;
-  const userMessage = filterFailure
+  const userMessage = continuationFailure
+    ? "The selected action could not be resumed because its conversation state is unavailable or expired."
+    : filterFailure
     ? message
     : paymentFailure && paymentSource
     ? `The next payout could not be verified because ${paymentSource} is incomplete or ambiguous.`
     : paymentFailure
       ? "The next payout could not be verified because one or more approved payment-source mappings were rejected."
       : `The ${capability} could not be completed. No verified result was produced.`;
-  const nextSteps = filterFailure
+  const nextSteps = continuationFailure
+    ? ["Retry the same selected action once using the current action control", "If it still fails, restate the requested review so a fresh result can be created"]
+    : filterFailure
     ? ["Check the child, authorization, and date scope", "Retry with a verified name from the preceding result"]
     : paymentFailure
     ? [
@@ -1444,7 +1450,13 @@ function toolError(capability: string, error: unknown): ToolResult {
         type: "text" as const,
         text: JSON.stringify({
           error: {
-            code: filterFailure ? "REQUEST_SCOPE_NOT_FOUND" : paymentFailure ? "PAYMENT_DATA_INCOMPLETE" : "PROVIDER_DATA_UNAVAILABLE",
+            code: continuationFailure
+              ? "CONTINUATION_UNAVAILABLE"
+              : filterFailure
+                ? "REQUEST_SCOPE_NOT_FOUND"
+                : paymentFailure
+                  ? "PAYMENT_DATA_INCOMPLETE"
+                  : "PROVIDER_DATA_UNAVAILABLE",
             capability,
             message: userMessage,
             nextSteps,
@@ -1565,13 +1577,15 @@ export function createServer(
       annotations: readOnlyAnnotations,
     },
     async (input) => {
-      const hasContinuation = Boolean(input.contextRef || input.actionRef);
-      const directContinuationInput = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "contextRef" && key !== "actionRef" && key !== "refresh"));
+      const hasContinuation = Boolean(input.actionId || input.contextRef || input.actionRef);
+      const directContinuationInput = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "actionId" && key !== "contextRef" && key !== "actionRef" && key !== "refresh"));
       const continuation = contextStore.resolve(providerKey, input.contextRef, input.actionRef, "continuation", undefined, Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
-      const request = continuation?.tool === "cccap_analyze_attendance_risk"
-        ? continuation.input as typeof input
+      const actionContinuation = contextStore.resolveAction(providerKey, input.actionId, "cccap_analyze_attendance_risk", Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
+      const resolvedContinuation = continuation ?? actionContinuation;
+      const request = resolvedContinuation?.tool === "cccap_analyze_attendance_risk"
+        ? resolvedContinuation.input as typeof input
         : input;
-      if (hasContinuation && (!continuation || continuation.tool !== "cccap_analyze_attendance_risk")) {
+      if (hasContinuation && (!resolvedContinuation || resolvedContinuation.tool !== "cccap_analyze_attendance_risk")) {
         return toolError("attendance-risk analysis", new Error("Continuation reference is unavailable or expired"));
       }
       if (input.refresh) client.clearReadCache();
@@ -1761,13 +1775,15 @@ export function createServer(
       annotations: readOnlyAnnotations,
     },
     async (input) => {
-      const hasContinuation = Boolean(input.contextRef || input.actionRef);
-      const directContinuationInput = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "contextRef" && key !== "actionRef" && key !== "refresh"));
+      const hasContinuation = Boolean(input.actionId || input.contextRef || input.actionRef);
+      const directContinuationInput = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "actionId" && key !== "contextRef" && key !== "actionRef" && key !== "refresh"));
       const continuation = contextStore.resolve(providerKey, input.contextRef, input.actionRef, "continuation", undefined, Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
-      const request = continuation?.tool === "cccap_analyze_payment"
-        ? continuation.input as typeof input
+      const actionContinuation = contextStore.resolveAction(providerKey, input.actionId, "cccap_analyze_payment", Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
+      const resolvedContinuation = continuation ?? actionContinuation;
+      const request = resolvedContinuation?.tool === "cccap_analyze_payment"
+        ? resolvedContinuation.input as typeof input
         : input;
-      if (hasContinuation && (!continuation || continuation.tool !== "cccap_analyze_payment")) {
+      if (hasContinuation && (!resolvedContinuation || resolvedContinuation.tool !== "cccap_analyze_payment")) {
         return toolError("payment analysis", new Error("Continuation reference is unavailable or expired"));
       }
       if (input.refresh) client.clearReadCache();

@@ -75,6 +75,28 @@ test("provider session retains executable actions across capability drill-downs"
   });
 });
 
+test("stable action ids resolve the selected tool plan", () => {
+  const store = new ConversationContextStore();
+  store.create(
+    "provider-a",
+    "continuation",
+    [{ tool: "cccap_analyze_payment", input: { view: "NEXT_PAYOUT", detailPage: 1 } }],
+    undefined,
+    undefined,
+    undefined,
+    [{ actionId: "review-excluded-payment-days", label: "Review excluded days" }],
+  );
+
+  assert.deepEqual(
+    store.resolveAction("provider-a", "review-excluded-payment-days", "cccap_analyze_payment"),
+    { tool: "cccap_analyze_payment", input: { view: "NEXT_PAYOUT", detailPage: 1 } },
+  );
+  assert.equal(
+    store.resolveAction("provider-a", "review-excluded-payment-days", "cccap_analyze_attendance_risk"),
+    undefined,
+  );
+});
+
 test("continuation compatibility ignores reference transport fields but rejects changed filters", () => {
   const store = new ConversationContextStore();
   const { contextRef, actionRefs } = store.create("provider-a", "continuation", [{

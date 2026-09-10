@@ -213,7 +213,7 @@ test("attendance analysis preserves structured action scope for follow-ups", () 
   });
 
   assert.equal(result.structuredContent?.capability, "attendance-risk-analysis");
-  assert.equal(result.structuredContent?.providerMessage, undefined);
+  assert.equal(result.structuredContent?.providerMessage, result.content[0].text);
   assert.deepEqual(result.structuredContent?.scope, { dateFilter: "LAST_MONTH" });
   assert.equal(JSON.stringify(result.structuredContent).includes("childNames"), false);
   assert.equal(Array.isArray(result.structuredContent?.actionControls), true);
@@ -251,7 +251,7 @@ test("attendance continuation filters cached child details to the requested name
   const text = result.content[0].text;
   assert.match(text, /Target Child/);
   assert.doesNotMatch(text, /Other Child/);
-  assert.equal(result.structuredContent?.providerMessage, undefined);
+  assert.equal(result.structuredContent?.providerMessage, text);
 });
 
 test("attendance analysis focuses pending-confirmation follow-ups", () => {
@@ -281,6 +281,7 @@ test("attendance analysis focuses pending-confirmation follow-ups", () => {
   assert.match(text, /pending parent confirmation day\(s\)/);
   assert.doesNotMatch(text, /absence-limit concern/);
   assert.doesNotMatch(text, /county limit threshold/);
+  assert.equal(result.structuredContent?.providerMessage, text);
 });
 
 test("attendance analysis focuses absence-limit follow-ups", () => {

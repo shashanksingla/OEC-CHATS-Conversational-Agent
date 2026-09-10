@@ -89,6 +89,18 @@ export class ConversationContextStore {
             ...(context.resultTool ? { resultTool: context.resultTool } : {}),
         };
     }
+    resolveAction(providerKey, actionId, tool, requestedInput) {
+        if (!actionId)
+            return undefined;
+        this.evict();
+        const action = this.sessionActions.get(providerKey)?.get(actionId);
+        if (!action || action.plan.tool !== tool || action.expiresAt <= this.now())
+            return undefined;
+        if (requestedInput && normalizeInput(requestedInput) !== normalizeInput(action.plan.input))
+            return undefined;
+        action.lastUsed = this.now();
+        return { ...publicPlan(action.plan) };
+    }
     evict() {
         const now = this.now();
         for (const [reference, context] of this.contexts) {

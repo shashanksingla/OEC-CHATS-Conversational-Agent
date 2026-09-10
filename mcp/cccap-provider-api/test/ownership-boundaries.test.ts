@@ -357,7 +357,7 @@ test("payment orchestration preserves initialization failures", async () => {
   );
 });
 
-test("next payout selects its service period before initializing provider scope", async () => {
+test("next payout initializes provider scope before selecting its service period", async () => {
   const events: string[] = [];
   const client = {
     async getServicePeriods() {
@@ -380,10 +380,7 @@ test("next payout selects its service period before initializing provider scope"
     () => getPaymentAnalysis(client, {}, "NEXT_PAYOUT"),
     /provider scope unavailable/,
   );
-  assert.deepEqual(events, [
-    "service period",
-    'initialize:{"dateFilter":"DATE_RANGE","dateFrom":"2026-09-15","dateTo":"2026-09-21"}',
-  ]);
+  assert.deepEqual(events, ["initialize:{}"]);
 });
 
 test("payment orchestration runs the canonical payload through the evaluator", async () => {

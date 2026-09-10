@@ -145,6 +145,16 @@ export class ConversationContextStore {
     };
   }
 
+  resolveAction(providerKey: string, actionId: string | undefined, tool: ContinuationPlan["tool"], requestedInput?: Record<string, unknown>): ResolvedContinuation | undefined {
+    if (!actionId) return undefined;
+    this.evict();
+    const action = this.sessionActions.get(providerKey)?.get(actionId);
+    if (!action || action.plan.tool !== tool || action.expiresAt <= this.now()) return undefined;
+    if (requestedInput && normalizeInput(requestedInput) !== normalizeInput(action.plan.input)) return undefined;
+    action.lastUsed = this.now();
+    return { ...publicPlan(action.plan) };
+  }
+
   private evict(): void {
     const now = this.now();
     for (const [reference, context] of this.contexts) {

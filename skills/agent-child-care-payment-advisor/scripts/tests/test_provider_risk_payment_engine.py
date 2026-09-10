@@ -191,6 +191,26 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         self.assertFalse(day["payable"])
         self.assertEqual(result["payment"]["amount"], "0.00")
 
+    def test_closed_facility_zero_hour_day_is_omitted_from_payment_counts(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"].append({
+            **payload["attendance_days"][0],
+            "service_date": "2026-09-02",
+            "authorized_hours": 0,
+            "attended_hours": 0,
+            "care_not_offered": True,
+        })
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        overview = result["payment"]["summary_view"]["overview"]
+        self.assertEqual(overview["paid_days"], 1)
+        self.assertEqual(overview["excluded_days"], 0)
+        self.assertIn(
+            "2026-09-02",
+            [day["service_date"] for day in result["attendance"]["days"]],
+        )
+
     def test_provider_closure_with_zero_authorized_hours_does_not_pay_drop_in(self) -> None:
         payload = self._complete_input()
         payload["attendance_days"][0].update({

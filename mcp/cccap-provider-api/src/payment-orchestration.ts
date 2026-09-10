@@ -222,7 +222,7 @@ export async function getPaymentAnalysis(
     const allDays = Array.isArray(attendance.days) ? attendance.days : [];
     const displayableDays = allDays.filter((value) => {
       const day = record(value, "Attendance day");
-      return day.classification !== "NO_CARE";
+      return day.classification !== "NO_CARE" && day.classification !== "CARE_NOT_OFFERED";
     });
     const topChildName = highestImpactChildName(
       Array.isArray(result.child_payment_impacts) ? result.child_payment_impacts : [],

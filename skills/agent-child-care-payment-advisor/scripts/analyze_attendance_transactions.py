@@ -442,7 +442,6 @@ def analyze(payload: dict[str, Any]) -> dict[str, Any]:
         days_out = []
         for schedule, day in day_entries:
             county = counties[county_id or "UNKNOWN"]
-            county["scheduled_days"] += 1
             if day["status"] == "CARE_NOT_OFFERED":
                 county["care_not_offered_days"] += 1
                 if day.get("_provider_closure"):
@@ -450,6 +449,7 @@ def analyze(payload: dict[str, Any]) -> dict[str, Any]:
                 day.pop("_provider_closure", None)
                 days_out.append(day)
                 continue
+            county["scheduled_days"] += 1
             if day["status"] == "HOLIDAY":
                 county["holiday_days"] += 1
                 day["flags"] = sorted(set(day["flags"]))
