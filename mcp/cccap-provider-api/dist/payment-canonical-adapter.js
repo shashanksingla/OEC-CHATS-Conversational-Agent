@@ -148,7 +148,7 @@ export function normalizePaymentSourceBundle(sources) {
         authorizationRecords,
         feeSchedules,
         vacantSlotSchedules: (() => {
-            const resolved = normalizeVacantSlotSchedules(vacantSlotData.vacantSlots, normalizedFiscal.fiscalRates, countyIds, providerTier, sources.initialization);
+            const resolved = normalizeVacantSlotSchedules(vacantSlotData.vacantSlots, normalizedFiscal.fiscalRates, countyIds, providerTier, sources.initialization, countyNameById);
             vacantSlotMappingGaps = countEligibleVacantSlots(vacantSlotData.vacantSlots) - resolved.length;
             return resolved;
         })(),
@@ -175,7 +175,7 @@ function countEligibleVacantSlots(slots) {
         return slot.IDN_AUTH__c === null || slot.IDN_AUTH__c === undefined;
     }).length;
 }
-export function normalizeVacantSlotSchedules(slots, normalizedFiscalRates, countyIds, providerQualityTier, initialization) {
+export function normalizeVacantSlotSchedules(slots, normalizedFiscalRates, countyIds, providerQualityTier, initialization, countyNameById = {}) {
     if (!Array.isArray(slots))
         throw new Error("vacantSlots must be an array");
     const rates = requiredRecords(normalizedFiscalRates, "normalized fiscal rates");
@@ -252,6 +252,7 @@ export function normalizeVacantSlotSchedules(slots, normalizedFiscalRates, count
         return [{
                 slot_contract_id: requiredString(slot.Id, `vacantSlots[${index}].Id`),
                 county_id: countyId,
+                ...(countyNameById[countyId] ? { county_name: countyNameById[countyId] } : {}),
                 fiscal_schedule_id: selectedSchedule.id,
                 effective_start: slotStart,
                 ...(slot.DTE_END_SLOT__c ? { effective_end: requiredString(slot.DTE_END_SLOT__c, `vacantSlots[${index}].DTE_END_SLOT__c`) } : {}),

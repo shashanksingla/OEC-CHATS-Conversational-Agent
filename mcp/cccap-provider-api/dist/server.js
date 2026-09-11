@@ -132,7 +132,7 @@ function toolError(capability, error) {
                         ? "payment-engine input mapping"
                         : paymentFailure && (message.includes("Fiscal") || message.includes("fiscal") || message.includes("rate"))
                             ? "fiscal-rate mapping"
-                            : paymentFailure && message.includes("subPayments")
+                            : paymentFailure && (message.includes("subPayments") || message.includes("payment history") || message.includes("Payment history"))
                                 ? "existing payment-history rows"
                                 : paymentFailure && (message.includes("slot") || message.includes("Slot"))
                                     ? "slot-contract mapping"

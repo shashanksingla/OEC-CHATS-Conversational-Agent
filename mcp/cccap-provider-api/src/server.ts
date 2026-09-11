@@ -194,7 +194,7 @@ function toolError(capability: string, error: unknown): ToolResult {
             ? "payment-engine input mapping"
     : paymentFailure && (message.includes("Fiscal") || message.includes("fiscal") || message.includes("rate"))
       ? "fiscal-rate mapping"
-      : paymentFailure && message.includes("subPayments")
+      : paymentFailure && (message.includes("subPayments") || message.includes("payment history") || message.includes("Payment history"))
         ? "existing payment-history rows"
         : paymentFailure && (message.includes("slot") || message.includes("Slot"))
           ? "slot-contract mapping"
@@ -205,14 +205,20 @@ function toolError(capability: string, error: unknown): ToolResult {
               : paymentFailure && (message.includes("parent_confirmation") || message.includes("confirmation"))
                 ? "parent-confirmation attendance mapping"
                 : undefined;
+  // Previously hardcoded "The next payout could not be verified..." even
+  // when the actual request was a current-week forecast, status check, or
+  // custom-range payout - the message named the wrong view. Uses the
+  // generic capability phrase instead so it's accurate for every payment
+  // view, and states plainly that this is a source-data condition, not a
+  // mistake in what the provider asked for.
   const userMessage = continuationFailure
     ? "The selected action could not be resumed because its conversation state is unavailable or expired."
     : filterFailure
     ? message
     : paymentFailure && paymentSource
-    ? `The next payout could not be verified because ${paymentSource} is incomplete or ambiguous.`
+    ? `This payment view could not be verified because ${paymentSource} is incomplete or ambiguous. This is a data-source condition, not a request error.`
     : paymentFailure
-      ? "The next payout could not be verified because one or more approved payment-source mappings were rejected."
+      ? "This payment view could not be verified because one or more approved payment-source mappings were rejected. This is a data-source condition, not a request error."
       : `The ${capability} could not be completed. No verified result was produced.`;
   const nextSteps = continuationFailure
     ? ["Retry the same selected action once using the current action control", "If it still fails, restate the requested review so a fresh result can be created"]

@@ -1,4 +1,4 @@
-import { recordValue, tableValue, type ToolResult } from './shared.js';
+import { recordValue, shortDateLabel, tableValue, type ToolResult } from './shared.js';
 
 /**
  * Renders enrolled cases/children as safe provider-facing text. `id` on both
@@ -40,7 +40,10 @@ export function formatCasesResult(
         ? children.map(displayName).join(", ")
         : "Unavailable from the current source";
       const dates = children
-        .map((child) => [child.effective_start, child.effective_end].filter((value) => typeof value === "string").join(" - "))
+        .map((child) => [child.effective_start, child.effective_end]
+          .filter((value): value is string => typeof value === "string")
+          .map((value) => shortDateLabel(value) ?? value)
+          .join(" - "))
         .filter((value) => value.length > 0)
         .join("; ");
       return `| ${displayName(caseRow)} | ${countyLabel(caseRow)} | ${childNames} | ${dates || "Unavailable from the current source"} |`;

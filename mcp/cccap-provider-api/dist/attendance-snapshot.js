@@ -127,6 +127,7 @@ export async function getAttendanceRiskSnapshot(client, providerDisplayName, sco
     const pending = requireRecord(categories.pending_parent_confirmations, "Pending parent confirmations");
     const approaching = requireRecord(categories.approaching_absence_limits, "Approaching absence limits");
     const crossed = requireRecord(categories.crossed_absence_limits, "Crossed absence limits");
+    const incomplete = requireRecord(categories.incomplete_attendance, "Incomplete attendance");
     // A non-numeric evaluator count is a data-quality failure, not a zero
     // result; silently coercing it to 0 would present an unaffected snapshot
     // to the provider when the underlying evaluation is actually invalid.
@@ -142,41 +143,99 @@ export async function getAttendanceRiskSnapshot(client, providerDisplayName, sco
     const approachingCounties = numberValue(approaching.counties);
     const approachingDays = approaching.minimum_days_until_exceeded;
     const approachingFinding = typeof approachingDays === "number"
-        ? `${approachingChildren} child(ren) of ${approachingCounties} counties; within ${approachingDays} day(s) of exceeding the limit`
-        : `${approachingChildren} child(ren) of ${approachingCounties} counties; limit timing unavailable from the current source`;
+        ? `${approachingChildren} child(ren), ${approachingCounties} counties; ${approachingDays} day(s) from limit`
+        : `${approachingChildren} child(ren), ${approachingCounties} counties; timing unavailable`;
     const crossedChildren = numberValue(crossed.children);
     const crossedCounties = numberValue(crossed.counties);
     const crossedDays = numberValue(crossed.maximum_days_over_limit);
+    const incompleteDays = numberValue(incomplete.days);
+    const incompleteChildren = numberValue(incomplete.children);
     const pendingAction = "Review pending parent confirmations in the provider system";
     const absenceAction = "Review affected children and absence dates";
+    const incompleteAction = "Review incomplete attendance records";
+    // Combined per your request: approaching and crossed county absence-limit
+    // risk are one row, not two, since both drive the same next review.
+    const absenceLimitFinding = crossedChildren > 0 && approachingChildren > 0
+        ? `${crossedChildren} child(ren)/${crossedCounties} counties over limit (${crossedDays}d); ${approachingChildren} child(ren)/${approachingCounties} counties approaching`
+        : crossedChildren > 0
+            ? `${crossedChildren} child(ren)/${crossedCounties} counties; ${crossedDays} day(s) over limit`
+            : approachingChildren > 0
+                ? approachingFinding
+                : "No children near or over county absence limits";
+    // Potential Loss (Care Hours) replaces the old prose "why it matters/next
+    // review" column with a concrete, comparable number: the scheduled hours
+    // behind each row's unresolved days. Pending/missing-check-in rows count
+    // every such day's hours (nothing is resolved yet either way); the
+    // absence-limit row counts only the hours for absence days actually OVER
+    // the county limit (approaching-but-within-limit days carry no loss yet).
+    const pendingLossHours = typeof pending.potential_loss_hours === "number" ? pending.potential_loss_hours : undefined;
+    const crossedLossHours = typeof crossed.potential_loss_hours === "number" ? crossed.potential_loss_hours : undefined;
+    const incompleteLossHours = typeof incomplete.potential_loss_hours === "number" ? incomplete.potential_loss_hours : undefined;
+    const lossCell = (hours) => hours !== undefined ? `${hours.toFixed(2)} hour(s)` : "Unavailable from the current source";
+    // The absence-limit row's Verified finding describes BOTH crossed and
+    // approaching children when both exist, but its loss-hours figure only
+    // ever reflects crossed (over-limit) children - approaching children
+    // haven't actually lost anything yet, only crossed ones have. Made
+    // explicit here rather than left implicit, since the finding text and
+    // the loss figure otherwise appear to describe the same population.
+    const absenceLimitLossNote = crossedChildren > 0 && approachingChildren > 0
+        ? " (crossed only)"
+        : "";
     const riskRows = [
         pendingDays > 0
-            ? `| Pending parent confirmations | ${pendingDays} day(s) for ${pendingChildren} child(ren) may keep payment conditional | ${pendingAction} |`
-            : "| Pending parent confirmations | No pending parent confirmations | None |",
-        approachingChildren > 0
-            ? `| Children approaching county monthly absence limits | ${approachingFinding}; payment may be affected by the next absence | ${absenceAction} |`
-            : "| Children approaching county monthly absence limits | No children currently approaching county monthly absence limits | None |",
-        crossedChildren > 0
-            ? `| Children crossed county absence limits | ${crossedChildren} child(ren) of ${crossedCounties} counties; ${crossedDays} day(s) over the limit may be excluded from payment | ${absenceAction} |`
-            : "| Children crossed county absence limits | No children have crossed county monthly absence limits | None |",
+            ? `| Pending parent confirmations | ${pendingDays} day(s) for ${pendingChildren} child(ren) may keep payment conditional | ${lossCell(pendingLossHours)} |`
+            : "| Pending parent confirmations | No pending parent confirmations | 0.00 hour(s) |",
+        (crossedChildren > 0 || approachingChildren > 0)
+            ? `| Children near or over county monthly absence limits | ${absenceLimitFinding} | ${lossCell(crossedLossHours)}${absenceLimitLossNote} |`
+            : `| Children near or over county monthly absence limits | ${absenceLimitFinding} | 0.00 hour(s) |`,
+        incompleteDays > 0
+            ? `| Missing check-ins/check-outs within the confirmation window | ${incompleteDays} day(s) for ${incompleteChildren} child(ren) need a check-in or check-out record | ${lossCell(incompleteLossHours)} |`
+            : "| Missing check-ins/check-outs within the confirmation window | No missing check-in or check-out records | 0.00 hour(s) |",
     ];
     const nextActions = [];
     if (pendingDays > 0)
         nextActions.push(pendingAction);
     if (approachingChildren > 0 || crossedChildren > 0)
         nextActions.push(absenceAction);
+    if (incompleteDays > 0)
+        nextActions.push(incompleteAction);
     if (nextActions.length === 0) {
         nextActions.push("No urgent attendance actions identified");
     }
-    const hasAttentionItems = pendingDays > 0 || approachingChildren > 0 || crossedChildren > 0;
-    const attentionLine = hasAttentionItems
-        ? "The following verified items require your attention. Details and recommended reviews are provided below."
-        : "No attendance or payment items require your attention today.";
+    const hasAttentionItems = pendingDays > 0 || approachingChildren > 0 || crossedChildren > 0 || incompleteDays > 0;
+    // Bottom-line dollar-impact sentence: sum only the estimators that are
+    // actually available (never fabricate a figure for a category with no
+    // verified rate estimate).
+    const approachingEstimate = typeof approaching.risk_amount_estimate === "number" ? approaching.risk_amount_estimate : undefined;
+    const crossedEstimate = typeof crossed.risk_amount_estimate === "number" ? crossed.risk_amount_estimate : undefined;
+    const totalEstimate = approachingEstimate !== undefined || crossedEstimate !== undefined
+        ? (approachingEstimate ?? 0) + (crossedEstimate ?? 0)
+        : undefined;
+    const primaryDriver = (crossedChildren + approachingChildren) >= pendingDays && (crossedChildren + approachingChildren) > 0
+        ? "absence-limit risk"
+        : pendingDays > 0
+            ? "pending parent confirmations"
+            : "attendance risk";
+    // The "no dollar estimate available" case previously explained *why* no
+    // estimate could be shown (an internal data-availability detail) instead
+    // of telling the provider anything useful - removed entirely per request;
+    // the risk table right below already conveys what needs attention.
+    const attentionLine = !hasAttentionItems
+        ? "No attendance or payment risks require your attention today."
+        : totalEstimate !== undefined && totalEstimate > 0
+            ? `An estimated ${totalEstimate.toFixed(2)} is at risk this period, mainly due to ${primaryDriver}.`
+            : "";
     const isToday = (scope.dateFilter ?? "TODAY") === "TODAY";
     const snapshotHeading = "Today's snapshot";
+    const monthLabel = (() => {
+        const parsed = new Date(`${asOfDate}T00:00:00Z`);
+        return Number.isNaN(parsed.getTime())
+            ? attendancePeriodLabel(scope)
+            : parsed.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+    })();
     const riskHeading = isToday
         ? "**Attendance and payment issues**"
-        : `**Attendance and payment issues (${attendancePeriodLabel(scope)})**`;
+        : `**Attendance and payment issues (${monthLabel})**`;
     return {
         ...snapshot,
         providerMessage: [
@@ -192,11 +251,11 @@ export async function getAttendanceRiskSnapshot(client, providerDisplayName, sco
             "",
             riskHeading,
             "The findings below are the verified issues for this period; the action in the last column explains the most useful read-only review.",
-            "| Area | Verified finding | Why it matters / next review |",
+            "| Risk Area | Verified finding | Potential Loss (Care Hours) |",
             "| --- | --- | --- |",
             ...riskRows,
             "",
-            "**Next actions**",
+            "**Priority Actions**",
             ...nextActions.map((action) => `- ${action}`),
             "",
             "**Available options**",

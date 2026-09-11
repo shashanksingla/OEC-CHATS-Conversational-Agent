@@ -270,6 +270,7 @@ class EvaluateAttendanceRisksTests(unittest.TestCase):
             "pending_parent_confirmations": {
                 "days": 1,
                 "children": 1,
+                "potential_loss_hours": 0.0,
             },
             "approaching_absence_limits": {
                 "children": 1,
@@ -280,8 +281,14 @@ class EvaluateAttendanceRisksTests(unittest.TestCase):
             "crossed_absence_limits": {
                 "children": 1,
                 "counties": 1,
+                "potential_loss_hours": 0.0,
                 "maximum_days_over_limit": 1,
                 "risk_amount_estimate": None,
+            },
+            "incomplete_attendance": {
+                "days": 0,
+                "children": 0,
+                "potential_loss_hours": 0.0,
             },
         })
         ava = result["children"][0]

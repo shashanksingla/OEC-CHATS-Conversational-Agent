@@ -99,8 +99,8 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   const text = response.content.find((item) => item.type === "text")?.text;
   const structured = response.structuredContent as Record<string, unknown>;
 
-  assert.match(text ?? "", /Children approaching county monthly absence limits/);
-  assert.ok(text?.includes("1 child(ren) of 1 counties; within 2 day(s) of exceeding the limit"));
+  assert.match(text ?? "", /Children near or over county monthly absence limits/);
+  assert.ok(text?.includes("1 child(ren), 1 counties; 2 day(s) from limit"));
   assert.equal(structured.responseMode, "SUMMARY");
   assert.equal(structured.providerMessage, text);
   assert.equal(structured.attendanceSummary, undefined);
@@ -124,7 +124,7 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
     arguments: absenceAction.input as Record<string, unknown>,
   });
   assert.equal(followUp.isError, undefined);
-  assert.match(followUp.content.find((item) => item.type === "text")?.text ?? "", /absence-limit concern/);
+  assert.match(followUp.content.find((item) => item.type === "text")?.text ?? "", /approaching the absence limit/);
   assert.equal(scheduleReads, 1);
 
   await client.close();

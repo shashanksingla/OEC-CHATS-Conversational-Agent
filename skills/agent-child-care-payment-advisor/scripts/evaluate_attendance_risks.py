@@ -34,6 +34,18 @@ def _non_negative_integer(value: Any, field: str) -> int:
     return value
 
 
+def _optional_hours(value: Any) -> float:
+    # Backs the "Potential Loss (Care Hours)" estimate only - this is a
+    # best-effort figure, not a payable amount, so a missing/invalid hours
+    # value fails soft to 0 rather than raising (unlike the strict day-count
+    # fields above, which are required for the core risk classification).
+    if isinstance(value, bool):
+        return 0.0
+    if isinstance(value, (int, float)) and value >= 0:
+        return float(value)
+    return 0.0
+
+
 def _absence_limit(schedule: dict[str, Any], plans: dict[str, dict[str, Any]]) -> int | None:
     county_id = schedule.get("countyId")
     tier = schedule.get("qualityTier")
@@ -109,6 +121,15 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "absence_days": 0,
             "pending_confirmation_days": 0,
             "incomplete_attendance_days": 0,
+            # Scheduled-hours accumulators backing the "Potential Loss (Care
+            # Hours)" figure - a best-effort estimate, not a payment amount.
+            # Read from CI_Authorization_Hours__c, the same naming convention
+            # as CI_Authorization_Date__c above; missing/invalid values are
+            # treated as 0 hours (fail-soft) since this is an estimate, not
+            # a payable calculation.
+            "pending_confirmation_hours": 0.0,
+            "incomplete_attendance_hours": 0.0,
+            "absence_hours": 0.0,
             "absence_limit": None,
             "conflicting_absence_limits": set(),
             "counties": set(),
@@ -190,10 +211,12 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             elif not conflicting_limits:
                 child["absence_limit"] = limit
 
+        scheduled_hours = _optional_hours(schedule.get("CI_Authorization_Hours__c"))
         if check_ins == 0 and check_outs == 0:
             if service_date <= cutoff_date:
                 child["absence_days"] += 1
                 child["absence_dates"].add(service_date.isoformat())
+                child["absence_hours"] += scheduled_hours
                 rate_estimate = _rate_estimate(schedule)
                 if rate_estimate is not None:
                     child["absence_risk_amount_estimate"] += rate_estimate
@@ -201,8 +224,10 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             else:
                 child["pending_confirmation_days"] += 1
                 child["pending_confirmation_dates"].add(service_date.isoformat())
+                child["pending_confirmation_hours"] += scheduled_hours
         elif check_ins == 0 or check_outs == 0:
             child["incomplete_attendance_days"] += 1
+            child["incomplete_attendance_hours"] += scheduled_hours
 
     requested_child_names = sorted(requested_children) if requested_children is not None else []
     child_results = []
@@ -315,11 +340,23 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             county = "Unavailable from the current source"
         aggregate = county_aggregates.setdefault(
             county,
-            {"county": county, "children": 0, "children_over_limit_count": 0},
+            {"county": county, "children": 0, "children_over_limit_count": 0, "approved_limit": None, "conflicting_limits": False},
         )
         aggregate["children"] += 1
         if "ABSENCE_LIMIT_EXCEEDED" in child["risk_codes"]:
             aggregate["children_over_limit_count"] += 1
+        # The approved limit is a per-child value driven by county policy and
+        # quality tier; within one county it is normally constant. Report it
+        # only when every child in the county actually shares the same
+        # value - a genuine mismatch surfaces as conflicting_limits rather
+        # than silently picking one child's limit.
+        child_limit = child.get("absence_limit")
+        if child_limit is not None and not aggregate["conflicting_limits"]:
+            if aggregate["approved_limit"] is None:
+                aggregate["approved_limit"] = child_limit
+            elif aggregate["approved_limit"] != child_limit:
+                aggregate["conflicting_limits"] = True
+                aggregate["approved_limit"] = None
 
     def county_count(children: list[dict[str, Any]]) -> int:
         return len({child["county"] for child in children if child["county"] not in (None, "Multiple")})
@@ -389,6 +426,12 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "pending_parent_confirmations": {
                 "days": sum(child["pending_confirmation_days"] for child in pending_children),
                 "children": len(pending_children),
+                # Potential Loss (Care Hours): all scheduled hours for days
+                # that could still be confirmed within the window - every
+                # such day counts, since none has been resolved either way.
+                "potential_loss_hours": round(
+                    sum(child["pending_confirmation_hours"] for child in pending_children), 2,
+                ),
             },
             "approaching_absence_limits": {
                 "children": len(approaching_children),
@@ -405,6 +448,18 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "crossed_absence_limits": {
                 "children": len(crossed_children),
                 "counties": county_count(crossed_children),
+                # Potential Loss (Care Hours): only the hours for absence
+                # days actually OVER the county limit are at risk, not every
+                # absence day - prorated from each child's total absence
+                "potential_loss_hours": round(
+                    sum(
+                        child["absence_hours"] * (
+                            (child["absence_days"] - child["absence_limit"]) / child["absence_days"]
+                        )
+                        for child in crossed_children
+                        if child["absence_days"] > 0
+                    ), 2,
+                ),
                 "maximum_days_over_limit": max(
                     (
                         child["absence_days"] - child["absence_limit"]
@@ -413,6 +468,22 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
                     default=0,
                 ),
                 "risk_amount_estimate": _category_risk_amount_estimate(crossed_children),
+            },
+            "incomplete_attendance": {
+                "days": sum(
+                    child["incomplete_attendance_days"] for child in child_results
+                ),
+                "children": sum(
+                    bool(child["incomplete_attendance_days"]) for child in child_results
+                ),
+                # Potential Loss (Care Hours): all scheduled hours for days
+                # with no check-in/check-out logged at all - every such day
+                # counts, since none has been resolved either way.
+                "potential_loss_hours": round(
+                    sum(
+                        child["incomplete_attendance_hours"] for child in child_results
+                    ), 2,
+                ),
             },
         },
         "children": child_results,

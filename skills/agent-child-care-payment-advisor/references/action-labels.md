@@ -33,7 +33,8 @@ This is the single source of truth for every `action_id`'s provider-facing label
 | `review-incomplete-attendance` | `Review incomplete attendance — {N} records` | incomplete check-in/check-out record count |
 | `review-attendance-records` | `Review attendance records` | none — generic fallback when no specific risk qualifies |
 | `open-attendance-detail` | `Open highest-impact attendance detail` | none |
-| `review-next-payout` | `Open next payout summary` | none |
+| `review-next-payout` | `View upcoming payout summary` | none |
+| `forecast-current-week-services` | `Forecast this week's services payout` | none |
 | `retry-payment-analysis` | `Retry payment review` | none |
 | `review-conditional-payment` | `Review conditional payment — ~ ${amount}` | conditional amount at risk |
 | `review-excluded-payment-days` | `Review excluded payment days` | none |

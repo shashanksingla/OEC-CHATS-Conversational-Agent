@@ -33,6 +33,51 @@ def compute_payout_date(service_period_end: date) -> date:
     return payout_date
 
 
+def _settlement_fields(
+    payload: dict[str, Any],
+    period_end: date,
+    as_of_date: date,
+    net_total: Decimal,
+) -> dict[str, Any]:
+    """Additive actual-vs-calculated settlement signal.
+
+    Purely additive - never changes status/amount/expected_amount/etc.
+    elsewhere in the payment dict. A caller that wants the "settled" shape
+    (last payout / last month payout) reads is_settled/settled_amount/
+    settlement_source instead of the calculated Expected/Forecasted/At-risk
+    breakdown. Per the locked design: once as_of_date is at or past the
+    period's payout_date, the period is treated as settled REGARDLESS of
+    whether existing_sub_payments actually confirms a PAID status yet - the
+    payout date alone is the trigger. If an actual paid amount is on record
+    for this period, it is authoritative; if not, the calculated net_total
+    is used as the best available figure, explicitly flagged as such.
+    """
+    if as_of_date < compute_payout_date(period_end):
+        return {"is_settled": False}
+    service_period = payload.get("service_period")
+    service_period_id = service_period.get("id") if isinstance(service_period, dict) else None
+    actual_entries = [
+        row
+        for row in payload.get("existing_sub_payments", [])
+        if isinstance(row, dict)
+        and row.get("service_period_id") == service_period_id
+        and isinstance(row.get("amount"), (int, float))
+        and not isinstance(row.get("amount"), bool)
+    ]
+    if actual_entries:
+        actual_total = sum((Decimal(str(row["amount"])) for row in actual_entries), Decimal("0"))
+        return {
+            "is_settled": True,
+            "settled_amount": _money(actual_total),
+            "settlement_source": "ACTUAL_PAYMENT_RECORD",
+        }
+    return {
+        "is_settled": True,
+        "settled_amount": _money(net_total),
+        "settlement_source": "CALCULATED_NO_PAYMENT_RECORD_YET",
+    }
+
+
 def _date_value(value: Any) -> date | None:
     if not isinstance(value, str):
         return None
@@ -282,6 +327,7 @@ def _vacant_slot_fee_totals(payload: dict[str, Any]) -> tuple[Decimal, list[dict
                     rows.append({
                         "slot_contract_id": schedule.get("slot_contract_id"),
                         "county_id": schedule.get("county_id"),
+                        "county_name": schedule.get("county_name"),
                         "service_date": current.isoformat(),
                         "amount": _money(amount),
                         "classification": "VACANT_SLOT",
@@ -355,6 +401,10 @@ def _build_payment_summary_view(
             "amount": Decimal("0"),
             "conditional_amount": Decimal("0"),
             "excluded_days": 0,
+            # Tracked so the per-child rollup can show which authorization(s)
+            # a child's days rolled up from - a child name alone does not
+            # uniquely identify a child if duplicate names exist.
+            "authorization_names": set(),
         })
 
     def composition_bucket(county_key: str, county_label: str) -> dict[str, Any]:
@@ -363,6 +413,7 @@ def _build_payment_summary_view(
         # for those two categories instead of hours per the column redesign.
         county = county_composition.setdefault(county_key, {
             "county": county_label,
+            "children_served": set(),
             "care": {"hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
             "absence": {"days": 0, "hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
             "drop_in": {"hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
@@ -438,6 +489,8 @@ def _build_payment_summary_view(
         if component:
             county = composition_bucket(county_key, str(county_label))
             add_attendance_component(county, component, hours, amount, bool(day.get("conditional")))
+            if child_key != "UNKNOWN":
+                county["children_served"].add(child_key)
         for store, key, item_label in (
             (categories, payment_type, label),
             (counties, county_key, county_label),
@@ -445,8 +498,15 @@ def _build_payment_summary_view(
         ):
             item = bucket(store, key, item_label)
             item["days"] += 1
-            item["hours"] += hours
+            authorization_name = day.get("authorization_name")
+            if isinstance(authorization_name, str) and authorization_name:
+                item["authorization_names"].add(authorization_name)
             if day.get("payable") is True and not day.get("payment_excluded") and rate is not None:
+                # "Hours" now only counts hours tied to money actually paid or
+                # at-risk (matching the amount/conditional_amount gate below) -
+                # previously it summed every iterated day's hours including
+                # excluded ones, overstating the hours behind the shown total.
+                item["hours"] += hours
                 if is_risk:
                     item["conditional_amount"] += amount
                 else:
@@ -479,10 +539,11 @@ def _build_payment_summary_view(
             "amount": _money(item["amount"]),
             "conditional_amount": _money(item["conditional_amount"]),
             "excluded_days": item["excluded_days"],
+            "authorization_names": sorted(item.get("authorization_names", set())),
         }
 
     def render_composition(item: dict[str, Any]) -> dict[str, Any]:
-        rendered: dict[str, Any] = {"county": item["county"]}
+        rendered: dict[str, Any] = {"county": item["county"], "children_served": len(item.get("children_served", set()))}
         for component in ("care", "absence", "drop_in", "paid_holidays"):
             source = item[component]
             rendered[component] = {
@@ -877,6 +938,7 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
             "authorization_id": authorization_id,
             "service_date": service_date.isoformat(),
             "authorized_hours": _money(authorized_hours),
+            "attended_hours": _money(attended_hours),
             **({"confirm_by_date": (service_date + timedelta(days=CONFIRMATION_WINDOW_DAYS)).isoformat()} if (as_of_date := _date_value(payload.get("as_of_date"))) and as_of_date <= service_date + timedelta(days=CONFIRMATION_WINDOW_DAYS) else {}),
             **({"child_name": attendance_day["child_name"]} if isinstance(attendance_day.get("child_name"), str) else {}),
             **({"authorization_name": attendance_day["authorization_name"]} if isinstance(attendance_day.get("authorization_name"), str) else {}),
@@ -1206,6 +1268,7 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             "parent_copay": _money(copay),
             "summary": payment_summary,
             "summary_view": summary_view,
+            **_settlement_fields(payload, period_end, as_of_date, net_total),
         },
     }
 

@@ -79,8 +79,8 @@ test("attendance analysis returns affected child drill-down rows", () => {
   // Column-hygiene fix: Outside window/Over limit/Est. risk are dropped when
   // every displayed row lacks a value for them (this fixture only has a
   // Pending count).
-  assert.match(text, /\| Child \| County \| Pending \|/);
-  assert.match(text, /\| Taylor Example \| Unavailable from the current source \| 2 \|/);
+  assert.match(text, /\| Child \| Authorization \| County \| Pending \|/);
+  assert.match(text, /\| Taylor Example \| Unavailable from the current source \| Unavailable from the current source \| 2 \|/);
   assert.match(text, /Review pending confirmations — 2 days/);
   assert.match(text, /\*\*Drill down\*\*/);
   assert.match(text, /Attendance overview:/);
@@ -127,8 +127,8 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
   });
 
   const text = result.content[0].text;
-  assert.match(text, /1 child\(ren\) have an absence-limit concern\./);
-  assert.match(text, /1 child\(ren\) have incomplete attendance records\./);
+  assert.match(text, /1 child\(ren\) over the absence limit\./);
+  assert.match(text, /1 child\(ren\) have incomplete attendance records \(one of check-in\/check-out missing\)\./);
   assert.match(text, /Review absence-limit risk — 1 children/);
   assert.match(text, /Review incomplete attendance — 1 records/);
   assert.doesNotMatch(text, /View next payout details/);
@@ -313,8 +313,8 @@ test("attendance analysis focuses absence-limit follow-ups", () => {
   });
 
   const text = result.content[0].text;
-  assert.match(text, /absence-limit concern/);
-  assert.match(text, /5 absence day\(s\)/);
+  assert.match(text, /over the absence limit/);
+  assert.match(text, /5d total/);
   assert.doesNotMatch(text, /pending parent confirmation day\(s\)/);
 });
 
@@ -1023,10 +1023,10 @@ test("payment results use a provider-facing table and preserve blocked states", 
     },
   });
 
-  assert.match(result.content[0].text, /Next payout summary: Blocked/);
-  assert.match(result.content[0].text, /⚠️ \*Figures reflect the system's current data and are not an official payment notice\. Only your county portal or remittance advice is authoritative\.\*$/);
+  assert.match(result.content[0].text, /Upcoming payout summary: Blocked/);
+  assert.match(result.content[0].text, /⚠️ \*Figures reflect the system's current data and are not an official payment notice\. Actual payments are subject to state and county verification, review, and may differ from these calculated estimates\.\*$/);
   assert.match(result.content[0].text, /Services from/);
-  assert.match(result.content[0].text, /2026-09-24/);
+  assert.match(result.content[0].text, /24th Sep'26/);
   assert.match(result.content[0].text, /fiscal_rates, parent_confirmations/);
   assert.doesNotMatch(result.content[0].text, /amount \|/);
   assert.equal(result.structuredContent?.providerMessage, result.content[0].text);
@@ -1050,7 +1050,7 @@ test("current week forecast renders actual and scheduled attendance basis split"
   });
   const text = result.content[0].text;
   assert.match(text, /Actual \(checked in\): 5\.00 hours\. Scheduled \(projected\): 5\.00 hours\./);
-  assert.match(text, /Attendance type \| Basis \| Care hours/);
+  assert.match(text, /Attendance type \| Basis \| Scheduled hours/);
   assert.match(text, /Actual Child .*Actual \(checked in\)/);
   assert.match(text, /Scheduled Child .*Scheduled \(projected\)/);
 });
@@ -1077,9 +1077,9 @@ test("payment results show scheduled forecast rows for child drill-down", () => 
   });
 
   assert.match(result.content[0].text, /Current service-period forecast: Conditional/);
-  assert.match(result.content[0].text, /⚠️ \*Figures reflect the system's current data and are not an official payment notice\. Only your county portal or remittance advice is authoritative\.\*$/);
-  assert.match(result.content[0].text, /Taylor Example \| Unavailable from the current source \| 2026-09-09/);
-  assert.match(result.content[0].text, /2026-09-09 \| Scheduled \(forecast\) \| 5\.00/);
+  assert.match(result.content[0].text, /⚠️ \*Figures reflect the system's current data and are not an official payment notice\. Actual payments are subject to state and county verification, review, and may differ from these calculated estimates\.\*$/);
+  assert.match(result.content[0].text, /Taylor Example \| Unavailable from the current source \| Unavailable from the current source \| 9th Sep'26/);
+  assert.match(result.content[0].text, /9th Sep'26 \| Scheduled \(forecast\) \| 5\.00/);
   assert.doesNotMatch(result.content[0].text, /\| Scheduled forecast \|/);
   assert.equal(result.structuredContent?.calculationMode, "CURRENT_WEEK_FORECAST");
 });
@@ -1118,7 +1118,7 @@ test("payment results keep initial summary to the measure table and composition"
   assert.doesNotMatch(text, /Payment by category:/);
   assert.doesNotMatch(text, /County detail:/);
   assert.doesNotMatch(text, /County payment totals:/);
-  assert.match(text, /Next payout summary: Conditional/);
+  assert.match(text, /Upcoming payout summary: Conditional/);
   assert.deepEqual(result.structuredContent?.actionIntents, [
     {
       actionId: "open-payment-detail",
@@ -1194,7 +1194,7 @@ test("payment detail omits zero-value NO_CARE rows", () => {
 
   const text = result.content[0].text;
   assert.doesNotMatch(text, /NO_CARE/);
-  assert.match(text, /2026-09-10 \| Absence \(paid\) \| 5/);
+  assert.match(text, /10th Sep'26 \| Absence \(paid\) \| 5/);
 });
 
 test("attendance detail caps the provider-facing table and reports the remainder", () => {
@@ -1295,21 +1295,26 @@ test("canonicalizes DECL authorization references to Salesforce authorization ID
   );
 });
 
-test("payment summary omits detail rows but keeps period metadata", () => {
+test("payment summary keeps period metadata and shows a preview instead of a full detail table", () => {
+  // The live orchestration always populates a small preview (a few rows,
+  // never zero) whenever totalRows > 0 and detailPage wasn't requested, so
+  // attendance.days is never actually empty with a nonzero totalRows on
+  // the real runtime path - the old "Detail available: N rows" text-only
+  // fallback for that combination was dead code and has been removed.
   const result = formatPaymentResult({
     paymentView: "NEXT_PAYOUT",
     payment: { status: "EXPECTED", amount: "45.00" },
     servicePeriod: { id: "period-1", start_date: "2026-09-07", end_date: "2026-09-13" },
     detailPagination: { page: 0, pageSize: 0, totalRows: 182, hasMore: true },
-    attendance: { days: [] },
+    attendance: { days: [{ child_name: "Taylor Example", service_date: "2026-09-09", classification: "ATTENDED", unit_hours: "5.00", conditional: false }] },
   });
 
   const text = result.content[0].text;
-  assert.match(text, /Next payout summary: Expected/);
-  assert.match(text, /Services from.*2026-09-07/);
-  assert.match(text, /Services through.*2026-09-13/);
-  assert.match(text, /Detail available: 182 child\/date rows/);
-  assert.doesNotMatch(text, /Detail by child and service date/);
+  assert.match(text, /Upcoming payout summary: Expected/);
+  assert.match(text, /Services from.*7th Sep'26/);
+  assert.match(text, /Services through.*13th Sep'26/);
+  assert.match(text, /Detail preview \(1 of 182 child\/date rows\)/);
+  assert.doesNotMatch(text, /Detail by child and service date:/);
 });
 
 test("payment continuation metadata preserves the complete provider message", () => {
@@ -1495,7 +1500,7 @@ test("incomplete attendance action returns child-level detail rows", () => {
   assert.match(text, /Incomplete Example/);
   // Column-hygiene fix: this fixture has no Pending/Outside window/Over
   // limit/Est. risk value on any displayed row, so all four are dropped.
-  assert.match(text, /\| Child \| County \|/);
+  assert.match(text, /\| Child \| Authorization \| County \|/);
   assert.doesNotMatch(text, /Pending Example/);
 });
 
@@ -1511,8 +1516,14 @@ test("payment summary does not inline child rollup rows before detail is request
   });
 
   const text = result.content[0].text;
+  // The old "Detail available: N rows" text-only fallback was removed as
+  // dead code - attendance.days is never actually empty with a nonzero
+  // totalRows on the real runtime path (the orchestration always
+  // populates a small preview). With no attendance.days here at all
+  // (this fixture provides none), neither the preview nor the full
+  // detail table renders - only confirming the child rollup stays hidden.
   assert.doesNotMatch(text, /Taylor Example/);
-  assert.match(text, /Detail available: 7 child\/date rows/);
+  assert.doesNotMatch(text, /Detail by child and service date:/);
 });
 
 test("initial payment summary renders county composition columns", () => {
@@ -1539,12 +1550,12 @@ test("initial payment summary renders county composition columns", () => {
   const text = result.content[0].text;
   assert.match(text, /County payment composition \(potential amounts\)/);
   assert.match(text, /Care Amount \| Absence Amount \| Drop-in Amount \| Vacant Slot Amount \| Paid Holiday Amount/);
-  assert.match(text, /\| Denver \| ~ \$360\.00 \(40 Hours\)/);
-  assert.match(text, /~ \$72\.00 \(8 Days\)/);
-  assert.match(text, /~ \$36\.00 \(4 Hours\)/);
-  assert.match(text, /~ \$18\.00 \(2 Days\)/);
-  assert.match(text, /~ \$72\.00 \(1 Days\)/);
-  assert.match(text, /~ \$558\.00/);
+  assert.match(text, /\| Denver \|.*\$360\.00 \(40 Hours\)/);
+  assert.match(text, /\$72\.00 \(8 Days\)/);
+  assert.match(text, /\$36\.00 \(4 Hours\)/);
+  assert.match(text, /\$18\.00 \(2 Days\)/);
+  assert.match(text, /\$72\.00 \(1 Days\)/);
+  assert.match(text, /\$558\.00/);
 });
 
 test("service period ledger formatter translates statuses and renders each payout row", () => {
@@ -1553,7 +1564,7 @@ test("service period ledger formatter translates statuses and renders each payou
     { servicePeriodId: "a0B000000000002AAA", serviceBeginDate: "2026-08-17", serviceEndDate: "2026-08-23", payoutDate: "2026-09-03", periodStatus: "PAID", netAmount: "90.00", grossAmount: "90.00", guaranteedAmount: "0.00", amountAtRisk: "0.00" },
   ] });
   assert.match(result.content[0].text, /Expected, awaiting payout/);
-  assert.match(result.content[0].text, /Aug 24, 2026-Aug 30, 2026/);
+  assert.match(result.content[0].text, /24th Aug'26-30th Aug'26/);
   assert.match(result.content[0].text, /~ \$125\.50/);
   assert.match(result.content[0].text, /Paid/);
 });

@@ -16,13 +16,13 @@ export const MAX_SUMMARY_ROWS = 7;
 // Global disclaimer - use once per full response, as a closing line
 export const DISCLAIMER_GLOBAL =
   "⚠️ *Figures reflect the system's current data and are not an official payment notice. " +
-  "Only your county portal or remittance advice is authoritative.*";
+  "Actual payments are subject to state and county verification, review, and may differ from these calculated estimates.*";
 
 // Per-status disclaimers - attach directly next to the figure they qualify.
 export const DISCLAIMER_EXPECTED =
   "*Expected, based on current system data — may still change if the county issues a correction.*";
 export const DISCLAIMER_FORECASTED =
-  "*Forecasted from scheduled and partial attendance data — will change as the period completes.*";
+  "*Forecasted from scheduled and partial attendance data — may change as the period completes.*";
 export const DISCLAIMER_AT_RISK =
   "*Could be reduced or excluded if unresolved before {deadline}.*";
 export const DISCLAIMER_GUARANTEED =
@@ -87,6 +87,9 @@ export const ATTENDANCE_TYPE_LABELS: Record<string, string> = {
   CARE_NOT_OFFERED: "Care not offered",
   NO_CARE: "No care scheduled",
   BLOCKED: "Unavailable from the current source",
+  PENDING_CONFIRMATION: "Pending parent confirmation",
+  INCOMPLETE_ATTENDANCE_RECORD: "Missing check-in/check-out",
+  VACANT_SLOT: "Vacant slot",
 };
 
 export function humanizeAttendanceType(value: unknown): string {
@@ -128,12 +131,14 @@ export function plainMoney(value: unknown): string {
 }
 
 // Combines an amount with its underlying count into one cell, e.g.
-// "~ $67.00 (56 Days)" or "~ $34.00 (30 Hours)" - the county composition
+// "$67.00 (56 Days)" or "$34.00 (30 Hours)" - the county composition
 // column-consolidation format. Returns the plain amount when there is
 // nothing to count (count is 0/undefined), so a genuinely empty category
-// still reads as "~ $0.00" rather than a confusing "(0 Days)".
+// still reads as "$0.00" rather than a confusing "(0 Days)". Per-cell
+// entries never carry the "~" estimate marker - that is reserved for the
+// single facility-wide "Estimated total" headline figure.
 export function amountWithUnit(amount: unknown, count: unknown, unit: "Days" | "Hours"): string {
-  const money = estimatedMoney(amount);
+  const money = plainMoney(amount);
   const numericCount = typeof count === "number"
     ? count
     : typeof count === "string" && Number.isFinite(Number(count))
@@ -146,8 +151,10 @@ export function amountWithUnit(amount: unknown, count: unknown, unit: "Days" | "
 export function renderCountyComposition(rows: Record<string, unknown>[]): string[] {
   const component = (row: Record<string, unknown>, key: string): Record<string, unknown> =>
     recordValue(row[key]) ?? {};
+  const hasChildrenServed = rows.some((row) => row.children_served !== undefined && row.children_served !== null);
   const headers = [
     "County",
+    ...(hasChildrenServed ? ["Children served"] : []),
     "Care Amount",
     "Absence Amount",
     "Drop-in Amount",
@@ -164,18 +171,19 @@ export function renderCountyComposition(rows: Record<string, unknown>[]): string
     const paidHolidays = component(row, "paid_holidays");
     return [
       tableValue(row.county),
+      ...(hasChildrenServed ? [tableValue(row.children_served)] : []),
       amountWithUnit(care.amount, care.hours, "Hours"),
       amountWithUnit(absence.amount, absence.days, "Days"),
       amountWithUnit(dropIn.amount, dropIn.hours, "Hours"),
       amountWithUnit(vacantSlots.amount, vacantSlots.days, "Days"),
       amountWithUnit(paidHolidays.amount, paidHolidays.days, "Days"),
-      estimatedMoney(row.potential_total),
+      plainMoney(row.potential_total),
     ].join(" | ");
   });
   return [
     "",
     "County payment composition (potential amounts)",
-    "Potential amounts include confirmed and conditional amounts; the payable amount remains shown in the summary above.",
+    "Potential amounts include calculated and conditional amounts; the payable amount remains shown in the summary above.",
     `| ${headers.join(" | ")} |`,
     `| ${separator.join(" | ")} |`,
     ...renderedRows.map((row) => `| ${row} |`),
@@ -204,11 +212,30 @@ export function numericValue(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+// Ordinal suffix for a day-of-month number (1st, 2nd, 3rd, 4th... 11th-13th are
+// always "th" regardless of the trailing digit).
+function ordinalSuffix(day: number): string {
+  if (day % 100 >= 11 && day % 100 <= 13) return "th";
+  switch (day % 10) {
+    case 1: return "st";
+    case 2: return "nd";
+    case 3: return "rd";
+    default: return "th";
+  }
+}
+
+// Provider-facing date format across the whole agent experience, e.g.
+// "31st Aug'26" - day-of-month with ordinal suffix, short month, apostrophe
+// plus 2-digit year. Replaces the older "Aug 31" short format everywhere a
+// date is rendered so dates read consistently end to end.
 export function shortDateLabel(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const parsed = new Date(`${value}T00:00:00Z`);
   if (Number.isNaN(parsed.getTime())) return undefined;
-  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const day = parsed.getUTCDate();
+  const month = parsed.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+  const year = String(parsed.getUTCFullYear()).slice(-2);
+  return `${day}${ordinalSuffix(day)} ${month}'${year}`;
 }
 
 // Numeric "Over limit" count, replacing the old prose "exceed the county
@@ -256,7 +283,7 @@ export function actionControls(actions: Record<string, unknown>[]): Record<strin
 const MAX_NEXT_ACTIONS = 2;
 
 export function renderActionSections(message: string, actions: Record<string, unknown>[]): string {
-  const base = message.replace(/\n\*\*Next actions\*\*[\s\S]*$/, "");
+  const base = message.replace(/\n\*\*Priority Actions\*\*[\s\S]*$/, "");
   // Cap to the two highest-priority next actions so the response names the
   // one or two things that actually matter instead of listing every
   // candidate action; numbered (not bulleted) to match the drill-down
@@ -266,7 +293,13 @@ export function renderActionSections(message: string, actions: Record<string, un
     .slice(0, MAX_NEXT_ACTIONS);
   const drillDown = actions.filter((action) => action.section === "drill-down");
   const availableViews = actions.filter((action) => action.section === "available-options" || action.section === "available-views");
-  const lines = [base, "", "**Next actions**"];
+  // Numbers are reserved exclusively for the Priority Actions list per the
+  // carepay-conversation-templates skill contract ("never use numbering
+  // across separate action sections because repeated numbers are
+  // ambiguous"). Drill down and Available views use unnumbered bullets so
+  // there is never a second, competing numbered surface in one response -
+  // a provider selects those by name/label, not by index.
+  const lines = [base, "", "**Priority Actions**"];
   lines.push(...(nextActions.length > 0
     ? nextActions.map((action, index) => `${index + 1}. ${String(action.label)}`)
     : ["No urgent action identified from the current verified result."]));

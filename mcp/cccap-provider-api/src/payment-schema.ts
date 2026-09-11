@@ -10,6 +10,7 @@ export interface CanonicalExistingSubPayment {
   authorization_id: string;
   service_period_id: string;
   status: "PAID" | "REQUESTED";
+  amount?: number;
 }
 
 export interface CanonicalPaymentFeeSchedule {
@@ -36,6 +37,7 @@ export interface CanonicalPaymentFeeSchedule {
 export interface CanonicalVacantSlotSchedule {
   slot_contract_id: string;
   county_id: string;
+  county_name?: string;
   fiscal_schedule_id: string;
   effective_start: string;
   effective_end?: string;

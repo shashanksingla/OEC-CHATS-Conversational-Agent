@@ -487,7 +487,11 @@ test("payment orchestration runs the canonical payload through the evaluator", a
   assert.equal(result.paymentView, "STATUS");
   assert.equal(result.source_readiness, "COMPLETE");
   assert.equal(payment.status, "EXPECTED");
-  assert.deepEqual((result.attendance as Record<string, unknown>).days, []);
+  // A summary (non-detailPage) request now includes a small preview (up to
+  // 3 rows, not the full page) instead of an empty days array, so the
+  // formatter can show a compact preview table instead of a bare row-count
+  // hint. With only 1 total row available, the preview is that 1 row.
+  assert.equal(((result.attendance as Record<string, unknown>).days as unknown[]).length, 1);
   assert.deepEqual(result.detailPagination, { page: 0, pageSize: 0, totalRows: 1, hasMore: true });
 });
 

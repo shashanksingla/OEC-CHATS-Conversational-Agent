@@ -664,7 +664,7 @@ global with sharing class CccapPortalApiV1 {
                 Date activeEndDate = activeDateRange.endDate;
                 List<T_SLOT_CONTRACT__c> vacantSlots = [
                     SELECT Id, Name, IDN_PROVIDER__c, IDN_AUTH__c, IDN_ADDENDUM__c,
-                    CDE_COUNTY__c, CDE_CARE_UNIT__c, CDE_CARE_LEVEL__c, CDE_RATE_TYPE__c,
+                    CDE_COUNTY__c,CDE_COUNTY__r.name, CDE_CARE_UNIT__c, CDE_CARE_LEVEL__c, CDE_RATE_TYPE__c,
                     CDE_PRG_TYPE__c, CNT_DAYS_OF_MONTH__c, CNT_DAYS_OF_WEEK__c,
                     DTE_BEGIN_SLOT__c, DTE_END_SLOT__c, IND_OCCUPIED__c,
                     IND_FUTURE_VACANT__c, IND_AVAILABLE__c, SLOT_CONTRACT_DESCRIPTION__c
@@ -678,7 +678,7 @@ global with sharing class CccapPortalApiV1 {
                     ORDER BY CDE_COUNTY__c ASC, DTE_BEGIN_SLOT__c ASC, Id ASC
                 ];
                 return new CccapPortalApiV1ResponseWrapper.ApiResponse(true,
-                    new Map<String, Object>{ 'vacantSlots' => vacantSlots });
+                                                                       new Map<String, Object>{ 'vacantSlots' => vacantSlots });
             } catch (Exception ex) {
                 ExceptionLoggingServices.captureExceptionLog(
                     ex, new Map<String, Object>{ 'Class__c' => CLASS_NAME, 'Method__c' => 'getVacantSlots' });
@@ -686,7 +686,7 @@ global with sharing class CccapPortalApiV1 {
                     'Vacant-slot source is unavailable');
             }
         }
-
+    
     // Returns schedules for the requested scope via DECL schedules endpoint.
     private static CccapPortalApiV1ResponseWrapper.ApiResponse getSchedules(
         Map<String, Object> params) {

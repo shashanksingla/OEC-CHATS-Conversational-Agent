@@ -231,6 +231,7 @@ export function normalizePaymentSourceBundle(
         countyIds,
         providerTier,
         sources.initialization,
+        countyNameById,
       );
       vacantSlotMappingGaps = countEligibleVacantSlots(vacantSlotData.vacantSlots) - resolved.length;
       return resolved;
@@ -267,6 +268,7 @@ export function normalizeVacantSlotSchedules(
   countyIds: string[],
   providerQualityTier: number,
   initialization: unknown,
+  countyNameById: Record<string, string> = {},
 ): CanonicalVacantSlotSchedule[] {
   if (!Array.isArray(slots)) throw new Error("vacantSlots must be an array");
   const rates = requiredRecords(normalizedFiscalRates, "normalized fiscal rates");
@@ -353,6 +355,7 @@ export function normalizeVacantSlotSchedules(
     return [{
       slot_contract_id: requiredString(slot.Id, `vacantSlots[${index}].Id`),
       county_id: countyId,
+      ...(countyNameById[countyId] ? { county_name: countyNameById[countyId] } : {}),
       fiscal_schedule_id: selectedSchedule.id,
       effective_start: slotStart,
       ...(slot.DTE_END_SLOT__c ? { effective_end: requiredString(slot.DTE_END_SLOT__c, `vacantSlots[${index}].DTE_END_SLOT__c`) } : {}),

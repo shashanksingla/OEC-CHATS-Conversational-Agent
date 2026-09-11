@@ -39,10 +39,16 @@ export function normalizeExistingSubPayments(value, authorizations = []) {
         const status = normalizePaymentStatus(row.cde_status_pmt_sub__c);
         if (!status)
             throw new Error(`subPayments[${index}].cde_status_pmt_sub__c is unsupported`);
+        const amount = typeof row.amt_pmt_sub__c === "number" && Number.isFinite(row.amt_pmt_sub__c)
+            ? row.amt_pmt_sub__c
+            : typeof row.amt_pmt_sub__c === "string" && Number.isFinite(Number(row.amt_pmt_sub__c))
+                ? Number(row.amt_pmt_sub__c)
+                : undefined;
         return {
             authorization_id: resolveAuthorizationId(row.idn_auth__c, authorizations, `subPayments[${index}].idn_auth__c`),
             service_period_id: requiredString(row.idn_period_serv__c, `subPayments[${index}].idn_period_serv__c`),
             status,
+            ...(amount !== undefined ? { amount } : {}),
         };
     });
 }

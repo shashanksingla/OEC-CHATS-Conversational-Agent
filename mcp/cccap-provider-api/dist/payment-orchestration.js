@@ -251,9 +251,17 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
         const detailPage = filters.detailPage ?? 1;
         const detailPageSize = filters.detailPageSize ?? 25;
         const detailStart = (detailPage - 1) * detailPageSize;
+        // When no detail page was requested, still include a small preview (not
+        // the full page) so the summary response can show a few rows inline
+        // instead of only a bare "N rows available" text hint - the formatter
+        // renders this as a compact preview table, distinct from the full
+        // ranked detail table shown once a real detail page is requested.
+        const PREVIEW_ROW_COUNT = 3;
         const pagedAttendance = {
             ...attendance,
-            days: showDetail ? displayableDays.slice(detailStart, detailStart + detailPageSize) : [],
+            days: showDetail
+                ? displayableDays.slice(detailStart, detailStart + detailPageSize)
+                : displayableDays.slice(0, PREVIEW_ROW_COUNT),
         };
         const sourceRetrievedAt = new Date().toISOString();
         return {
