@@ -573,7 +573,7 @@ global with sharing class CccapPortalApiV1 {
                         subPaymentNumericIds.add(subPayment.idn_pmt_sub__c);
                     }
                 }
-                List<batchsit_t_sub_pmt_detail__x> paymentDetails = subPaymentExternalIds.isEmpty()
+                List<batchsit_t_sub_pmt_detail__x> subPaymentDetails = subPaymentExternalIds.isEmpty()
                     ? new List<batchsit_t_sub_pmt_detail__x>()
                     : [
                         SELECT Id, idn_detail_pmt_sub__c, idn_pmt_sub__c, idn_fiscal_rat_fee__c,
@@ -585,29 +585,15 @@ global with sharing class CccapPortalApiV1 {
                         FROM batchsit_t_sub_pmt_detail__x
                         WHERE idn_pmt_sub__c IN :subPaymentExternalIds
                     ];
-                        List<batchsit_t_sub_pmt_detail_hist__x> paymentDetailHistory = subPaymentNumericIds.isEmpty()
-                        ? new List<batchsit_t_sub_pmt_detail_hist__x>()
-                        : [
-                            SELECT Id, idn_detail_pmt_sub_hist__c, idn_detail_pmt_sub__c, idn_pmt_sub__c,
-                            idn_fiscal_rat_fee__c, dte_care__c, cde_type_unit_care__c,
-                            cnt_unit_care_exptd__c, cnt_unit_care_actual__c, cde_type_info_addntl__c,
-                            cde_time_trdnl__c, cde_status_detail_pmt_sub__c, cde_level_care__c,
-                            amt_rate__c, amt_total__c, amt_act_paid__c, amt_copay__c,
-                            amt_reg_paid__c, amt_trans_paid__c, ind_slots_for_cntrct__c,
-                            ind_adjmt__c, ind_record_delete_logcl__c
-                            FROM batchsit_t_sub_pmt_detail_hist__x
-                            WHERE idn_pmt_sub__c IN :subPaymentNumericIds
-                        ];
-                            return new CccapPortalApiV1ResponseWrapper.ApiResponse(true,
-                                                                                   new Map<String, Object>{
-                                                                                       'servicePeriodStart' => serviceStartDate,
-                                                                                           'servicePeriodEnd' => serviceEndDate,
-                                                                                           'servicePeriodIds' => servicePeriodIds,
-                                                                                           'payments' => payments,
-                                                                                           'subPayments' => subPayments,
-                                                                                           'paymentDetails' => paymentDetails,
-                                                                                           'paymentDetailHistory' => paymentDetailHistory
-                                                                                           });
+                        return new CccapPortalApiV1ResponseWrapper.ApiResponse(true,
+                                                                               new Map<String, Object>{
+                                                                                   'servicePeriodStart' => serviceStartDate,
+                                                                                       'servicePeriodEnd' => serviceEndDate,
+                                                                                       'servicePeriodIds' => servicePeriodIds,
+                                                                                       'payments' => payments,
+                                                                                       'subPayments' => subPayments,
+                                                                                       'subPaymentDetails' => subPaymentDetails
+                                                                                       });
             } catch (Exception ex) {
                 ExceptionLoggingServices.captureExceptionLog(
                     ex, new Map<String, Object>{ 'Class__c' => CLASS_NAME, 'Method__c' => 'getPaymentHistory' });

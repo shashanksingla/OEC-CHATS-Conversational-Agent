@@ -103,6 +103,11 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
   const incompleteChildren = affectedChildren.filter((child) =>
     Array.isArray(child.risk_codes) && child.risk_codes.includes("INCOMPLETE_ATTENDANCE_RECORD"),
   ).length;
+  // Hoisted to function scope (not just inside the child-table block below)
+  // since the Attendance overview/county tables further down also need to
+  // pick their column shape based on this same focus.
+  const isIncompleteAttendanceFocus = riskFocus === "INCOMPLETE_ATTENDANCE";
+  const incompleteDays = affectedChildren.reduce((total, child) => total + numericValue(child.incomplete_attendance_days), 0);
   const probableAbsenceDays = riskFocus === "ABSENCE_LIMITS"
     ? affectedChildren.reduce((total, child) => total + numericValue(child.absence_days), 0)
     : riskFocus === "PARENT_CONFIRMATIONS" || riskFocus === "INCOMPLETE_ATTENDANCE" ? 0 : numericValue(risk.absence_days);
@@ -223,6 +228,7 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
     // generic Pending/Outside window/Over limit/Est. risk set.
     const isAbsenceLimitFocus = riskFocus === "ABSENCE_LIMITS";
     const isIncompleteAttendanceFocus = riskFocus === "INCOMPLETE_ATTENDANCE";
+    const isParentConfirmationsFocus = riskFocus === "PARENT_CONFIRMATIONS";
     const drillDownColumns: Array<{ label: string; value: (child: Record<string, unknown>) => string; present: boolean }> = isAbsenceLimitFocus
       ? [
         { label: "Absences used", value: (child) => tableValue(child.absence_days), present: displayedChildren.some((child) => numericValue(child.absence_days) !== 0) },
@@ -242,7 +248,19 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
           { label: "Scheduled days", value: (child) => tableValue(child.scheduled_days), present: displayedChildren.some((child) => numericValue(child.scheduled_days) !== 0) },
           { label: "Incomplete days", value: (child) => tableValue(child.incomplete_attendance_days), present: displayedChildren.some((child) => numericValue(child.incomplete_attendance_days) !== 0) },
         ]
-        : [
+        : isParentConfirmationsFocus
+          ? [
+            // Dedicated shape for this focus too: a provider reviewing
+            // pending parent confirmations wants confirmation-window
+            // information (days pending, deadline), not absence-limit data
+            // (Absences used/Over limit) - those describe a completely
+            // different risk and made this view look near-identical to the
+            // absence-limit drill-down.
+            { label: "Pending", value: (child) => tableValue(child.pending_confirmation_days), present: displayedChildren.some((child) => numericValue(child.pending_confirmation_days) !== 0) },
+            { label: "Deadline", value: (child) => typeof child.next_confirmation_deadline === "string" ? (shortDateLabel(child.next_confirmation_deadline) ?? tableValue(child.next_confirmation_deadline)) : "Unavailable from the current source", present: displayedChildren.some((child) => typeof child.next_confirmation_deadline === "string") },
+            { label: "Days left", value: (child) => tableValue(child.confirmation_days_remaining), present: displayedChildren.some((child) => typeof child.confirmation_days_remaining === "number") },
+          ]
+          : [
         { label: "Pending", value: (child) => tableValue(child.pending_confirmation_days), present: displayedChildren.some((child) => numericValue(child.pending_confirmation_days) !== 0) },
         // Same underlying field (absence_days) as "Absences used" above -
         // consolidated onto one label used regardless of riskFocus, instead
@@ -260,7 +278,9 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
         ? "Absences used = days counted against the monthly limit. County limit = approved monthly limit. Over limit = days beyond the limit."
         : isIncompleteAttendanceFocus
           ? "Scheduled days = total days scheduled this period. Incomplete days = days missing a check-in or check-out."
-          : "Pending = awaiting confirmation. Absences used = past window, unconfirmed. Over limit = beyond county limit.",
+          : isParentConfirmationsFocus
+            ? "Pending = days still awaiting parent confirmation. Deadline/Days left = when the confirmation window closes for this child's earliest pending day."
+            : "Pending = awaiting confirmation. Absences used = past window, unconfirmed. Over limit = beyond county limit.",
       "",
       `| Child | Authorization | County |${extraHeader}`,
       `| --- | --- | --- |${extraSeparator}`,

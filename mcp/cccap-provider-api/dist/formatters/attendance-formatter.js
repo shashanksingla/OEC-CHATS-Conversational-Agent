@@ -85,6 +85,11 @@ export function formatAttendanceRiskResult(data) {
     const pendingChildren = affectedChildren.filter((child) => Array.isArray(child.risk_codes) && child.risk_codes.includes("PARENT_CONFIRMATION_PENDING")).length;
     const absenceChildren = affectedChildren.filter(hasAbsenceLimitConcern).length;
     const incompleteChildren = affectedChildren.filter((child) => Array.isArray(child.risk_codes) && child.risk_codes.includes("INCOMPLETE_ATTENDANCE_RECORD")).length;
+    // Hoisted to function scope (not just inside the child-table block below)
+    // since the Attendance overview/county tables further down also need to
+    // pick their column shape based on this same focus.
+    const isIncompleteAttendanceFocus = riskFocus === "INCOMPLETE_ATTENDANCE";
+    const incompleteDays = affectedChildren.reduce((total, child) => total + numericValue(child.incomplete_attendance_days), 0);
     const probableAbsenceDays = riskFocus === "ABSENCE_LIMITS"
         ? affectedChildren.reduce((total, child) => total + numericValue(child.absence_days), 0)
         : riskFocus === "PARENT_CONFIRMATIONS" || riskFocus === "INCOMPLETE_ATTENDANCE" ? 0 : numericValue(risk.absence_days);
@@ -174,26 +179,43 @@ export function formatAttendanceRiskResult(data) {
         // so it gets its own simplified two-column shape instead of reusing the
         // generic Pending/Outside window/Over limit/Est. risk set.
         const isAbsenceLimitFocus = riskFocus === "ABSENCE_LIMITS";
+        const isIncompleteAttendanceFocus = riskFocus === "INCOMPLETE_ATTENDANCE";
         const drillDownColumns = isAbsenceLimitFocus
             ? [
                 { label: "Absences used", value: (child) => tableValue(child.absence_days), present: displayedChildren.some((child) => numericValue(child.absence_days) !== 0) },
                 { label: "County limit", value: (child) => tableValue(child.absence_limit), present: displayedChildren.some((child) => child.absence_limit !== undefined && child.absence_limit !== null) },
-            ]
-            : [
-                { label: "Pending", value: (child) => tableValue(child.pending_confirmation_days), present: displayedChildren.some((child) => numericValue(child.pending_confirmation_days) !== 0) },
-                // Same underlying field (absence_days) as "Absences used" above -
-                // consolidated onto one label used regardless of riskFocus, instead
-                // of two different names for the identical number.
-                { label: "Absences used", value: (child) => tableValue(child.absence_days), present: displayedChildren.some((child) => numericValue(child.absence_days) !== 0) },
+                // Added: previously computed but only ever shown in the generic
+                // column set below, backwards from where a provider reviewing
+                // absence-limit risk specifically would want it - front and center.
                 { label: "Over limit", value: (child) => overLimitDays(child.absence_days, child.absence_limit), present: displayedChildren.some((child) => numericValue(child.absence_days) > numericValue(child.absence_limit)) },
-                { label: "Est. risk ($)", value: (child) => estimatedMoney(numericValue(child.risk_amount_estimate)), present: displayedChildren.some((child) => numericValue(child.risk_amount_estimate) > 0) },
-            ];
+            ]
+            : isIncompleteAttendanceFocus
+                ? [
+                    // Dedicated shape for this focus: shows attendance/schedule
+                    // information (scheduled vs. incomplete days), not
+                    // absence/confirmation data - the generic Pending/Absences-used
+                    // columns below describe a different concept entirely and were
+                    // being shown here by mistake.
+                    { label: "Scheduled days", value: (child) => tableValue(child.scheduled_days), present: displayedChildren.some((child) => numericValue(child.scheduled_days) !== 0) },
+                    { label: "Incomplete days", value: (child) => tableValue(child.incomplete_attendance_days), present: displayedChildren.some((child) => numericValue(child.incomplete_attendance_days) !== 0) },
+                ]
+                : [
+                    { label: "Pending", value: (child) => tableValue(child.pending_confirmation_days), present: displayedChildren.some((child) => numericValue(child.pending_confirmation_days) !== 0) },
+                    // Same underlying field (absence_days) as "Absences used" above -
+                    // consolidated onto one label used regardless of riskFocus, instead
+                    // of two different names for the identical number.
+                    { label: "Absences used", value: (child) => tableValue(child.absence_days), present: displayedChildren.some((child) => numericValue(child.absence_days) !== 0) },
+                    { label: "Over limit", value: (child) => overLimitDays(child.absence_days, child.absence_limit), present: displayedChildren.some((child) => numericValue(child.absence_days) > numericValue(child.absence_limit)) },
+                    { label: "Est. risk ($)", value: (child) => estimatedMoney(numericValue(child.risk_amount_estimate)), present: displayedChildren.some((child) => numericValue(child.risk_amount_estimate) > 0) },
+                ];
         const renderedColumns = drillDownColumns.filter((column) => column.present);
         const extraHeader = renderedColumns.length > 0 ? ` ${renderedColumns.map((column) => column.label).join(" | ")} |` : "";
         const extraSeparator = renderedColumns.length > 0 ? ` ${renderedColumns.map(() => "---:").join(" | ")} |` : "";
         lines.push("", isAbsenceLimitFocus
-            ? "Absences used = days counted against the monthly limit. County limit = approved monthly limit."
-            : "Pending = awaiting confirmation. Absences used = past window, unconfirmed. Over limit = beyond county limit.", "", `| Child | Authorization | County |${extraHeader}`, `| --- | --- | --- |${extraSeparator}`, ...displayedChildren.map((child) => {
+            ? "Absences used = days counted against the monthly limit. County limit = approved monthly limit. Over limit = days beyond the limit."
+            : isIncompleteAttendanceFocus
+                ? "Scheduled days = total days scheduled this period. Incomplete days = days missing a check-in or check-out."
+                : "Pending = awaiting confirmation. Absences used = past window, unconfirmed. Over limit = beyond county limit.", "", `| Child | Authorization | County |${extraHeader}`, `| --- | --- | --- |${extraSeparator}`, ...displayedChildren.map((child) => {
             const extraCells = renderedColumns.length > 0 ? ` ${renderedColumns.map((column) => column.value(child)).join(" | ")} |` : "";
             // A child's name alone does not uniquely identify them - the
             // authorization number is the disambiguator when duplicate child
@@ -212,7 +234,17 @@ export function formatAttendanceRiskResult(data) {
         ? attendanceView.available_views.map(recordValue).filter((row) => Boolean(row))
         : [];
     if (attendanceOverview) {
-        lines.push("", "Attendance overview:", "| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |", "| ---: | ---: | ---: | ---: | ---: |", `| ${tableValue(attendanceOverview.scheduled_days)} | ${tableValue(attendanceOverview.affected_children)} | ${tableValue(attendanceOverview.pending_confirmation_days)} | ${tableValue(attendanceOverview.absence_days)} | ${tableValue(attendanceOverview.excluded_holiday_dates)} |`);
+        // Incomplete-attendance focus gets its own overview shape (Scheduled
+        // days / Affected children / Incomplete days / Excluded holidays) -
+        // Pending confirmations and Absence days describe a different concept
+        // (parent confirmation, absence-limit usage) and don't belong in a
+        // check-in/check-out-gap review.
+        if (isIncompleteAttendanceFocus) {
+            lines.push("", "Attendance overview:", "| Scheduled days | Affected children | Incomplete days | Excluded holidays |", "| ---: | ---: | ---: | ---: |", `| ${tableValue(attendanceOverview.scheduled_days)} | ${tableValue(attendanceOverview.affected_children)} | ${tableValue(incompleteDays)} | ${tableValue(attendanceOverview.excluded_holiday_dates)} |`);
+        }
+        else {
+            lines.push("", "Attendance overview:", "| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |", "| ---: | ---: | ---: | ---: | ---: |", `| ${tableValue(attendanceOverview.scheduled_days)} | ${tableValue(attendanceOverview.affected_children)} | ${tableValue(attendanceOverview.pending_confirmation_days)} | ${tableValue(attendanceOverview.absence_days)} | ${tableValue(attendanceOverview.excluded_holiday_dates)} |`);
+        }
         if (numericValue(attendanceOverview.excluded_holiday_dates) > 0) {
             lines.push("Excluded holidays = county-recognized paid holidays that fall in this period; they are paid separately as a holiday and are not counted as scheduled care days or absences above.");
         }
@@ -236,6 +268,11 @@ export function formatAttendanceRiskResult(data) {
                         : "Unavailable from the current source";
                 return `| ${tableValue(county.county)} | ${tableValue(county.children)} | ${approvedLimit} | ${tableValue(childrenOverLimit)} | ${countyStatus} |`;
             }));
+        }
+        else if (isIncompleteAttendanceFocus) {
+            // Dedicated shape: Incomplete days replaces Pending confirmations and
+            // Absence days, which don't describe a check-in/check-out gap.
+            lines.push("", "Attendance by county:", "| County | Children | Risk children | Incomplete days |", "| --- | ---: | ---: | ---: |", ...attendanceCounties.map((county) => `| ${tableValue(county.county)} | ${tableValue(county.children)} | ${tableValue(county.risk_children)} | ${tableValue(county.incomplete_attendance_days)} |`));
         }
         else {
             lines.push("", "Attendance by county:", "| County | Children | Risk children | Pending confirmations | Absence days |", "| --- | ---: | ---: | ---: | ---: |", ...attendanceCounties.map((county) => `| ${tableValue(county.county)} | ${tableValue(county.children)} | ${tableValue(county.risk_children)} | ${tableValue(county.pending_confirmation_days)} | ${tableValue(county.absence_days)} |`));
@@ -457,6 +494,7 @@ export function attendanceSummary(risk, children, scope, unmatchedChildNames, ex
             children: 0,
             pending_confirmation_days: 0,
             absence_days: 0,
+            incomplete_attendance_days: 0,
             risk_children: 0,
             children_over_limit_count: 0,
             approved_limit: undefined,
@@ -464,6 +502,7 @@ export function attendanceSummary(risk, children, scope, unmatchedChildNames, ex
         current.children = Number(current.children) + 1;
         current.pending_confirmation_days = Number(current.pending_confirmation_days) + numericValue(child.pending_confirmation_days);
         current.absence_days = Number(current.absence_days) + numericValue(child.absence_days);
+        current.incomplete_attendance_days = Number(current.incomplete_attendance_days) + numericValue(child.incomplete_attendance_days);
         if (Array.isArray(child.risk_codes) && child.risk_codes.length > 0) {
             current.risk_children = Number(current.risk_children) + 1;
         }
