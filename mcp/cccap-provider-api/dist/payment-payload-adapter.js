@@ -39,10 +39,16 @@ export function normalizeExistingSubPayments(value, authorizations = []) {
         const status = normalizePaymentStatus(row.cde_status_pmt_sub__c);
         if (!status)
             throw new Error(`subPayments[${index}].cde_status_pmt_sub__c is unsupported`);
+        const amount = typeof row.amt_pmt_sub__c === "number" && Number.isFinite(row.amt_pmt_sub__c)
+            ? row.amt_pmt_sub__c
+            : typeof row.amt_pmt_sub__c === "string" && Number.isFinite(Number(row.amt_pmt_sub__c))
+                ? Number(row.amt_pmt_sub__c)
+                : undefined;
         return {
             authorization_id: resolveAuthorizationId(row.idn_auth__c, authorizations, `subPayments[${index}].idn_auth__c`),
             service_period_id: requiredString(row.idn_period_serv__c, `subPayments[${index}].idn_period_serv__c`),
             status,
+            ...(amount !== undefined ? { amount } : {}),
         };
     });
 }
@@ -221,6 +227,10 @@ export function normalizeAttendanceDays(schedules, enrichmentByAuthorization, op
                     : {}),
             ...(typeof schedule.county_id === "string" ? { county_id: schedule.county_id } : {}),
             ...(typeof schedule.county_name === "string" ? { county_name: schedule.county_name } : {}),
+            attendance_basis: (typeof schedule.check_in_count === "number" && schedule.check_in_count > 0)
+                || schedule.attended_flag === true
+                ? "ACTUAL"
+                : "SCHEDULED",
             ...(isFutureForecast ? { forecast_basis: "SCHEDULED" } : {}),
             ...(typeof enrichment.holiday_name === "string" ? { holiday_name: enrichment.holiday_name } : {}),
             ...(typeof enrichment.holiday_date === "string" ? { holiday_date: enrichment.holiday_date } : {}),
@@ -389,7 +399,8 @@ function requiredRecords(value, label) {
 }
 export function buildCanonicalPaymentPayload(input) {
     return {
-        rule_version: "provider-risk-payment-v1",
+        rule_version: "provider-risk-payment-v3",
+        as_of_date: requiredString(input.asOfDate, "as-of date"),
         ...(input.mode
             ? { calculation_mode: input.mode === "FORECAST" ? "CURRENT_WEEK_FORECAST" : "STATUS" }
             : {}),
@@ -404,6 +415,7 @@ export function buildCanonicalPaymentPayload(input) {
         existing_sub_payments: normalizeExistingSubPayments(input.paymentHistory, input.authorizationRecords),
         ...(input.feeSchedules ? { fee_schedules: input.feeSchedules } : {}),
         ...(input.feeHistory ? { fee_history: input.feeHistory } : {}),
+        ...(input.vacantSlotSchedules ? { vacant_slot_schedules: input.vacantSlotSchedules } : {}),
     };
 }
 export { normalizeQualityTier } from "./provider-policy.js";

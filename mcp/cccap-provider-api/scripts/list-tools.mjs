@@ -19,7 +19,7 @@ const transport = new StdioClientTransport({
 });
 
 const expectedTools = [
-  "cccap_analyze_attendance_risk",
+  "cccap_analyze_payment_risk",
   "cccap_analyze_payment",
   "cccap_get_attendance_analysis",
   "cccap_get_attendance_risk_snapshot",

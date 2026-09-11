@@ -27,8 +27,14 @@ try {
     throw new Error(String(response.content[0]?.text || "Snapshot tool failed"));
   }
   const snapshot = response.structuredContent ?? {};
+  if (snapshot.responseMode !== "SUMMARY") {
+    throw new Error("Snapshot is missing its summary response mode");
+  }
+  if (snapshot.providerMessage !== undefined || snapshot.attendanceSummary !== undefined || snapshot.actionControls !== undefined) {
+    throw new Error("Snapshot structured content duplicates provider-facing output");
+  }
   const analysisResponse = await client.callTool({
-    name: "cccap_analyze_attendance_risk",
+    name: "cccap_analyze_payment_risk",
     arguments: { dateFilter: "THIS_MONTH" },
   });
   if (analysisResponse.isError) {
@@ -41,6 +47,10 @@ try {
   if (typeof snapshot.providerMessage !== "string" || !snapshot.providerMessage.startsWith("Greetings for the day, Shashank.")) {
     throw new Error("Snapshot provider message is missing or malformed");
   }
+  const analysis = analysisResponse.structuredContent ?? {};
+  if (!analysis.attendanceSummary || !Array.isArray(analysis.availableViews) || !Array.isArray(analysis.viewControls)) {
+    throw new Error("Attendance analysis is missing summary or dynamic view controls");
+  }
   if (snapshot.scope?.dateFilter !== "THIS_MONTH" || !snapshot.providerMessage.includes("| Children scheduled |")) {
     throw new Error("Today's snapshot is missing its daily scope or scheduled-child count");
   }
@@ -50,6 +60,13 @@ try {
       facilityName: snapshot.facilityName,
       providerMessage: snapshot.providerMessage,
       scope: snapshot.scope,
+      contract: {
+        attendanceSummary: Boolean(snapshot.attendanceSummary),
+        structuredRoutingOnly: snapshot.providerMessage === undefined && snapshot.attendanceSummary === undefined,
+        attendanceAnalysisSummary: Boolean(analysis.attendanceSummary),
+        attendanceAnalysisViews: Array.isArray(analysis.availableViews),
+        attendanceAnalysisViewControls: Array.isArray(analysis.viewControls),
+      },
     }),
   );
 } finally {

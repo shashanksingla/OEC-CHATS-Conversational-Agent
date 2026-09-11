@@ -1,0 +1,207 @@
+User: Hi
+
+GitHub Copilot: Updated todo list
+
+I’ll check the current-month provider snapshot and relay the provider-facing status exactly as returned.
+
+Ran Get Current-Month Payment Risk Snapshot 
+Completed with input: {}
+
+Greetings for the day, Shashank. Here's where things stand at Rising Star Early Learning Center.
+
+Today's snapshot
+
+| Today | Count |
+| --- | ---: |
+| Children scheduled | 22 |
+| Children checked in | 8 |
+
+**Attendance and payment issues (September 2026)**
+
+| Risk Area | Verified finding | Potential Loss (Care Hours) |
+| --- | --- | --- |
+| Pending parent confirmations | 62 day(s) for 21 child(ren) may keep payment conditional | 471.00 hour(s) |
+| Children near or over county monthly absence limits | 6 child(ren), 3 counties; 1 day(s) from limit | 0.00 hour(s) |
+| Missing check-ins/check-outs within the confirmation window | 23 day(s) for 15 child(ren) need a check-in or check-out record | 168.00 hour(s) |
+
+**Priority Actions**
+
+1. Review absence-limit risk — 6 children
+2. Review pending confirmations — 62 days
+
+**Available views**
+
+- View upcoming payout summary
+- Forecast this week's services payout
+
+**Next step**
+
+Ask about a specific child, authorization, county, date, or payment impact, or choose one of the reviews above.
+
+User: next payout summary
+
+GitHub Copilot: Updated todo list
+
+I’ll retrieve the provider-scoped upcoming payout summary and relay the complete verified result.
+
+Ran Analyze CCCAP Payment 
+Completed with input: {
+  "view": "NEXT_PAYOUT"
+}
+
+User: 2
+
+GitHub Copilot: Updated todo list
+
+I’ll treat “2” as the second priority review from the provider snapshot: pending parent confirmations for September 2026.
+
+Ran Review Parent Confirmations and Attendance Risk 
+Completed with input: {
+  "dateFilter": "THIS_MONTH",
+  "riskFocus": "PARENT_CONFIRMATIONS"
+}
+
+Current-month attendance review found 21 child(ren) needing attention.
+
+Excluded 1 closure date(s): Sep 3 (provider closed).  
+Excluded 2 holiday date(s): Sep 6, Sep 7 (paid holiday, not an absence).
+
+62 pending parent confirmation day(s) affect 21 child(ren). Earliest confirmation deadline: Sep 13 (2 day(s) left).
+
+Pending = awaiting confirmation. Absences used = past window, unconfirmed. Over limit = beyond county limit.
+
+| Child | Authorization | County | Pending | Absences used |
+| --- | --- | --- | ---: | ---: |
+| AMANDA CONTI | 950995 | Denver | 4 | 4 |
+| CAMELIA FONG | 950997 | Denver | 4 | 4 |
+| PENNY AMAKER | 949332 | Denver | 4 | 4 |
+| R Raj | 958591 | Adams | 4 | 4 |
+| SAVANNA JENNE | 950289 | Jefferson | 4 | 4 |
+| TEQUILA HOTTINGER | 950290 | Jefferson | 4 | 4 |
+| ZACHARY KWONG | 957733 | Denver | 4 | 4 |
+
+Showing the first 7 of 21 affected children. Ask for the remaining child details by name or group.
+
+Attendance overview:
+
+| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |
+| ---: | ---: | ---: | ---: | ---: |
+| 175 | 21 | 62 | 83 | 2 |
+
+Attendance by county:
+
+| County | Children | Risk children | Pending confirmations | Absence days |
+| --- | ---: | ---: | ---: | ---: |
+| Adams | 1 | 1 | 4 | 4 |
+| Arapahoe | 2 | 2 | 6 | 8 |
+| Denver | 15 | 15 | 42 | 59 |
+| Jefferson | 3 | 3 | 10 | 12 |
+
+**Priority Actions**
+
+1. Review pending confirmations — 62 days
+2. Review incomplete attendance — 13 records
+
+**Next step**
+
+Ask about a specific child, authorization, county, date, or payment impact, or choose one of the reviews above.
+
+User: 2
+
+GitHub Copilot: Updated todo list
+
+I’ll open the second action from the latest review: incomplete attendance records for the current month.
+
+Ran Review Parent Confirmations and Attendance Risk 
+Completed with input: {
+  "dateFilter": "THIS_MONTH",
+  "riskFocus": "INCOMPLETE_ATTENDANCE"
+}
+
+Current-month attendance review found 15 child(ren) needing attention.
+
+Excluded 1 closure date(s): Sep 3 (provider closed).  
+Excluded 2 holiday date(s): Sep 6, Sep 7 (paid holiday, not an absence).
+
+Pending = awaiting confirmation. Absences used = past window, unconfirmed. Over limit = beyond county limit.
+
+| Child | Authorization | County | Pending | Absences used |
+| --- | --- | --- | ---: | ---: |
+| CAMELIA FONG | 950997 | Denver | 4 | 4 |
+| R Raj | 958591 | Adams | 4 | 4 |
+| ASTRID INGRUM | 952094 | Arapahoe | 3 | 4 |
+| ELDRIDGE CIMINO | 943930 | Denver | 3 | 4 |
+| HALLIE CUMPSTON | 950241 | Denver | 3 | 4 |
+| REWD SSS | 957747 | Denver | 3 | 4 |
+| ROCHELLE LEEDOM | 950243 | Denver | 3 | 4 |
+
+Showing the first 7 of 15 affected children. Ask for the remaining child details by name or group.
+
+Attendance overview:
+
+| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |
+| ---: | ---: | ---: | ---: | ---: |
+| 126 | 15 | 35 | 60 | 2 |
+
+Attendance by county:
+
+| County | Children | Risk children | Pending confirmations | Absence days |
+| --- | ---: | ---: | ---: | ---: |
+| Adams | 1 | 1 | 4 | 4 |
+| Arapahoe | 1 | 1 | 3 | 4 |
+| Denver | 12 | 12 | 26 | 48 |
+| Jefferson | 1 | 1 | 2 | 4 |
+
+**Priority Actions**
+
+1. Review absence-limit risk — 3 children
+2. Review pending confirmations — 62 days
+
+**Next step**
+
+Ask about a specific child, authorization, county, date, or payment impact, or choose one of the reviews above.
+
+User: 1
+
+GitHub Copilot: Updated todo list
+
+I’ll open the first action from the latest review: absence-limit risk for the current month.
+
+Ran Review Parent Confirmations and Attendance Risk 
+Completed with input: {
+  "dateFilter": "THIS_MONTH",
+  "riskFocus": "ABSENCE_LIMITS"
+}
+
+Current-month attendance review found 6 child(ren) needing attention.
+
+Excluded 1 closure date(s): Sep 3 (provider closed).  
+Excluded 2 holiday date(s): Sep 6, Sep 7 (paid holiday, not an absence).
+
+6 child(ren) approaching the absence limit (24d total) - not excluded yet.
+
+| Child | Authorization | County | Absences used | County limit |
+| --- | --- | --- | ---: | ---: |
+| R Raj | 958591 | Adams | 4 | 4 |
+| SAVANNA JENNE | 950289 | Jefferson | 4 | 4 |
+| TEQUILA HOTTINGER | 950290 | Jefferson | 4 | 4 |
+| ASTRID INGRUM | 952094 | Arapahoe | 4 | 4 |
+| DEVIN STEFFEN | 950140 | Arapahoe | 4 | 4 |
+| EDNA LARMER | 953387 | Jefferson | 4 | 4 |
+
+All counties are currently within their approved limits. Ask about a specific child, authorization, county, date, or payment impact, or choose one of the available reviews.
+
+User: this weeks forecast
+
+GitHub Copilot: Updated todo list
+
+I’ll calculate the provider-scoped forecast for services scheduled this week.
+
+Ran Analyze CCCAP Payment 
+Completed with input: {
+  "view": "CURRENT_WEEK_FORECAST"
+}
+
+This week’s forecast could not be verified because payment-history data is unavailable.
+
+Review the existing payment-history rows, then retry the forecast.

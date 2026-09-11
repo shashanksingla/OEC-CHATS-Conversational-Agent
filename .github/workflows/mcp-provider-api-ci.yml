@@ -1,0 +1,52 @@
+name: CCCAP Provider API MCP CI
+
+on:
+  pull_request:
+    paths:
+      - "mcp/cccap-provider-api/**"
+      - "skills/agent-child-care-payment-advisor/scripts/**"
+      - ".github/workflows/mcp-provider-api-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "mcp/cccap-provider-api/**"
+      - "skills/agent-child-care-payment-advisor/scripts/**"
+
+jobs:
+  typescript:
+    name: TypeScript typecheck, tests, and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp/cccap-provider-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm install
+      - name: Typecheck (source)
+        run: npm run typecheck
+      - name: Typecheck (tests)
+        run: npm run typecheck:test
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  python:
+    name: Python evaluator tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: skills/agent-child-care-payment-advisor/scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run evaluator unit tests
+        run: |
+          python -m unittest discover -s tests -p "test_*.py" -v

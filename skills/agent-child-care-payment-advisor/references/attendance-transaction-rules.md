@@ -18,6 +18,9 @@ Implementation: `scripts/analyze_attendance_transactions.py`. Tests: `scripts/te
 - **County - Unconfirmed Attendance** — provider-submitted, parent-unconfirmed attendance still counts toward attended hours but is flagged; more than half the child's days in the period being unconfirmed flags the child for supervisor review.
 - **County - Drop-In Limits (provider-scoped)** — a per-child counter is tracked within this provider's authorized dataset. County and authorization drop-in limits both apply when defined; the lower applicable limit controls. The day that reaches the limit is flagged as nearly exhausted; days beyond the limit are `NOT_PAID`.
 - **County - Summary (facility-scoped)** — per-county and per-child aggregate counts are returned for this provider's own children only.
+- **Provider Closures** — an active provider closure with a start date matching the service date is classified as `CARE_NOT_OFFERED`; it is excluded from default child day tables and does not count as an absence, pending confirmation, attendance, or holiday.
+- **Holidays** — actual and observed county holiday dates are classified as `HOLIDAY` when an authorized day has no attended hours; holiday days are not absences or pending confirmations. Holiday payment eligibility remains a payment-engine decision.
+- **Licensed-only Drop-In** — when county policy requires licensed-only drop-in care, missing or non-licensed provider status fails closed as `NOT_PAID` with `DROP_IN_LICENSE_STATUS_UNAVAILABLE`.
 
 ## Deliberately not implemented
 

@@ -95,14 +95,14 @@ test("generic read models expose canonical fields without source object keys", (
   const paymentHistory = normalizePaymentHistory({ subPayments: [{ idn_pmt_sub__c: "sub-1" }] });
   const serialized = JSON.stringify({ initialization, cases, authorizations, countyPlans, schedules, fiscalRates, servicePeriods, holidays, paymentHistory });
 
-  assert.equal(initialization.fiscal_agreements[0]?.county_id, "county-1");
-  assert.equal(cases.cases[0]?.id, "case-1");
-  assert.equal(authorizations.authorizations[0]?.id, "auth-1");
-  assert.equal(countyPlans.county_plans[0]?.county_id, "county-1");
-  assert.equal(schedules.schedules[0]?.schedule_id, "schedule-1");
-  assert.equal(servicePeriods.service_periods[0]?.id, "period-1");
-  assert.equal(holidays.holidays[0]?.date, "2026-09-07");
-  assert.equal(paymentHistory.sub_payments[0]?.id, "sub-1");
+  assert.equal(((initialization as Record<string, unknown>).fiscal_agreements as Array<Record<string, unknown>>)[0]?.county_id, "county-1");
+  assert.equal(((cases as Record<string, unknown>).cases as Array<Record<string, unknown>>)[0]?.id, "case-1");
+  assert.equal(((authorizations as Record<string, unknown>).authorizations as Array<Record<string, unknown>>)[0]?.id, "auth-1");
+  assert.equal(((countyPlans as Record<string, unknown>).county_plans as Array<Record<string, unknown>>)[0]?.county_id, "county-1");
+  assert.equal(((schedules as Record<string, unknown>).schedules as Array<Record<string, unknown>>)[0]?.schedule_id, "schedule-1");
+  assert.equal(((servicePeriods as Record<string, unknown>).service_periods as Array<Record<string, unknown>>)[0]?.id, "period-1");
+  assert.equal(((holidays as Record<string, unknown>).holidays as Array<Record<string, unknown>>)[0]?.date, "2026-09-07");
+  assert.equal(((paymentHistory as Record<string, unknown>).sub_payments as Array<Record<string, unknown>>)[0]?.id, "sub-1");
   assert.equal(serialized.includes("CDE_COUNTY__c"), false);
   assert.equal(serialized.includes("CI_Authorization_Date__c"), false);
 });
@@ -215,7 +215,7 @@ test("payment adapter produces canonical input from source-shaped records", () =
     asOfDate: "2026-09-08",
   });
 
-  assert.equal(payload.rule_version, "provider-risk-payment-v1");
+  assert.equal(payload.rule_version, "provider-risk-payment-v3");
   assert.equal(payload.service_period.id, "period-1");
   assert.equal(payload.authorizations[0]?.id, "auth-1");
   assert.equal(payload.attendance_days[0]?.parent_confirmation, "CONFIRMED");
@@ -294,12 +294,62 @@ test("schedule normalizer matches numeric DECL authorization names", () => {
   assert.equal(normalized.schedules[0]?.county_id, "county-1");
 });
 
+test("schedule county reads the county from a normalized authorization wrapper", () => {
+  const normalized = normalizeScheduleAttendance(
+    [{
+      Id: "schedule-1",
+      CI_Authorization_Id__c: "950289",
+      CI_Authorization_Date__c: "2026-08-24",
+      Attendance__r: { records: [] },
+    }],
+    undefined,
+    undefined,
+    {
+      authorizations: [{
+        authorization: {
+          Id: "auth-1",
+          Name: "950289",
+          CDE_COUNTY__c: "county-1",
+        },
+        fiscalScheduleMatch: { status: "MATCHED" },
+      }],
+    },
+  );
+
+  assert.equal(normalized.schedules[0]?.authorization_id, "auth-1");
+  assert.equal(normalized.schedules[0]?.county_id, "county-1");
+});
+
+test("schedule county prefers the CCCAP authorization reference when another relationship is present", () => {
+  const normalized = normalizeScheduleAttendance(
+    [{
+      Id: "schedule-1",
+      Authorization__c: "unrelated-relationship",
+      CI_Authorization_Id__c: "950289",
+      CI_Authorization_Date__c: "2026-08-24",
+      Attendance__r: { records: [] },
+    }],
+    undefined,
+    undefined,
+    {
+      authorizations: [{
+        Id: "auth-1",
+        Name: "950289",
+        CDE_COUNTY__c: "county-1",
+      }],
+    },
+  );
+
+  assert.equal(normalized.schedules[0]?.authorization_id, "auth-1");
+  assert.equal(normalized.schedules[0]?.county_id, "county-1");
+});
+
 test("payment orchestration preserves initialization failures", async () => {
   const client = {
     initialize: async () => {
       throw new Error("provider scope unavailable");
     },
-  } as Parameters<typeof getPaymentAnalysis>[0];
+  } as unknown as Parameters<typeof getPaymentAnalysis>[0];
 
   await assert.rejects(
     () => getPaymentAnalysis(client, {}),
@@ -307,7 +357,7 @@ test("payment orchestration preserves initialization failures", async () => {
   );
 });
 
-test("next payout selects its service period before initializing provider scope", async () => {
+test("next payout initializes provider scope before selecting its service period", async () => {
   const events: string[] = [];
   const client = {
     async getServicePeriods() {
@@ -324,16 +374,13 @@ test("next payout selects its service period before initializing provider scope"
       events.push(`initialize:${JSON.stringify(input)}`);
       throw new Error("provider scope unavailable");
     },
-  } as Parameters<typeof getPaymentAnalysis>[0];
+  } as unknown as Parameters<typeof getPaymentAnalysis>[0];
 
   await assert.rejects(
     () => getPaymentAnalysis(client, {}, "NEXT_PAYOUT"),
     /provider scope unavailable/,
   );
-  assert.deepEqual(events, [
-    "service period",
-    'initialize:{"dateFilter":"DATE_RANGE","dateFrom":"2026-09-15","dateTo":"2026-09-21"}',
-  ]);
+  assert.deepEqual(events, ["initialize:{}"]);
 });
 
 test("payment orchestration runs the canonical payload through the evaluator", async () => {
@@ -426,7 +473,7 @@ test("payment orchestration runs the canonical payload through the evaluator", a
     async getPaymentHistory() {
       return { subPayments: [] };
     },
-  } as Parameters<typeof getPaymentAnalysis>[0];
+  } as unknown as Parameters<typeof getPaymentAnalysis>[0];
 
   const result = await getPaymentAnalysis(
     client,
@@ -440,7 +487,11 @@ test("payment orchestration runs the canonical payload through the evaluator", a
   assert.equal(result.paymentView, "STATUS");
   assert.equal(result.source_readiness, "COMPLETE");
   assert.equal(payment.status, "EXPECTED");
-  assert.deepEqual((result.attendance as Record<string, unknown>).days, []);
+  // A summary (non-detailPage) request now includes a small preview (up to
+  // 3 rows, not the full page) instead of an empty days array, so the
+  // formatter can show a compact preview table instead of a bare row-count
+  // hint. With only 1 total row available, the preview is that 1 row.
+  assert.equal(((result.attendance as Record<string, unknown>).days as unknown[]).length, 1);
   assert.deepEqual(result.detailPagination, { page: 0, pageSize: 0, totalRows: 1, hasMore: true });
 });
 
@@ -479,7 +530,7 @@ test("payment orchestration filters payment analysis by authorization name", asy
     async getFiscalRates() { return { normalizedFiscalRates: { fiscalRates: [{ fiscalScheduleId: "fiscal-1", rateTypeCode: "1", careUnitCode: "2", paidTier: "PART_TIME", fiscalAgreementAmount: 9, sourceId: "rate-1" }], fiscalRateFees: [{ fiscalScheduleId: "fiscal-1" }] } }; },
     async getHolidayList() { return { holidayList: [] }; },
     async getPaymentHistory() { return { subPayments: [] }; },
-  } as Parameters<typeof getPaymentAnalysis>[0];
+  } as unknown as Parameters<typeof getPaymentAnalysis>[0];
 
   const result = await getPaymentAnalysis(client, { dateFilter: "THIS_MONTH" }, "STATUS", "2026-09-08", { authNames: ["AUTH-ONE"] }) as Record<string, unknown>;
   const payment = result.payment as Record<string, unknown>;

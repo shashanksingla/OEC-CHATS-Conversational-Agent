@@ -52,9 +52,13 @@ export class CccapClient {
   private providerSalesforceIds = new Set<string>();
   private providerExternalNames = new Set<string>();
   private countyIds = new Set<string>();
+  private countyNameById = new Map<string, string>();
   private fiscalScheduleIds = new Set<string>();
   private fiscalSchedules: FiscalScheduleCandidate[] = [];
   private readonly readCache = new Map<string, unknown>();
+  private readonly readCacheAt = new Map<string, number>();
+  private readonly readCacheTtlMs = 15 * 60 * 1000;
+  private readonly readCacheMaxEntries = 100;
 
   public constructor(options: ClientOptions) {
     this.targetOrg = options.targetOrg;
@@ -63,8 +67,16 @@ export class CccapClient {
   }
 
   public async initialize(scope: DateScope = {}): Promise<unknown> {
+    // Provider identity (facility name, quality tier, active county
+    // agreements) does not vary by date scope - it's the same regardless of
+    // which period a later call is asking about. Previously `scope` was
+    // folded into the cache key, so every call with a different dateFilter
+    // (attendance vs. payment vs. forecast, each within the same
+    // conversation) missed the cache and re-triggered a fresh
+    // getProviderData round trip even though nothing about the provider
+    // had changed. Keying on userId alone lets one getProviderData call
+    // serve the whole session.
     const data = await this.cachedCall("getProviderData", {
-      ...scope,
       userId: this.providerUserId,
     });
     const result = this.requireRecord(data, "getProviderData.data");
@@ -74,6 +86,7 @@ export class CccapClient {
       result.fiscalAgreements,
       "CDE_COUNTY__c",
     );
+    this.countyNameById = this.extractCountyNames(result.fiscalAgreements);
     this.fiscalScheduleIds = this.extractNestedIds(
       result.fiscalAgreements,
       "Rate_Schedules__r",
@@ -188,16 +201,64 @@ export class CccapClient {
   }
 
   public async getServicePeriods(input: ServicePeriodScope): Promise<unknown> {
+    // Service periods are not provider- or county-scoped source data, but every
+    // read must still occur only after the authenticated provider identity has
+    // been resolved and validated by initialize(); otherwise an unauthorized or
+    // misconfigured session could pull data before scope is ever established.
+    this.requireInitialized();
     return this.cachedCall("getServicePeriods", input as JsonRecord);
   }
 
   public async getHolidayList(input: DateScope = {}): Promise<unknown> {
+    this.requireInitialized();
     return this.cachedCall("getHolidayList", input as JsonRecord);
+  }
+
+  public async getVacantSlots(
+    input: DateScope & { countyIds?: string[] | undefined } = {},
+  ): Promise<unknown> {
+    return this.cachedCall("getVacantSlots", {
+      ...input,
+      providerIds: this.allowedProviders(),
+      countyIds: this.allowedCounties(input.countyIds),
+    });
   }
 
   private allowedProviders(): string[] {
     this.requireInitialized();
     return [...this.providerSalesforceIds];
+  }
+
+  /**
+   * Resolves a county ID to its provider-facing name, using the mapping
+   * captured at initialize() time. Returns undefined (never the raw ID)
+   * when no verified name is available for that ID.
+   */
+  public getCountyName(countyId: string | undefined): string | undefined {
+    if (typeof countyId !== "string" || countyId.length === 0) return undefined;
+    return this.countyNameById.get(countyId);
+  }
+
+  public clearReadCache(): void {
+    this.readCache.clear();
+    this.readCacheAt.clear();
+  }
+
+  private extractCountyNames(value: unknown): Map<string, string> {
+    const countyNameById = new Map<string, string>();
+    if (!Array.isArray(value)) return countyNameById;
+    for (const agreementValue of value) {
+      const agreement = this.requireRecord(agreementValue, "fiscalAgreements");
+      const countyId = agreement.CDE_COUNTY__c;
+      const county = agreement.CDE_COUNTY__r;
+      const countyName = county && typeof county === "object" && !Array.isArray(county)
+        ? (county as JsonRecord).Name
+        : undefined;
+      if (typeof countyId === "string" && countyId && typeof countyName === "string" && countyName) {
+        countyNameById.set(countyId, countyName);
+      }
+    }
+    return countyNameById;
   }
 
   private extractFiscalSchedules(value: unknown): FiscalScheduleCandidate[] {
@@ -273,11 +334,19 @@ export class CccapClient {
 
   private async cachedCall(action: string, body: JsonRecord): Promise<unknown> {
     const key = `${action}:${JSON.stringify(body)}`;
-    if (this.readCache.has(key)) {
+    const cachedAt = this.readCacheAt.get(key);
+    if (cachedAt !== undefined && Date.now() - cachedAt < this.readCacheTtlMs && this.readCache.has(key)) {
       return this.readCache.get(key);
     }
     const data = await this.call(action, body);
     this.readCache.set(key, data);
+    this.readCacheAt.set(key, Date.now());
+    while (this.readCache.size > this.readCacheMaxEntries) {
+      const oldest = [...this.readCacheAt.entries()].sort((left, right) => left[1] - right[1])[0];
+      if (!oldest) break;
+      this.readCache.delete(oldest[0]);
+      this.readCacheAt.delete(oldest[0]);
+    }
     return data;
   }
 

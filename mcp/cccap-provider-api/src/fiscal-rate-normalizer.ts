@@ -38,7 +38,7 @@ export interface NormalizedFiscalRateFee {
 export interface FiscalRateNormalization {
   fiscalRates: NormalizedFiscalRate[];
   fiscalRateFees: NormalizedFiscalRateFee[];
-  canonicalMappingStatus: "COMPLETE_CODE_MAPPING";
+  canonicalMappingStatus: "COMPLETE_CODE_MAPPING" | "PARTIAL_CODE_MAPPING";
   unresolvedMappings: string[];
   r00393Values: Record<string, number>;
 }
@@ -266,7 +266,10 @@ export function normalizeFiscalRateResponse(value: unknown): FiscalRateNormaliza
   return {
     fiscalRates,
     fiscalRateFees,
-    canonicalMappingStatus: "COMPLETE_CODE_MAPPING",
+    // Must reflect unresolvedMappings rather than a hardcoded literal: a
+    // caller (mapping_status in read-model-adapters.ts) trusts this field to
+    // know whether every code was resolved without inspecting the array itself.
+    canonicalMappingStatus: unresolvedMappings.length > 0 ? "PARTIAL_CODE_MAPPING" : "COMPLETE_CODE_MAPPING",
     unresolvedMappings,
     r00393Values: { ...R00393_VALUES },
   };

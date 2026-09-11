@@ -59,6 +59,71 @@ test("reuses identical provider reads but refreshes when the date scope changes"
   assert.deepEqual(requests, ["getProviderData", "getProviderData"]);
 });
 
+test("expires source reads and explicit clearing forces a fresh request", async () => {
+  const originalNow = Date.now;
+  let now = 0;
+  let requests = 0;
+  Date.now = () => now;
+  try {
+    const client = new CccapClient({
+      targetOrg: "CHATS_SIT",
+      providerUserId: "user-1",
+      requestApex: async (_targetOrg, action) => {
+        requests += 1;
+        return {
+          isSuccess: true,
+          data: action === "getProviderData"
+            ? { providers: [{ Id: "provider-1", Name: "20260722" }], fiscalAgreements: [{ CDE_COUNTY__c: "county-1" }], providerClosures: [] }
+            : { countyRatePlans: [] },
+        };
+      },
+    });
+
+    await client.initialize({ dateFilter: "TODAY" });
+    await client.initialize({ dateFilter: "TODAY" });
+    now = 15 * 60 * 1000;
+    await client.initialize({ dateFilter: "TODAY" });
+    client.clearReadCache();
+    await client.initialize({ dateFilter: "TODAY" });
+
+    assert.equal(requests, 3);
+  } finally {
+    Date.now = originalNow;
+  }
+});
+
+test("evicts the oldest source-read entry at the cache bound", async () => {
+  const originalNow = Date.now;
+  let now = 0;
+  let requests = 0;
+  Date.now = () => now++;
+  try {
+    const client = new CccapClient({
+      targetOrg: "CHATS_SIT",
+      providerUserId: "user-1",
+      requestApex: async (_targetOrg, action) => {
+        requests += 1;
+        return {
+          isSuccess: true,
+          data: action === "getProviderData"
+            ? { providers: [{ Id: "provider-1", Name: "20260722" }], fiscalAgreements: [{ CDE_COUNTY__c: "county-1" }], providerClosures: [] }
+            : { countyRatePlans: [] },
+        };
+      },
+    });
+
+    await client.initialize({ dateFilter: "TODAY" });
+    for (let index = 0; index < 100; index += 1) {
+      await client.getCountyData({ dateFrom: `2026-01-${String(index + 1).padStart(2, "0")}` });
+    }
+    await client.getCountyData({ dateFilter: "TODAY" });
+
+    assert.equal(requests, 102);
+  } finally {
+    Date.now = originalNow;
+  }
+});
+
 test("reuses current-month county plans across snapshot and policy reads", async () => {
   const requests: string[] = [];
   const requestApex: RequestApex = async (_targetOrg, action) => {

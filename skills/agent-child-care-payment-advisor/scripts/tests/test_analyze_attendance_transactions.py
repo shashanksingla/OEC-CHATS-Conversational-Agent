@@ -84,10 +84,45 @@ class AnalyzeAttendanceTransactionsTests(unittest.TestCase):
         day = result["children"][0]["days"][0]
         self.assertEqual(day["status"], "CARE_NOT_OFFERED")
         self.assertEqual(day["authorized_hours"], 0.0)
+        self.assertEqual(result["counties"][0]["scheduled_days"], 0)
+        self.assertEqual(result["counties"][0]["care_not_offered_days"], 1)
 
     def test_auth_end_date_in_past_is_care_not_offered(self) -> None:
         result = analyze(_payload([_schedule(auth_end_date="2026-09-01")]))
         self.assertEqual(result["children"][0]["days"][0]["status"], "CARE_NOT_OFFERED")
+
+    def test_provider_closure_is_excluded_from_child_day_table(self) -> None:
+        result = analyze(_payload(
+            [_schedule()],
+            provider_closure_dates=["2026-09-10"],
+        ))
+        self.assertEqual(result["children"][0]["days"], [])
+        self.assertEqual(result["counties"][0]["care_not_offered_days"], 1)
+        self.assertEqual(result["children"][0]["absences_used"], 0)
+
+    def test_holiday_is_separate_from_absence(self) -> None:
+        result = analyze(_payload(
+            [_schedule()],
+            holiday_dates=["2026-09-10"],
+        ))
+        day = result["children"][0]["days"][0]
+        self.assertEqual(day["status"], "HOLIDAY")
+        self.assertEqual(result["children"][0]["absences_used"], 0)
+        self.assertEqual(result["counties"][0]["holiday_days"], 1)
+
+    def test_licensed_only_drop_in_fails_closed_without_license_status(self) -> None:
+        result = analyze(_payload(
+            [_schedule(schedule_type="DROP_IN", ci_authorization_hours=0)],
+            [_transaction(sub_type="DROP_IN", attended_hours=4)],
+            county_rate_plans=[{
+                "countyId": "denver",
+                "dropInResponse": "LICENSED_ONLY",
+                "dropInDayLimit": 5,
+            }],
+        ))
+        day = result["children"][0]["days"][0]
+        self.assertEqual(day["status"], "NOT_PAID")
+        self.assertIn("DROP_IN_LICENSE_STATUS_UNAVAILABLE", day["flags"])
 
     def test_blank_authorized_hours_means_not_scheduled_and_is_excluded(self) -> None:
         result = analyze(_payload([_schedule(ci_authorization_hours=None)]))

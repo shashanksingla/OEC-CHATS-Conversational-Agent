@@ -2,6 +2,7 @@ import {
   normalizePaymentStatus,
   type CanonicalExistingSubPayment,
   type CanonicalPaymentFeeSchedule,
+  type CanonicalVacantSlotSchedule,
   type CanonicalServicePeriod,
   type RecordValue,
 } from "./payment-schema.js";
@@ -69,6 +70,11 @@ export function normalizeExistingSubPayments(
     const row = asRecord(value, `subPayments[${index}]`);
     const status = normalizePaymentStatus(row.cde_status_pmt_sub__c);
     if (!status) throw new Error(`subPayments[${index}].cde_status_pmt_sub__c is unsupported`);
+    const amount = typeof row.amt_pmt_sub__c === "number" && Number.isFinite(row.amt_pmt_sub__c)
+      ? row.amt_pmt_sub__c
+      : typeof row.amt_pmt_sub__c === "string" && Number.isFinite(Number(row.amt_pmt_sub__c))
+        ? Number(row.amt_pmt_sub__c)
+        : undefined;
     return {
       authorization_id: resolveAuthorizationId(
         row.idn_auth__c,
@@ -80,6 +86,7 @@ export function normalizeExistingSubPayments(
         `subPayments[${index}].idn_period_serv__c`,
       ),
       status,
+      ...(amount !== undefined ? { amount } : {}),
     };
   });
 }
@@ -100,6 +107,7 @@ export interface CanonicalAttendanceDay {
   county_id?: string;
   county_name?: string;
   forecast_basis?: "SCHEDULED";
+  attendance_basis?: "ACTUAL" | "SCHEDULED";
   holiday_name?: string;
   holiday_date?: string;
   observed_holiday_date?: string;
@@ -335,6 +343,10 @@ export function normalizeAttendanceDays(
           : {}),
       ...(typeof schedule.county_id === "string" ? { county_id: schedule.county_id } : {}),
       ...(typeof schedule.county_name === "string" ? { county_name: schedule.county_name } : {}),
+      attendance_basis: (typeof schedule.check_in_count === "number" && schedule.check_in_count > 0)
+        || schedule.attended_flag === true
+        ? "ACTUAL" as const
+        : "SCHEDULED" as const,
       ...(isFutureForecast ? { forecast_basis: "SCHEDULED" as const } : {}),
       ...(typeof enrichment.holiday_name === "string" ? { holiday_name: enrichment.holiday_name } : {}),
       ...(typeof enrichment.holiday_date === "string" ? { holiday_date: enrichment.holiday_date } : {}),
@@ -346,8 +358,9 @@ export function normalizeAttendanceDays(
 }
 
 export interface CanonicalPaymentPayload {
-  rule_version: "provider-risk-payment-v1";
+  rule_version: "provider-risk-payment-v3";
   calculation_mode?: "STATUS" | "CURRENT_WEEK_FORECAST";
+  as_of_date: string;
   service_period: CanonicalServicePeriod;
   authorizations: RecordValue[];
   attendance_days: CanonicalAttendanceDay[];
@@ -357,6 +370,7 @@ export interface CanonicalPaymentPayload {
   authorization_copays?: RecordValue[];
   fee_schedules?: CanonicalPaymentFeeSchedule[];
   fee_history?: RecordValue[];
+  vacant_slot_schedules?: CanonicalVacantSlotSchedule[];
 }
 
 export function normalizeAuthorizationCopays(
@@ -535,11 +549,13 @@ export function buildCanonicalPaymentPayload(input: {
   authorizationRecords?: RecordValue[];
   feeSchedules?: CanonicalPaymentFeeSchedule[];
   feeHistory?: RecordValue[];
+  vacantSlotSchedules?: CanonicalVacantSlotSchedule[];
   mode?: "STATUS" | "FORECAST";
   asOfDate?: string;
 }): CanonicalPaymentPayload {
   return {
-    rule_version: "provider-risk-payment-v1",
+    rule_version: "provider-risk-payment-v3",
+    as_of_date: requiredString(input.asOfDate, "as-of date"),
     ...(input.mode
       ? { calculation_mode: input.mode === "FORECAST" ? "CURRENT_WEEK_FORECAST" as const : "STATUS" as const }
       : {}),
@@ -558,6 +574,7 @@ export function buildCanonicalPaymentPayload(input: {
     existing_sub_payments: normalizeExistingSubPayments(input.paymentHistory, input.authorizationRecords),
     ...(input.feeSchedules ? { fee_schedules: input.feeSchedules } : {}),
     ...(input.feeHistory ? { fee_history: input.feeHistory } : {}),
+    ...(input.vacantSlotSchedules ? { vacant_slot_schedules: input.vacantSlotSchedules } : {}),
   };
 }
 

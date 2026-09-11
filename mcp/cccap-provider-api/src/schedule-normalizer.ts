@@ -20,6 +20,17 @@ function confirmationStatus(value: unknown): string | undefined {
   return normalized || undefined;
 }
 
+// Salesforce boolean fields can arrive as an actual boolean or as the
+// literal string "true"/"false" depending on the API layer. `Boolean("false")`
+// is `true` for any non-empty string, so a plain `Boolean(...)` coercion here
+// would silently invert a "false" string value; normalize known string forms
+// explicitly instead.
+function booleanValue(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value.trim().toLowerCase() === "true";
+  return Boolean(value);
+}
+
 function authorizationStatus(value: unknown): string | undefined {
   const normalized = String(value ?? "").trim().toUpperCase();
   if (normalized === "2" || normalized === "AUTHORIZED") return "APPROVED";
@@ -49,7 +60,9 @@ export function normalizeScheduleAttendance(
   const authorizationResponse = asRecord(authorizationData);
   const authorizationRows = Array.isArray(authorizationResponse?.authorizations)
     ? authorizationResponse.authorizations
-    : [];
+    : Array.isArray(authorizationResponse?.normalizedAuthorizations)
+      ? authorizationResponse.normalizedAuthorizations
+      : [];
   for (const value of authorizationRows) {
     const authorization = asRecord(value);
     const id = authorization?.Id ?? authorization?.IDN_EXTNL__c;
@@ -85,7 +98,7 @@ export function normalizeScheduleAttendance(
         status: confirmationStatus(record.Status__c),
         sub_type: record.Sub_Type__c,
         denial_reason: record.Denial_Status__c,
-        is_historical: Boolean(record.Previous_Transaction__c),
+        is_historical: booleanValue(record.Previous_Transaction__c),
         provider_id: record.CI_Provider_ID__c,
         entered_by: record.Creation_Source__c === "Provider" ? "PROVIDER" : record.Creation_Source__c,
       }));
@@ -100,13 +113,14 @@ export function normalizeScheduleAttendance(
         .filter((status): status is string => typeof status === "string"),
     );
     const authorization = asRecord(schedule.Authorization__r);
-    const authorizationReference = schedule.Authorization__c
+    const authorizationReference = schedule.CI_Authorization_Id__c
+      ?? schedule.Authorization__c
       ?? schedule.IDN_AUTH__c
       ?? schedule.Authorization_Id__c
-      ?? schedule.CI_Authorization_Id__c
       ?? authorization?.Id;
     const authorizationRecord = authorizationRows.find((value) => {
-      const candidate = asRecord(value);
+      const wrapper = asRecord(value);
+      const candidate = asRecord(wrapper?.authorization) ?? wrapper;
       const candidateReferences = [candidate?.Id, candidate?.IDN_EXTNL__c, candidate?.Name]
         .filter((reference): reference is string | number =>
           (typeof reference === "string" && reference.length > 0) || typeof reference === "number",
@@ -119,25 +133,27 @@ export function normalizeScheduleAttendance(
         .map(String);
       return scheduleReferences.some((reference) => candidateReferences.includes(reference));
     });
-    const authorizationId = authorizationRecord?.Id ?? authorizationReference;
-    const authorizationStatusValue = authorizationRecord && (
-      authorizationRecord.Authorization_Status__c
-      ?? authorizationRecord.authorization_status
-      ?? authorizationRecord.expr0
+    const authorizationWrapper = authorizationRecord ? asRecord(authorizationRecord) : undefined;
+    const matchedAuthorization = asRecord(authorizationWrapper?.authorization) ?? authorizationWrapper;
+    const authorizationId = matchedAuthorization?.Id ?? authorizationReference;
+    const authorizationStatusValue = matchedAuthorization && (
+      matchedAuthorization.Authorization_Status__c
+      ?? matchedAuthorization.authorization_status
+      ?? matchedAuthorization.expr0
     );
     const normalizedSchedule: RecordValue = {
       schedule_id: scheduleId,
       authorization_id:
         authorizationId,
       authorization_name:
-        authorizationRecord?.Name ??
+        matchedAuthorization?.Name ??
         authorization?.Name ??
         schedule.authorization_name ??
         schedule.Authorization_Name__c,
       child_name: schedule.Contact_Name__c,
       county_id: schedule.County__c
         ?? schedule.county_id
-        ?? authorizationRecord?.CDE_COUNTY__c
+        ?? matchedAuthorization?.CDE_COUNTY__c
         ?? defaultCountyId,
       county_name: nestedCountyName(schedule),
       authorization_drop_in_limit: authorizationLimits.get(String(
@@ -152,8 +168,10 @@ export function normalizeScheduleAttendance(
       schedule_type: schedule.Type__c ?? schedule.schedule_type,
       is_deleted: false,
       denial_reason: undefined,
-      auth_status: authorizationStatus(authorizationStatusValue)
-        ?? (schedule.Type__c === "CCCAP_AUTHORIZED" ? "APPROVED" : undefined),
+      // Do not default an absent/unknown authorization status to APPROVED.
+      // A missing status must fail closed (undefined) so downstream evaluators
+      // treat the day as care-not-offered/blocked rather than silently approved.
+      auth_status: authorizationStatus(authorizationStatusValue),
       auth_begin_date: undefined,
       auth_end_date: undefined,
       ci_authorization_hours: schedule.CI_Authorization_Hours__c,

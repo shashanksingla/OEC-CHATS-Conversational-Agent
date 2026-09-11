@@ -63,9 +63,9 @@ test("maps fiscal care units and represents NP as no payment", () => {
     fiscalRateFees: [],
   });
 
-  assert.equal(result.fiscalRates[0].paidTier, "PART_TIME");
-  assert.equal(result.fiscalRates[1].paidTier, "FULL_TIME_PLUS_PART_TIME");
-  assert.equal(result.fiscalRates[2].paidTier, "NO_PAYMENT");
+  assert.equal(result.fiscalRates[0]?.paidTier, "PART_TIME");
+  assert.equal(result.fiscalRates[1]?.paidTier, "FULL_TIME_PLUS_PART_TIME");
+  assert.equal(result.fiscalRates[2]?.paidTier, "NO_PAYMENT");
   assert.deepEqual(result.unresolvedMappings, []);
 });
 

@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { attendanceAnalysisSchema, paymentAnalysisSchema } from "../src/schemas.js";
+
+test("composite schemas reject partial continuation references", () => {
+  assert.equal(attendanceAnalysisSchema.safeParse({ dateFilter: "THIS_MONTH", contextRef: "ctx" }).success, false);
+  assert.equal(paymentAnalysisSchema.safeParse({ view: "STATUS", actionRef: "action" }).success, false);
+});
+
 import {
   attendanceDataSchema,
   dateScopeSchema,
-  paymentAnalysisSchema,
   paymentHistorySchema,
   servicePeriodSchema,
 } from "../src/schemas.js";

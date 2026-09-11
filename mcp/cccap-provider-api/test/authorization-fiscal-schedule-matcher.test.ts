@@ -56,7 +56,7 @@ test("fails closed when more than one latest schedule matches", () => {
   assert.deepEqual(
     selectFiscalScheduleForAuthorization(
       authorization,
-      [...schedules, { ...schedules[1], id: "schedule-duplicate", externalId: "schedule-duplicate-external" }],
+      [...schedules, { ...schedules[1]!, id: "schedule-duplicate", externalId: "schedule-duplicate-external" }],
       "2026-08-01",
       "1",
     ),

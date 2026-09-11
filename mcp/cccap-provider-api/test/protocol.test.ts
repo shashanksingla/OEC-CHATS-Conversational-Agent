@@ -32,7 +32,7 @@ test("MCP protocol preserves attendance provider text and structured scope", asy
   await client.connect(clientTransport);
 
   const response = await client.callTool({
-    name: "cccap_analyze_attendance_risk",
+    name: "cccap_analyze_payment_risk",
     arguments: { dateFilter: "THIS_MONTH" },
   });
   const text = response.content.find((item) => item.type === "text")?.text;
@@ -49,6 +49,7 @@ test("MCP protocol preserves attendance provider text and structured scope", asy
 });
 
 test("current-month snapshot counts five-day-old unconfirmed absences toward county risk", async () => {
+  let scheduleReads = 0;
   const fakeClient = {
     async initialize() {
       return {
@@ -74,6 +75,7 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
       };
     },
     async getSchedules() {
+      scheduleReads += 1;
       return {
         schedules: ["2026-09-01", "2026-09-02", "2026-09-03"].map((date) => ({
           Contact_Name__c: "Ava Example",
@@ -97,18 +99,33 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   const text = response.content.find((item) => item.type === "text")?.text;
   const structured = response.structuredContent as Record<string, unknown>;
 
-  assert.match(text ?? "", /Children approaching county monthly absence limits/);
-  assert.ok(text?.includes("1 child(ren) of 1 counties; within 2 day(s) of exceeding the limit"));
-  const actionControls = structured.actionControls as Array<Record<string, unknown>>;
-  assert.deepEqual(actionControls.map((control) => ({
-    actionId: control.actionId,
-    section: control.section,
-    type: control.type,
-  })), [
-    { actionId: "review-absence-limit-risk", section: "next-actions", type: "button" },
-    { actionId: "review-next-payout", section: "available-options", type: "button" },
-  ]);
-  assert.doesNotMatch(text ?? "", /\n\d+\. /);
+  assert.match(text ?? "", /Children near or over county monthly absence limits/);
+  assert.ok(text?.includes("1 child(ren), 1 counties; 2 day(s) from limit"));
+  assert.equal(structured.responseMode, "SUMMARY");
+  assert.equal(structured.providerMessage, text);
+  assert.equal(structured.attendanceSummary, undefined);
+  assert.equal(Array.isArray(structured.actionControls), true);
+  assert.equal(typeof structured.contextRef, "string");
+  assert.equal(JSON.stringify(structured.actionControls).includes("childNames"), false);
+  assert.equal(structured.availableViews, undefined);
+  assert.equal(structured.viewControls, undefined);
+  assert.equal(structured.actionIntents, undefined);
+  // Next actions are now numbered (capped to the top 2) rather than bulleted,
+  // matching the drill-down action-list convention and avoiding an
+  // open-ended pile of bullets across turns.
+  assert.match(text ?? "", /\n1\. Review absence-limit risk — 1 children/);
+
+  const absenceAction = (structured.actionControls as Array<Record<string, unknown>>).find(
+    (action) => action.actionId === "review-absence-limit-risk",
+  );
+  assert.ok(absenceAction);
+  const followUp = await client.callTool({
+    name: "cccap_analyze_payment_risk",
+    arguments: absenceAction.input as Record<string, unknown>,
+  });
+  assert.equal(followUp.isError, undefined);
+  assert.match(followUp.content.find((item) => item.type === "text")?.text ?? "", /approaching the absence limit/);
+  assert.equal(scheduleReads, 1);
 
   await client.close();
   await server.close();

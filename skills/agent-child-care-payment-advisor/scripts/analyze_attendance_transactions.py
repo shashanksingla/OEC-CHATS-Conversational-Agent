@@ -226,6 +226,8 @@ def _analyze_day(
     transactions: list[dict[str, Any]],
     period_start: date,
     period_end: date,
+    closure_dates: set[date],
+    holiday_dates: set[date],
 ) -> dict[str, Any] | None:
     if schedule.get("is_deleted"):
         return None
@@ -236,6 +238,17 @@ def _analyze_day(
 
     work_date = _date_value(schedule.get("work_date"), "work_date")
     flags: set[str] = set()
+
+    if work_date in closure_dates:
+        return {
+            "work_date": work_date.isoformat(),
+            "status": "CARE_NOT_OFFERED",
+            "authorized_hours": 0.0,
+            "attended_hours": 0.0,
+            "is_drop_in": False,
+            "flags": [],
+            "_provider_closure": True,
+        }
 
     if not _is_care_offered(schedule, work_date):
         return {
@@ -285,7 +298,9 @@ def _analyze_day(
     else:
         excess = 0.0
 
-    if attended_hours == 0.0 and authorized_hours > 0:
+    if attended_hours == 0.0 and authorized_hours > 0 and work_date in holiday_dates:
+        status = "HOLIDAY"
+    elif attended_hours == 0.0 and authorized_hours > 0:
         status = "ABSENT"
     elif is_drop_in:
         status = "DROP_IN"
@@ -333,6 +348,15 @@ def analyze(payload: dict[str, Any]) -> dict[str, Any]:
         for plan in county_rate_plans
         if isinstance(plan, dict) and isinstance(plan.get("countyId"), str)
     }
+    closure_values = payload.get("provider_closure_dates", [])
+    holiday_values = payload.get("holiday_dates", [])
+    if not isinstance(closure_values, list) or not all(isinstance(value, str) for value in closure_values):
+        raise AttendanceTransactionError("provider_closure_dates must be an array of ISO dates")
+    if not isinstance(holiday_values, list) or not all(isinstance(value, str) for value in holiday_values):
+        raise AttendanceTransactionError("holiday_dates must be an array of ISO dates")
+    closure_dates = {_date_value(value, "provider_closure_dates") for value in closure_values}
+    holiday_dates = {_date_value(value, "holiday_dates") for value in holiday_values}
+    provider_license_status = payload.get("provider_license_status")
 
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     data_quality_blockers: list[dict[str, str]] = []
@@ -365,7 +389,14 @@ def analyze(payload: dict[str, Any]) -> dict[str, Any]:
         else:
             child_name = schedule["child_name"]
             county_id = schedule["county_id"]
-            day = _analyze_day(schedule, transactions, period_start, period_end)
+            day = _analyze_day(
+                schedule,
+                transactions,
+                period_start,
+                period_end,
+                closure_dates,
+                holiday_dates,
+            )
             if day is not None:
                 grouped[(child_name, county_id)].append((schedule, day))
             continue
@@ -380,6 +411,7 @@ def analyze(payload: dict[str, Any]) -> dict[str, Any]:
         "drop_in_days_denied": 0,
         "unconfirmed_days": 0,
         "care_not_offered_days": 0,
+        "holiday_days": 0,
     })
 
     for (child_name, county_id), day_entries in sorted(grouped.items(), key=lambda item: item[0]):
@@ -410,9 +442,26 @@ def analyze(payload: dict[str, Any]) -> dict[str, Any]:
         days_out = []
         for schedule, day in day_entries:
             county = counties[county_id or "UNKNOWN"]
-            county["scheduled_days"] += 1
             if day["status"] == "CARE_NOT_OFFERED":
                 county["care_not_offered_days"] += 1
+                if day.get("_provider_closure"):
+                    continue
+                day.pop("_provider_closure", None)
+                days_out.append(day)
+                continue
+            county["scheduled_days"] += 1
+            if day["status"] == "HOLIDAY":
+                county["holiday_days"] += 1
+                day["flags"] = sorted(set(day["flags"]))
+                days_out.append(day)
+                continue
+            plan_response = str(plan.get("dropInResponse", "")).upper() if plan else ""
+            licensed_only = plan_response in {"LICENSED_ONLY", "LICENSED-ONLY", "LICENSED ONLY"}
+            if day.get("is_drop_in") and licensed_only and provider_license_status != "LICENSED":
+                day["status"] = "NOT_PAID"
+                day["flags"].append("DROP_IN_LICENSE_STATUS_UNAVAILABLE")
+                county["drop_in_days_denied"] += 1
+                day["flags"] = sorted(set(day["flags"]))
                 days_out.append(day)
                 continue
             if day["status"] == "ABSENT":
