@@ -92,14 +92,27 @@ function first(value: unknown, label: string): RecordValue {
   if (rows.length === 0) throw new Error(`${label} is unavailable`);
   return record(rows[0], label);
 }
-export type PaymentView = "STATUS" | "NEXT_PAYOUT" | "CURRENT_WEEK_FORECAST" | "CUSTOM_RANGE";
+// NEXT_PAYOUT/LAST_PAYOUT/PAYOUT_LEDGER never reach getPaymentAnalysis - they
+// are intercepted in server.ts and routed to getUpcomingPayoutDetail /
+// getLastPayoutDetail / getServicePeriodLedger instead. They remain in this
+// union only so PaymentView stays the single source of truth for every
+// schema-level view name server.ts can receive.
+export type PaymentView = "STATUS" | "NEXT_PAYOUT" | "LAST_PAYOUT" | "PAYOUT_LEDGER" | "CURRENT_WEEK_FORECAST" | "CUSTOM_RANGE";
 
 export async function getPaymentAnalysis(
   client: CccapClient,
   scope: DateScope,
   view: PaymentView = "STATUS",
   asOfDate = new Date().toISOString().slice(0, 10),
-  filters: { childNames?: string[]; authNames?: string[]; countyNames?: string[]; grouping?: "SERVICE_PERIOD" | "COUNTY" | "CHILD" | "CATEGORY"; detailDepth?: "SUMMARY" | "DETAIL"; detailPage?: number; detailPageSize?: number; excludedOnly?: boolean } = {},
+  // knownServicePeriodId: when a CUSTOM_RANGE caller already knows the real
+  // Salesforce service-period ID for this exact date range (e.g. the ledger,
+  // which retrieved it from client.getServicePeriods() before calling here),
+  // pass it through so existing-payment/duplicate detection in the Python
+  // engine (which matches on service_period.id) can actually find a real
+  // record. Optional and backward-compatible: any other CUSTOM_RANGE caller
+  // (e.g. comparePaymentPeriods) that doesn't have a real ID keeps getting
+  // the synthetic "CUSTOM:{from}:{to}" placeholder exactly as before.
+  filters: { childNames?: string[]; authNames?: string[]; countyNames?: string[]; grouping?: "SERVICE_PERIOD" | "COUNTY" | "CHILD" | "CATEGORY"; detailDepth?: "SUMMARY" | "DETAIL"; detailPage?: number; detailPageSize?: number; excludedOnly?: boolean; knownServicePeriodId?: string } = {},
 ): Promise<unknown> {
   const initialization = record(await client.initialize(scope), "Provider context");
   // CUSTOM_RANGE is an arbitrary provider-chosen span (validated to <= 31 days
@@ -112,7 +125,7 @@ export async function getPaymentAnalysis(
           throw new Error("dateFrom and dateTo are required for view CUSTOM_RANGE");
         }
         return {
-          servicePeriodId: `CUSTOM:${scope.dateFrom}:${scope.dateTo}`,
+          servicePeriodId: filters.knownServicePeriodId ?? `CUSTOM:${scope.dateFrom}:${scope.dateTo}`,
           serviceBeginDate: scope.dateFrom,
           serviceEndDate: scope.dateTo,
         } as RecordValue;
@@ -131,11 +144,12 @@ export async function getPaymentAnalysis(
   const serviceBeginDate = servicePeriod.serviceBeginDate;
   const serviceEndDate = servicePeriod.serviceEndDate;
   if (typeof serviceBeginDate !== "string" || typeof serviceEndDate !== "string") throw new Error("Service period dates are unavailable");
+  // CUSTOM_RANGE and every other non-STATUS view resolved to the same
+  // date-range scope (the selected service period's own dates) - collapsed
+  // from two identical ternary branches into one.
   const sourceScope: DateScope = view === "STATUS"
     ? scope
-    : view === "CUSTOM_RANGE"
-      ? { dateFilter: "DATE_RANGE", dateFrom: serviceBeginDate, dateTo: serviceEndDate }
-      : { dateFilter: "DATE_RANGE", dateFrom: serviceBeginDate, dateTo: serviceEndDate };
+    : { dateFilter: "DATE_RANGE", dateFrom: serviceBeginDate, dateTo: serviceEndDate };
   const providerContext = initialization;
   const { countyIds } = normalizeProviderContext(providerContext);
   const scheduleData = await client.getSchedules(sourceScope);
@@ -253,6 +267,24 @@ export async function getPaymentAnalysis(
       return typeof record.authorization_id === "string" && selectedAuthorizations.has(record.authorization_id);
     });
   }
+  // Opt-in diagnostic for the known "ledger At-risk figures escalate
+  // implausibly across adjacent periods" defect (Fix Handoff Section 4):
+  // logs the exact requested date range and the attendance-day count/date
+  // span actually reaching the evaluator for THIS call, so a real ledger
+  // run (getServicePeriodLedger issuing one CUSTOM_RANGE call per period)
+  // can be inspected without guessing. Never enabled unless explicitly set
+  // - this must not add overhead or noise to normal request handling.
+  if (process.env.CARE_PAY_DEBUG_LEDGER === "1") {
+    const debugDays = payload.attendance_days as unknown[];
+    const debugDates = debugDays
+      .map((day) => (day as Record<string, unknown>).service_date)
+      .filter((date): date is string => typeof date === "string")
+      .sort();
+    console.error(
+      `[ledger-debug] view=${view} requestedRange=${sourceScope.dateFrom ?? "n/a"}..${sourceScope.dateTo ?? "n/a"} ` +
+      `attendanceDayCount=${debugDays.length} actualDateSpan=${debugDates[0] ?? "n/a"}..${debugDates[debugDates.length - 1] ?? "n/a"}`,
+    );
+  }
   assertPaymentEnginePayload(payload);
   const directory = await mkdtemp(join(tmpdir(), "carepay-payment-"));
   const inputPath = join(directory, "payment.json");
@@ -325,8 +357,20 @@ export async function getPaymentAnalysis(
   } finally { await rm(directory, { recursive: true, force: true }); }
 }
 
-export type LedgerPeriodStatus = "IN_PROGRESS" | "PENDING_CONFIRMATION" | "EXPECTED_AWAITING_PAYOUT" | "PAID";
-export interface LedgerPeriodEntry { servicePeriodId: string; serviceBeginDate: string; serviceEndDate: string; payoutDate: string; periodStatus: LedgerPeriodStatus; netAmount: string; grossAmount: string; guaranteedAmount: string; amountAtRisk: string; }
+export type LedgerPeriodStatus = "NOT_YET_STARTED" | "IN_PROGRESS" | "PENDING_CONFIRMATION" | "EXPECTED_AWAITING_PAYOUT" | "PAID";
+// Net amount is populated ONLY for a released (PAID) period - it is the
+// reconciled, historical, already-paid figure. Calculated amount is
+// populated ONLY for a period that has not yet been released - it is the
+// engine's current best estimate and is expected to change. A period row
+// must never carry both a nonzero netAmount and a nonzero calculatedAmount;
+// exactly one of the two is meaningful per periodStatus, enforced in the
+// mapping below rather than left to the renderer to infer.
+// countyComposition carries payment.summary_view.county_composition through
+// from the underlying per-period payment analysis, so a single-entry ledger
+// response (NEXT_PAYOUT/LAST_PAYOUT) can render the same county-level
+// breakdown table already shown for multi-period/forecast views, instead of
+// showing only a bare total.
+export interface LedgerPeriodEntry { servicePeriodId: string; serviceBeginDate: string; serviceEndDate: string; payoutDate: string; periodStatus: LedgerPeriodStatus; netAmount: string | undefined; calculatedAmount: string | undefined; grossAmount: string; guaranteedAmount: string; amountAtRisk: string; countyComposition: unknown[] | undefined; }
 function utcDayDifference(from: string, to: string): number { return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000); }
 function utcPlusDays(date: string, days: number): string { const d = new Date(`${date}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); }
 export async function getServicePeriodLedger(client: CccapClient, scope: DateScope, asOfDate: string, options: { periodCount?: number } = {}): Promise<{ periods: LedgerPeriodEntry[]; sourceRetrievedAt: string }> {
@@ -340,15 +384,96 @@ export async function getServicePeriodLedger(client: CccapClient, scope: DateSco
   };
   const response = record(await client.getServicePeriods({ ...ledgerScope, limitOne: false }), "Service periods");
   const selected = array(response.servicePeriods, "Service periods").slice(0, count).map((value) => { const row = record(value, "Service period"); return { servicePeriodId: String(row.servicePeriodId), serviceBeginDate: String(row.serviceBeginDate), serviceEndDate: String(row.serviceEndDate) }; });
-  const results = await Promise.all(selected.map(async (period) => ({ period, result: record(await getPaymentAnalysis(client, { dateFilter: "DATE_RANGE", dateFrom: period.serviceBeginDate, dateTo: period.serviceEndDate }, "CUSTOM_RANGE", asOfDate), "Payment evaluation") })));
+  // Pass the REAL service-period ID (already known from client.getServicePeriods()
+  // above) through to getPaymentAnalysis, so the Python engine's duplicate/
+  // existing-payment lookup (which matches on service_period.id) can actually
+  // find a real record for this period instead of never matching the
+  // synthetic "CUSTOM:{from}:{to}" ID a bare CUSTOM_RANGE call would otherwise
+  // get - this is what makes an early-paid period (paid before its payout
+  // date) detectable as PAID in the ledger.
+  const results = await Promise.all(selected.map(async (period) => ({ period, result: record(await getPaymentAnalysis(client, { dateFilter: "DATE_RANGE", dateFrom: period.serviceBeginDate, dateTo: period.serviceEndDate }, "CUSTOM_RANGE", asOfDate, { knownServicePeriodId: period.servicePeriodId }), "Payment evaluation") })));
   const periods = results.map(({ period, result }) => { const payment = record(result.payment, "Evaluated payment"); const payoutDate = typeof payment.payout_date === "string" ? payment.payout_date : computePayoutDate(period.serviceEndDate); // Fallback is non-fatal for older evaluator output.
-    const duplicatePaid = payment.status === "DUPLICATE_GUARD" && (payment.existing_status === "PAID" || payment.existing_status === "4");
-    const periodStatus: LedgerPeriodStatus = asOfDate < period.serviceEndDate ? "IN_PROGRESS" : duplicatePaid ? "PAID" : asOfDate < utcPlusDays(period.serviceEndDate, 5) ? "PENDING_CONFIRMATION" : asOfDate < payoutDate ? "EXPECTED_AWAITING_PAYOUT" : "EXPECTED_AWAITING_PAYOUT";
-    return { ...period, payoutDate, periodStatus, netAmount: String(payment.amount ?? "0.00"), grossAmount: String(payment.gross_amount ?? "0.00"), guaranteedAmount: String(payment.guaranteed_amount ?? "0.00"), amountAtRisk: String(payment.amount_at_risk ?? "0.00") }; });
+    // Two independent PAID signals, combined with OR:
+    // 1. duplicatePaid: an ACTUAL existing-payment record was found (matched
+    //    by the Python engine's duplicate lookup, which requires the real
+    //    service_period.id - now supplied via knownServicePeriodId above).
+    //    This can be true even BEFORE the payout date (an early payment).
+    // 2. isSettled (payment.is_settled): a date-boundary fallback that is
+    //    true once as_of_date reaches the period's payout_date, REGARDLESS
+    //    of whether an actual record was found - covers the normal case
+    //    where nothing is confirmed yet but the payout date has passed.
+    // Neither alone is sufficient: is_settled is always false before the
+    // payout date even if a real early-paid record exists, and the duplicate
+    // lookup only fires when an actual record exists. The real Python status
+    // string for a detected duplicate is "SUBMITTED" (not "DUPLICATE_GUARD" -
+    // kept as an alias in case some other producer ever emits it).
+    const duplicatePaid = (payment.status === "DUPLICATE_GUARD" || payment.status === "SUBMITTED")
+      && (payment.existing_status === "PAID" || payment.existing_status === "4");
+    const isSettled = payment.is_settled === true;
+    const settledAmount = typeof payment.settled_amount === "string" || typeof payment.settled_amount === "number"
+      ? String(payment.settled_amount)
+      : undefined;
+    // A period whose BEGIN date is still in the future hasn't started yet -
+    // distinct from IN_PROGRESS, which previously only checked serviceEndDate
+    // and so misclassified every future period (not just the current one) as
+    // "in progress."
+    const periodStatus: LedgerPeriodStatus = asOfDate < period.serviceBeginDate
+      ? "NOT_YET_STARTED"
+      : asOfDate < period.serviceEndDate
+        ? "IN_PROGRESS"
+        : (duplicatePaid || isSettled)
+          ? "PAID"
+          : asOfDate < utcPlusDays(period.serviceEndDate, 5)
+            ? "PENDING_CONFIRMATION"
+            : "EXPECTED_AWAITING_PAYOUT";
+    // Once settled, settledAmount (backed by an actual payment record when
+    // one exists, otherwise the same calculated net_total the engine already
+    // produced) is the figure to show as Net - falling back to payment.amount
+    // only if settledAmount was somehow absent despite is_settled being true.
+    const amount = periodStatus === "PAID" && settledAmount !== undefined ? settledAmount : String(payment.amount ?? "0.00");
+    const summaryView = payment.summary_view && typeof payment.summary_view === "object" && !Array.isArray(payment.summary_view)
+      ? payment.summary_view as Record<string, unknown>
+      : undefined;
+    const countyComposition = Array.isArray(summaryView?.county_composition) ? summaryView.county_composition : undefined;
+    return {
+      ...period,
+      payoutDate,
+      periodStatus,
+      countyComposition,
+      // PAID: the duplicate-guarded amount is the reconciled historical
+      // figure - show it as Net, and treat this period as settled (no
+      // Calculated/At-risk breakdown, since nothing is still pending).
+      // Not yet PAID: the same engine figure is only a current estimate -
+      // show it as Calculated, never as Net, so a provider never reads an
+      // unreleased period's estimate as if it were an authoritative payout.
+      netAmount: periodStatus === "PAID" ? amount : undefined,
+      calculatedAmount: periodStatus === "PAID" ? undefined : amount,
+      grossAmount: String(payment.gross_amount ?? "0.00"),
+      guaranteedAmount: String(payment.guaranteed_amount ?? "0.00"),
+      amountAtRisk: periodStatus === "PAID" ? "0.00" : String(payment.amount_at_risk ?? "0.00"),
+    };
+  });
   return { periods, sourceRetrievedAt: new Date().toISOString() };
 }
+// Next payout: the single unpaid/upcoming period whose payout (release)
+// date is soonest. This is the default view for a plain "upcoming payment"
+// request - it must never silently expand to the multi-period ledger.
 export async function getUpcomingPayoutDetail(client: CccapClient, scope: DateScope, asOfDate: string): Promise<{ entry: LedgerPeriodEntry | undefined; daysUntilPayout: number | undefined; sourceRetrievedAt: string }> {
-  const ledger = await getServicePeriodLedger(client, scope, asOfDate); const entry = ledger.periods.filter((period) => period.periodStatus !== "PAID" && period.payoutDate >= asOfDate).sort((a, b) => a.payoutDate.localeCompare(b.payoutDate))[0]; return { entry, daysUntilPayout: entry ? utcDayDifference(asOfDate, entry.payoutDate) : undefined, sourceRetrievedAt: ledger.sourceRetrievedAt };
+  const ledger = await getServicePeriodLedger(client, scope, asOfDate);
+  const entry = ledger.periods
+    .filter((period) => period.periodStatus !== "PAID")
+    .sort((a, b) => a.payoutDate.localeCompare(b.payoutDate))[0];
+  return { entry, daysUntilPayout: entry ? utcDayDifference(asOfDate, entry.payoutDate) : undefined, sourceRetrievedAt: ledger.sourceRetrievedAt };
+}
+// Last payout: the single most recently released (PAID) period. Distinct
+// capability from Next Payout; surfaced only on explicit provider request,
+// never as a standing greeting/snapshot option, per product decision.
+export async function getLastPayoutDetail(client: CccapClient, scope: DateScope, asOfDate: string): Promise<{ entry: LedgerPeriodEntry | undefined; sourceRetrievedAt: string }> {
+  const ledger = await getServicePeriodLedger(client, scope, asOfDate, { periodCount: 12 });
+  const entry = ledger.periods
+    .filter((period) => period.periodStatus === "PAID")
+    .sort((a, b) => b.payoutDate.localeCompare(a.payoutDate))[0];
+  return { entry, sourceRetrievedAt: ledger.sourceRetrievedAt };
 }
 
 export interface PeriodComparisonCategoryDelta { label: string; periodOneAmount: string; periodTwoAmount: string; deltaAmount: string; deltaPct: string | null; }

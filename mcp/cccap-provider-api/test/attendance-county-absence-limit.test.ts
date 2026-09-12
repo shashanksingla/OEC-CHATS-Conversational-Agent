@@ -45,7 +45,12 @@ test("county absence-limit table shows limit, remaining allowance, and status", 
   // (Adams: 4; Denver: 5, since both Denver children share limit 5 here).
   assert.match(text, /\| County \| Children \| Monthly absence limit \| Children over limit \| Status \|/);
   assert.match(text, /\| Adams \| 1 \| 4 \| 1 \| 1 of 1 children over limit \|/);
-  assert.match(text, /\| Denver \| 2 \| 5 \| 0 \| Within limit \|/);
+  // Both Denver children carry ABSENCE_LIMIT_APPROACHING (not EXCEEDED), so
+  // the county Status column's "approaching" tier applies here - "Within
+  // limit" would incorrectly imply neither child needs any attention, which
+  // contradicts the "2 approaching" figure already stated in the summary
+  // sentence above the table.
+  assert.match(text, /\| Denver \| 2 \| 5 \| 0 \| 2 of 2 children approaching limit \|/);
 });
 
 test("county absence-limit table reports an unavailable limit without guessing", () => {

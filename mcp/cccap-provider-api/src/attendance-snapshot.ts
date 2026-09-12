@@ -292,11 +292,12 @@ export async function getAttendanceRiskSnapshot(
     providerMessage: [
       `Greetings for the day, ${snapshot.providerDisplayName}. Here's where things stand at ${snapshot.facilityName}.`,
       "",
-      snapshotHeading,
-      "| Today | Count |",
+      `**${snapshotHeading}**`,
+      "| Metric | Count |",
       "| --- | ---: |",
       `| Children scheduled | ${today.scheduled_children} |`,
       `| Children checked in | ${today.checked_in_children} |`,
+      "> Scheduled = children with attendance expected today. Checked in = children with a recorded arrival so far today.",
       "",
       attentionLine,
       "",
@@ -306,11 +307,8 @@ export async function getAttendanceRiskSnapshot(
       "| --- | --- | --- |",
       ...riskRows,
       "",
-      "**Priority Actions**",
-      ...nextActions.map((action, index) => `${index + 1}. ${action}`),
-      "",
-      "**Available options**",
-      "- Review the next payout summary",
+      "**Recommended actions**",
+      ...[...nextActions, "Review the next payout summary"].map((action, index) => `${index + 1}. ${action}`),
     ].join("\n"),
   };
 }

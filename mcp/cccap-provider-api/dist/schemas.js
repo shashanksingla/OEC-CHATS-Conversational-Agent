@@ -90,7 +90,22 @@ export const paymentHistorySchema = z
     .superRefine(validateDateScope);
 export const paymentViewSchema = z.enum([
     "STATUS",
+    // NEXT_PAYOUT: the single unpaid/upcoming period whose release date is
+    // soonest. This is the default view for a plain "upcoming payment"
+    // request - it must resolve to exactly one period, never a ledger.
     "NEXT_PAYOUT",
+    // LAST_PAYOUT: the single most recently released period. Reachable only
+    // via explicit request or as a grounded follow-up; never a default and
+    // never offered as a standing greeting option.
+    "LAST_PAYOUT",
+    // PAYOUT_LEDGER: every service period falling within an explicitly named
+    // month/range. Only reached when the provider names a range - never the
+    // default for an unscoped "upcoming" ask.
+    "PAYOUT_LEDGER",
+    // Scoped to the service period containing today (begin <= today <= end),
+    // not a fixed calendar week. CURRENT_WEEK_FORECAST is kept as an accepted
+    // alias so existing callers are not broken by the rename.
+    "CURRENT_PERIOD_FORECAST",
     "CURRENT_WEEK_FORECAST",
     "CUSTOM_RANGE",
 ]);

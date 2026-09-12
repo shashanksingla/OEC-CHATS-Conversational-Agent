@@ -85,7 +85,16 @@ function first(value, label) {
         throw new Error(`${label} is unavailable`);
     return record(rows[0], label);
 }
-export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDate = new Date().toISOString().slice(0, 10), filters = {}) {
+export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDate = new Date().toISOString().slice(0, 10), 
+// knownServicePeriodId: when a CUSTOM_RANGE caller already knows the real
+// Salesforce service-period ID for this exact date range (e.g. the ledger,
+// which retrieved it from client.getServicePeriods() before calling here),
+// pass it through so existing-payment/duplicate detection in the Python
+// engine (which matches on service_period.id) can actually find a real
+// record. Optional and backward-compatible: any other CUSTOM_RANGE caller
+// (e.g. comparePaymentPeriods) that doesn't have a real ID keeps getting
+// the synthetic "CUSTOM:{from}:{to}" placeholder exactly as before.
+filters = {}) {
     const initialization = record(await client.initialize(scope), "Provider context");
     // CUSTOM_RANGE is an arbitrary provider-chosen span (validated to <= 31 days
     // by the request schema) independent of any Salesforce ServicePeriod
@@ -97,7 +106,7 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
                 throw new Error("dateFrom and dateTo are required for view CUSTOM_RANGE");
             }
             return {
-                servicePeriodId: `CUSTOM:${scope.dateFrom}:${scope.dateTo}`,
+                servicePeriodId: filters.knownServicePeriodId ?? `CUSTOM:${scope.dateFrom}:${scope.dateTo}`,
                 serviceBeginDate: scope.dateFrom,
                 serviceEndDate: scope.dateTo,
             };
@@ -109,11 +118,12 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
     const serviceEndDate = servicePeriod.serviceEndDate;
     if (typeof serviceBeginDate !== "string" || typeof serviceEndDate !== "string")
         throw new Error("Service period dates are unavailable");
+    // CUSTOM_RANGE and every other non-STATUS view resolved to the same
+    // date-range scope (the selected service period's own dates) - collapsed
+    // from two identical ternary branches into one.
     const sourceScope = view === "STATUS"
         ? scope
-        : view === "CUSTOM_RANGE"
-            ? { dateFilter: "DATE_RANGE", dateFrom: serviceBeginDate, dateTo: serviceEndDate }
-            : { dateFilter: "DATE_RANGE", dateFrom: serviceBeginDate, dateTo: serviceEndDate };
+        : { dateFilter: "DATE_RANGE", dateFrom: serviceBeginDate, dateTo: serviceEndDate };
     const providerContext = initialization;
     const { countyIds } = normalizeProviderContext(providerContext);
     const scheduleData = await client.getSchedules(sourceScope);
@@ -222,6 +232,22 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
             return typeof record.authorization_id === "string" && selectedAuthorizations.has(record.authorization_id);
         });
     }
+    // Opt-in diagnostic for the known "ledger At-risk figures escalate
+    // implausibly across adjacent periods" defect (Fix Handoff Section 4):
+    // logs the exact requested date range and the attendance-day count/date
+    // span actually reaching the evaluator for THIS call, so a real ledger
+    // run (getServicePeriodLedger issuing one CUSTOM_RANGE call per period)
+    // can be inspected without guessing. Never enabled unless explicitly set
+    // - this must not add overhead or noise to normal request handling.
+    if (process.env.CARE_PAY_DEBUG_LEDGER === "1") {
+        const debugDays = payload.attendance_days;
+        const debugDates = debugDays
+            .map((day) => day.service_date)
+            .filter((date) => typeof date === "string")
+            .sort();
+        console.error(`[ledger-debug] view=${view} requestedRange=${sourceScope.dateFrom ?? "n/a"}..${sourceScope.dateTo ?? "n/a"} ` +
+            `attendanceDayCount=${debugDays.length} actualDateSpan=${debugDates[0] ?? "n/a"}..${debugDates[debugDates.length - 1] ?? "n/a"}`);
+    }
     assertPaymentEnginePayload(payload);
     const directory = await mkdtemp(join(tmpdir(), "carepay-payment-"));
     const inputPath = join(directory, "payment.json");
@@ -309,20 +335,98 @@ export async function getServicePeriodLedger(client, scope, asOfDate, options = 
     };
     const response = record(await client.getServicePeriods({ ...ledgerScope, limitOne: false }), "Service periods");
     const selected = array(response.servicePeriods, "Service periods").slice(0, count).map((value) => { const row = record(value, "Service period"); return { servicePeriodId: String(row.servicePeriodId), serviceBeginDate: String(row.serviceBeginDate), serviceEndDate: String(row.serviceEndDate) }; });
-    const results = await Promise.all(selected.map(async (period) => ({ period, result: record(await getPaymentAnalysis(client, { dateFilter: "DATE_RANGE", dateFrom: period.serviceBeginDate, dateTo: period.serviceEndDate }, "CUSTOM_RANGE", asOfDate), "Payment evaluation") })));
+    // Pass the REAL service-period ID (already known from client.getServicePeriods()
+    // above) through to getPaymentAnalysis, so the Python engine's duplicate/
+    // existing-payment lookup (which matches on service_period.id) can actually
+    // find a real record for this period instead of never matching the
+    // synthetic "CUSTOM:{from}:{to}" ID a bare CUSTOM_RANGE call would otherwise
+    // get - this is what makes an early-paid period (paid before its payout
+    // date) detectable as PAID in the ledger.
+    const results = await Promise.all(selected.map(async (period) => ({ period, result: record(await getPaymentAnalysis(client, { dateFilter: "DATE_RANGE", dateFrom: period.serviceBeginDate, dateTo: period.serviceEndDate }, "CUSTOM_RANGE", asOfDate, { knownServicePeriodId: period.servicePeriodId }), "Payment evaluation") })));
     const periods = results.map(({ period, result }) => {
         const payment = record(result.payment, "Evaluated payment");
         const payoutDate = typeof payment.payout_date === "string" ? payment.payout_date : computePayoutDate(period.serviceEndDate); // Fallback is non-fatal for older evaluator output.
-        const duplicatePaid = payment.status === "DUPLICATE_GUARD" && (payment.existing_status === "PAID" || payment.existing_status === "4");
-        const periodStatus = asOfDate < period.serviceEndDate ? "IN_PROGRESS" : duplicatePaid ? "PAID" : asOfDate < utcPlusDays(period.serviceEndDate, 5) ? "PENDING_CONFIRMATION" : asOfDate < payoutDate ? "EXPECTED_AWAITING_PAYOUT" : "EXPECTED_AWAITING_PAYOUT";
-        return { ...period, payoutDate, periodStatus, netAmount: String(payment.amount ?? "0.00"), grossAmount: String(payment.gross_amount ?? "0.00"), guaranteedAmount: String(payment.guaranteed_amount ?? "0.00"), amountAtRisk: String(payment.amount_at_risk ?? "0.00") };
+        // Two independent PAID signals, combined with OR:
+        // 1. duplicatePaid: an ACTUAL existing-payment record was found (matched
+        //    by the Python engine's duplicate lookup, which requires the real
+        //    service_period.id - now supplied via knownServicePeriodId above).
+        //    This can be true even BEFORE the payout date (an early payment).
+        // 2. isSettled (payment.is_settled): a date-boundary fallback that is
+        //    true once as_of_date reaches the period's payout_date, REGARDLESS
+        //    of whether an actual record was found - covers the normal case
+        //    where nothing is confirmed yet but the payout date has passed.
+        // Neither alone is sufficient: is_settled is always false before the
+        // payout date even if a real early-paid record exists, and the duplicate
+        // lookup only fires when an actual record exists. The real Python status
+        // string for a detected duplicate is "SUBMITTED" (not "DUPLICATE_GUARD" -
+        // kept as an alias in case some other producer ever emits it).
+        const duplicatePaid = (payment.status === "DUPLICATE_GUARD" || payment.status === "SUBMITTED")
+            && (payment.existing_status === "PAID" || payment.existing_status === "4");
+        const isSettled = payment.is_settled === true;
+        const settledAmount = typeof payment.settled_amount === "string" || typeof payment.settled_amount === "number"
+            ? String(payment.settled_amount)
+            : undefined;
+        // A period whose BEGIN date is still in the future hasn't started yet -
+        // distinct from IN_PROGRESS, which previously only checked serviceEndDate
+        // and so misclassified every future period (not just the current one) as
+        // "in progress."
+        const periodStatus = asOfDate < period.serviceBeginDate
+            ? "NOT_YET_STARTED"
+            : asOfDate < period.serviceEndDate
+                ? "IN_PROGRESS"
+                : (duplicatePaid || isSettled)
+                    ? "PAID"
+                    : asOfDate < utcPlusDays(period.serviceEndDate, 5)
+                        ? "PENDING_CONFIRMATION"
+                        : "EXPECTED_AWAITING_PAYOUT";
+        // Once settled, settledAmount (backed by an actual payment record when
+        // one exists, otherwise the same calculated net_total the engine already
+        // produced) is the figure to show as Net - falling back to payment.amount
+        // only if settledAmount was somehow absent despite is_settled being true.
+        const amount = periodStatus === "PAID" && settledAmount !== undefined ? settledAmount : String(payment.amount ?? "0.00");
+        const summaryView = payment.summary_view && typeof payment.summary_view === "object" && !Array.isArray(payment.summary_view)
+            ? payment.summary_view
+            : undefined;
+        const countyComposition = Array.isArray(summaryView?.county_composition) ? summaryView.county_composition : undefined;
+        return {
+            ...period,
+            payoutDate,
+            periodStatus,
+            countyComposition,
+            // PAID: the duplicate-guarded amount is the reconciled historical
+            // figure - show it as Net, and treat this period as settled (no
+            // Calculated/At-risk breakdown, since nothing is still pending).
+            // Not yet PAID: the same engine figure is only a current estimate -
+            // show it as Calculated, never as Net, so a provider never reads an
+            // unreleased period's estimate as if it were an authoritative payout.
+            netAmount: periodStatus === "PAID" ? amount : undefined,
+            calculatedAmount: periodStatus === "PAID" ? undefined : amount,
+            grossAmount: String(payment.gross_amount ?? "0.00"),
+            guaranteedAmount: String(payment.guaranteed_amount ?? "0.00"),
+            amountAtRisk: periodStatus === "PAID" ? "0.00" : String(payment.amount_at_risk ?? "0.00"),
+        };
     });
     return { periods, sourceRetrievedAt: new Date().toISOString() };
 }
+// Next payout: the single unpaid/upcoming period whose payout (release)
+// date is soonest. This is the default view for a plain "upcoming payment"
+// request - it must never silently expand to the multi-period ledger.
 export async function getUpcomingPayoutDetail(client, scope, asOfDate) {
     const ledger = await getServicePeriodLedger(client, scope, asOfDate);
-    const entry = ledger.periods.filter((period) => period.periodStatus !== "PAID" && period.payoutDate >= asOfDate).sort((a, b) => a.payoutDate.localeCompare(b.payoutDate))[0];
+    const entry = ledger.periods
+        .filter((period) => period.periodStatus !== "PAID")
+        .sort((a, b) => a.payoutDate.localeCompare(b.payoutDate))[0];
     return { entry, daysUntilPayout: entry ? utcDayDifference(asOfDate, entry.payoutDate) : undefined, sourceRetrievedAt: ledger.sourceRetrievedAt };
+}
+// Last payout: the single most recently released (PAID) period. Distinct
+// capability from Next Payout; surfaced only on explicit provider request,
+// never as a standing greeting/snapshot option, per product decision.
+export async function getLastPayoutDetail(client, scope, asOfDate) {
+    const ledger = await getServicePeriodLedger(client, scope, asOfDate, { periodCount: 12 });
+    const entry = ledger.periods
+        .filter((period) => period.periodStatus === "PAID")
+        .sort((a, b) => b.payoutDate.localeCompare(a.payoutDate))[0];
+    return { entry, sourceRetrievedAt: ledger.sourceRetrievedAt };
 }
 function comparisonNumber(value) { const n = typeof value === "number" ? value : Number(value); return Number.isFinite(n) ? n : 0; }
 function comparisonRows(value, key) { const root = value && typeof value === "object" && !Array.isArray(value) ? value : undefined; const rows = root && Array.isArray(root[key]) ? root[key] : []; return rows.filter((row) => Boolean(row) && typeof row === "object" && !Array.isArray(row)); }

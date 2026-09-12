@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { getAttendanceDataAnalysis, getAttendanceRiskAnalysis, getAttendanceRiskSnapshot, getCurrentMonthAttendanceSnapshot, } from "./attendance-snapshot.js";
-import { comparePaymentPeriods, getPaymentAnalysis, getServicePeriodLedger, getUpcomingPayoutDetail } from "./payment-orchestration.js";
+import { comparePaymentPeriods, getLastPayoutDetail, getPaymentAnalysis, getServicePeriodLedger, getUpcomingPayoutDetail } from "./payment-orchestration.js";
 import { ConversationContextStore } from "./conversation-context.js";
 import { DialogueStateStore } from "./dialogue-state.js";
 import { normalizeAuthorizations, normalizeCases, normalizeCountyPlans, normalizeFiscalRates, normalizeHolidays, normalizePaymentHistory, normalizeProviderInitialization, normalizeSchedules, normalizeServicePeriods, } from "./read-model-adapters.js";
@@ -385,12 +385,20 @@ export function createServer(client, providerDisplayName, contextStore = new Con
         const continuation = contextStore.resolve(providerKey, input.contextRef, input.actionRef, "continuation", undefined, Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
         const actionContinuation = contextStore.resolveAction(providerKey, input.actionId, "cccap_analyze_payment", Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
         const resolvedContinuation = continuation ?? actionContinuation;
-        const request = resolvedContinuation?.tool === "cccap_analyze_payment"
+        const resolvedRequest = resolvedContinuation?.tool === "cccap_analyze_payment"
             ? resolvedContinuation.input
             : input;
         if (hasContinuation && (!resolvedContinuation || resolvedContinuation.tool !== "cccap_analyze_payment")) {
             return toolError("payment analysis", new Error("Continuation reference is unavailable or expired"));
         }
+        // CURRENT_PERIOD_FORECAST is the current, correctly-named view for
+        // "the service period containing today"; CURRENT_WEEK_FORECAST is
+        // kept only as an accepted input alias so existing callers do not
+        // break. Normalize here, once, so every downstream orchestration and
+        // formatter call site keeps using the single existing internal name,
+        // and so `request.view`'s type never carries the alias past this point.
+        const normalizedView = resolvedRequest.view === "CURRENT_PERIOD_FORECAST" ? "CURRENT_WEEK_FORECAST" : resolvedRequest.view;
+        const request = { ...resolvedRequest, view: normalizedView };
         const clarification = paymentClarification({
             ...(request.grouping ? { grouping: request.grouping } : {}),
             ...(request.childNames ? { childNames: request.childNames } : {}),
@@ -402,17 +410,38 @@ export function createServer(client, providerDisplayName, contextStore = new Con
         if (input.refresh)
             client.clearReadCache();
         const requestsDetailPage = request.detailDepth === "DETAIL" || request.detailPage !== undefined || request.detailPageSize !== undefined;
+        // NEXT_PAYOUT/LAST_PAYOUT/PAYOUT_LEDGER all render through the ledger
+        // formatter (single or multi-period), never the payment-summary
+        // formatter - keep the cached-continuation branch and the routing
+        // below in sync on this.
+        const usesLedgerFormatter = request.view === "NEXT_PAYOUT" || request.view === "LAST_PAYOUT" || request.view === "PAYOUT_LEDGER";
         if (!input.refresh && !requestsDetailPage && continuation?.resultTool === "cccap_analyze_payment" && continuation.result) {
             const cachedResult = recordValue(continuation.result);
             if (cachedResult) {
                 const continuationResult = { ...cachedResult, filters: request };
-                return attachDialogueState(contextualize(request.view === "NEXT_PAYOUT"
+                return attachDialogueState(contextualize(usesLedgerFormatter
                     ? formatServicePeriodLedgerResult(continuationResult)
                     : formatPaymentResult(continuationResult), contextStore, providerKey, "continuation", continuationResult, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(cachedResult.scope) ?? request, typeof cachedResult.sourceRetrievedAt === "string" ? cachedResult.sourceRetrievedAt : undefined);
             }
         }
-        const runPayoutLedger = () => execute("payment payout ledger", () => getServicePeriodLedger(client, request, new Date().toISOString().slice(0, 10)), (data) => attachDialogueState(contextualize(formatServicePeriodLedgerResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope ?? request, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
+        // NEXT_PAYOUT resolves to a single upcoming period by default - a
+        // plain "upcoming payment" request must never silently expand to the
+        // multi-period ledger. PAYOUT_LEDGER is the only view that returns
+        // multiple periods, and only when the provider explicitly names a
+        // month/range. LAST_PAYOUT resolves to the single most recently
+        // released period; it is a distinct capability from NEXT_PAYOUT, not
+        // a fallback when no upcoming period exists.
+        const asOfDateForLedger = new Date().toISOString().slice(0, 10);
+        const runNextPayout = () => execute("payment payout ledger", () => getUpcomingPayoutDetail(client, request, asOfDateForLedger), (data) => attachDialogueState(contextualize(formatServicePeriodLedgerResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope ?? request, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
+        const runLastPayout = () => execute("payment payout ledger", () => getLastPayoutDetail(client, request, asOfDateForLedger), (data) => attachDialogueState(contextualize(formatServicePeriodLedgerResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope ?? request, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
+        const runPayoutLedger = () => execute("payment payout ledger", () => getServicePeriodLedger(client, request, asOfDateForLedger), (data) => attachDialogueState(contextualize(formatServicePeriodLedgerResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope ?? request, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
         if (request.view === "NEXT_PAYOUT") {
+            return runNextPayout();
+        }
+        if (request.view === "LAST_PAYOUT") {
+            return runLastPayout();
+        }
+        if (request.view === "PAYOUT_LEDGER") {
             return runPayoutLedger();
         }
         const runPaymentAnalysis = () => execute("payment analysis", () => getPaymentAnalysis(client, request, request.view, undefined, {

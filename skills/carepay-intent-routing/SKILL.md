@@ -67,7 +67,7 @@ Build filters from the intent frame:
 | County policy | Use only county IDs returned by authenticated provider initialization or a prior verified result. If the provider names a county that is not verified in scope, clarify or decline; never guess an ID. |
 | Authorization or case detail | Use only returned case IDs or authorization names when a filter is needed. Do not fetch all records to answer a question already answered by attendance output. |
 | Next payout detail | Use `cccap_analyze_payment` with only `view: "NEXT_PAYOUT"`; do not carry forward an attendance or policy `dateFilter`. The view supplies the `paymentAfter: "TODAY"` selector. Relay the returned service-period/payment dates and amount status. |
-| Current-week forecast | Use `cccap_analyze_payment` with only `view: "CURRENT_WEEK_FORECAST"`; the view supplies the current-period selector. Distinguish actual days through today from future scheduled forecast days. |
+| Current-period forecast | Use `cccap_analyze_payment` with only `view: "CURRENT_PERIOD_FORECAST"` (accepted alias: `CURRENT_WEEK_FORECAST`); the view supplies the current-service-period selector. Distinguish actual days through today from future scheduled forecast days. |
 | Custom payout period (up to 1 month) | Use `cccap_analyze_payment` with `view: "CUSTOM_RANGE"` and explicit `dateFrom`/`dateTo`; the span is capped at 31 days by the tool's schema. If the provider asks for a longer period, ask them to narrow it to 31 days or fewer rather than silently truncating the range or splitting it into multiple calls. |
 | Current service period | Use `dateOn: "TODAY"` when the provider asks about the period containing today. |
 | Payment status or explanation | Pass the requested date scope to payment analysis. |

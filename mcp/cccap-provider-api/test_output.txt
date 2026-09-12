@@ -1,0 +1,467 @@
+﻿
+> cccap-provider-api-mcp@1.0.0 test
+> tsx --test test/**/*.test.ts
+
+Γ£ö county absence-limit table shows limit, remaining allowance, and status (11.0707ms)
+Γ£ö county absence-limit table reports an unavailable limit without guessing (0.7018ms)
+Γ£û countyNames narrows the returned child rows to the named counties (5.6892ms)
+Γ£û countyNames matching is case-insensitive and trims whitespace (0.4811ms)
+Γ£ö a county with no affected children is named as unmatched rather than treated as unsupported (0.2289ms)
+Γ£û countyNames combines with riskFocus without widening scope (0.3088ms)
+Γ£û omitting countyNames returns every county unfiltered (5.8581ms)
+Γ£ö matches the latest effective schedule for the authorization rate type (1.1197ms)
+Γ£ö fails closed when the authorization has no unique schedule match (0.2943ms)
+Γ£ö fails closed when more than one latest schedule matches (0.359ms)
+Γ£ö matches from the schedule rate type without slot-contract input (0.2453ms)
+Γ£ö does not use slot-contract rate data for authorization-level matching (0.2384ms)
+Γ£ö matches a requested rate type contained in a multi-rate fiscal schedule (0.2162ms)
+Γ£ö case formatter never renders a raw Salesforce case or child record ID (15.0904ms)
+Γ£ö case formatter prefers a human-readable name over external_id when both are safe (0.8193ms)
+Γ£ö case formatter reports no verified cases without inventing a table (0.2611ms)
+Γ£ö authorization formatter never renders a raw Salesforce authorization or case ID (0.5423ms)
+Γ£ö authorization formatter reports no verified authorizations without inventing a table (0.2953ms)
+Γ£ö initialization injects the configured provider user and captures allowed scope (1.3463ms)
+Γ£ö reuses provider identity reads when the date scope changes (0.2083ms)
+Γ£ö expires source reads and explicit clearing forces a fresh request (0.2025ms)
+Γ£ö evicts the oldest source-read entry at the cache bound (1.2304ms)
+Γ£ö reuses current-month county plans across snapshot and policy reads (0.1955ms)
+Γ£ö case requests inject the provider external name returned by initialization (0.8778ms)
+Γ£ö authorization requests preserve case filters and inject the provider Salesforce ID (0.2646ms)
+Γ£ö out-of-scope counties are rejected before an API call (0.3887ms)
+Γ£ö schedule requests inject configured provider IDs after initialization (0.197ms)
+Γ£ö payment-history requests preserve the date scope and inject provider IDs (0.2374ms)
+Γ£ö fiscal-rate requests use only schedule IDs returned by provider initialization (0.3363ms)
+Γ£ö fiscal-rate requests fail closed when initialization returns no schedules (0.1404ms)
+Γ£ö authorization requests preserve scoped authorization IDs (1.5101ms)
+Γ£ö context references are provider-bound, expiring, and action-bound (9.289ms)
+Γ£ö context store evicts least-recently-used entries within its entry cap (0.3081ms)
+Γ£ö context stores the canonical result alongside its continuation plan (0.1935ms)
+Γ£ö provider session retains executable actions across capability drill-downs (0.3012ms)
+Γ£ö stable action ids resolve the selected tool plan (0.2496ms)
+Γ£ö continuation compatibility ignores reference transport fields but rejects changed filters (0.2325ms)
+Γ£ö context byte accounting includes provenance and action metadata (0.2001ms)
+Γ£ö oversized results retain executable action references (0.175ms)
+Γ£ö glossary state is tracked per provider (1.508ms)
+Γ£ö first turn for a provider always reports scope and capability changed (0.4591ms)
+Γ£ö repeating the same capability and scope reports no change and surfaces the prior freshness (0.4882ms)
+Γ£ö a changed scope is reported even when the capability stays the same (0.2399ms)
+Γ£ö switching capability is reported even when scope stays structurally identical (0.1628ms)
+Γ£ö state is tracked independently per provider key (0.1331ms)
+Γ£ö expired state is treated as a fresh turn rather than compared against stale data (0.3541ms)
+Γ£ö bounded entry count evicts the oldest provider state (0.2351ms)
+Γ£ö normalizes the live fiscal-rate response without guessing payment tiers (1.2457ms)
+Γ£ö maps fiscal care units and represents NP as no payment (0.1337ms)
+Γ£ö rejects malformed fiscal-rate rows instead of producing payment inputs (0.3612ms)
+Γ£ö provider policy maps quality levels without provider-type drift (0.7013ms)
+Γ£ö ignores provider fiscal rates outside selected authorizations and expands shared schedules (0.6342ms)
+Γ£ö maps older children to the correct school-age fiscal group (1.5491ms)
+Γ£ö generic read models expose canonical fields without source object keys (1.3134ms)
+Γ£ö attendance adapter canonicalizes source joins before evaluation (0.308ms)
+Γ£ö payment schema normalizes lifecycle statuses (0.093ms)
+Γ£ö payment adapter produces canonical input from source-shaped records (1.637ms)
+Γ£ö schedule normalizer owns nested attendance mapping (0.1287ms)
+Γ£ö schedule normalizer accepts explicit parent confirmation fields (0.1102ms)
+Γ£ö schedule county falls back to the joined authorization county (0.1402ms)
+Γ£ö schedule normalizer matches numeric DECL authorization names (0.131ms)
+Γ£ö schedule county reads the county from a normalized authorization wrapper (0.0995ms)
+Γ£ö schedule county prefers the CCCAP authorization reference when another relationship is present (0.068ms)
+Γ£ö payment orchestration preserves initialization failures (0.8489ms)
+Γ£ö next payout initializes provider scope before selecting its service period (0.173ms)
+Γ£ö payment orchestration runs the canonical payload through the evaluator (3614.947ms)
+Γ£ö payment orchestration filters payment analysis by authorization name (8501.0936ms)
+Γ£ö vacant slots select the fiscal amount for the provider quality tier (0.8618ms)
+Γ£ö countyNames narrows payment attendance days to the named county (3556.8164ms)
+Γ£ö a county filter matching nothing fails closed (1.1252ms)
+Γ£ö accepts a well-formed payment engine payload (1.3844ms)
+Γ£ö fails closed on a non-object payload (0.3137ms)
+Γ£ö fails closed on the wrong rule version (0.1053ms)
+Γ£ö fails closed when a required array field is missing or malformed (0.4977ms)
+Γ£ö fails closed when service_period is missing required fields (0.4425ms)
+Γ£ö normalizes stable sub-payment lifecycle status codes (0.4736ms)
+Γ£ö matches the shared payout-date fixtures (4.3849ms)
+Γ£ö a Sunday service-period end always produces a Thursday payout date (1.036ms)
+Γ£ö MCP protocol preserves attendance provider text and structured scope (3338.2114ms)
+Γ£ö payment protocol asks for grouping before making provider reads (3.2293ms)
+Γ£ö current-month snapshot counts five-day-old unconfirmed absences toward county risk (8606.334ms)
+Γ£ö county policy lookup defaults to current-month scope and formats limits (2.6563ms)
+Γ£ö normalizes facility name, quality tier, and county map from provider initialization (1.1537ms)
+Γ£ö deduplicates repeated county agreement rows (0.1267ms)
+Γ£ö fails closed when provider context is not an object (0.2916ms)
+Γ£ö fails closed when no provider facility is returned (0.1059ms)
+Γ£ö fails closed when county agreements are missing or empty (0.1279ms)
+Γ£ö fails closed when the provider quality rating is unsupported (0.0907ms)
+Γ£ö only normalizes the first provider row, matching single-provider scoping in this response shape (0.0802ms)
+Γ£ö composite schemas reject partial continuation references (2.7892ms)
+Γ£ö DATE_RANGE requires both ordered ISO dates (0.5179ms)
+Γ£ö LAST_N filters require a positive period count (0.2245ms)
+Γ£ö service period requests require one supported selector (0.4913ms)
+Γ£ö attendance data requests require a valid date filter (0.53ms)
+Γ£ö payment-history requests require a service-period date filter (0.1824ms)
+Γ£ö payment views provide their own date selector (0.1529ms)
+Γ£ö payment detail paging accepts bounded positive values (0.2361ms)
+Γ£ö live payment readiness blocks amounts until canonical sources are available (1.4827ms)
+Γ£û attendance analysis returns affected child drill-down rows (2.7798ms)
+Γ£ö attendance analysis prioritizes absence and incomplete attendance review (0.5032ms)
+Γ£ö attendance analysis does not label unavailable absence limits as concerns (0.2261ms)
+Γ£ö attendance analysis fails closed when aggregate totals contradict child details (0.1734ms)
+Γ£ö attendance analysis preserves structured action scope for follow-ups (0.2242ms)
+Γ£ö attendance continuation filters cached child details to the requested names (0.341ms)
+Γ£ö attendance analysis focuses pending-confirmation follow-ups (0.2535ms)
+Γ£ö attendance analysis focuses absence-limit follow-ups (0.2595ms)
+Γ£ö attendance absence follow-up points to child-level attendance retrieval (0.2693ms)
+Γ£ö county policy formatter returns provider-facing absence limits (0.2634ms)
+Γ£ö normalizes nested getSchedules attendance records into the Python contract (0.6277ms)
+Γ£ö normalizes stable payment-level status codes for duplicate guards (0.1377ms)
+Γ£ö adds only an unambiguous authenticated county to aggregate schedules (0.2529ms)
+Γ£ö risk snapshots canonicalize source county fields for absence limits (0.4433ms)
+Γ£ö adds provider quality tier without changing schedule rate type (0.1363ms)
+Γ£ö adapts service periods and payment history to the canonical engine shape (0.4042ms)
+Γ£ö blocks unknown payment lifecycle statuses (0.3678ms)
+Γ£ö accepts service-period-scoped payment history rows without authorization IDs (0.1171ms)
+Γ£ö normalizes attendance days only when payment enrichments are authoritative (0.2489ms)
+Γ£ö blocks attendance-day construction when enrichment is missing (0.071ms)
+Γ£ö forecast attendance defaults missing confirmation to pending (0.0567ms)
+Γ£ö forecast attendance defaults missing actual hours to zero (0.0462ms)
+Γ£ö future forecast rows retain authorized hours and ignore actual hours (0.0551ms)
+Γ£ö assembles the complete provider-risk-payment canonical payload (0.2142ms)
+Γ£ö derives age band, occupied slot, and observed holiday enrichment from source rows (1.8086ms)
+Γ£ö derives age band from child DOB and care date (0.11ms)
+Γ£ö joins schedule DECL authorization references to Salesforce authorization names (0.0732ms)
+Γ£ö joins encumbrances through either external authorization reference (0.079ms)
+Γ£ö normalizes provider quality rating and facility type to county policy tiers (0.0994ms)
+Γ£ö normalizes encumbrance lifecycle statuses including care not offered (0.0467ms)
+Γ£ö normalizes authorization copays without allowing invalid amounts (0.1387ms)
+Γ£ö normalizes scheduled slot and ART fees from fiscal and slot-contract sources (0.315ms)
+Γ£ö does not let an ambiguous slot rate block authorization-level payment mapping (0.062ms)
+Γ£ö normalizes payment detail history by sub-payment authorization (0.2404ms)
+Γ£ö payment results use a provider-facing table and preserve blocked states (11.3389ms)
+Γ£ö current week forecast renders actual and scheduled attendance basis split (1.4918ms)
+Γ£ö payment results show scheduled forecast rows for child drill-down (0.4733ms)
+Γ£ö payment results keep initial summary to the measure table and composition (0.4798ms)
+Γ£ö payment detail reports its bounded page window (0.5467ms)
+Γ£ö payment detail omits zero-value NO_CARE rows (0.29ms)
+Γ£û attendance detail caps the provider-facing table and reports the remainder (0.437ms)
+Γ£ö attendance schedules inherit authorization names from scoped authorizations (0.3498ms)
+Γ£ö risk snapshots join county by name from the DECL-sourced schedule, not by ID (0.1602ms)
+Γ£ö canonicalizes DECL authorization references to Salesforce authorization IDs (0.1472ms)
+Γ£ö payment summary keeps period metadata and defers child detail until requested (0.551ms)
+Γ£ö payment continuation metadata preserves the complete provider message (0.4915ms)
+Γ£ö payment detail never exposes Salesforce record identifiers (2.2715ms)
+Γ£ö payment drill-down targets the highest-impact child (0.1525ms)
+Γ£ö payment drill-down ranks the maximum amount at risk across all children (0.1287ms)
+Γ£ö payment drill-down ranks maximum total amount when amount at risk is zero (0.0987ms)
+Γ£ö payment drill-down uses the scheduled-hours fallback action without a dollar label (0.1087ms)
+Γ£ö attendance formatter reports unmatched child filters (0.1087ms)
+Γ£û incomplete attendance action returns child-level detail rows (0.3324ms)
+Γ£ö payment summary does not inline child rollup rows before detail is requested (0.1529ms)
+Γ£ö initial payment summary renders county composition columns (0.317ms)
+Γ£ö category tables omit payment measures that are absent from the requested scope (0.3636ms)
+Γ£ö county composition omits component columns with no verified values (0.1309ms)
+Γ£ö service period ledger formatter translates statuses and renders each payout row (0.7028ms)
+Γ£ö service period payout formatter renders countdown and verified-data absence (0.2444ms)
+Γ£ö Salesforce CLI sends an authenticated Apex request through a JSON body file (9.1197ms)
+Γ£ö Salesforce CLI sends fiscal-rate requests to the Apex endpoint (3.4821ms)
+Γ£ö request errors do not include Salesforce CLI output (5.9952ms)
+Γ£ö the configured org's authenticated username resolves to one user ID (0.9503ms)
+Γ£ö Salesforce CLI sends payment-history requests to the Apex endpoint (9.4582ms)
+Γ£ö preserves the Apex diagnostic for a non-success response (7.5313ms)
+Γä╣ tests 163
+Γä╣ suites 0
+Γä╣ pass 156
+Γä╣ fail 7
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 13736.2431
+
+Γ£û failing tests:
+
+test at test\attendance-county-filter.test.ts:27:1
+Γ£û countyNames narrows the returned child rows to the named counties (5.6892ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Denver Child/. Input:
+  
+  'Current-month attendance review found 1 child(ren) needing attention.\n' +
+    '5 pending parent confirmation day(s) affect 1 child(ren).\n' +
+    '\n' +
+    'Attendance overview:\n' +
+    '| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |\n' +
+    '| ---: | ---: | ---: | ---: | ---: |\n' +
+    '| 0 | 1 | 2 | 0 | 0 |\n' +
+    '\n' +
+    '> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\n' +
+    'Attendance by county:\n' +
+    '| County | Children | Risk children | Pending confirmations | Absence days |\n' +
+    '| --- | ---: | ---: | ---: | ---: |\n' +
+    '| Denver | 1 | 1 | 2 | 0 |\n' +
+    '\n' +
+    'Recommended attendance views:\n' +
+    '- Review pending parent confirmations: These days may remain conditional until attendance is confirmed.\n' +
+    '- View attendance by county: Compare pending confirmations, absence usage, and affected children across counties.\n' +
+    '- View attendance by child: Open child-level dates, classifications, and risk explanations.\n' +
+    '\n' +
+    '**Recommended actions**\n' +
+    '1. Review pending confirmations ΓÇö 5 days\n' +
+    '2. Open highest-impact attendance detail\n' +
+    '3. Show affected children ΓÇö 1'
+  
+      at TestContext.<anonymous> (C:\Users\shsingla\Downloads\Child Care Agent\Child Care Agent\mcp\cccap-provider-api\test\attendance-county-filter.test.ts:35:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Current-month attendance review found 1 child(ren) needing attention.\n5 pending parent confirmation day(s) affect 1 child(ren).\n\nAttendance overview:\n| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |\n| ---: | ---: | ---: | ---: | ---: |\n| 0 | 1 | 2 | 0 | 0 |\n\n> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\nAttendance by county:\n| County | Children | Risk children | Pending confirmations | Absence days |\n| --- | ---: | ---: | ---: | ---: |\n| Denver | 1 | 1 | 2 | 0 |\n\nRecommended attendance views:\n- Review pending parent confirmations: These days may remain conditional until attendance is confirmed.\n- View attendance by county: Compare pending confirmations, absence usage, and affected children across counties.\n- View attendance by child: Open child-level dates, classifications, and risk explanations.\n\n**Recommended actions**\n1. Review pending confirmations ΓÇö 5 days\n2. Open highest-impact attendance detail\n3. Show affected children ΓÇö 1',
+    expected: /Denver Child/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at test\attendance-county-filter.test.ts:39:1
+Γ£û countyNames matching is case-insensitive and trims whitespace (0.4811ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Denver Child/. Input:
+  
+  'Current-month attendance review found 1 child(ren) needing attention.\n' +
+    '5 pending parent confirmation day(s) affect 1 child(ren).\n' +
+    '\n' +
+    'Attendance overview:\n' +
+    '| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |\n' +
+    '| ---: | ---: | ---: | ---: | ---: |\n' +
+    '| 0 | 1 | 2 | 0 | 0 |\n' +
+    '\n' +
+    '> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\n' +
+    'Attendance by county:\n' +
+    '| County | Children | Risk children | Pending confirmations | Absence days |\n' +
+    '| --- | ---: | ---: | ---: | ---: |\n' +
+    '| Denver | 1 | 1 | 2 | 0 |\n' +
+    '\n' +
+    'Recommended attendance views:\n' +
+    '- Review pending parent confirmations: These days may remain conditional until attendance is confirmed.\n' +
+    '- View attendance by county: Compare pending confirmations, absence usage, and affected children across counties.\n' +
+    '- View attendance by child: Open child-level dates, classifications, and risk explanations.\n' +
+    '\n' +
+    '**Recommended actions**\n' +
+    '1. Review pending confirmations ΓÇö 5 days\n' +
+    '2. Open highest-impact attendance detail\n' +
+    '3. Show affected children ΓÇö 1'
+  
+      at TestContext.<anonymous> (C:\Users\shsingla\Downloads\Child Care Agent\Child Care Agent\mcp\cccap-provider-api\test\attendance-county-filter.test.ts:46:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Current-month attendance review found 1 child(ren) needing attention.\n5 pending parent confirmation day(s) affect 1 child(ren).\n\nAttendance overview:\n| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |\n| ---: | ---: | ---: | ---: | ---: |\n| 0 | 1 | 2 | 0 | 0 |\n\n> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\nAttendance by county:\n| County | Children | Risk children | Pending confirmations | Absence days |\n| --- | ---: | ---: | ---: | ---: |\n| Denver | 1 | 1 | 2 | 0 |\n\nRecommended attendance views:\n- Review pending parent confirmations: These days may remain conditional until attendance is confirmed.\n- View attendance by county: Compare pending confirmations, absence usage, and affected children across counties.\n- View attendance by child: Open child-level dates, classifications, and risk explanations.\n\n**Recommended actions**\n1. Review pending confirmations ΓÇö 5 days\n2. Open highest-impact attendance detail\n3. Show affected children ΓÇö 1',
+    expected: /Denver Child/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at test\attendance-county-filter.test.ts:59:1
+Γ£û countyNames combines with riskFocus without widening scope (0.3088ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Denver Child/. Input:
+  
+  'Current-month attendance review found 1 child(ren) needing attention.\n' +
+    '2 pending parent confirmation day(s) affect 1 child(ren).\n' +
+    '\n' +
+    'Attendance overview:\n' +
+    '| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |\n' +
+    '| ---: | ---: | ---: | ---: | ---: |\n' +
+    '| 0 | 1 | 2 | 0 | 0 |\n' +
+    '\n' +
+    '> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\n' +
+    'Attendance by county:\n' +
+    '| County | Children | Risk children | Pending confirmations | Absence days |\n' +
+    '| --- | ---: | ---: | ---: | ---: |\n' +
+    '| Denver | 1 | 1 | 2 | 0 |\n' +
+    '\n' +
+    '**Recommended actions**\n' +
+    '1. Review attendance records\n' +
+    '2. Open highest-impact attendance detail\n' +
+    '3. Show affected children ΓÇö 1'
+  
+      at TestContext.<anonymous> (C:\Users\shsingla\Downloads\Child Care Agent\Child Care Agent\mcp\cccap-provider-api\test\attendance-county-filter.test.ts:68:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Current-month attendance review found 1 child(ren) needing attention.\n2 pending parent confirmation day(s) affect 1 child(ren).\n\nAttendance overview:\n| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |\n| ---: | ---: | ---: | ---: | ---: |\n| 0 | 1 | 2 | 0 | 0 |\n\n> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\nAttendance by county:\n| County | Children | Risk children | Pending confirmations | Absence days |\n| --- | ---: | ---: | ---: | ---: |\n| Denver | 1 | 1 | 2 | 0 |\n\n**Recommended actions**\n1. Review attendance records\n2. Open highest-impact attendance detail\n3. Show affected children ΓÇö 1',
+    expected: /Denver Child/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at test\attendance-county-filter.test.ts:72:1
+Γ£û omitting countyNames returns every county unfiltered (5.8581ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Denver Child/. Input:
+  
+  'Current-month attendance review found 2 child(ren) needing attention.\n' +
+    '5 pending parent confirmation day(s) affect 2 child(ren).\n' +
+    '\n' +
+    'Attendance overview:\n' +
+    '| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |\n' +
+    '| ---: | ---: | ---: | ---: | ---: |\n' +
+    '| 0 | 2 | 5 | 0 | 0 |\n' +
+    '\n' +
+    '> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\n' +
+    'Attendance by county:\n' +
+    '| County | Children | Risk children | Pending confirmations | Absence days |\n' +
+    '| --- | ---: | ---: | ---: | ---: |\n' +
+    '| Adams | 1 | 1 | 3 | 0 |\n' +
+    '| Denver | 1 | 1 | 2 | 0 |\n' +
+    '\n' +
+    'Recommended attendance views:\n' +
+    '- Review pending parent confirmations: These days may remain conditional until attendance is confirmed.\n' +
+    '- View attendance by county: Compare pending confirmations, absence usage, and affected children across counties.\n' +
+    '- View attendance by child: Open child-level dates, classifications, and risk explanations.\n' +
+    '\n' +
+    '**Recommended actions**\n' +
+    '1. Review pending confirmations ΓÇö 5 days\n' +
+    '2. Open highest-impact attendance detail\n' +
+    '3. Show affected children ΓÇö 2'
+  
+      at TestContext.<anonymous> (C:\Users\shsingla\Downloads\Child Care Agent\Child Care Agent\mcp\cccap-provider-api\test\attendance-county-filter.test.ts:79:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Current-month attendance review found 2 child(ren) needing attention.\n5 pending parent confirmation day(s) affect 2 child(ren).\n\nAttendance overview:\n| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |\n| ---: | ---: | ---: | ---: | ---: |\n| 0 | 2 | 5 | 0 | 0 |\n\n> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\nAttendance by county:\n| County | Children | Risk children | Pending confirmations | Absence days |\n| --- | ---: | ---: | ---: | ---: |\n| Adams | 1 | 1 | 3 | 0 |\n| Denver | 1 | 1 | 2 | 0 |\n\nRecommended attendance views:\n- Review pending parent confirmations: These days may remain conditional until attendance is confirmed.\n- View attendance by county: Compare pending confirmations, absence usage, and affected children across counties.\n- View attendance by child: Open child-level dates, classifications, and risk explanations.\n\n**Recommended actions**\n1. Review pending confirmations ΓÇö 5 days\n2. Open highest-impact attendance detail\n3. Show affected children ΓÇö 2',
+    expected: /Denver Child/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at test\server.test.ts:54:1
+Γ£û attendance analysis returns affected child drill-down rows (2.7798ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /\| Child \| Authorization \| County \| Pending \|/. Input:
+  
+  'Current-month attendance review found 1 child(ren) needing attention.\n' +
+    '2 pending parent confirmation day(s) affect 1 child(ren).\n' +
+    '\n' +
+    'Attendance overview:\n' +
+    '| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |\n' +
+    '| ---: | ---: | ---: | ---: | ---: |\n' +
+    '| 0 | 1 | 2 | 0 | 0 |\n' +
+    '\n' +
+    '> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\n' +
+    'Attendance by county:\n' +
+    '| County | Children | Risk children | Pending confirmations | Absence days |\n' +
+    '| --- | ---: | ---: | ---: | ---: |\n' +
+    '| Unavailable from the current source | 1 | 1 | 2 | 0 |\n' +
+    '\n' +
+    'Recommended attendance views:\n' +
+    '- Review pending parent confirmations: These days may remain conditional until attendance is confirmed.\n' +
+    '- View attendance by county: Compare pending confirmations, absence usage, and affected children across counties.\n' +
+    '- View attendance by child: Open child-level dates, classifications, and risk explanations.\n' +
+    '- Review payment impact: Compare attendance risks with the estimated payment result.\n' +
+    '\n' +
+    '**Recommended actions**\n' +
+    '1. Review pending confirmations ΓÇö 2 days\n' +
+    '2. Open highest-impact attendance detail\n' +
+    '3. Show affected children ΓÇö 1'
+  
+      at TestContext.<anonymous> (C:\Users\shsingla\Downloads\Child Care Agent\Child Care Agent\mcp\cccap-provider-api\test\server.test.ts:82:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Current-month attendance review found 1 child(ren) needing attention.\n2 pending parent confirmation day(s) affect 1 child(ren).\n\nAttendance overview:\n| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |\n| ---: | ---: | ---: | ---: | ---: |\n| 0 | 1 | 2 | 0 | 0 |\n\n> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\nAttendance by county:\n| County | Children | Risk children | Pending confirmations | Absence days |\n| --- | ---: | ---: | ---: | ---: |\n| Unavailable from the current source | 1 | 1 | 2 | 0 |\n\nRecommended attendance views:\n- Review pending parent confirmations: These days may remain conditional until attendance is confirmed.\n- View attendance by county: Compare pending confirmations, absence usage, and affected children across counties.\n- View attendance by child: Open child-level dates, classifications, and risk explanations.\n- Review payment impact: Compare attendance risks with the estimated payment result.\n\n**Recommended actions**\n1. Review pending confirmations ΓÇö 2 days\n2. Open highest-impact attendance detail\n3. Show affected children ΓÇö 1',
+    expected: /\| Child \| Authorization \| County \| Pending \|/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at test\server.test.ts:1225:1
+Γ£û attendance detail caps the provider-facing table and reports the remainder (0.437ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /\| Child 1 \|/. Input:
+  
+  'Current-month attendance review found 11 child(ren) needing attention.\n' +
+    '11 pending parent confirmation day(s) affect 11 child(ren).\n' +
+    '\n' +
+    'Attendance overview:\n' +
+    '| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |\n' +
+    '| ---: | ---: | ---: | ---: | ---: |\n' +
+    '| 0 | 11 | 11 | 0 | 0 |\n' +
+    '\n' +
+    '> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\n' +
+    'Attendance by county:\n' +
+    '| County | Children | Risk children | Pending confirmations | Absence days |\n' +
+    '| --- | ---: | ---: | ---: | ---: |\n' +
+    '| Unavailable from the current source | 11 | 11 | 11 | 0 |\n' +
+    '\n' +
+    'Recommended attendance views:\n' +
+    '- Review pending parent confirmations: These days may remain conditional until attendance is confirmed.\n' +
+    '- View attendance by county: Compare pending confirmations, absence usage, and affected children across counties.\n' +
+    '- View attendance by child: Open child-level dates, classifications, and risk explanations.\n' +
+    '\n' +
+    '**Recommended actions**\n' +
+    '1. Review pending confirmations ΓÇö 11 days\n' +
+    '2. Open highest-impact attendance detail\n' +
+    '3. Show affected children ΓÇö 11'
+  
+      at TestContext.<anonymous> (C:\Users\shsingla\Downloads\Child Care Agent\Child Care Agent\mcp\cccap-provider-api\test\server.test.ts:1241:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Current-month attendance review found 11 child(ren) needing attention.\n11 pending parent confirmation day(s) affect 11 child(ren).\n\nAttendance overview:\n| Scheduled days | Affected children | Pending confirmations | Absence days | Excluded holidays |\n| ---: | ---: | ---: | ---: | ---: |\n| 0 | 11 | 11 | 0 | 0 |\n\n> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\nAttendance by county:\n| County | Children | Risk children | Pending confirmations | Absence days |\n| --- | ---: | ---: | ---: | ---: |\n| Unavailable from the current source | 11 | 11 | 11 | 0 |\n\nRecommended attendance views:\n- Review pending parent confirmations: These days may remain conditional until attendance is confirmed.\n- View attendance by county: Compare pending confirmations, absence usage, and affected children across counties.\n- View attendance by child: Open child-level dates, classifications, and risk explanations.\n\n**Recommended actions**\n1. Review pending confirmations ΓÇö 11 days\n2. Open highest-impact attendance detail\n3. Show affected children ΓÇö 11',
+    expected: /\| Child 1 \|/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at test\server.test.ts:1493:1
+Γ£û incomplete attendance action returns child-level detail rows (0.3324ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Incomplete Example/. Input:
+  
+  'Current-month attendance review found 1 child(ren) needing attention.\n' +
+    '\n' +
+    'Attendance overview:\n' +
+    '| Scheduled days | Affected children | Incomplete days | Excluded holidays |\n' +
+    '| ---: | ---: | ---: | ---: |\n' +
+    '| 0 | 1 | 0 | 0 |\n' +
+    '\n' +
+    '> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\n' +
+    'Attendance by county:\n' +
+    '| County | Children | Risk children | Incomplete days |\n' +
+    '| --- | ---: | ---: | ---: |\n' +
+    '| denver | 1 | 1 | 0 |\n' +
+    '\n' +
+    '**Recommended actions**\n' +
+    '1. Review pending confirmations ΓÇö 4 days\n' +
+    '2. Open highest-impact attendance detail\n' +
+    '3. Show affected children ΓÇö 1'
+  
+      at TestContext.<anonymous> (C:\Users\shsingla\Downloads\Child Care Agent\Child Care Agent\mcp\cccap-provider-api\test\server.test.ts:1521:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Current-month attendance review found 1 child(ren) needing attention.\n\nAttendance overview:\n| Scheduled days | Affected children | Incomplete days | Excluded holidays |\n| ---: | ---: | ---: | ---: |\n| 0 | 1 | 0 | 0 |\n\n> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.\nAttendance by county:\n| County | Children | Risk children | Incomplete days |\n| --- | ---: | ---: | ---: |\n| denver | 1 | 1 | 0 |\n\n**Recommended actions**\n1. Review pending confirmations ΓÇö 4 days\n2. Open highest-impact attendance detail\n3. Show affected children ΓÇö 1',
+    expected: /Incomplete Example/,
+    operator: 'match',
+    diff: 'simple'
+  }

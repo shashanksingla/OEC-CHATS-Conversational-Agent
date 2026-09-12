@@ -188,10 +188,23 @@ export function renderCountyComposition(rows: Record<string, unknown>[]): string
     ];
     return values.join(" | ");
   });
+  // Legend only defines the terms actually present as columns above - a
+  // category omitted from `headers` (no verified value in any row) must not
+  // be named here either, matching the same "omit what isn't populated"
+  // hygiene the columns themselves already follow.
+  const legendTerms = [
+    ...(componentHasValue("care", "hours") ? ["Care Amount = attended/scheduled care hours billed at the authorized rate"] : []),
+    ...(componentHasValue("absence", "days") ? ["Absence Amount = confirmed or pending absence days billed at the authorized rate"] : []),
+    ...(componentHasValue("drop_in", "hours") ? ["Drop-in Amount = unscheduled care outside the child's regular authorization"] : []),
+    ...(componentHasValue("vacant_slots", "days") ? ["Vacant Slot Amount = a contracted slot held open with no child attending"] : []),
+    ...(componentHasValue("paid_holidays", "days") ? ["Paid Holiday Amount = a county-recognized holiday paid without attendance"] : []),
+    "Potential total = the sum of all populated categories for that county",
+  ];
   return [
     "",
-    "County payment composition (potential amounts)",
+    "**County payment composition (potential amounts)**",
     "> Potential amounts include calculated and conditional amounts; the payable amount remains shown in the summary above.",
+    `> ${legendTerms.join(" · ")}.`,
     `| ${headers.join(" | ")} |`,
     `| ${separator.join(" | ")} |`,
     ...renderedRows.map((row) => `| ${row} |`),
@@ -269,8 +282,15 @@ export function attendanceScopeLabel(scope: unknown): string {
 }
 
 export function hasAbsenceLimitConcern(child: Record<string, unknown>): boolean {
+  // Kept in sync with the identical local copy in attendance-formatter.ts -
+  // includes UNAVAILABLE/CONFLICT alongside EXCEEDED/APPROACHING so a child
+  // whose absence-limit status could not be resolved is still treated as an
+  // absence-limit concern needing review, not silently dropped.
   return Array.isArray(child.risk_codes) && child.risk_codes.some((code) =>
-    code === "ABSENCE_LIMIT_EXCEEDED" || code === "ABSENCE_LIMIT_APPROACHING",
+    code === "ABSENCE_LIMIT_EXCEEDED"
+    || code === "ABSENCE_LIMIT_APPROACHING"
+    || code === "ABSENCE_LIMIT_UNAVAILABLE"
+    || code === "ABSENCE_LIMIT_CONFLICT",
   );
 }
 export function actionControls(actions: Record<string, unknown>[]): Record<string, unknown>[] {
@@ -293,41 +313,30 @@ export function actionControls(actions: Record<string, unknown>[]): Record<strin
 const MAX_NEXT_ACTIONS = 2;
 
 export function renderActionSections(message: string, actions: Record<string, unknown>[]): string {
-  const base = message.replace(/\n\*\*Priority Actions\*\*[\s\S]*$/, "");
+  const base = message
+    .replace(/\n\*\*Priority Actions\*\*[\s\S]*$/, "")
+    .replace(/\n\*\*Recommended actions\*\*[\s\S]*$/, "");
   const uniqueActions = [...new Map(actions.map((action) => [String(action.actionId), action])).values()];
   // Cap to the two highest-priority next actions so the response names the
   // one or two things that actually matter instead of listing every
-  // candidate action; numbered (not bulleted) to match the drill-down
-  // action-list convention and avoid the list reading as an open-ended pile.
+  // candidate action.
   const nextActions = uniqueActions
     .filter((action) => action.section === "next-actions")
     .slice(0, MAX_NEXT_ACTIONS);
   const drillDown = uniqueActions.filter((action) => action.section === "drill-down");
   const availableViews = uniqueActions.filter((action) => action.section === "available-options" || action.section === "available-views");
-  // Numbers are reserved exclusively for the Priority Actions list per the
-  // carepay-conversation-templates skill contract ("never use numbering
-  // across separate action sections because repeated numbers are
-  // ambiguous"). Drill down and Available views use unnumbered bullets so
-  // there is never a second, competing numbered surface in one response -
-  // a provider selects those by name/label, not by index.
-  const lines = [base, "", "**Priority Actions**"];
-  lines.push(...(nextActions.length > 0
-    ? nextActions.map((action, index) => `${index + 1}. ${String(action.label)}`)
-    : ["No urgent action identified from the current verified result."]));
-  if (drillDown.length > 0) {
-    lines.push("", "**Drill down**", ...drillDown.map((action) => `- ${String(action.label)}`));
-  }
-  if (availableViews.length > 0) {
-    lines.push("", "**Available views**", ...availableViews.map((action) => `- ${String(action.label)}`));
-  }
-  const nextStep = nextActions.length > 0
-    ? "Choose one of the priority reviews above to continue this result."
-    : drillDown.length > 0
-      ? "Choose a drill-down above to inspect the verified records in this result."
-      : availableViews.length > 0
-        ? "Choose an available view above to continue with the same verified scope."
-        : "Ask about the specific child, county, date, or payment detail you want reviewed next.";
-  lines.push("", "**Next step**", nextStep);
+  // Combined into one simple numbered list - priority next-actions first,
+  // then drill-downs, then available views - replacing the previous four
+  // separate sections (Priority Actions / Drill down / Available views /
+  // Next step). A single list is inherently unambiguous to number: the
+  // earlier "numbers reserved for exactly one section" rule existed only to
+  // prevent two competing numbered surfaces in the same response, which
+  // cannot happen once every action lives in one combined list.
+  const combined = [...nextActions, ...drillDown, ...availableViews];
+  const lines = [base, "", "**Recommended actions**"];
+  lines.push(...(combined.length > 0
+    ? combined.map((action, index) => `${index + 1}. ${String(action.label)}`)
+    : ["No urgent action identified from the current verified result. Ask about the specific child, county, date, or payment detail you want reviewed next."]));
   return lines.join("\n");
 }
 

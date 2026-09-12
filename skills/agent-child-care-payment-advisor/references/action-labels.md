@@ -34,7 +34,9 @@ This is the single source of truth for every `action_id`'s provider-facing label
 | `review-attendance-records` | `Review attendance records` | none — generic fallback when no specific risk qualifies |
 | `open-attendance-detail` | `Open highest-impact attendance detail` | none |
 | `review-next-payout` | `View upcoming payout summary` | none |
-| `forecast-current-week-services` | `Forecast this week's services payout` | none |
+| `forecast-current-period-services` | `Forecast this period's services payout` | none |
+| `return-to-payment-summary` | `Return to payment category summary` | none |
+| `open-next-upcoming-payout-from-last` | `View next upcoming payout` | none |
 | `retry-payment-analysis` | `Retry payment review` | none |
 | `review-conditional-payment` | `Review conditional payment — ~ ${amount}` | conditional amount at risk |
 | `review-excluded-payment-days` | `Review excluded payment days` | none |
@@ -49,6 +51,8 @@ This is the single source of truth for every `action_id`'s provider-facing label
 | `review-holiday-plan` | `Review the county holiday plan` | none |
 | `open-next-upcoming-payout` | `Open next upcoming payout` | none |
 | `review-service-period-payout-ledger` | `Review payment details for this service period` | none |
+| `show-affected-children` | `Show affected children — {N}` | count of affected children behind a county-summary-only attendance-risk response |
+| `open-service-period-{n}` | `Open {dateFrom}-{dateTo} payout` | date-range qualifier; `{n}` is a 0-based index among the ledger's non-"next" periods, capped at 2 additional entries per response |
 
 `open-highest-hours-child-detail` is used only when no child has a verified dollar amount at risk or total amount for the current scope; the response body must say explicitly that the ranking is by scheduled hours, not dollars, whenever this label is shown.
 

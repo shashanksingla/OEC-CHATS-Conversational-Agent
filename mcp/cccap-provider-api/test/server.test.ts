@@ -52,8 +52,12 @@ test("live payment readiness blocks amounts until canonical sources are availabl
 });
 
 test("attendance analysis returns affected child drill-down rows", () => {
+  // County-summary-first: an unscoped request no longer renders child rows -
+  // this test is specifically about the drill-down shape, so it scopes to
+  // the named child (the same narrowing the "Show affected children" action
+  // would apply) to reach that shape.
   const result = formatAttendanceRiskResult({
-    scope: { dateFilter: "THIS_MONTH" },
+    scope: { dateFilter: "THIS_MONTH", childNames: ["Taylor Example"] },
     attendanceRisk: {
       pending_confirmation_days: 2,
       risk_child_count: 1,
@@ -82,10 +86,13 @@ test("attendance analysis returns affected child drill-down rows", () => {
   assert.match(text, /\| Child \| Authorization \| County \| Pending \|/);
   assert.match(text, /\| Taylor Example \| Unavailable from the current source \| Unavailable from the current source \| 2 \|/);
   assert.match(text, /Review pending confirmations — 2 days/);
-  assert.match(text, /\*\*Drill down\*\*/);
-  assert.match(text, /Attendance overview:/);
-  assert.match(text, /Attendance by county:/);
-  assert.match(text, /Recommended attendance views:/);
+  assert.match(text, /\*\*Recommended actions\*\*/);
+  // Already childNames-scoped (the drill-down shape itself), so the
+  // facility-wide overview/county/available-views sections correctly do not
+  // render here - those are for the unscoped county-summary-first response,
+  // covered by other tests.
+  assert.doesNotMatch(text, /Attendance overview:/);
+  assert.doesNotMatch(text, /Attendance by county:/);
   const structuredSummary = result.structuredContent?.attendanceSummary as Record<string, unknown>;
   assert.equal(structuredSummary?.overview !== undefined, true);
   assert.equal(structuredSummary?.children, undefined);
@@ -93,7 +100,10 @@ test("attendance analysis returns affected child drill-down rows", () => {
   assert.equal(result.structuredContent?.viewControls, undefined);
   assert.equal(result.structuredContent?.actionIntents, undefined);
   assert.equal(result.structuredContent?.affectedChildNames, undefined);
-  assert.equal(JSON.stringify(result.structuredContent).includes('"childNames"'), false);
+  // This test now deliberately scopes the request by childNames (the
+  // drill-down shape itself), so childNames legitimately appears in the
+  // echoed scope - the no-childNames-leakage assertion moved to a test that
+  // actually exercises the unscoped county-summary-first path.
   assert.doesNotMatch(text, /View next payout details/);
 });
 
@@ -1223,8 +1233,12 @@ test("payment detail omits zero-value NO_CARE rows", () => {
 });
 
 test("attendance detail caps the provider-facing table and reports the remainder", () => {
+  // County-summary-first: scope to all 11 children by name (the drill-down
+  // shape) so the child-level table (and its capping behavior, which is what
+  // this test actually verifies) renders.
+  const childNames = Array.from({ length: 11 }, (_, index) => `Child ${index + 1}`);
   const result = formatAttendanceRiskResult({
-    scope: { dateFilter: "THIS_MONTH" },
+    scope: { dateFilter: "THIS_MONTH", childNames },
     attendanceRisk: {
       pending_confirmation_days: 11,
       risk_child_count: 11,
@@ -1491,8 +1505,10 @@ test("attendance formatter reports unmatched child filters", () => {
 });
 
 test("incomplete attendance action returns child-level detail rows", () => {
+  // County-summary-first: scope to the named child (the drill-down shape)
+  // so the day-level detail table renders instead of the county-only view.
   const result = formatAttendanceRiskResult({
-    scope: { dateFilter: "THIS_MONTH" },
+    scope: { dateFilter: "THIS_MONTH", childNames: ["Incomplete Example"] },
     riskFocus: "INCOMPLETE_ATTENDANCE",
     attendanceRisk: {
       pending_confirmation_days: 4,
@@ -1629,8 +1645,13 @@ test("service period ledger formatter translates statuses and renders each payou
   assert.equal(result.structuredContent?.providerMessage, result.content[0].text);
   const actionControls = result.structuredContent?.actionControls as Array<Record<string, unknown>>;
   const drillDownInput = (actionControls[0]?.input ?? {}) as Record<string, unknown>;
+  // Drill-down from a ledger row now routes through CUSTOM_RANGE (FORECAST
+  // mode), not STATUS - the ledger's own per-period figure for this exact
+  // date range was already computed via CUSTOM_RANGE, and STATUS mode's
+  // stricter fail-closed handling could block on a period the ledger already
+  // showed a complete breakdown for (see payment-formatter.ts ledgerInput).
   assert.deepEqual(drillDownInput, {
-    view: "STATUS",
+    view: "CUSTOM_RANGE",
     dateFilter: "DATE_RANGE",
     dateFrom: "2026-08-24",
     dateTo: "2026-08-30",

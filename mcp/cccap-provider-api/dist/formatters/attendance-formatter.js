@@ -120,13 +120,20 @@ export function formatAttendanceRiskResult(data, includeContinuationMetadata = f
     const attendancePeriodHeaderLabel = attendancePeriodBeginLabel && attendancePeriodEndLabel
         ? `Attendance period: ${attendancePeriodBeginLabel}-${attendancePeriodEndLabel}`
         : undefined;
+    // Bolded: this is the response's "Interpretation" line per the
+    // conversation-templates contract - the single most important sentence in
+    // the whole response, previously rendered as plain prose indistinguishable
+    // from any other line.
+    const interpretationLine = noAttendanceRecords
+        ? `${scopeLabel} attendance review returned no attendance records for the requested period.`
+        : affectedChildren.length > 0
+            ? `${scopeLabel} attendance review found ${affectedChildren.length} child(ren) needing attention.`
+            : `${scopeLabel} attendance review found no child-level attendance risks.`;
     const lines = [
-        noAttendanceRecords
-            ? `${scopeLabel} attendance review returned no attendance records for the requested period.`
-            : affectedChildren.length > 0
-                ? `${scopeLabel} attendance review found ${affectedChildren.length} child(ren) needing attention.`
-                : `${scopeLabel} attendance review found no child-level attendance risks.`,
-        ...(attendancePeriodHeaderLabel ? [attendancePeriodHeaderLabel] : []),
+        `**${interpretationLine}**`,
+        // Bolded: this is the response's mandatory "Scope" line - a visible
+        // period header that must never blend into surrounding prose.
+        ...(attendancePeriodHeaderLabel ? [`**${attendancePeriodHeaderLabel}**`] : []),
     ];
     if (unmatchedChildNames.length > 0) {
         lines.push(`No attendance records were found for ${unmatchedChildNames.length} requested child(ren) in the selected period.`);
@@ -134,15 +141,21 @@ export function formatAttendanceRiskResult(data, includeContinuationMetadata = f
     if (unmatchedCountyNames.length > 0) {
         lines.push(`No affected children were found for the requested county/counties: ${unmatchedCountyNames.join(", ")}.`);
     }
+    // Styled as a blockquote legend (matching the "> ..." convention already
+    // used for every other explanatory note in this file) instead of a bare
+    // sentence indistinguishable from a finding.
     if (excludedClosureDates.length > 0) {
-        lines.push(`Excluded ${excludedClosureDates.length} closure date(s): ${excludedClosureDates.map((date) => shortDateLabel(date) ?? tableValue(date)).join(", ")} (provider closed).`);
+        lines.push(`> Excluded ${excludedClosureDates.length} closure date(s): ${excludedClosureDates.map((date) => shortDateLabel(date) ?? tableValue(date)).join(", ")} (provider closed).`);
     }
     if (excludedHolidayDates.length > 0) {
-        lines.push(`Excluded ${excludedHolidayDates.length} holiday date(s): ${excludedHolidayDates.map((date) => shortDateLabel(date) ?? tableValue(date)).join(", ")} (paid holiday, not an absence).`);
+        lines.push(`> Excluded ${excludedHolidayDates.length} holiday date(s): ${excludedHolidayDates.map((date) => shortDateLabel(date) ?? tableValue(date)).join(", ")} (paid holiday, not an absence).`);
     }
     if (riskFocus !== "ABSENCE_LIMITS" && riskFocus !== "INCOMPLETE_ATTENDANCE" && pendingDays > 0) {
+        // Bolded: the confirmation deadline/days-left is the single most
+        // time-critical fact in this sentence and was previously buried in
+        // plain prose alongside the day/child counts.
         const deadlineSuffix = typeof risk.earliest_confirmation_deadline === "string" && typeof risk.earliest_confirmation_days_remaining === "number"
-            ? ` Earliest confirmation deadline: ${shortDateLabel(risk.earliest_confirmation_deadline) ?? tableValue(risk.earliest_confirmation_deadline)} (${risk.earliest_confirmation_days_remaining} day(s) left).`
+            ? ` **Earliest confirmation deadline: ${shortDateLabel(risk.earliest_confirmation_deadline) ?? tableValue(risk.earliest_confirmation_deadline)} (${risk.earliest_confirmation_days_remaining} day(s) left).**`
             : "";
         lines.push(`${pendingDays} pending parent confirmation day(s) affect ${pendingChildren} child(ren).${deadlineSuffix}`);
     }
@@ -172,7 +185,14 @@ export function formatAttendanceRiskResult(data, includeContinuationMetadata = f
         // logged), so the two counts are not directly comparable.
         lines.push(`${incompleteChildren} child(ren) have incomplete attendance records (one of check-in/check-out missing). See "Review incomplete attendance."`);
     }
-    if (affectedChildren.length > 0) {
+    // County-summary-first: the child-level table (and INCOMPLETE_ATTENDANCE's
+    // day-level detail table) render only when this request is already scoped
+    // to a named child OR a named county (either is an explicit narrowing, not
+    // a facility-wide ask) - a fully unscoped riskFocus request shows only the
+    // county rollup below plus a "Show affected children" action, instead of
+    // always jumping straight to every affected child's row.
+    const isNarrowedToDetail = isChildScoped || normalizedRequestedCounties.size > 0;
+    if (affectedChildren.length > 0 && isNarrowedToDetail) {
         const displayedChildren = [...affectedChildren]
             .sort((left, right) => criticalityScore(right) - criticalityScore(left))
             .slice(0, Math.min(MAX_DISPLAY_CHILDREN, MAX_SUMMARY_ROWS));
@@ -183,42 +203,37 @@ export function formatAttendanceRiskResult(data, includeContinuationMetadata = f
         const isAbsenceLimitFocus = riskFocus === "ABSENCE_LIMITS";
         const isIncompleteAttendanceFocus = riskFocus === "INCOMPLETE_ATTENDANCE";
         const isParentConfirmationsFocus = riskFocus === "PARENT_CONFIRMATIONS";
+        // Note: INCOMPLETE_ATTENDANCE never reaches the generic drillDownColumns
+        // table below - it always takes the dedicated "Incomplete attendance
+        // detail" (day-level) branch a few lines down, so no column-set entry is
+        // defined for that focus here (a previous "Scheduled days/Incomplete
+        // days" column set existed here but was dead code - unreachable).
         const drillDownColumns = isAbsenceLimitFocus
             ? [
                 { label: "Absences used", value: (child) => tableValue(child.absence_days), present: displayedChildren.some((child) => numericValue(child.absence_days) !== 0) },
                 { label: "County limit", value: (child) => tableValue(child.absence_limit), present: displayedChildren.some((child) => child.absence_limit !== undefined && child.absence_limit !== null) },
             ]
-            : isIncompleteAttendanceFocus
+            : isParentConfirmationsFocus
                 ? [
-                    // Dedicated shape for this focus: shows attendance/schedule
-                    // information (scheduled vs. incomplete days), not
-                    // absence/confirmation data - the generic Pending/Absences-used
-                    // columns below describe a different concept entirely and were
-                    // being shown here by mistake.
-                    { label: "Scheduled days", value: (child) => tableValue(child.scheduled_days), present: displayedChildren.some((child) => numericValue(child.scheduled_days) !== 0) },
-                    { label: "Incomplete days", value: (child) => tableValue(child.incomplete_attendance_days), present: displayedChildren.some((child) => numericValue(child.incomplete_attendance_days) !== 0) },
+                    // Dedicated shape for this focus too: a provider reviewing
+                    // pending parent confirmations wants confirmation-window
+                    // information (days pending, deadline), not absence-limit data
+                    // (Absences used/Over limit) - those describe a completely
+                    // different risk and made this view look near-identical to the
+                    // absence-limit drill-down.
+                    { label: "Pending", value: (child) => tableValue(child.pending_confirmation_days), present: displayedChildren.some((child) => numericValue(child.pending_confirmation_days) !== 0) },
+                    { label: "Deadline", value: (child) => typeof child.next_confirmation_deadline === "string" ? (shortDateLabel(child.next_confirmation_deadline) ?? tableValue(child.next_confirmation_deadline)) : "Unavailable from the current source", present: displayedChildren.some((child) => typeof child.next_confirmation_deadline === "string") },
+                    { label: "Days left", value: (child) => tableValue(child.confirmation_days_remaining), present: displayedChildren.some((child) => typeof child.confirmation_days_remaining === "number") },
                 ]
-                : isParentConfirmationsFocus
-                    ? [
-                        // Dedicated shape for this focus too: a provider reviewing
-                        // pending parent confirmations wants confirmation-window
-                        // information (days pending, deadline), not absence-limit data
-                        // (Absences used/Over limit) - those describe a completely
-                        // different risk and made this view look near-identical to the
-                        // absence-limit drill-down.
-                        { label: "Pending", value: (child) => tableValue(child.pending_confirmation_days), present: displayedChildren.some((child) => numericValue(child.pending_confirmation_days) !== 0) },
-                        { label: "Deadline", value: (child) => typeof child.next_confirmation_deadline === "string" ? (shortDateLabel(child.next_confirmation_deadline) ?? tableValue(child.next_confirmation_deadline)) : "Unavailable from the current source", present: displayedChildren.some((child) => typeof child.next_confirmation_deadline === "string") },
-                        { label: "Days left", value: (child) => tableValue(child.confirmation_days_remaining), present: displayedChildren.some((child) => typeof child.confirmation_days_remaining === "number") },
-                    ]
-                    : [
-                        { label: "Pending", value: (child) => tableValue(child.pending_confirmation_days), present: displayedChildren.some((child) => numericValue(child.pending_confirmation_days) !== 0) },
-                        // Same underlying field (absence_days) as "Absences used" above -
-                        // consolidated onto one label used regardless of riskFocus, instead
-                        // of two different names for the identical number.
-                        { label: "Absences used", value: (child) => tableValue(child.absence_days), present: displayedChildren.some((child) => numericValue(child.absence_days) !== 0) },
-                        { label: "Over limit", value: (child) => overLimitDays(child.absence_days, child.absence_limit), present: displayedChildren.some((child) => numericValue(child.absence_days) > numericValue(child.absence_limit)) },
-                        { label: "Est. risk ($)", value: (child) => estimatedMoney(numericValue(child.risk_amount_estimate)), present: displayedChildren.some((child) => numericValue(child.risk_amount_estimate) > 0) },
-                    ];
+                : [
+                    { label: "Pending", value: (child) => tableValue(child.pending_confirmation_days), present: displayedChildren.some((child) => numericValue(child.pending_confirmation_days) !== 0) },
+                    // Same underlying field (absence_days) as "Absences used" above -
+                    // consolidated onto one label used regardless of riskFocus, instead
+                    // of two different names for the identical number.
+                    { label: "Absences used", value: (child) => tableValue(child.absence_days), present: displayedChildren.some((child) => numericValue(child.absence_days) !== 0) },
+                    { label: "Over limit", value: (child) => overLimitDays(child.absence_days, child.absence_limit), present: displayedChildren.some((child) => numericValue(child.absence_days) > numericValue(child.absence_limit)) },
+                    { label: "Est. risk ($)", value: (child) => estimatedMoney(numericValue(child.risk_amount_estimate)), present: displayedChildren.some((child) => numericValue(child.risk_amount_estimate) > 0) },
+                ];
         const renderedColumns = drillDownColumns.filter((column) => column.present);
         const extraHeader = renderedColumns.length > 0 ? ` ${renderedColumns.map((column) => column.label).join(" | ")} |` : "";
         const extraSeparator = renderedColumns.length > 0 ? ` ${renderedColumns.map(() => "---:").join(" | ")} |` : "";
@@ -272,12 +287,21 @@ export function formatAttendanceRiskResult(data, includeContinuationMetadata = f
     }
     if (attendanceCounties.length > 0 && !isChildScoped) {
         if (riskFocus === "ABSENCE_LIMITS") {
-            lines.push("", "> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.", "Attendance by county:", "| County | Children | Monthly absence limit | Children over limit | Status |", "| --- | ---: | ---: | ---: | --- |", ...attendanceCounties.map((county) => {
+            lines.push("", "> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.", "> Status: \"N of M children over limit\" = already exceeded, real payment exclusion risk · \"N of M children approaching limit\" = within limit but close, no exclusion yet · \"Within limit\" = no children over or approaching for this county.", "**Attendance by county:**", "| County | Children | Monthly absence limit | Children over limit | Status |", "| --- | ---: | ---: | ---: | --- |", ...attendanceCounties.map((county) => {
                 const childrenOverLimit = numericValue(county.children_over_limit_count);
+                const childrenApproaching = numericValue(county.children_approaching_limit_count);
                 const totalChildren = numericValue(county.children);
+                // "Within limit" previously covered both "genuinely fine" and
+                // "approaching but not yet over" counties alike, contradicting the
+                // headline sentence above the table (which does distinguish
+                // "over limit" from "approaching") - a provider scanning only this
+                // column would read a county with many approaching children as
+                // needing zero attention.
                 const countyStatus = childrenOverLimit > 0
                     ? `${childrenOverLimit} of ${totalChildren} children over limit`
-                    : "Within limit";
+                    : childrenApproaching > 0
+                        ? `${childrenApproaching} of ${totalChildren} children approaching limit`
+                        : "Within limit";
                 // "Multiple" means every child in the county actually resolved to a
                 // different limit (a real data conflict); undefined/null with no
                 // conflict just means no verified limit was available - those are
@@ -310,8 +334,33 @@ export function formatAttendanceRiskResult(data, includeContinuationMetadata = f
         scope: analysis.scope,
         ...(typeof analysis.sourceRetrievedAt === "string" ? { sourceRetrievedAt: analysis.sourceRetrievedAt } : {}),
     });
-    const actionIntents = actionMetadata(analysis.scope, risk, affectedChildren, false, typeof riskFocus === "string" ? riskFocus : undefined)
-        .map((action) => actionViewMetadata(action, currentView));
+    const baseActionIntents = actionMetadata(analysis.scope, risk, affectedChildren, false, typeof riskFocus === "string" ? riskFocus : undefined);
+    // County-summary-first: when this response did NOT already narrow to a
+    // named child, offer an explicit drill-down into the child-level table
+    // (and, for INCOMPLETE_ATTENDANCE, the day-level detail table) that the
+    // county-summary-only rendering above just suppressed.
+    const withDrillDown = !isChildScoped && affectedChildren.length > 0
+        ? [
+            ...baseActionIntents,
+            {
+                actionId: "show-affected-children",
+                capability: "attendance-risk-analysis",
+                tool: "cccap_analyze_payment_risk",
+                label: `Show affected children — ${affectedChildren.length}`,
+                reason: "Opens the child-level rows behind this county summary.",
+                priority: "medium",
+                section: "drill-down",
+                source: "current-result",
+                input: Object.assign({}, recordValue(analysis.scope) ?? {}, typeof riskFocus === "string" ? { riskFocus } : {}, {
+                    childNames: affectedChildren
+                        .map((child) => child.child_name)
+                        .filter((name) => typeof name === "string"),
+                }),
+                scope: analysis.scope,
+            },
+        ]
+        : baseActionIntents;
+    const actionIntents = withDrillDown.map((action) => actionViewMetadata(action, currentView));
     const providerMessage = renderActionSections(lines.join("\n"), actionIntents);
     return {
         content: [{ type: "text", text: providerMessage }],
@@ -368,7 +417,15 @@ function attendanceScopeLabel(scope) {
     return "Attendance-risk";
 }
 function hasAbsenceLimitConcern(child) {
-    return Array.isArray(child.risk_codes) && child.risk_codes.some((code) => code === "ABSENCE_LIMIT_EXCEEDED" || code === "ABSENCE_LIMIT_APPROACHING");
+    // Includes UNAVAILABLE/CONFLICT alongside EXCEEDED/APPROACHING - a child
+    // whose absence-limit status could not be resolved (no verified limit, or
+    // a genuine data conflict across authorizations) is still an absence-limit
+    // concern needing review; excluding these two codes let such children
+    // silently vanish from every absence-limit view and count.
+    return Array.isArray(child.risk_codes) && child.risk_codes.some((code) => code === "ABSENCE_LIMIT_EXCEEDED"
+        || code === "ABSENCE_LIMIT_APPROACHING"
+        || code === "ABSENCE_LIMIT_UNAVAILABLE"
+        || code === "ABSENCE_LIMIT_CONFLICT");
 }
 function criticalityScore(row) {
     // Prefer the real dollar estimate when available. Otherwise rank by the
@@ -376,7 +433,15 @@ function criticalityScore(row) {
     const riskAmount = numericValue(row.risk_amount_estimate);
     if (riskAmount > 0)
         return riskAmount;
-    return numericValue(row.absence_days) + numericValue(row.pending_confirmation_days);
+    // A child who has actually crossed the county's monthly absence limit is
+    // strictly more critical than one merely approaching it, regardless of
+    // day-count ties - without this bonus, an "approaching" child with the
+    // same day count as several "over limit" children could win the tie by
+    // array position alone, opening the wrong child's detail as
+    // "highest-impact."
+    const riskCodes = Array.isArray(row.risk_codes) ? row.risk_codes : [];
+    const exceededBonus = riskCodes.includes("ABSENCE_LIMIT_EXCEEDED") ? 1000 : 0;
+    return exceededBonus + numericValue(row.absence_days) + numericValue(row.pending_confirmation_days);
 }
 export function actionMetadata(scope, risk, children, includePaymentAction = false, riskFocus) {
     const childNamesFor = (code) => children
@@ -483,16 +548,16 @@ export function actionMetadata(scope, risk, children, includePaymentAction = fal
             scope,
         });
         actions.push({
-            actionId: "forecast-current-week-services",
+            actionId: "forecast-current-period-services",
             capability: "payment-analysis",
             tool: "cccap_analyze_payment",
-            label: "Forecast this week's services payout",
-            reason: "Project this week's actual and scheduled services into an estimated payout.",
+            label: "Forecast this period's services payout",
+            reason: "Project this service period's actual and scheduled services into an estimated payout.",
             priority: "medium",
             section: "available-options",
             source: "current-result",
-            view: "CURRENT_WEEK_FORECAST",
-            input: { view: "CURRENT_WEEK_FORECAST" },
+            view: "CURRENT_PERIOD_FORECAST",
+            input: { view: "CURRENT_PERIOD_FORECAST" },
             scope,
         });
     }
@@ -521,6 +586,7 @@ export function attendanceSummary(risk, children, scope, unmatchedChildNames, ex
             incomplete_attendance_days: 0,
             risk_children: 0,
             children_over_limit_count: 0,
+            children_approaching_limit_count: 0,
             approved_limit: undefined,
         };
         current.children = Number(current.children) + 1;
@@ -532,6 +598,13 @@ export function attendanceSummary(risk, children, scope, unmatchedChildNames, ex
         }
         if (Array.isArray(child.risk_codes) && child.risk_codes.includes("ABSENCE_LIMIT_EXCEEDED")) {
             current.children_over_limit_count = Number(current.children_over_limit_count) + 1;
+        }
+        // Written alongside children_over_limit_count so the county Status
+        // column's "approaching" tier (see the riskFocus===ABSENCE_LIMITS
+        // rendering below) has real data instead of always reading 0 - this
+        // counter was previously read but never actually populated.
+        if (Array.isArray(child.risk_codes) && child.risk_codes.includes("ABSENCE_LIMIT_APPROACHING")) {
+            current.children_approaching_limit_count = Number(current.children_approaching_limit_count) + 1;
         }
         // A county's monthly absence limit is resolved per child by matching the
         // provider's quality tier against the county policy (absenceDaysTierN),

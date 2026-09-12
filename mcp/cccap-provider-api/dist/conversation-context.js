@@ -18,9 +18,16 @@ export class ConversationContextStore {
         const actionRefs = actions.map(() => this.reference());
         const actionMap = new Map(actionRefs.map((actionRef, index) => {
             const action = actions[index];
+            const linkedActionId = actionMetadata[index]?.actionId;
             return [actionRef, {
                     ...action,
                     compatibilityKey: compatibilityKeyFor(action.tool, ruleVersion, [action]),
+                    // Internal link only (stripped by publicPlan) so resolve() can mark
+                    // the matching sessionActions record SELECTED, mirroring what
+                    // resolveAction() already does for the actionId-based continuation
+                    // path - without this, a contextRef/actionRef selection never moves
+                    // out of "OFFERED" and getInheritedActions() could re-offer it.
+                    ...(typeof linkedActionId === "string" ? { _selectionActionId: linkedActionId } : {}),
                 }];
         }));
         const compatibilityKey = compatibilityKeyFor(capability, ruleVersion, actions);
@@ -87,7 +94,28 @@ export class ConversationContextStore {
             return undefined;
         if (plan.compatibilityKey && plan.compatibilityKey !== compatibilityKeyFor(plan.tool, ruleVersion, [plan]))
             return undefined;
-        context.lastUsed = this.now();
+        const resolvedAt = this.now();
+        context.lastUsed = resolvedAt;
+        // Sliding-window TTL: expiresAt was previously set once at create() and
+        // never extended, so an actively-used continuation still expired at a
+        // fixed wall-clock deadline regardless of ongoing use - a real provider
+        // conversation spanning more than ttlMs (15 min default) would hit
+        // CONTINUATION_UNAVAILABLE mid-conversation even while continuously
+        // resolving the same context. Extend on every successful resolve instead
+        // of only tracking lastUsed for LRU-eviction ordering.
+        context.expiresAt = resolvedAt + this.ttlMs;
+        // Mirror resolveAction()'s state transition: a contextRef/actionRef
+        // selection is just as much a "selection" as an actionId one, and must
+        // move the matching sessionActions record out of "OFFERED" so it is not
+        // re-surfaced by getInheritedActions().
+        if (plan._selectionActionId) {
+            const linkedAction = this.sessionActions.get(providerKey)?.get(plan._selectionActionId);
+            if (linkedAction && linkedAction.state === "OFFERED") {
+                linkedAction.lastUsed = resolvedAt;
+                linkedAction.expiresAt = resolvedAt + this.ttlMs;
+                linkedAction.state = "SELECTED";
+            }
+        }
         return {
             ...publicPlan(plan),
             ...(context.result !== undefined ? { result: context.result } : {}),
@@ -109,8 +137,15 @@ export class ConversationContextStore {
             action.state = "EXPIRED";
             return undefined;
         }
-        action.lastUsed = this.now();
-        context.lastUsed = this.now();
+        const resolvedAt = this.now();
+        // Sliding-window TTL - see the matching comment in resolve(): extend both
+        // the action's and its parent context's expiry on every successful use,
+        // instead of only tracking lastUsed for LRU-eviction ordering while the
+        // actual deadline stayed fixed at creation time.
+        action.lastUsed = resolvedAt;
+        action.expiresAt = resolvedAt + this.ttlMs;
+        context.lastUsed = resolvedAt;
+        context.expiresAt = resolvedAt + this.ttlMs;
         action.state = "SELECTED";
         return {
             ...publicPlan(action.plan),
