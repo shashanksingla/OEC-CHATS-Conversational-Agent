@@ -28,8 +28,8 @@ context:
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|---------------|----------------------------|----------------|
-| INITIAL_SNAPSHOT | Greeting/current-month request | Rich Markdown plus compact `contextRef` and action controls with `actionRef` values | Source/evaluator errors retain existing provider-safe error result |
-| CACHED_ACTION | Valid provider-bound `contextRef` and `actionRef` | Server resolves stored continuation plan and renders requested attendance or payment view without model-supplied child lists | Invalid action/context pairing is rejected without exposing cache data |
+| INITIAL_SNAPSHOT | Greeting/current-month request | Rich Markdown plus opaque action controls carrying only `actionId` | Source/evaluator errors retain existing provider-safe error result |
+| CACHED_ACTION | Valid provider-bound `actionId` | Server resolves the private continuation plan and renders requested attendance or payment view without model-supplied child lists | Unknown action IDs are rejected without exposing cache data |
 | NEW_INTENT | Direct child, authorization, scope, or payment input | Existing direct tool behavior runs; successful result creates/replaces compatible context | Existing filter validation and fail-closed source errors apply |
 | STALE_CONTEXT | Expired context, rule-version change, explicit refresh, or incompatible scope/capability | Server performs the required fresh composite retrieval and returns a new context reference | If refresh fails, return provider-safe no-result/error contract |
 | RESOURCE_BOUND | Cache exceeds entry, byte, or TTL limit | Least-recently-used expired/old contexts are evicted; active valid context remains usable | Missing evicted reference is treated as expired and refreshed |
@@ -94,7 +94,7 @@ context:
 
 ## Design Notes
 
-Use one context record per authenticated provider, normalized scope, capability result, and rule version. A stored continuation plan owns tool target plus validated server-side filters; `actionRef` resolves to that plan. The context store is above `CccapClient.readCache`: the latter caches source reads, while the new layer caches canonical provider-safe result models and continuation plans. Initial and drill-down text remains server-rendered from the model; structured content is compact routing metadata only.
+Use one private context record per authenticated provider, normalized scope, capability result, and rule version. A stored continuation plan owns the tool target plus validated server-side filters; the public `actionId` resolves to that plan through the provider-bound store. `contextRef` and `actionRef` are private implementation handles, not conversational concepts. The context store is above `CccapClient.readCache`: the latter caches source reads, while the new layer caches canonical provider-safe result models and continuation plans. Initial and drill-down text remains server-rendered from the model; structured content is compact routing metadata only.
 
 ## Verification
 

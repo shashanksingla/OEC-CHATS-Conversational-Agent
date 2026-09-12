@@ -81,15 +81,20 @@ test("stable action ids resolve the selected tool plan", () => {
     "provider-a",
     "continuation",
     [{ tool: "cccap_analyze_payment", input: { view: "NEXT_PAYOUT", detailPage: 1 } }],
-    undefined,
-    undefined,
+    { payment: { status: "EXPECTED" } },
+    "cccap_analyze_payment",
     undefined,
     [{ actionId: "review-excluded-payment-days", label: "Review excluded days" }],
   );
 
   assert.deepEqual(
     store.resolveAction("provider-a", "review-excluded-payment-days", "cccap_analyze_payment"),
-    { tool: "cccap_analyze_payment", input: { view: "NEXT_PAYOUT", detailPage: 1 } },
+    {
+      tool: "cccap_analyze_payment",
+      input: { view: "NEXT_PAYOUT", detailPage: 1 },
+      result: { payment: { status: "EXPECTED" } },
+      resultTool: "cccap_analyze_payment",
+    },
   );
   assert.equal(
     store.resolveAction("provider-a", "review-excluded-payment-days", "cccap_analyze_payment_risk"),
@@ -117,4 +122,22 @@ test("context byte accounting includes provenance and action metadata", () => {
     provenance: { capability: "attendance-risk-analysis", scope: { dateFilter: "THIS_MONTH" } },
   }], { large: "x".repeat(100) }, undefined, undefined, [{ actionId: "a", label: "A" }]);
   assert.equal(store.resolve("provider-a", first.contextRef, first.actionRefs[0], "continuation"), undefined);
+});
+
+test("oversized results retain executable action references", () => {
+  const store = new ConversationContextStore({ maxBytes: 1_000 });
+  const created = store.create(
+    "provider-a",
+    "continuation",
+    [{
+      tool: "cccap_analyze_payment_risk",
+      input: { dateFilter: "THIS_MONTH", riskFocus: "INCOMPLETE_ATTENDANCE" },
+    }],
+    { attendanceRisk: { children: [{ child_name: "Example", detail: "x".repeat(10_000) }] } },
+    "cccap_analyze_payment_risk",
+  );
+
+  const resolved = store.resolve("provider-a", created.contextRef, created.actionRefs[0], "continuation");
+  assert.equal(resolved?.tool, "cccap_analyze_payment_risk");
+  assert.equal(resolved?.result, undefined);
 });

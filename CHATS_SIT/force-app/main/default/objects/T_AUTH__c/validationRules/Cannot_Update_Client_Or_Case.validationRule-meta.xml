@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Cannot_Update_Client_Or_Case</fullName>
-    <active>true</active>
-    <errorConditionFormula>AND(!ISNEW(),OR(ISCHANGED(IDN_CLIENT__c),ISCHANGED(IDN_CASE__c)))</errorConditionFormula>
-    <errorMessage>Case or Client cannot be updated once the record is created.</errorMessage>
-</ValidationRule>

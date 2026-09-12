@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>careEndDate_Grtrthan_careStartDate</fullName>
-    <active>true</active>
-    <description>Care End Date must be greater than Care Begin Date</description>
-    <errorConditionFormula>DTE_END_ADJMT__c &lt; DTE_START_ADJMT__c  &amp;&amp; ISPICKVAL(CDE_STATUS_ADJMT__c, &apos;1&apos;)</errorConditionFormula>
-    <errorMessage>The Care End Date must be greater than the Care Begin Date</errorMessage>
-</ValidationRule>

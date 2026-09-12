@@ -43,6 +43,15 @@ function resolveAuthorizationId(
   return requiredString(authorization?.Id, `${label} Salesforce authorization ID`);
 }
 
+function resolveOptionalAuthorizationId(
+  value: unknown,
+  authorizations: RecordValue[],
+  label: string,
+): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  return resolveAuthorizationId(value, authorizations, label);
+}
+
 export function normalizeServicePeriod(value: unknown): CanonicalServicePeriod {
   const period = asRecord(value, "service period");
   return {
@@ -70,22 +79,24 @@ export function normalizeExistingSubPayments(
     const row = asRecord(value, `subPayments[${index}]`);
     const status = normalizePaymentStatus(row.cde_status_pmt_sub__c);
     if (!status) throw new Error(`subPayments[${index}].cde_status_pmt_sub__c is unsupported`);
-    const amount = typeof row.amt_pmt_sub__c === "number" && Number.isFinite(row.amt_pmt_sub__c)
-      ? row.amt_pmt_sub__c
-      : typeof row.amt_pmt_sub__c === "string" && Number.isFinite(Number(row.amt_pmt_sub__c))
-        ? Number(row.amt_pmt_sub__c)
+    const sourceAmount = row.amt_pmt_sub__c ?? row.amt_total_pmt_sub__c;
+    const amount = typeof sourceAmount === "number" && Number.isFinite(sourceAmount)
+      ? sourceAmount
+      : typeof sourceAmount === "string" && Number.isFinite(Number(sourceAmount))
+        ? Number(sourceAmount)
         : undefined;
+    const authorizationId = resolveOptionalAuthorizationId(
+      row.idn_auth__c,
+      authorizations,
+      `subPayments[${index}].idn_auth__c`,
+    );
     return {
-      authorization_id: resolveAuthorizationId(
-        row.idn_auth__c,
-        authorizations,
-        `subPayments[${index}].idn_auth__c`,
-      ),
       service_period_id: requiredString(
         row.idn_period_serv__c,
         `subPayments[${index}].idn_period_serv__c`,
       ),
       status,
+      ...(authorizationId ? { authorization_id: authorizationId } : {}),
       ...(amount !== undefined ? { amount } : {}),
     };
   });
@@ -515,6 +526,17 @@ export function normalizePaymentFeeSchedules(
       amountFields.forEach(([source, target]) => {
         if (fee[source] !== undefined) (result as unknown as RecordValue)[target] = Number(fee[source]);
       });
+      const capFields: Array<[string, keyof CanonicalPaymentFeeSchedule]> = [
+        ["activityFiscalAgreementAmount", "activity_provider_cap"],
+        ["activityCountyAmount", "activity_county_cap"],
+        ["registrationFiscalAgreementAmount", "registration_provider_cap"],
+        ["registrationCountyAmount", "registration_county_cap"],
+        ["transportationFiscalAgreementAmount", "transportation_provider_cap"],
+        ["transportationCountyAmount", "transportation_county_cap"],
+      ];
+      capFields.forEach(([source, target]) => {
+        if (fee[source] !== undefined) (result as unknown as RecordValue)[target] = Number(fee[source]);
+      });
       const scheduleFields: Array<[string, keyof CanonicalPaymentFeeSchedule]> = [
         ["activityFrequency", "activity_frequency"],
         ["activityMonths", "activity_months"],
@@ -550,9 +572,58 @@ export function buildCanonicalPaymentPayload(input: {
   feeSchedules?: CanonicalPaymentFeeSchedule[];
   feeHistory?: RecordValue[];
   vacantSlotSchedules?: CanonicalVacantSlotSchedule[];
+  providerClosureDates?: string[];
   mode?: "STATUS" | "FORECAST";
   asOfDate?: string;
 }): CanonicalPaymentPayload {
+  const authorizationRows = input.authorizationRecords ?? [];
+  const authorizationById = new Map(
+    authorizationRows
+      .filter((row) => typeof row.Id === "string")
+      .map((row) => [row.Id as string, row]),
+  );
+  const countyPolicyRows = requiredRecords(input.countyPolicies, "county policies");
+  const countyPolicyById = new Map(
+    countyPolicyRows.map((row) => [String(row.countyId ?? row.CDE_COUNTY__c ?? ""), row]),
+  );
+  const enrichedFeeSchedules = input.feeSchedules?.map((schedule) => {
+    const authorization = authorizationById.get(schedule.authorization_id);
+    const countyPolicy = countyPolicyById.get(String(authorization?.CDE_COUNTY__c ?? ""));
+    const result = { ...schedule } as CanonicalPaymentFeeSchedule;
+    if (typeof authorization?.DTE_BEGIN_EFFV_AUTH__c === "string") {
+      result.authorization_effective_start = authorization.DTE_BEGIN_EFFV_AUTH__c;
+    }
+    if (typeof authorization?.DTE_END_EFFV_AUTH__c === "string") {
+      result.authorization_effective_end = authorization.DTE_END_EFFV_AUTH__c;
+    }
+    const authorizationStatus = authorization?.Authorization_Status__c
+      ?? authorization?.authorization_status
+      ?? authorization?.expr0;
+    if (authorizationStatus !== undefined && authorizationStatus !== null) {
+      result.authorization_status = String(authorizationStatus);
+    }
+    const authorizationFields: Array<[string, keyof CanonicalPaymentFeeSchedule]> = [
+      ["AMT_ACTV_AUTH__c", "activity_authorization_amount"],
+      ["AMT_RGSTR_AUTH__c", "registration_authorization_amount"],
+      ["AMT_TRANSP_AUTH__c", "transportation_authorization_amount"],
+    ];
+    authorizationFields.forEach(([source, target]) => {
+      if (authorization?.[source] !== undefined && authorization?.[source] !== null) {
+        (result as unknown as RecordValue)[target] = Number(authorization[source]);
+      }
+    });
+    const countyFields: Array<[string, keyof CanonicalPaymentFeeSchedule]> = [
+      ["activityArtCap", "activity_county_cap"],
+      ["registrationArtCap", "registration_county_cap"],
+      ["transportationArtCap", "transportation_county_cap"],
+    ];
+    countyFields.forEach(([source, target]) => {
+      if (countyPolicy?.[source] !== undefined && countyPolicy?.[source] !== null) {
+        (result as unknown as RecordValue)[target] = Number(countyPolicy[source]);
+      }
+    });
+    return result;
+  });
   return {
     rule_version: "provider-risk-payment-v3",
     as_of_date: requiredString(input.asOfDate, "as-of date"),
@@ -569,10 +640,13 @@ export function buildCanonicalPaymentPayload(input: {
         ...(input.asOfDate ? { asOfDate: input.asOfDate } : {}),
       },
     ),
-    county_policies: requiredRecords(input.countyPolicies, "county policies"),
+    county_policies: countyPolicyRows,
+    ...(input.providerClosureDates && input.providerClosureDates.length > 0
+      ? { provider_closure_dates: [...new Set(input.providerClosureDates.map((value) => value.slice(0, 10)))] }
+      : {}),
     fiscal_rates: requiredRecords(input.fiscalRates, "fiscal rates"),
     existing_sub_payments: normalizeExistingSubPayments(input.paymentHistory, input.authorizationRecords),
-    ...(input.feeSchedules ? { fee_schedules: input.feeSchedules } : {}),
+    ...(enrichedFeeSchedules ? { fee_schedules: enrichedFeeSchedules } : {}),
     ...(input.feeHistory ? { fee_history: input.feeHistory } : {}),
     ...(input.vacantSlotSchedules ? { vacant_slot_schedules: input.vacantSlotSchedules } : {}),
   };

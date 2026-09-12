@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Require_Source_How_Verified</fullName>
-    <active>true</active>
-    <errorConditionFormula>AND(NOT( IDN_CLIENT__r.Is_Peak_Data__c ),ISPICKVAL(CDE_TYPE_VERIF__c, &apos;V&apos;) , ISPICKVAL(CDE_SOURCE_VRFYD_DTDN__c, &apos;&apos;)  )</errorConditionFormula>
-    <errorDisplayField>CDE_SOURCE_VRFYD_DTDN__c</errorDisplayField>
-    <errorMessage>A Value Is Required When Deduction Verified is Written Verification</errorMessage>
-</ValidationRule>

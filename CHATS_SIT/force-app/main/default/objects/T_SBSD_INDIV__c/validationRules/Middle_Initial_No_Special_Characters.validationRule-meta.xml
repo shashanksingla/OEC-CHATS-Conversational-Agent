@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Middle_Initial_No_Special_Characters</fullName>
-    <active>true</active>
-    <description>Middle Initial cannot contain special characters (except spaces).</description>
-    <errorConditionFormula>AND(NOT(REGEX(NAM_MI__c,&quot;[a-zA-Z ]+&quot;)), NOT(ISBLANK(NAM_MI__c)))</errorConditionFormula>
-    <errorMessage>Middle Initial cannot contain special characters (except spaces).</errorMessage>
-</ValidationRule>

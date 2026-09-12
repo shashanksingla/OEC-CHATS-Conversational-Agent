@@ -20,6 +20,15 @@ function confirmationStatus(value: unknown): string | undefined {
   return normalized || undefined;
 }
 
+function directParentConfirmation(value: unknown): "CONFIRMED" | "PENDING" | "REJECTED" | undefined {
+  const normalized = confirmationStatus(value);
+  if (!normalized) return undefined;
+  if (["CONFIRMED", "APPROVED", "PARENT_APPROVED", "COMPLETE"].includes(normalized)) return "CONFIRMED";
+  if (["PENDING", "PARENT_PENDING", "UNCONFIRMED"].includes(normalized)) return "PENDING";
+  if (["REJECTED", "PARENT_REJECTED", "DENIED"].includes(normalized)) return "REJECTED";
+  return undefined;
+}
+
 // Salesforce boolean fields can arrive as an actual boolean or as the
 // literal string "true"/"false" depending on the API layer. `Boolean("false")`
 // is `true` for any non-empty string, so a plain `Boolean(...)` coercion here
@@ -112,6 +121,20 @@ export function normalizeScheduleAttendance(
         .map((transaction) => transaction.status)
         .filter((status): status is string => typeof status === "string"),
     );
+    const scheduleParentConfirmation = directParentConfirmation(
+      schedule.parent_confirmation
+      ?? schedule.parentConfirmation
+      ?? schedule.Parent_Confirmation__c
+      ?? schedule.Parent_Confirmation_Status__c
+      ?? schedule.parent_confirmation_status,
+    );
+    if (scheduleParentConfirmation) {
+      parentStatuses.add(
+        scheduleParentConfirmation === "CONFIRMED"
+          ? "PARENT_APPROVED"
+          : `PARENT_${scheduleParentConfirmation}`,
+      );
+    }
     const authorization = asRecord(schedule.Authorization__r);
     const authorizationReference = schedule.CI_Authorization_Id__c
       ?? schedule.Authorization__c
@@ -185,7 +208,11 @@ export function normalizeScheduleAttendance(
     };
     if (parentStatuses.has("PARENT_PENDING")) {
       normalizedSchedule.parent_confirmation = "PENDING";
-      normalizedSchedule.absence_parent_approved = false;
+      normalizedSchedule.absence_parent_approved = booleanValue(
+        schedule.absence_parent_approved
+        ?? schedule.absenceParentApproved
+        ?? schedule.Absence_Parent_Approved__c,
+      );
     } else if (parentStatuses.has("PARENT_APPROVED")) {
       normalizedSchedule.parent_confirmation = "CONFIRMED";
       normalizedSchedule.absence_parent_approved = true;

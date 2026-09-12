@@ -22,10 +22,15 @@ export { formatCountyPolicyResult } from './formatters/county-policy-formatter.j
 function contextualize(value, store, providerKey, capability, result, resultTool) {
     if (value.isError || !value.structuredContent)
         return value;
-    const actions = Array.isArray(value.structuredContent.actionControls)
-        ? value.structuredContent.actionControls.map(recordValue).filter((action) => Boolean(action))
-        : Array.isArray(value.structuredContent.actionIntents)
-            ? value.structuredContent.actionIntents.map(recordValue).filter((action) => Boolean(action))
+    const providerMessage = value.content.find((item) => item.type === "text" && typeof item.text === "string" && item.text.trim().length > 0)?.text;
+    const structuredContentBase = providerMessage && typeof value.structuredContent.providerMessage !== "string"
+        ? { ...value.structuredContent, providerMessage }
+        : value.structuredContent;
+    const contextualizedValue = { ...value, structuredContent: structuredContentBase };
+    const actions = Array.isArray(structuredContentBase.actionIntents)
+        ? structuredContentBase.actionIntents.map(recordValue).filter((action) => Boolean(action))
+        : Array.isArray(structuredContentBase.actionControls)
+            ? structuredContentBase.actionControls.map(recordValue).filter((action) => Boolean(action))
             : [];
     // Inherited actions let a later turn still reach an older offered action
     // (e.g. "you can still review attendance from here"), but they must not
@@ -34,8 +39,8 @@ function contextualize(value, store, providerKey, capability, result, resultTool
     // already cover that domain) and cap the carryover to one supplementary
     // cross-capability action so the response does not repeat a growing pile
     // of stale buttons turn after turn.
-    const currentCapability = typeof value.structuredContent.capability === "string"
-        ? value.structuredContent.capability
+    const currentCapability = typeof structuredContentBase.capability === "string"
+        ? structuredContentBase.capability
         : undefined;
     const inheritedActions = store.getInheritedActions(providerKey, actions)
         .map((action) => action.metadata)
@@ -53,20 +58,43 @@ function contextualize(value, store, providerKey, capability, result, resultTool
     });
     if (plans.length === 0)
         return value;
-    const ruleVersion = typeof value.structuredContent.ruleVersion === "string"
-        ? value.structuredContent.ruleVersion
+    const ruleVersion = typeof structuredContentBase.ruleVersion === "string"
+        ? structuredContentBase.ruleVersion
         : undefined;
     const planActions = combinedActions.filter((action) => {
         const input = recordValue(action.input);
         return Boolean(input) && (action.tool === "cccap_analyze_payment_risk" || action.tool === "cccap_analyze_payment");
     });
-    const { contextRef, actionRefs } = store.create(providerKey, capability, plans, result, resultTool, ruleVersion, planActions);
-    let actionIndex = 0;
+    const viewState = recordValue(structuredContentBase.viewState);
+    const situation = recordValue(structuredContentBase.situation);
+    const resultRecord = recordValue(result);
+    const graph = {
+        ...(typeof structuredContentBase.parentContextRef === "string"
+            ? { parentContextRef: structuredContentBase.parentContextRef }
+            : {}),
+        ...(typeof structuredContentBase.intent === "string"
+            ? { currentIntent: structuredContentBase.intent }
+            : { currentIntent: currentCapability ?? capability }),
+        ...(structuredContentBase.scope !== undefined
+            ? { scope: structuredContentBase.scope }
+            : viewState?.scope !== undefined ? { scope: viewState.scope } : {}),
+        ...(resultRecord?.servicePeriod !== undefined ? { selectedServicePeriod: resultRecord.servicePeriod } : {}),
+        ...(viewState?.parentViewId !== undefined ? { parentView: viewState.parentViewId } : {}),
+        ...(viewState ? { currentView: viewState } : {}),
+        ...(Array.isArray(structuredContentBase.responseSections)
+            ? { availableEvidence: structuredContentBase.responseSections.filter((section) => typeof section === "string") }
+            : {}),
+        ...(typeof situation?.severity === "string" ? { severity: situation.severity } : {}),
+        ...(typeof structuredContentBase.sourceRetrievedAt === "string"
+            ? { sourceRetrievedAt: structuredContentBase.sourceRetrievedAt }
+            : {}),
+        ...(ruleVersion ? { ruleVersion } : {}),
+    };
+    store.create(providerKey, capability, plans, result, resultTool, ruleVersion, planActions, graph);
     const actionControls = combinedActions.map((action) => {
         const input = recordValue(action.input);
         if (!input || (action.tool !== "cccap_analyze_payment_risk" && action.tool !== "cccap_analyze_payment"))
             return action;
-        const actionRef = actionRefs[actionIndex++];
         return {
             type: "button",
             actionId: action.actionId,
@@ -76,15 +104,21 @@ function contextualize(value, store, providerKey, capability, result, resultTool
             section: action.section,
             capability: action.capability,
             tool: action.tool,
-            input: { actionId: action.actionId, contextRef, actionRef },
+            ...(action.sourceViewId ? { sourceViewId: action.sourceViewId } : {}),
+            ...(action.targetViewId ? { targetViewId: action.targetViewId } : {}),
+            ...(action.lockedView ? { lockedView: action.lockedView } : {}),
+            input: { actionId: action.actionId },
         };
     });
-    const { actionIntents: _actionIntents, filters: _filters, responseContext: _responseContext, ...structuredContent } = value.structuredContent;
+    const { actionIntents: _actionIntents, filters: _filters, responseContext: _responseContext, ...structuredContent } = structuredContentBase;
     return {
-        ...value,
+        ...contextualizedValue,
         structuredContent: {
             ...structuredContent,
-            contextRef,
+            resultGraph: {
+                ...graph,
+                actionStates: Object.fromEntries(combinedActions.map((action) => [action.actionId, "OFFERED"])),
+            },
             actionControls,
         },
     };
@@ -194,6 +228,33 @@ function toolError(capability, error) {
         ],
     };
 }
+function paymentClarification(request) {
+    const filterKinds = [request.childNames, request.authNames, request.countyNames]
+        .filter((value) => Array.isArray(value) && value.length > 0).length;
+    const missingGrouping = !request.grouping && filterKinds > 1;
+    const missingScope = request.grouping === "CHILD" && (!request.childNames || request.childNames.length === 0)
+        ? "childNames"
+        : request.grouping === "COUNTY" && (!request.countyNames || request.countyNames.length === 0)
+            ? "countyNames"
+            : undefined;
+    if (!missingGrouping && !missingScope)
+        return undefined;
+    const question = missingScope
+        ? `Which ${missingScope === "childNames" ? "child" : "county"} should this payment summary be grouped by? Provide ${missingScope}.`
+        : "Which grouping should this filtered payment summary use: CHILD, COUNTY, CATEGORY, or SERVICE_PERIOD?";
+    return {
+        content: [{ type: "text", text: question }],
+        structuredContent: {
+            capability: "payment-analysis",
+            status: "CLARIFICATION_REQUIRED",
+            clarificationRequired: true,
+            clarificationQuestion: question,
+            availableGroupings: ["SERVICE_PERIOD", "COUNTY", "CHILD", "CATEGORY"],
+            scope: request,
+            responseSections: ["clarification"],
+        },
+    };
+}
 async function execute(capability, operation, formatResult = result) {
     try {
         return formatResult(await operation());
@@ -212,13 +273,13 @@ export function createServer(client, providerDisplayName, contextStore = new Con
         description: "Get a provider-scoped attendance risk snapshot for the requested date range. Use this for current-month, last-month, or explicit date-range snapshot requests; use cccap_analyze_payment_risk for child-level follow-up details.",
         inputSchema: dateScopeSchema.shape,
         annotations: readOnlyAnnotations,
-    }, async (input) => execute("attendance-risk snapshot", () => getAttendanceRiskSnapshot(client, providerDisplayName, input, new Date().toISOString().slice(0, 10)), (data) => attachDialogueState(contextualize(snapshotResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment_risk"), dialogueStore, providerKey, "attendance-risk-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined)));
+    }, async (input) => execute("attendance-risk snapshot", () => getAttendanceRiskSnapshot(client, providerDisplayName, input, new Date().toISOString().slice(0, 10)), (data) => attachDialogueState(contextualize(snapshotResult(data, true), contextStore, providerKey, "continuation", data, "cccap_analyze_payment_risk"), dialogueStore, providerKey, "attendance-risk-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined)));
     server.registerTool("cccap_get_current_month_risk_snapshot", {
         title: "Get Current-Month Payment Risk Snapshot",
         description: "Get the authenticated provider's current-month payment-risk snapshot with today's scheduled and checked-in child counts at the top. Use this read-only provider-scoped tool first for a provider greeting.",
         inputSchema: {},
         annotations: readOnlyAnnotations,
-    }, async () => execute("current payment-risk snapshot", () => getCurrentMonthAttendanceSnapshot(client, providerDisplayName, new Date().toISOString().slice(0, 10)), (data) => attachDialogueState(contextualize(snapshotResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment_risk"), dialogueStore, providerKey, "attendance-risk-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined)));
+    }, async () => execute("current payment-risk snapshot", () => getCurrentMonthAttendanceSnapshot(client, providerDisplayName, new Date().toISOString().slice(0, 10)), (data) => attachDialogueState(contextualize(snapshotResult(data, true), contextStore, providerKey, "continuation", data, "cccap_analyze_payment_risk"), dialogueStore, providerKey, "attendance-risk-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined)));
     server.registerTool("cccap_get_attendance_analysis", {
         title: "Get Attendance Transaction Diagnostics",
         description: "Retrieve low-level authenticated-provider schedule and transaction diagnostics, including data-quality blockers. Do not use for pending parent confirmations, absence risk, child drill-downs, or a numbered action after the provider snapshot; use cccap_analyze_payment_risk for those provider-facing requests.",
@@ -244,14 +305,18 @@ export function createServer(client, providerDisplayName, contextStore = new Con
         }
         if (input.refresh)
             client.clearReadCache();
-        if (!input.refresh && continuation?.resultTool === "cccap_analyze_payment_risk" && continuation.result) {
+        const isNarrowedAttendanceContinuation = Boolean(request.childNames?.length ||
+            request.authNames?.length ||
+            request.countyNames?.length ||
+            request.riskFocus);
+        if (!input.refresh && !isNarrowedAttendanceContinuation && continuation?.resultTool === "cccap_analyze_payment_risk" && continuation.result) {
             const cachedResult = recordValue(continuation.result);
             if (cachedResult) {
                 const continuationResult = { ...cachedResult, scope: request, riskFocus: request.riskFocus, countyNames: request.countyNames };
-                return attachDialogueState(contextualize(formatAttendanceRiskResult(continuationResult), contextStore, providerKey, "continuation", continuationResult, "cccap_analyze_payment_risk"), dialogueStore, providerKey, "attendance-risk-analysis", request, typeof cachedResult.sourceRetrievedAt === "string" ? cachedResult.sourceRetrievedAt : undefined);
+                return attachDialogueState(contextualize(formatAttendanceRiskResult(continuationResult, true), contextStore, providerKey, "continuation", continuationResult, "cccap_analyze_payment_risk"), dialogueStore, providerKey, "attendance-risk-analysis", request, typeof cachedResult.sourceRetrievedAt === "string" ? cachedResult.sourceRetrievedAt : undefined);
             }
         }
-        return execute("attendance-risk analysis", () => getAttendanceRiskAnalysis(client, providerDisplayName, request, new Date().toISOString().slice(0, 10), request.childNames, request.authNames, request.riskFocus, request.countyNames), (data) => attachDialogueState(contextualize(formatAttendanceRiskResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment_risk"), dialogueStore, providerKey, "attendance-risk-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
+        return execute("attendance-risk analysis", () => getAttendanceRiskAnalysis(client, providerDisplayName, request, new Date().toISOString().slice(0, 10), request.childNames, request.authNames, request.riskFocus, request.countyNames), (data) => attachDialogueState(contextualize(formatAttendanceRiskResult(data, true), contextStore, providerKey, "continuation", data, "cccap_analyze_payment_risk"), dialogueStore, providerKey, "attendance-risk-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
     });
     server.registerTool("cccap_initialize_provider", {
         title: "Initialize CCCAP Provider",
@@ -326,20 +391,36 @@ export function createServer(client, providerDisplayName, contextStore = new Con
         if (hasContinuation && (!resolvedContinuation || resolvedContinuation.tool !== "cccap_analyze_payment")) {
             return toolError("payment analysis", new Error("Continuation reference is unavailable or expired"));
         }
+        const clarification = paymentClarification({
+            ...(request.grouping ? { grouping: request.grouping } : {}),
+            ...(request.childNames ? { childNames: request.childNames } : {}),
+            ...(request.authNames ? { authNames: request.authNames } : {}),
+            ...(request.countyNames ? { countyNames: request.countyNames } : {}),
+        });
+        if (clarification)
+            return clarification;
         if (input.refresh)
             client.clearReadCache();
-        const requestsDetailPage = request.detailPage !== undefined || request.detailPageSize !== undefined;
+        const requestsDetailPage = request.detailDepth === "DETAIL" || request.detailPage !== undefined || request.detailPageSize !== undefined;
         if (!input.refresh && !requestsDetailPage && continuation?.resultTool === "cccap_analyze_payment" && continuation.result) {
             const cachedResult = recordValue(continuation.result);
             if (cachedResult) {
                 const continuationResult = { ...cachedResult, filters: request };
-                return attachDialogueState(contextualize(formatPaymentResult(continuationResult), contextStore, providerKey, "continuation", continuationResult, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(cachedResult.scope) ?? request, typeof cachedResult.sourceRetrievedAt === "string" ? cachedResult.sourceRetrievedAt : undefined);
+                return attachDialogueState(contextualize(request.view === "NEXT_PAYOUT"
+                    ? formatServicePeriodLedgerResult(continuationResult)
+                    : formatPaymentResult(continuationResult), contextStore, providerKey, "continuation", continuationResult, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(cachedResult.scope) ?? request, typeof cachedResult.sourceRetrievedAt === "string" ? cachedResult.sourceRetrievedAt : undefined);
             }
+        }
+        const runPayoutLedger = () => execute("payment payout ledger", () => getServicePeriodLedger(client, request, new Date().toISOString().slice(0, 10)), (data) => attachDialogueState(contextualize(formatServicePeriodLedgerResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope ?? request, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
+        if (request.view === "NEXT_PAYOUT") {
+            return runPayoutLedger();
         }
         const runPaymentAnalysis = () => execute("payment analysis", () => getPaymentAnalysis(client, request, request.view, undefined, {
             ...(request.childNames ? { childNames: request.childNames } : {}),
             ...(request.authNames ? { authNames: request.authNames } : {}),
             ...(request.countyNames ? { countyNames: request.countyNames } : {}),
+            ...(request.grouping ? { grouping: request.grouping } : {}),
+            ...(request.detailDepth ? { detailDepth: request.detailDepth } : {}),
             ...(request.detailPage ? { detailPage: request.detailPage } : {}),
             ...(request.detailPageSize ? { detailPageSize: request.detailPageSize } : {}),
             ...(request.excludedOnly ? { excludedOnly: true } : {}),

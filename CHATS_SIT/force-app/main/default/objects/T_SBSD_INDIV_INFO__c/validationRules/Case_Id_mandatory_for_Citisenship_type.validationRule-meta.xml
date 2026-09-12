@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Case_Id_mandatory_for_Citisenship_type</fullName>
-    <active>true</active>
-    <description>Required when CDE_TYPE_INFO_INDIV is Citizenship status. CCCAP-9945</description>
-    <errorConditionFormula>AND(NOT(IDN_CLIENT__r.Is_Peak_Data__c),NOT(IDN_CLIENT__r.Is_CBMS_Data__c), ISBLANK(IDN_CASE__c) , ISPICKVAL(CDE_TYPE_INFO_INDIV__c , &apos;CS&apos;))</errorConditionFormula>
-    <errorDisplayField>IDN_CASE__c</errorDisplayField>
-    <errorMessage>Please enter Case ID when Type of Individual Information is Citizenship Status</errorMessage>
-</ValidationRule>

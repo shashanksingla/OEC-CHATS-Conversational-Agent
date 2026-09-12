@@ -192,6 +192,9 @@ export function normalizePaymentSourceBundle(
       max_drop_in_days_per_month: policy.maxDropInDaysPerMonth,
       drop_in_response: policy.dropInResponse,
       manage_drop_in_at_auth_level: policy.manageDropInAtAuthLevel,
+      activityArtCap: policy.activityArtCap,
+      registrationArtCap: policy.registrationArtCap,
+      transportationArtCap: policy.transportationArtCap,
     };
   });
 
@@ -211,6 +214,16 @@ export function normalizePaymentSourceBundle(
     authorizationData.slotContracts,
     authorizationMatches,
   );
+  const providerClosures = Array.isArray(initialization.providerClosures)
+    ? initialization.providerClosures
+    : Array.isArray(initialization.provider_closures)
+      ? initialization.provider_closures
+      : [];
+  const providerClosureDates = providerClosures.flatMap((value) => {
+    const closure = record(value, "Provider closure");
+    const date = closure.DTE_BEGIN_CLOSURE__c ?? closure.closure_date;
+    return typeof date === "string" ? [date] : [];
+  });
   const vacantSlotData = record(sources.vacantSlotData ?? { vacantSlots: [] }, "Vacant slots");
   const paymentHistory = sources.paymentData;
   let vacantSlotMappingGaps = 0;
@@ -224,6 +237,7 @@ export function normalizePaymentSourceBundle(
     paymentHistory,
     authorizationRecords,
     feeSchedules,
+    providerClosureDates,
     vacantSlotSchedules: (() => {
       const resolved = normalizeVacantSlotSchedules(
         vacantSlotData.vacantSlots,

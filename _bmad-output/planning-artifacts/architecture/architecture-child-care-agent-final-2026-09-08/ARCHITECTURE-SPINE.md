@@ -7,7 +7,7 @@ paradigm: layered capability-oriented architecture
 scope: Provider Assist agent, MCP adapter, deterministic evaluators, and Salesforce source boundary
 status: final
 created: 2026-09-08
-updated: 2026-09-10
+updated: 2026-09-12
 binds: [Provider Assist, attendance risk, parent confirmations, absence limits, payment readiness]
 sources: [architecture.md, carepay-agent-file-usage.md, CHAT_HANDOFF.md]
 companions: []
@@ -125,6 +125,18 @@ flowchart TD
 - **Binds:** continuation lifecycle, freshness, and process-memory limits
 - **Prevents:** unbounded memory, stale reads, and refresh no-ops
 - **Rule:** Continuation storage uses provider-scoped process memory with TTL, LRU entry, and byte caps. Explicit refresh bypasses canonical-result reuse and creates a new compatible context.
+
+### AD-14 — Conversation state is a provider-scoped result graph [ADOPTED]
+
+- **Binds:** attendance and payment follow-ups, multi-period payout drill-downs, scoped summaries, and return-to-parent navigation
+- **Prevents:** handoff-like context loss, guessed filters, and accidental scope widening
+- **Rule:** Every continuation projection records its parent context, current intent, normalized scope, selected service period when applicable, current and parent view, available evidence, freshness, rule version, and scope transition. Narrowing and view deepening may inherit verified state; widening requires explicit provider intent; parent navigation restores the stored parent context.
+
+### AD-15 — Action lifecycle and suppression are server-owned [ADOPTED]
+
+- **Binds:** priority actions, drill-down controls, inherited actions, and follow-up rendering
+- **Prevents:** repeated actions, stale cross-capability suggestions, and generic next-step prose
+- **Rule:** The server generates action candidates, checks eligibility, deduplicates them against the current result graph, ranks them by severity, impact, and deadline, and tracks `OFFERED`, `SELECTED`, `COMPLETED`, `SUPERSEDED`, `HIDDEN_BY_SCOPE`, and `EXPIRED` states. Previously offered actions are not re-exposed unless explicitly requested and still relevant.
 
 ## Consistency Conventions
 
@@ -245,3 +257,4 @@ CHATS_SIT/force-app/main/default/classes/
 - Durable cache, background jobs, writes, notifications, and scenario mutation.
 - MCP envelope alignment and source-read cache parity remain implementation work; they must not weaken the continuation compatibility, refresh, or fail-closed rules above.
 - Source-read cache parity and production deployment topology remain implementation concerns; they must not weaken the continuation compatibility, refresh, or fail-closed rules above.
+- Result-graph storage, action lifecycle transitions, scoped payment-summary inputs, multi-period payout entry-point integration, incomplete-attendance child-date detail, and live MCP smoke validation remain implementation work; each must preserve AD-5 and AD-8 through AD-15.

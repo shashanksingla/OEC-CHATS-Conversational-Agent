@@ -307,7 +307,7 @@ export async function getAttendanceRiskSnapshot(
       ...riskRows,
       "",
       "**Priority Actions**",
-      ...nextActions.map((action) => `- ${action}`),
+      ...nextActions.map((action, index) => `${index + 1}. ${action}`),
       "",
       "**Available options**",
       "- Review the next payout summary",

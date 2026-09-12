@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CompactLayout xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Service_Period_Compact</fullName>
-    <fields>Name</fields>
-    <fields>DTE_BEGIN_EFFV__c</fields>
-    <fields>DTE_END_EFFV__c</fields>
-    <label>Service Period Compact</label>
-</CompactLayout>

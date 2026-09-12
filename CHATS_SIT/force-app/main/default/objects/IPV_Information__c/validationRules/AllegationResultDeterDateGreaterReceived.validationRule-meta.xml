@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>AllegationResultDeterDateGreaterReceived</fullName>
-    <active>true</active>
-    <errorConditionFormula>Allegation_Result_Determination_Date__c &lt;  Allegation_Received_Date__c</errorConditionFormula>
-    <errorDisplayField>Allegation_Result_Determination_Date__c</errorDisplayField>
-    <errorMessage>Allegation Result Date cannot be before Allegation Received Date</errorMessage>
-</ValidationRule>

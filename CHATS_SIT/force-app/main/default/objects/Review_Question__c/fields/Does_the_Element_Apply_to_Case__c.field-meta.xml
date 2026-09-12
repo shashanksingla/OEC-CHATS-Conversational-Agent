@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Does_the_Element_Apply_to_Case__c</fullName>
-    <defaultValue>false</defaultValue>
-    <label>Does the Element Apply to Case</label>
-    <trackHistory>false</trackHistory>
-    <trackTrending>false</trackTrending>
-    <type>Checkbox</type>
-</CustomField>

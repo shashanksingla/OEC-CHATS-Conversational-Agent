@@ -28,12 +28,11 @@ test("initialization injects the configured provider user and captures allowed s
 
   assert.equal(requests[0]?.action, "getProviderData");
   assert.deepEqual(requests[0]?.body, {
-    dateFilter: "TODAY",
     userId: "user-1",
   });
 });
 
-test("reuses identical provider reads but refreshes when the date scope changes", async () => {
+test("reuses provider identity reads when the date scope changes", async () => {
   const requests: string[] = [];
   const requestApex: RequestApex = async (_targetOrg, action) => {
     requests.push(action);
@@ -56,7 +55,7 @@ test("reuses identical provider reads but refreshes when the date scope changes"
   await client.initialize({ dateFilter: "TODAY" });
   await client.initialize({ dateFilter: "THIS_MONTH" });
 
-  assert.deepEqual(requests, ["getProviderData", "getProviderData"]);
+  assert.deepEqual(requests, ["getProviderData"]);
 });
 
 test("expires source reads and explicit clearing forces a fresh request", async () => {

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>AntCompDateGreaterThanBeginDate</fullName>
-    <active>true</active>
-    <description>Anticipated completion date must be greater than effective begin date.</description>
-    <errorConditionFormula>DTE_BEGIN_EFFV__c  &gt;=  DTE_END_ANT__c</errorConditionFormula>
-    <errorDisplayField>DTE_END_ANT__c</errorDisplayField>
-    <errorMessage>Anticipated Completion Date must be greater than Effective Begin Date.</errorMessage>
-</ValidationRule>

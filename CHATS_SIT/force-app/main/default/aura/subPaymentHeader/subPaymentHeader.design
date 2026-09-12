@@ -1,3 +1,0 @@
-<design:component >
-    <design:attribute name="relationshipToCase" label="Case Relationship Field API Name"/>	
-</design:component>

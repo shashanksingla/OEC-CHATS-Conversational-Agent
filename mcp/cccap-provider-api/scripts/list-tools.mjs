@@ -31,9 +31,11 @@ const expectedTools = [
   "cccap_get_holidays",
   "cccap_get_payment_history",
   "cccap_get_schedules",
+  "cccap_get_service_period_payout_ledger",
   "cccap_get_service_periods",
+  "cccap_compare_payment_periods",
   "cccap_initialize_provider",
-];
+].sort();
 
 try {
   await client.connect(transport);

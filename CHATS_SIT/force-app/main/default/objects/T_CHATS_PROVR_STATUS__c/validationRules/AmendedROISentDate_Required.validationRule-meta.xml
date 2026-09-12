@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>AmendedROISentDate_Required</fullName>
-    <active>true</active>
-    <description>Conditionally required if &quot;An Amended Report Sent?&quot; = Yes</description>
-    <errorConditionFormula>AND(ISBLANK(DTE_AmendedROISent__c), ISPICKVAL(CDE_AmendedROISent__c, &quot;Yes&quot;))</errorConditionFormula>
-    <errorDisplayField>DTE_AmendedROISent__c</errorDisplayField>
-    <errorMessage>This field is required when &apos;Amended ROI Sent?&apos; is answered as &apos;Yes&apos;.</errorMessage>
-</ValidationRule>

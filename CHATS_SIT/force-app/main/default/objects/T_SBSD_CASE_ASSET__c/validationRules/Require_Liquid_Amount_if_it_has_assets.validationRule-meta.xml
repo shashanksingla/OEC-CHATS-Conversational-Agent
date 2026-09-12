@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Require_Liquid_Amount_if_it_has_assets</fullName>
-    <active>true</active>
-    <description>Please provide Liquid Resource Amount</description>
-    <errorConditionFormula>AND( !IDN_CASE__r.Is_Peak_Data__c ,!IDN_CASE__r.Is_CBMS_Data__c,IND_HAS_ASSET__c , ISBLANK(NBR_LIQUID_AMT__c) )</errorConditionFormula>
-    <errorDisplayField>NBR_LIQUID_AMT__c</errorDisplayField>
-    <errorMessage>Please provide Liquid Resource Amount</errorMessage>
-</ValidationRule>

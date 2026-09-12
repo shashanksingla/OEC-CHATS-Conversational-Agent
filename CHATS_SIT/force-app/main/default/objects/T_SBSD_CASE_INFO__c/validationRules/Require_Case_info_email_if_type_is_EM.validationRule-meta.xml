@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Require_Case_info_email_if_type_is_EM</fullName>
-    <active>true</active>
-    <description>Please provide valid email address if Case Information Type is Email</description>
-    <errorConditionFormula>AND(NOT( IDN_CASE__r.Is_Peak_Data__c ), NOT( IDN_CASE__r.Is_CBMS_Data__c ), NOT(REGEX(TXT_VALUE_INFO_CASE__c ,&apos;([a-zA-Z0-9_\\-\\.\\+\\!\\#\\$\\%\\&amp;\\*\\/\\=\\?\\^\\~\\`\\{\\|\\}\\,]+)@((\\[a-z]{1,3}\\.[a-z]{1,3}\\.[a-z]{1,3}\\.)|(([a-zA-Z0-9\\-]+\\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})&apos;)),NOT(ISBLANK(TXT_VALUE_INFO_CASE__c )),ISPICKVAL(CDE_TYPE_INFO_CASE__c,&apos;EM&apos;))</errorConditionFormula>
-    <errorDisplayField>TXT_VALUE_INFO_CASE__c</errorDisplayField>
-    <errorMessage>Please provide valid email address if Case Information Type is Email</errorMessage>
-</ValidationRule>

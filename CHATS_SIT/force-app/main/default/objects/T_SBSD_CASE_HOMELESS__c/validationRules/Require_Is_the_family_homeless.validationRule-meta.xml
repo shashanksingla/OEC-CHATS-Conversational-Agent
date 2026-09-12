@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Require_Is_the_family_homeless</fullName>
-    <active>true</active>
-    <description>At least one Homeless Living Situation must be checked.</description>
-    <errorConditionFormula>AND( !IDN_CASE__r.Is_Peak_Data__c, !IDN_CASE__r.Is_CBMS_Data__c,NOT(ISCHANGED(bypassValidations__c)), ISPICKVAL(Is_family_homeless__c,&apos;Y&apos;) , NOT(OR(IND_LVG_CAMPGROUND__c,IND_LVG_HOTEL__c, IND_LVG_OTHER__c, IND_LVG_SHELTER__c, IND_LVG_SUBSTANDARD__c)) )</errorConditionFormula>
-    <errorDisplayField>IND_LVG_OTHER__c</errorDisplayField>
-    <errorMessage>At least one Homeless Living Situation must be checked.</errorMessage>
-</ValidationRule>

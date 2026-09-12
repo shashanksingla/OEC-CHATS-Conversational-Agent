@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>This custom metadata will store the configuration regarding the order or deletion or other information.</description>
-    <label>Junk Record Clean Up Batch Configuration</label>
-    <pluralLabel>Junk Record Clean Up Batch Configuration</pluralLabel>
-    <visibility>Public</visibility>
-</CustomObject>

@@ -1,3 +1,0 @@
-<aura:event type="APPLICATION">
-    <aura:attribute name="nonAdjustmentDetailObj" type="T_NON_ADJMT_DETAIL__c[]"/>
-</aura:event>

@@ -1,4 +1,0 @@
-<aura:event type="APPLICATION" description="Event template">
-    <aura:attribute name="countyRateAmount" type="T_COUNTY_RATE_AMT__c"/>
-    <aura:attribute name="lstCountyRateAmount" type="List"/>
-</aura:event>

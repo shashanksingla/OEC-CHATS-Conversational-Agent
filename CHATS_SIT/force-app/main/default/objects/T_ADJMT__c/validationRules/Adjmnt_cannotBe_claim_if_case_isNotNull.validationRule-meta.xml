@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Adjmnt_cannotBe_claim_if_case_isNotNull</fullName>
-    <active>true</active>
-    <description>Adjustment Type cannot be &apos;Claim&apos; when Case Id is not Null</description>
-    <errorConditionFormula>AND( NOT(ISBLANK( IDN_CASE__r.Id )), TEXT(CDE_TYPE_ADJMT__c) = &apos;1&apos;,ISPICKVAL(CDE_STATUS_ADJMT__c, &apos;1&apos;) )</errorConditionFormula>
-    <errorDisplayField>CDE_TYPE_ADJMT__c</errorDisplayField>
-    <errorMessage>Adjustment Type cannot be &apos; Claim &apos;  with Case# entered.</errorMessage>
-</ValidationRule>

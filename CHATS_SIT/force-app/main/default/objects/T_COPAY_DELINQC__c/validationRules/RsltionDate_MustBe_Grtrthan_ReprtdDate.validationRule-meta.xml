@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>RsltionDate_MustBe_Grtrthan_ReprtdDate</fullName>
-    <active>true</active>
-    <description>Delinquency Resolution Date must be greater than Delinquency Reported Date.</description>
-    <errorConditionFormula>DTE_RESOLN_DELINQC__c &lt;= DTE_RPTD_DELINQC__c</errorConditionFormula>
-    <errorDisplayField>DTE_RESOLN_DELINQC__c</errorDisplayField>
-    <errorMessage>Delinquency Resolution Date must be greater than Delinquency Reported Date.</errorMessage>
-</ValidationRule>

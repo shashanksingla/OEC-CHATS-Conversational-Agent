@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>RsltionDate_Cannot_Be_FutureDate</fullName>
-    <active>true</active>
-    <description>Delinquency Resolution date cannot be in future</description>
-    <errorConditionFormula>DTE_RESOLN_DELINQC__c &gt; TODAY()</errorConditionFormula>
-    <errorDisplayField>DTE_RESOLN_DELINQC__c</errorDisplayField>
-    <errorMessage>Delinquency Resolution Date cannot be a future date</errorMessage>
-</ValidationRule>

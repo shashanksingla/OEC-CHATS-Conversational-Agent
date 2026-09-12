@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Adr_Zip_Main_Length_5</fullName>
-    <active>true</active>
-    <description>validate to check the length of field to 5</description>
-    <errorConditionFormula>AND( !IDN_CASE__r.Is_Peak_Data__c,!IDN_CASE__r.Is_CBMS_Data__c, NOT ( ISBLANK ( ADR_ZIP_MAIN__c ) ), LEN(  ADR_ZIP_MAIN__c ) &lt;&gt; 5)</errorConditionFormula>
-    <errorDisplayField>ADR_ZIP_MAIN__c</errorDisplayField>
-    <errorMessage>Zip Address must be of length 5</errorMessage>
-</ValidationRule>

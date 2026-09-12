@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Provider_License_Closed</fullName>
-    <active>false</active>
-    <description>On Closed Provier Adjustment of type Claim can not be created</description>
-    <errorConditionFormula>AND(  TEXT(CDE_TYPE_ADJMT__c) = &apos;1&apos;,NOT(ISPICKVAL( IDN_PROVR__r.CDE_STATUS_PROVR__c , &apos;Open&apos;)),OR((TEXT( CDE_STATUS_ADJMT__c ) = &apos;&apos;),(TEXT(CDE_STATUS_ADJMT__c) = &apos;1&apos;)) )</errorConditionFormula>
-    <errorMessage>Adjustment cannot be created for the care dates when provider license status is closed</errorMessage>
-</ValidationRule>

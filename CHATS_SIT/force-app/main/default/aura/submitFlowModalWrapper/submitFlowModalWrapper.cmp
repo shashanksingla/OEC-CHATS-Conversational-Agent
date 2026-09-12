@@ -1,8 +1,0 @@
-<!--Handles flows added as custom lightning action-->
-<aura:component access="global">
-    <aura:attribute name="recordId" type="String"/>
-    <aura:attribute name="flowAPIName" type="String"/>
-    <aura:attribute name="modalRef" type="Object"/>
-    <lightning:flow aura:id="flow" onstatuschange="{!c.handleStatusChange}"/>
-    <aura:handler name="init" value="{!this}" action="{!c.startFlow}"/>
-</aura:component>

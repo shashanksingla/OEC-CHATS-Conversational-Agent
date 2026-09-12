@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Eff_Begin_Date_Read_Only_if_entered</fullName>
-    <active>true</active>
-    <description>Cannot update Effective  Begin date  once entered</description>
-    <errorConditionFormula>AND(ISCHANGED(DTE_BEGIN_EFFV__c),!ISBLANK(PRIORVALUE(DTE_BEGIN_EFFV__c)))</errorConditionFormula>
-    <errorDisplayField>DTE_BEGIN_EFFV__c</errorDisplayField>
-    <errorMessage>Cannot update Effective  Begin date  once entered</errorMessage>
-</ValidationRule>

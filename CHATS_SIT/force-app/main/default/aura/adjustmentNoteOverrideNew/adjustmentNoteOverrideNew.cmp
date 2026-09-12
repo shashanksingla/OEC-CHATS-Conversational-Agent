@@ -1,8 +1,0 @@
-<aura:component implements="flexipage:availableForRecordHome,force:hasRecordId,force:hasSobjectName,force:lightningQuickAction,lightning:actionOverride" access="global" >
-    <aura:attribute name="recordId" type="String" />
-    <aura:attribute name="sObjectName" type="String" />
-    
-    <c:adjustmentNoteOverride_lwc 
-                                  recordId="{!v.recordId}"
-                                  objectApiName="{!v.sObjectName}"></c:adjustmentNoteOverride_lwc>
-</aura:component>

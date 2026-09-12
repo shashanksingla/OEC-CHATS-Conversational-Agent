@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Facility_Phone_must_of_10_digits</fullName>
-    <active>true</active>
-    <description>Facility Phone must be 10 digits</description>
-    <errorConditionFormula>AND(NOT(ISBLANK(NBR_PHONE_FAC__c)),LEN(NBR_PHONE_FAC__c) != 10)</errorConditionFormula>
-    <errorDisplayField>NBR_PHONE_FAC__c</errorDisplayField>
-    <errorMessage>Facility Phone must be 10 digits</errorMessage>
-</ValidationRule>

@@ -1,7 +1,8 @@
 import { actionControls, compactActionControls, recordValue, renderActionSections, result, tableValue, type ToolResult } from './shared.js';
 import { actionMetadata, attendanceSummary } from './attendance-formatter.js';
+import { actionViewMetadata, viewState } from '../view-state.js';
 
-export function snapshotResult(data: unknown): ToolResult {
+export function snapshotResult(data: unknown, includeContinuationMetadata = false): ToolResult {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return result(data);
   }
@@ -16,7 +17,17 @@ export function snapshotResult(data: unknown): ToolResult {
         .map(recordValue)
         .filter((child): child is Record<string, unknown> => Boolean(child))
     : [];
-  const actionIntents = risk ? actionMetadata(snapshot.scope, risk, children, true) : [];
+  const currentView = viewState({
+    viewId: "ATTENDANCE_RISK_SUMMARY",
+    tableId: "attendance-risk",
+    tableTitle: "Attendance risk summary",
+    tableDescription: "This table gives the provider the current attendance risks before any payment detail is opened.",
+    scope: snapshot.scope,
+    ...(typeof snapshot.sourceRetrievedAt === "string" ? { sourceRetrievedAt: snapshot.sourceRetrievedAt } : {}),
+  });
+  const actionIntents = risk
+    ? actionMetadata(snapshot.scope, risk, children, true).map((action) => actionViewMetadata(action, currentView))
+    : [];
   const attendanceView = risk
     ? attendanceSummary(risk, children, snapshot.scope, [], [], [])
     : undefined;
@@ -26,9 +37,7 @@ export function snapshotResult(data: unknown): ToolResult {
     ? [
       "",
       "Attendance overview:",
-      "| Scheduled days | Affected children | Pending confirmations | Absence days | Incomplete children |",
-      "| ---: | ---: | ---: | ---: | ---: |",
-      `| ${tableValue(overview.scheduled_days)} | ${tableValue(overview.affected_children)} | ${tableValue(overview.pending_confirmation_days)} | ${tableValue(overview.absence_days)} | ${tableValue(overview.incomplete_children)} |`,
+      `Scheduled days: ${tableValue(overview.scheduled_days)}; affected children: ${tableValue(overview.affected_children)}; pending confirmations: ${tableValue(overview.pending_confirmation_days)}; absence days: ${tableValue(overview.absence_days)}; incomplete children: ${tableValue(overview.incomplete_children)}.`,
     ].join("\n")
     : "";
   const renderedMessage = renderActionSections(`${providerMessage}${snapshotSummary}`, actionIntents);
@@ -36,11 +45,13 @@ export function snapshotResult(data: unknown): ToolResult {
     content: [{ type: "text" as const, text: renderedMessage }],
     structuredContent: {
       capability: "attendance-risk-snapshot",
+      viewState: currentView,
       scope: snapshot.scope,
       sourceRetrievedAt: snapshot.sourceRetrievedAt,
       responseMode: "SUMMARY",
       responseSections: ["summary", "next-actions", "drill-down", "available-views"],
       providerMessage: renderedMessage,
+      ...(includeContinuationMetadata ? { actionIntents } : {}),
       actionControls: actionControls(actionIntents),
     },
   };

@@ -37,7 +37,7 @@ export function formatCasesResult(data, resolveCountyName = () => undefined) {
             const dates = children
                 .map((child) => [child.effective_start, child.effective_end]
                 .filter((value) => typeof value === "string")
-                .map((value) => shortDateLabel(value) ?? value)
+                .map((value) => shortDateLabel(value) ?? tableValue(value))
                 .join(" - "))
                 .filter((value) => value.length > 0)
                 .join("; ");

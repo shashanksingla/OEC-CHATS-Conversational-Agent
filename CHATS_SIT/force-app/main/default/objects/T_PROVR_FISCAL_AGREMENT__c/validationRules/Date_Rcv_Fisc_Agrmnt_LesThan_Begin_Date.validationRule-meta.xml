@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Date_Rcv_Fisc_Agrmnt_LesThan_Begin_Date</fullName>
-    <active>true</active>
-    <description>Fiscal Agreement receive date must be less than Effective Begin Date</description>
-    <errorConditionFormula>DTE_RCV_AGRMT_FISCAL__c &gt; DTE_BEGIN_AGRMT__c</errorConditionFormula>
-    <errorDisplayField>DTE_RCV_AGRMT_FISCAL__c</errorDisplayField>
-    <errorMessage>Fiscal Agreement receive date must be less than Effective Begin Date</errorMessage>
-</ValidationRule>

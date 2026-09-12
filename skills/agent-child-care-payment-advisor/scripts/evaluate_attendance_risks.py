@@ -137,6 +137,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "authorization_dates": set(),
             "absence_dates": set(),
             "pending_confirmation_dates": set(),
+            "incomplete_attendance_records": [],
             "authorization_names": set(),
             "absence_risk_amount_estimate": 0.0,
             "absence_risk_amount_available": False,
@@ -228,6 +229,13 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         elif check_ins == 0 or check_outs == 0:
             child["incomplete_attendance_days"] += 1
             child["incomplete_attendance_hours"] += scheduled_hours
+            child["incomplete_attendance_records"].append({
+                "date": service_date.isoformat(),
+                "missing_record": "Missing check-in" if check_ins == 0 and check_outs > 0
+                else "Missing check-out" if check_ins > 0 and check_outs == 0
+                else "Missing check-in and check-out",
+                "care_hours_at_risk": scheduled_hours,
+            })
 
     requested_child_names = sorted(requested_children) if requested_children is not None else []
     child_results = []
@@ -266,6 +274,10 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         authorization_names = sorted(child.pop("authorization_names"))
         absence_dates = sorted(child.pop("absence_dates"))
         pending_confirmation_dates = sorted(child.pop("pending_confirmation_dates", set()))
+        incomplete_attendance_records = sorted(
+            child.pop("incomplete_attendance_records", []),
+            key=lambda record: record["date"],
+        )
         next_confirmation_deadline = None
         confirmation_days_remaining = None
         if pending_confirmation_dates:
@@ -315,6 +327,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "authorization_dates": authorization_dates,
             "absence_dates": absence_dates,
             "pending_confirmation_dates": pending_confirmation_dates,
+            "incomplete_attendance_records": incomplete_attendance_records,
             "conflicting_absence_limits": conflicting_absence_limits,
             "note": note,
             "next_confirmation_deadline": next_confirmation_deadline,

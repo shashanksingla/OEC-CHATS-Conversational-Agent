@@ -1,7 +1,0 @@
-<aura:component extends="c:genericUtilities" controller="IndividualFlowCtrl">
-    <aura:attribute name="individualEligId" type="String"/>
-    <aura:attribute name="indivIneligibilityFailure" type="batchsit_t_indiv_eligty_failr__x[]"/>
-    <aura:attribute name="ineligReasons" type="T_INELIG_REASON__c[]"/>
-    <lightning:overlayLibrary aura:id="overlayLib"/>
-    
-</aura:component>

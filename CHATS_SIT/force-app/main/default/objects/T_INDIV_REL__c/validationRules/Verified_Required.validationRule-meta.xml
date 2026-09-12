@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Verified_Required</fullName>
-    <active>true</active>
-    <description>Verified field  cannot be empty if Relationship is selected as &quot;No Relation&quot;</description>
-    <errorConditionFormula>NOT( IDN_CLIENT_RELTD__r.Is_Peak_Data__c ) &amp;&amp; NOT(  IDN_CLIENT__r.Is_Peak_Data__c) &amp;&amp; ISPICKVAL(CDE_TYPE_REL_INDIV__c,&quot;NR&quot;)&amp;&amp; ISBLANK(TEXT(CDE_TYPE_VERIF__c))</errorConditionFormula>
-    <errorDisplayField>CDE_TYPE_VERIF__c</errorDisplayField>
-    <errorMessage>Verified field  cannot be empty if Relationship is selected as &quot;No Relation&quot;</errorMessage>
-</ValidationRule>

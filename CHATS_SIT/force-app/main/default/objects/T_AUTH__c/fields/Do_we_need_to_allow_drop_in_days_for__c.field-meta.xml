@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Do_we_need_to_allow_drop_in_days_for__c</fullName>
-    <defaultValue>false</defaultValue>
-    <label>Do we need to allow drop in days for?</label>
-    <trackHistory>false</trackHistory>
-    <trackTrending>false</trackTrending>
-    <type>Checkbox</type>
-</CustomField>

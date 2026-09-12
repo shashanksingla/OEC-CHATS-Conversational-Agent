@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Cancellation_Date_Check</fullName>
-    <active>true</active>
-    <errorConditionFormula>DTE_DISC_CANCELLATION__c &gt;  TODAY()</errorConditionFormula>
-    <errorMessage>Begin date cannot be a future date.</errorMessage>
-</ValidationRule>

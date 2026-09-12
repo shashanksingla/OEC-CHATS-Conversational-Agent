@@ -1,8 +1,0 @@
-<aura:event type="APPLICATION" description="Event template" >
-    <aura:attribute name="adjustmentAmount" type="String" />
-    <aura:attribute name="adjustmentDetailList" type="List"/>
-    <aura:attribute name="subPaymentDetail" type="SObject"/>
-    <aura:attribute name="rateTypeOptions" type="List"/>
-    <aura:attribute name="selectedSubPayment" type="Object"/>
-    <aura:attribute name="adjustmentDtlWarp" type="adjustmentWrapper[]" access="public"/>
-</aura:event>

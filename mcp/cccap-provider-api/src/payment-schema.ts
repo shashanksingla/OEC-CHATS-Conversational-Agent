@@ -7,7 +7,7 @@ export interface CanonicalServicePeriod {
 }
 
 export interface CanonicalExistingSubPayment {
-  authorization_id: string;
+  authorization_id?: string;
   service_period_id: string;
   status: "PAID" | "REQUESTED";
   amount?: number;
@@ -20,16 +20,28 @@ export interface CanonicalPaymentFeeSchedule {
   care_level: string;
   effective_start: string;
   effective_end?: string;
+  authorization_effective_start?: string;
+  authorization_effective_end?: string;
+  authorization_status?: string;
   days_of_month?: number;
   days_of_week?: string | number;
   slot_rate_amount: number;
   activity_amount?: number;
+  activity_authorization_amount?: number;
+  activity_provider_cap?: number;
+  activity_county_cap?: number;
   activity_frequency?: string;
   activity_months?: string;
   registration_amount?: number;
+  registration_authorization_amount?: number;
+  registration_provider_cap?: number;
+  registration_county_cap?: number;
   registration_frequency?: string;
   registration_months?: string;
   transportation_amount?: number;
+  transportation_authorization_amount?: number;
+  transportation_provider_cap?: number;
+  transportation_county_cap?: number;
   transportation_frequency?: string;
   transportation_months?: string;
 }
