@@ -1,4 +1,0 @@
-<aura:event type="APPLICATION" description="Event template" >
-	<aura:attribute name="encumbranceRec" type="batchsit_t_auth_encmbr__x"/>
-    <aura:attribute name="isDelete" type="boolean" default="false"/>
-</aura:event>

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>PC_email_Not_blank</fullName>
-    <active>true</active>
-    <description>The email information of PC cannot be blank. CCCAP-14422</description>
-    <errorConditionFormula>AND(Individual__r.Is_Primary_Parent_Caretaker__c  ,   ISCHANGED( Email_Information__c )  ,ISBLANK(Email_Information__c) )</errorConditionFormula>
-    <errorDisplayField>Email_Information__c</errorDisplayField>
-    <errorMessage>Complete the field.</errorMessage>
-</ValidationRule>

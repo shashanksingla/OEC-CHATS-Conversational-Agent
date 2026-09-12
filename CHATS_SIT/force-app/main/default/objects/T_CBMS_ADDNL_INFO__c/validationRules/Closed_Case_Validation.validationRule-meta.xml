@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Closed_Case_Validation</fullName>
-    <active>true</active>
-    <description>Closed Case Validation</description>
-    <errorConditionFormula>IF(IDN_CASE_CHATS__r.CLOSED_CASES_STATUS__c &gt;0, true, false)</errorConditionFormula>
-    <errorMessage>Cannot update when the case is in Closed Status.</errorMessage>
-</ValidationRule>

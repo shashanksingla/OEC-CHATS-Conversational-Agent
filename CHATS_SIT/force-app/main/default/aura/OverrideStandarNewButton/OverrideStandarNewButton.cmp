@@ -1,3 +1,0 @@
-<aura:component implements="flexipage:availableForRecordHome,force:hasRecordId,lightning:actionOverride" access="global">
-    <aura:handler name='init' value='{!this}' action='{!c.showToast}' /> 
-</aura:component>

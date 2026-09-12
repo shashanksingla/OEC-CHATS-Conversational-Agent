@@ -127,6 +127,9 @@ function contextualize(
       section: action.section,
       capability: action.capability,
       tool: action.tool,
+      ...(action.sourceViewId ? { sourceViewId: action.sourceViewId } : {}),
+      ...(action.targetViewId ? { targetViewId: action.targetViewId } : {}),
+      ...(action.lockedView ? { lockedView: action.lockedView } : {}),
       input: { actionId: action.actionId, contextRef, actionRef },
     };
   });
@@ -378,7 +381,13 @@ export function createServer(
         return toolError("attendance-risk analysis", new Error("Continuation reference is unavailable or expired"));
       }
       if (input.refresh) client.clearReadCache();
-      if (!input.refresh && continuation?.resultTool === "cccap_analyze_payment_risk" && continuation.result) {
+      const isNarrowedAttendanceContinuation = Boolean(
+        request.childNames?.length ||
+        request.authNames?.length ||
+        request.countyNames?.length ||
+        request.riskFocus,
+      );
+      if (!input.refresh && !isNarrowedAttendanceContinuation && continuation?.resultTool === "cccap_analyze_payment_risk" && continuation.result) {
         const cachedResult = recordValue(continuation.result);
         if (cachedResult) {
           const continuationResult = { ...cachedResult, scope: request, riskFocus: request.riskFocus, countyNames: request.countyNames };

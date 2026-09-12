@@ -1,3 +1,0 @@
-<aura:component controller="linkToDetailAutoRedirectionCtrl" implements="flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId" access="global" >
-    <aura:handler name="init" value="{!this}" action="{!c.doRedirect}"/>
-</aura:component>

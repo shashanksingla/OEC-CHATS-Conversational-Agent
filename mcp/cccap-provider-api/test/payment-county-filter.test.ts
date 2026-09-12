@@ -47,7 +47,10 @@ function buildClient() {
           { idn_auth__c: "auth-denver", dte_care__c: "2026-09-01", ind_0_36_months__c: false, cde_status_encmbr__c: "3" },
           { idn_auth__c: "auth-adams", dte_care__c: "2026-09-01", ind_0_36_months__c: false, cde_status_encmbr__c: "3" },
         ],
-        authorizationCopays: [],
+        authorizationCopays: [
+          { idn_auth__c: "auth-denver", amt_copay_auth__c: 0, dte_begin_effv__c: "2026-09-01" },
+          { idn_auth__c: "auth-adams", amt_copay_auth__c: 0, dte_begin_effv__c: "2026-09-01" },
+        ],
       };
     },
     async getCountyData() {

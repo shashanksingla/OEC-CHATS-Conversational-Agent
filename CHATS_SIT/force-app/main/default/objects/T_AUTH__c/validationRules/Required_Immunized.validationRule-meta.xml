@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Required_Immunized</fullName>
-    <active>true</active>
-    <description>CHAT-245: Immunized T_AUTH CDE_IMM Y Required if CDE_REL_PROVR is &apos;Out of Home, Non-Relative&apos;</description>
-    <errorConditionFormula>AND(NOT($Permission.System_Administrator),NOT(CONTAINS( LEFT(  OwnerId , 15) ,LEFT($Label.ByPass_Auth_validation, 15))), ISBLANK(TEXT( CDE_IMM__c )) ,  ISPICKVAL( CDE_REL_PROVR__c , &apos;1&apos;) )</errorConditionFormula>
-    <errorMessage>A value is required for Immunized if Provider Location / Relation to Child is selected as &apos;Out of home non-relative&apos;</errorMessage>
-</ValidationRule>

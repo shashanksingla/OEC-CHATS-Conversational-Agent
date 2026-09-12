@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Eff_End_Dt_cannot_be_less_Eff_Begin_Dt</fullName>
-    <active>true</active>
-    <description>Effective End Date cannot be before the Effective Begin Date</description>
-    <errorConditionFormula>NOT(IDN_CLIENT__r.Is_Peak_Data__c) &amp;&amp; NOT(IDN_CLIENT__r.Is_CBMS_Data__c) &amp;&amp; DTE_END_EFFV__c &lt; DTE_BEGIN_EFFV__c</errorConditionFormula>
-    <errorDisplayField>DTE_END_EFFV__c</errorDisplayField>
-    <errorMessage>Cannot be before the Effective Begin Date</errorMessage>
-</ValidationRule>

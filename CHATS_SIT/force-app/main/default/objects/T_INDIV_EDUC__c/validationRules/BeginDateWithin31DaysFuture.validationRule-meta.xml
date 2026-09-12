@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>BeginDateWithin31DaysFuture</fullName>
-    <active>true</active>
-    <description>Begin Date cannot be more than 31 days in the future</description>
-    <errorConditionFormula>DTE_BEGIN_EFFV__c &gt;  TODAY() +31</errorConditionFormula>
-    <errorDisplayField>DTE_BEGIN_EFFV__c</errorDisplayField>
-    <errorMessage>Begin Date cannot be more than 31 days in the future</errorMessage>
-</ValidationRule>

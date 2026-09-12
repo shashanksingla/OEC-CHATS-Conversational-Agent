@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Check_for_Expired_Status</fullName>
-    <active>true</active>
-    <description>If Status of the Intercept Record is &quot;Expired&quot; then do not allow any updates on the record.</description>
-    <errorConditionFormula>NOT(ISNEW()) &amp;&amp; Intercept_Status__c = &apos;Expired&apos;</errorConditionFormula>
-    <errorMessage>This Tax Intercept Record is &quot;Expired&quot; and can not be updated.</errorMessage>
-</ValidationRule>

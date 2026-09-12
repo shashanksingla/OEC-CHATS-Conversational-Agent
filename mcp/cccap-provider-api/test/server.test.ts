@@ -131,6 +131,7 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
   assert.match(text, /1 child\(ren\) have incomplete attendance records \(one of check-in\/check-out missing\)\./);
   assert.match(text, /Review absence-limit risk — 1 children/);
   assert.match(text, /Review incomplete attendance — 1 records/);
+  assert.match(text, /> This groups attendance risks by county\. It shows where affected children and attendance hours are concentrated; it is not a payment-total table\./);
   assert.doesNotMatch(text, /View next payout details/);
   assert.doesNotMatch(text, /Review and complete the pending parent confirmations/);
 
@@ -562,6 +563,23 @@ test("blocks unknown payment lifecycle statuses", () => {
   );
 });
 
+test("accepts service-period-scoped payment history rows without authorization IDs", () => {
+  assert.deepEqual(
+    normalizeExistingSubPayments({
+      subPayments: [
+        { idn_period_serv__c: "892", cde_status_pmt_sub__c: "4" },
+        { idn_period_serv__c: "892", cde_status_pmt_sub__c: "4" },
+        { idn_period_serv__c: "893", cde_status_pmt_sub__c: "4" },
+      ],
+    }),
+    [
+      { service_period_id: "892", status: "PAID" },
+      { service_period_id: "892", status: "PAID" },
+      { service_period_id: "893", status: "PAID" },
+    ],
+  );
+});
+
 test("normalizes attendance days only when payment enrichments are authoritative", () => {
   assert.deepEqual(
     normalizeAttendanceDays(
@@ -943,6 +961,7 @@ test("normalizes scheduled slot and ART fees from fiscal and slot-contract sourc
       days_of_week: 5,
       slot_rate_amount: 45,
       activity_amount: 10,
+      activity_provider_cap: 10,
       activity_frequency: "MTH",
       activity_months: "7,8",
     }],
@@ -1031,6 +1050,10 @@ test("payment results use a provider-facing table and preserve blocked states", 
   assert.doesNotMatch(result.content[0].text, /amount \|/);
   assert.equal(result.structuredContent?.providerMessage, result.content[0].text);
   assert.deepEqual(result.structuredContent?.scope, { dateFilter: "THIS_MONTH" });
+  assert.deepEqual(result.structuredContent?.paymentDisclaimers, [
+    "⚠️ *Figures reflect the system's current data and are not an official payment notice. Actual payments are subject to state and county verification, review, and may differ from these calculated estimates.*",
+  ]);
+  assert.equal((result.structuredContent?.viewState as Record<string, unknown>)?.tableId, "payout-summary");
 });
 
 test("current week forecast renders actual and scheduled attendance basis split", () => {
@@ -1118,6 +1141,8 @@ test("payment results keep initial summary to the measure table and composition"
   assert.doesNotMatch(text, /Payment by category:/);
   assert.doesNotMatch(text, /County detail:/);
   assert.doesNotMatch(text, /County payment totals:/);
+  assert.doesNotMatch(text, /Detail preview/);
+  assert.doesNotMatch(text, /\| Child \| County \| Service date \| Attendance type \|/);
   assert.match(text, /Upcoming payout summary: Conditional/);
   assert.deepEqual(result.structuredContent?.actionIntents, [
     {
@@ -1295,12 +1320,7 @@ test("canonicalizes DECL authorization references to Salesforce authorization ID
   );
 });
 
-test("payment summary keeps period metadata and shows a preview instead of a full detail table", () => {
-  // The live orchestration always populates a small preview (a few rows,
-  // never zero) whenever totalRows > 0 and detailPage wasn't requested, so
-  // attendance.days is never actually empty with a nonzero totalRows on
-  // the real runtime path - the old "Detail available: N rows" text-only
-  // fallback for that combination was dead code and has been removed.
+test("payment summary keeps period metadata and defers child detail until requested", () => {
   const result = formatPaymentResult({
     paymentView: "NEXT_PAYOUT",
     payment: { status: "EXPECTED", amount: "45.00" },
@@ -1313,7 +1333,8 @@ test("payment summary keeps period metadata and shows a preview instead of a ful
   assert.match(text, /Upcoming payout summary: Expected/);
   assert.match(text, /Services from.*7th Sep'26/);
   assert.match(text, /Services through.*13th Sep'26/);
-  assert.match(text, /Detail preview \(1 of 182 child\/date rows\)/);
+  assert.doesNotMatch(text, /Detail preview/);
+  assert.doesNotMatch(text, /\| Child \| County \| Service date \| Attendance type \|/);
   assert.doesNotMatch(text, /Detail by child and service date:/);
 });
 
@@ -1556,6 +1577,44 @@ test("initial payment summary renders county composition columns", () => {
   assert.match(text, /\$18\.00 \(2 Days\)/);
   assert.match(text, /\$72\.00 \(1 Days\)/);
   assert.match(text, /\$558\.00/);
+});
+
+test("category tables omit payment measures that are absent from the requested scope", () => {
+  const result = formatPaymentResult({
+    paymentView: "CUSTOM_RANGE",
+    payment: {
+      status: "CONDITIONAL",
+      amount: "90.00",
+      summary_view: {
+        categories: [{ label: "Care", days: 5, amount: "90.00" }],
+      },
+    },
+  });
+
+  const text = result.content[0].text;
+  assert.match(text, /\| Category \| Days \| Expected amount \|/);
+  assert.doesNotMatch(text, /Children\/contracts|Care hours|At-risk amount|Excluded days/);
+});
+
+test("county composition omits component columns with no verified values", () => {
+  const result = formatPaymentResult({
+    paymentView: "NEXT_PAYOUT",
+    payment: {
+      status: "CONDITIONAL",
+      amount: "90.00",
+      summary_view: {
+        county_composition: [{
+          county: "Denver",
+          care: { hours: "10.00", amount: "90.00" },
+          potential_total: "90.00",
+        }],
+      },
+    },
+  });
+
+  const text = result.content[0].text;
+  assert.match(text, /\| County \| Care Amount \| Potential total \|/);
+  assert.doesNotMatch(text, /Absence Amount|Drop-in Amount|Vacant Slot Amount|Paid Holiday Amount/);
 });
 
 test("service period ledger formatter translates statuses and renders each payout row", () => {

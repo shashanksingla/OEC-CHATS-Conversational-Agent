@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Hours_validation</fullName>
-    <active>true</active>
-    <errorConditionFormula>HOURS_SUD__c  &gt; 168</errorConditionFormula>
-    <errorDisplayField>HOURS_SUD__c</errorDisplayField>
-    <errorMessage>Enter the number of hours, up to 168</errorMessage>
-</ValidationRule>

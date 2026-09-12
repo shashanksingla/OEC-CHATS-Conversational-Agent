@@ -1,5 +1,0 @@
-<aura:documentation>
-	<aura:description>
-        <code>c:ShowHideCompOnBasisOfRadio</code> is a reusable component which is used to build a component with "Yes/No" options with different content to be displayed on each selection.
-    </aura:description>
-</aura:documentation>

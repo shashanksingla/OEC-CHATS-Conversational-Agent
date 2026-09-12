@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Effective_Beg_Date_LessThan_equal_today</fullName>
-    <active>true</active>
-    <description>Effective Begin date is less than or equal to today&apos;s date</description>
-    <errorConditionFormula>NOT( IDN_CLIENT__r.Is_Peak_Data__c ) &amp;&amp; NOT( IDN_CLIENT__r.Is_CBMS_Data__c ) &amp;&amp; DTE_BEGIN_EFFV__c &gt;  TODAY()</errorConditionFormula>
-    <errorDisplayField>DTE_BEGIN_EFFV__c</errorDisplayField>
-    <errorMessage>Effective Begin date must be less than or equal to today&apos;s date</errorMessage>
-</ValidationRule>

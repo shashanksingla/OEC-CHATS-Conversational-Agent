@@ -1,4 +1,5 @@
-import { compactActionControls, estimatedMoney, recordValue, renderActionSections, result, tableValue, type ToolResult, MAX_DISPLAY_CHILDREN, MAX_SUMMARY_ROWS } from './shared.js';
+import { compactActionControls, estimatedMoney, recordValue, renderActionSections, result, shortDateLabel, tableValue, type ToolResult, MAX_DISPLAY_CHILDREN, MAX_SUMMARY_ROWS } from './shared.js';
+import { actionViewMetadata, viewState } from '../view-state.js';
 
 function compactAttendanceSummary(attendanceView: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
   if (!attendanceView) return undefined;
@@ -66,6 +67,7 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
     ? requestedChildNames.filter((name): name is string => typeof name === "string" && name.length > 0)
     : [];
   const normalizedRequestedChildren = new Set(requestedChildNameList.map((name) => name.trim().toLowerCase()));
+  const isChildScoped = normalizedRequestedChildren.size > 0;
   const requestedCountyNames = Array.isArray(analysis?.countyNames)
     ? analysis.countyNames.filter((name): name is string => typeof name === "string" && name.length > 0)
     : [];
@@ -178,14 +180,14 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
     );
   }
   if (excludedClosureDates.length > 0) {
-    lines.push(`Excluded ${excludedClosureDates.length} closure date(s): ${excludedClosureDates.map((date) => shortDateLabel(date) ?? date).join(", ")} (provider closed).`);
+    lines.push(`Excluded ${excludedClosureDates.length} closure date(s): ${excludedClosureDates.map((date) => shortDateLabel(date) ?? tableValue(date)).join(", ")} (provider closed).`);
   }
   if (excludedHolidayDates.length > 0) {
-    lines.push(`Excluded ${excludedHolidayDates.length} holiday date(s): ${excludedHolidayDates.map((date) => shortDateLabel(date) ?? date).join(", ")} (paid holiday, not an absence).`);
+    lines.push(`Excluded ${excludedHolidayDates.length} holiday date(s): ${excludedHolidayDates.map((date) => shortDateLabel(date) ?? tableValue(date)).join(", ")} (paid holiday, not an absence).`);
   }
   if (riskFocus !== "ABSENCE_LIMITS" && riskFocus !== "INCOMPLETE_ATTENDANCE" && pendingDays > 0) {
     const deadlineSuffix = typeof risk.earliest_confirmation_deadline === "string" && typeof risk.earliest_confirmation_days_remaining === "number"
-      ? ` Earliest confirmation deadline: ${shortDateLabel(risk.earliest_confirmation_deadline) ?? risk.earliest_confirmation_deadline} (${risk.earliest_confirmation_days_remaining} day(s) left).`
+      ? ` Earliest confirmation deadline: ${shortDateLabel(risk.earliest_confirmation_deadline) ?? tableValue(risk.earliest_confirmation_deadline)} (${risk.earliest_confirmation_days_remaining} day(s) left).`
       : "";
     lines.push(
       `${pendingDays} pending parent confirmation day(s) affect ${pendingChildren} child(ren).${deadlineSuffix}`,
@@ -233,10 +235,6 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
       ? [
         { label: "Absences used", value: (child) => tableValue(child.absence_days), present: displayedChildren.some((child) => numericValue(child.absence_days) !== 0) },
         { label: "County limit", value: (child) => tableValue(child.absence_limit), present: displayedChildren.some((child) => child.absence_limit !== undefined && child.absence_limit !== null) },
-        // Added: previously computed but only ever shown in the generic
-        // column set below, backwards from where a provider reviewing
-        // absence-limit risk specifically would want it - front and center.
-        { label: "Over limit", value: (child) => overLimitDays(child.absence_days, child.absence_limit), present: displayedChildren.some((child) => numericValue(child.absence_days) > numericValue(child.absence_limit)) },
       ]
       : isIncompleteAttendanceFocus
         ? [
@@ -286,9 +284,6 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
       `| --- | --- | --- |${extraSeparator}`,
       ...displayedChildren.map((child) => {
         const extraCells = renderedColumns.length > 0 ? ` ${renderedColumns.map((column) => column.value(child)).join(" | ")} |` : "";
-        // A child's name alone does not uniquely identify them - the
-        // authorization number is the disambiguator when duplicate child
-        // names exist, so it is always shown alongside the child column.
         return `| ${tableValue(child.child_name)} | ${authorizationNames(child.authorization_names)} | ${tableValue(child.county)} |${extraCells}`;
       }),
     );
@@ -307,7 +302,7 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
   const attendanceViews = Array.isArray(attendanceView.available_views)
     ? attendanceView.available_views.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row))
     : [];
-  if (attendanceOverview) {
+  if (attendanceOverview && !isChildScoped) {
     // Incomplete-attendance focus gets its own overview shape (Scheduled
     // days / Affected children / Incomplete days / Excluded holidays) -
     // Pending confirmations and Absence days describe a different concept
@@ -336,10 +331,11 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
       );
     }
   }
-  if (attendanceCounties.length > 0) {
+  if (attendanceCounties.length > 0 && !isChildScoped) {
     if (riskFocus === "ABSENCE_LIMITS") {
       lines.push(
         "",
+        "> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.",
         "Attendance by county:",
         "| County | Children | Monthly absence limit | Children over limit | Status |",
         "| --- | ---: | ---: | ---: | --- |",
@@ -366,6 +362,7 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
       // Absence days, which don't describe a check-in/check-out gap.
       lines.push(
         "",
+        "> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.",
         "Attendance by county:",
         "| County | Children | Risk children | Incomplete days |",
         "| --- | ---: | ---: | ---: |",
@@ -374,6 +371,7 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
     } else {
       lines.push(
         "",
+        "> This groups attendance risks by county. It shows where affected children and attendance hours are concentrated; it is not a payment-total table.",
         "Attendance by county:",
         "| County | Children | Risk children | Pending confirmations | Absence days |",
         "| --- | ---: | ---: | ---: | ---: |",
@@ -381,16 +379,26 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
       );
     }
   }
-  if (attendanceViews.length > 0) {
+  if (attendanceViews.length > 0 && !riskFocus && !isChildScoped) {
     lines.push("", "Recommended attendance views:", ...attendanceViews.slice(0, 4).map((view) => `- ${tableValue(view.label)}: ${tableValue(view.reason)}`));
   }
 
-  const actionIntents = actionMetadata(analysis.scope, risk, affectedChildren, false, typeof riskFocus === "string" ? riskFocus : undefined);
+  const currentView = viewState({
+    viewId: "ATTENDANCE_RISK_SUMMARY",
+    tableId: "attendance-risk",
+    tableTitle: "Attendance risk summary",
+    tableDescription: "This table highlights affected children and the attendance issues most likely to need review.",
+    scope: analysis.scope,
+    ...(typeof analysis.sourceRetrievedAt === "string" ? { sourceRetrievedAt: analysis.sourceRetrievedAt } : {}),
+  });
+  const actionIntents = actionMetadata(analysis.scope, risk, affectedChildren, false, typeof riskFocus === "string" ? riskFocus : undefined)
+    .map((action) => actionViewMetadata(action, currentView));
   const providerMessage = renderActionSections(lines.join("\n"), actionIntents);
   return {
     content: [{ type: "text" as const, text: providerMessage }],
     structuredContent: {
       capability: "attendance-risk-analysis",
+      viewState: currentView,
       scope: analysis.scope,
       sourceRetrievedAt: analysis.sourceRetrievedAt,
       resultStatus: noAttendanceRecords ? "NO_ATTENDANCE_SCHEDULES" : "COMPLETED",
@@ -417,13 +425,6 @@ export function authorizationNames(value: unknown): string {
 
 function numericValue(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
-}
-
-function shortDateLabel(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) return undefined;
-  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 // Numeric "Over limit" count, replacing the old prose "exceed the county
@@ -494,7 +495,7 @@ export function actionMetadata(
   }
   const pendingChildNames = childNamesFor("PARENT_CONFIRMATION_PENDING");
   const incompleteChildNames = childNamesFor("INCOMPLETE_ATTENDANCE_RECORD");
-  if (numericValue(risk.pending_confirmation_days) > 0 && riskFocus !== "ABSENCE_LIMITS") {
+  if (numericValue(risk.pending_confirmation_days) > 0 && riskFocus !== "ABSENCE_LIMITS" && riskFocus !== "PARENT_CONFIRMATIONS") {
     actions.push({
       actionId: "review-pending-parent-confirmations",
       capability: "attendance-risk-analysis",
@@ -508,7 +509,7 @@ export function actionMetadata(
       input: Object.assign({ riskFocus: "PARENT_CONFIRMATIONS" }, scopeInput, { childNames: pendingChildNames }),
     });
   }
-  if (incompleteChildNames.length > 0 && riskFocus !== "ABSENCE_LIMITS") {
+  if (incompleteChildNames.length > 0 && riskFocus !== "ABSENCE_LIMITS" && riskFocus !== "INCOMPLETE_ATTENDANCE") {
     actions.push({
       actionId: "review-incomplete-attendance",
       capability: "attendance-risk-analysis",
@@ -537,7 +538,7 @@ export function actionMetadata(
       scope,
     });
   }
-    if (children.length > 0 && !includePaymentAction) {
+    if (children.length > 0 && !includePaymentAction && !Array.isArray(scopeInput.childNames)) {
       const highestImpactChild = [...children]
         .sort((left, right) => criticalityScore(right) - criticalityScore(left))[0];
       const highestImpactChildName = typeof highestImpactChild?.child_name === "string"
@@ -666,14 +667,14 @@ export function attendanceSummary(
   const scopeInput = recordValue(scope) ?? {};
   const availableViews: Record<string, unknown>[] = [
     {
-      viewId: "ATTENDANCE_BY_COUNTY",
+      viewId: "ATTENDANCE_COUNTY_ROLLUP",
       label: "View attendance by county",
       reason: "Compare pending confirmations, absence usage, and affected children across counties.",
       section: "available-views",
       input: scopeInput,
     },
     {
-      viewId: "ATTENDANCE_BY_CHILD",
+      viewId: "ATTENDANCE_DATE_DETAIL",
       label: "View attendance by child",
       reason: "Open child-level dates, classifications, and risk explanations.",
       section: "drill-down",
@@ -682,7 +683,8 @@ export function attendanceSummary(
   ];
   if (numericValue(risk.pending_confirmation_days) > 0) {
     availableViews.unshift({
-      viewId: "PARENT_CONFIRMATIONS",
+      viewId: "ATTENDANCE_DATE_DETAIL",
+      tableId: "attendance-date-detail",
       label: "Review pending parent confirmations",
       reason: "These days may remain conditional until attendance is confirmed.",
       section: "next-actions",
@@ -691,7 +693,8 @@ export function attendanceSummary(
   }
   if (children.some(hasAbsenceLimitConcern)) {
     availableViews.unshift({
-      viewId: "ABSENCE_LIMITS",
+      viewId: "ATTENDANCE_DATE_DETAIL",
+      tableId: "attendance-date-detail",
       label: "Review absence limits",
       reason: "Absence usage may reduce reimbursable payment for affected children.",
       section: "next-actions",
@@ -700,7 +703,8 @@ export function attendanceSummary(
   }
   if (children.some((child) => Array.isArray(child.risk_codes) && child.risk_codes.includes("INCOMPLETE_ATTENDANCE_RECORD"))) {
     availableViews.unshift({
-      viewId: "INCOMPLETE_RECORDS",
+      viewId: "ATTENDANCE_DATE_DETAIL",
+      tableId: "attendance-date-detail",
       label: "Review incomplete attendance",
       reason: "Missing check-in or check-out records need verification.",
       section: "next-actions",
@@ -709,7 +713,8 @@ export function attendanceSummary(
   }
   if (children.some((child) => typeof child.potential_impact === "string" && child.potential_impact.length > 0)) {
     availableViews.push({
-      viewId: "PAYMENT_IMPACT",
+      viewId: "NEXT_UPCOMING_PAYOUT",
+      tableId: "payout-summary",
       capability: "payment-analysis",
       tool: "cccap_analyze_payment",
       label: "Review payment impact",

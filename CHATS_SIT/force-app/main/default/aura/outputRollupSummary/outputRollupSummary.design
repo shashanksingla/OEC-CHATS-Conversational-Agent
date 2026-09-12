@@ -1,7 +1,0 @@
-<design:component >
-    
-    <design:attribute name="label" label="Field Label"/>
-    <design:attribute name="query" label="Query"/>
-    <design:attribute name="rollUpFieldAPIName" label="Roll Up Field API Name"/>
-    <design:attribute name="rollupType" label="Roll-Up Type"/>
-</design:component>

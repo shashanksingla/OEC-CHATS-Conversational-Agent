@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>AntCompDateNotInPast</fullName>
-    <active>true</active>
-    <description>Anticipated completion date cannot be in the past.</description>
-    <errorConditionFormula>DTE_END_ANT__c &lt; TODAY()</errorConditionFormula>
-    <errorDisplayField>DTE_END_ANT__c</errorDisplayField>
-    <errorMessage>Anticipated Completion Date cannot be in the past.</errorMessage>
-</ValidationRule>

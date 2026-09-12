@@ -1,9 +1,0 @@
-<aura:component controller="CompareCountyRatePlanTemplateController"
-                implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId" access="global" >
-    <aura:attribute name="recordId" type="Id" />
-    <aura:attribute name="countyRate" type="T_COUNTY_RATE__c" />
-    <force:recordData aura:id="recordLoader" recordId="{!v.recordId}"
-                      fields="DTE_BEGIN_EFFV_RATE__c"
-                      targetFields="{!v.countyRate}"
-                      recordUpdated="{!c.doInit}"/>
-</aura:component>

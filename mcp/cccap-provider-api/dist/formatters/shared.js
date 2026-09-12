@@ -126,15 +126,22 @@ export function amountWithUnit(amount, count, unit) {
 }
 export function renderCountyComposition(rows) {
     const component = (row, key) => recordValue(row[key]) ?? {};
+    const componentHasValue = (key, countKey) => rows.some((row) => {
+        const value = component(row, key);
+        return [value.amount, value[countKey]].some((candidate) => {
+            const numeric = typeof candidate === "number" ? candidate : Number(candidate);
+            return Number.isFinite(numeric) ? numeric !== 0 : typeof candidate === "string" && candidate.trim() !== "";
+        });
+    });
     const hasChildrenServed = rows.some((row) => row.children_served !== undefined && row.children_served !== null);
     const headers = [
         "County",
         ...(hasChildrenServed ? ["Children served"] : []),
-        "Care Amount",
-        "Absence Amount",
-        "Drop-in Amount",
-        "Vacant Slot Amount",
-        "Paid Holiday Amount",
+        ...(componentHasValue("care", "hours") ? ["Care Amount"] : []),
+        ...(componentHasValue("absence", "days") ? ["Absence Amount"] : []),
+        ...(componentHasValue("drop_in", "hours") ? ["Drop-in Amount"] : []),
+        ...(componentHasValue("vacant_slots", "days") ? ["Vacant Slot Amount"] : []),
+        ...(componentHasValue("paid_holidays", "days") ? ["Paid Holiday Amount"] : []),
         "Potential total",
     ];
     const separator = headers.map((header) => header === "County" ? "---" : "---:");
@@ -144,21 +151,22 @@ export function renderCountyComposition(rows) {
         const dropIn = component(row, "drop_in");
         const vacantSlots = component(row, "vacant_slots");
         const paidHolidays = component(row, "paid_holidays");
-        return [
+        const values = [
             tableValue(row.county),
             ...(hasChildrenServed ? [tableValue(row.children_served)] : []),
-            amountWithUnit(care.amount, care.hours, "Hours"),
-            amountWithUnit(absence.amount, absence.days, "Days"),
-            amountWithUnit(dropIn.amount, dropIn.hours, "Hours"),
-            amountWithUnit(vacantSlots.amount, vacantSlots.days, "Days"),
-            amountWithUnit(paidHolidays.amount, paidHolidays.days, "Days"),
+            ...(componentHasValue("care", "hours") ? [amountWithUnit(care.amount, care.hours, "Hours")] : []),
+            ...(componentHasValue("absence", "days") ? [amountWithUnit(absence.amount, absence.days, "Days")] : []),
+            ...(componentHasValue("drop_in", "hours") ? [amountWithUnit(dropIn.amount, dropIn.hours, "Hours")] : []),
+            ...(componentHasValue("vacant_slots", "days") ? [amountWithUnit(vacantSlots.amount, vacantSlots.days, "Days")] : []),
+            ...(componentHasValue("paid_holidays", "days") ? [amountWithUnit(paidHolidays.amount, paidHolidays.days, "Days")] : []),
             plainMoney(row.potential_total),
-        ].join(" | ");
+        ];
+        return values.join(" | ");
     });
     return [
         "",
         "County payment composition (potential amounts)",
-        "Potential amounts include calculated and conditional amounts; the payable amount remains shown in the summary above.",
+        "> Potential amounts include calculated and conditional amounts; the payable amount remains shown in the summary above.",
         `| ${headers.join(" | ")} |`,
         `| ${separator.join(" | ")} |`,
         ...renderedRows.map((row) => `| ${row} |`),
@@ -201,7 +209,10 @@ function ordinalSuffix(day) {
 export function shortDateLabel(value) {
     if (typeof value !== "string")
         return undefined;
-    const parsed = new Date(`${value}T00:00:00Z`);
+    const datePart = value.trim().match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+    if (!datePart)
+        return undefined;
+    const parsed = new Date(`${datePart}T00:00:00Z`);
     if (Number.isNaN(parsed.getTime()))
         return undefined;
     const day = parsed.getUTCDate();

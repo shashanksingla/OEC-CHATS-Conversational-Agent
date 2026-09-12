@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>provr_id_cannot_be_null_insert</fullName>
-    <active>true</active>
-    <description>check if provider id is passed while creating the new authorization</description>
-    <errorConditionFormula>AND(ISNEW(),ISBLANK( IDN_PROVR__c ))</errorConditionFormula>
-    <errorMessage>Error occurred while creating the Authorization. Please re-select the Provider ID and try again.</errorMessage>
-</ValidationRule>

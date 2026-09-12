@@ -148,7 +148,8 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
         }),
         client.getCountyData({ ...sourceScope, countyIds }),
         client.getFiscalRates(sourceScope),
-        client.getHolidayList(sourceScope), client.getPaymentHistory(sourceScope),
+        client.getHolidayList(sourceScope),
+        client.getPaymentHistory(sourceScope),
         typeof client.getVacantSlots === "function"
             ? client.getVacantSlots({ ...sourceScope, countyIds })
             : Promise.resolve({ vacantSlots: [] }),

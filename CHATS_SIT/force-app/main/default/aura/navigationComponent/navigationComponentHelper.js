@@ -1,5 +1,0 @@
-({
-	handleFinishLogic : function(component) {
-		
-	}
-})

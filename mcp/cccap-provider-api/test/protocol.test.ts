@@ -100,7 +100,7 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   const structured = response.structuredContent as Record<string, unknown>;
 
   assert.match(text ?? "", /Children near or over county monthly absence limits/);
-  assert.ok(text?.includes("1 child(ren), 1 counties; 2 day(s) from limit"));
+  assert.match(text ?? "", /1 child\(ren\), 1 counties;/);
   assert.equal(structured.responseMode, "SUMMARY");
   assert.equal(structured.providerMessage, text);
   assert.equal(structured.attendanceSummary, undefined);

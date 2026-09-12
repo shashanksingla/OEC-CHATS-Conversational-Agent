@@ -76,6 +76,9 @@ function contextualize(value, store, providerKey, capability, result, resultTool
             section: action.section,
             capability: action.capability,
             tool: action.tool,
+            ...(action.sourceViewId ? { sourceViewId: action.sourceViewId } : {}),
+            ...(action.targetViewId ? { targetViewId: action.targetViewId } : {}),
+            ...(action.lockedView ? { lockedView: action.lockedView } : {}),
             input: { actionId: action.actionId, contextRef, actionRef },
         };
     });

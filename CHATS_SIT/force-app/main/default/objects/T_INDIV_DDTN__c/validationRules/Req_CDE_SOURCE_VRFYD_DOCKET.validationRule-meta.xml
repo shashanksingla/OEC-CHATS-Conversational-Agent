@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Req_CDE_SOURCE_VRFYD_DOCKET</fullName>
-    <active>true</active>
-    <description>CDE_SOURCE_VRFYD_DOCKET is required if CDE_VRFYD_DOCKET is &quot;Written Verification&quot;</description>
-    <errorConditionFormula>AND(NOT( IDN_CLIENT__r.Is_Peak_Data__c ),ISBLANK(TEXT(CDE_SOURCE_VRFYD_DOCKET__c)) ,  ISPICKVAL(CDE_VRFYD_DOCKET__c , &apos;V&apos;) )</errorConditionFormula>
-    <errorDisplayField>CDE_SOURCE_VRFYD_DOCKET__c</errorDisplayField>
-    <errorMessage>Required if Docket Verified is &apos;Written Verification&apos;</errorMessage>
-</ValidationRule>

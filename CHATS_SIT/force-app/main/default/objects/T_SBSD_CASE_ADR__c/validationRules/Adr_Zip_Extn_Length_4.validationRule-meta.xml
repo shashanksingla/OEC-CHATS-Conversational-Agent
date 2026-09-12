@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Adr_Zip_Extn_Length_4</fullName>
-    <active>true</active>
-    <description>Validation to check Length of Zip Extn is 4</description>
-    <errorConditionFormula>AND( !IDN_CASE__r.Is_Peak_Data__c,!IDN_CASE__r.Is_CBMS_Data__c, NOT ( ISBLANK ( ADR_ZIP_EXTN__c ) ), LEN( ADR_ZIP_EXTN__c ) &lt;&gt; 4)</errorConditionFormula>
-    <errorDisplayField>ADR_ZIP_EXTN__c</errorDisplayField>
-    <errorMessage>Zip Extension should be of 4 digits</errorMessage>
-</ValidationRule>

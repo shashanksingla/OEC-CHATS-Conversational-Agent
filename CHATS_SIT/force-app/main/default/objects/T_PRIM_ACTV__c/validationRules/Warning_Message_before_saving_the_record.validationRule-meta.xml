@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Warning_Message_before_saving_the_record</fullName>
-    <active>true</active>
-    <description>This record may not be appropriate for this individual based on their age and/or relationship to the primary caretaker of this case(to continue saving please tick Ignore checkbox)</description>
-    <errorConditionFormula>AND(NOT(IDN_CLIENT__r.Is_Primary_Parent_Caretaker__c),IDN_CLIENT__r.Age__c &lt; VALUE( $Label.Teen_Parent_Age_Limit ),NOT(IDN_CLIENT__r.Has_Allowed_Relationship__c),NOT(Ignore__c))</errorConditionFormula>
-    <errorMessage>This record may not be appropriate for this individual based on their age and/or relationship to the primary caretaker of this case(to continue saving please tick Ignore checkbox)</errorMessage>
-</ValidationRule>

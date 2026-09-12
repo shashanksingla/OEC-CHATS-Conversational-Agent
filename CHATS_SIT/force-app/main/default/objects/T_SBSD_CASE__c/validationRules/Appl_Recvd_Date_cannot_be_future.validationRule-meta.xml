@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Appl_Recvd_Date_cannot_be_future</fullName>
-    <active>true</active>
-    <description>Application Received Date cannot be in future</description>
-    <errorConditionFormula>AND(NOT(ISBLANK(DTE_APPLN__c)), DTE_APPLN__c &gt; TODAY())</errorConditionFormula>
-    <errorDisplayField>DTE_APPLN__c</errorDisplayField>
-    <errorMessage>Date Application Received cannot be in future.</errorMessage>
-</ValidationRule>

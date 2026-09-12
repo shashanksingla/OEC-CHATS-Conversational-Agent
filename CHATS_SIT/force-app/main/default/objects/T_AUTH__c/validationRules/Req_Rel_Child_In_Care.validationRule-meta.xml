@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Req_Rel_Child_In_Care</fullName>
-    <active>true</active>
-    <description>CCCAP-12773 : Field is required if the ‘Provider Location/Relative Status’ is Out of Home Relative or In-Home Relative.</description>
-    <errorConditionFormula>AND(NOT($Permission.System_Administrator),NOT(CONTAINS( LEFT( OwnerId , 15) ,LEFT($Label.ByPass_Auth_validation, 15))), OR(ISPICKVAL(CDE_REL_PROVR__c, &apos;2&apos;), ISPICKVAL(CDE_REL_PROVR__c, &apos;4&apos;)),ISPICKVAL(CDE_PRO_REL_CHLD__c, &apos;&apos;))</errorConditionFormula>
-    <errorDisplayField>CDE_PRO_REL_CHLD__c</errorDisplayField>
-    <errorMessage>Required if ‘Provider Location/Relative Status’ is Out of Home Relative or In-Home Relative.</errorMessage>
-</ValidationRule>

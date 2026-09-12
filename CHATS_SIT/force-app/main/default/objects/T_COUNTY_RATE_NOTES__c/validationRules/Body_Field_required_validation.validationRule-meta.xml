@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Body_Field_required_validation</fullName>
-    <active>true</active>
-    <description>Body field cannot be empty</description>
-    <errorConditionFormula>ISBLANK(BODY__c )</errorConditionFormula>
-    <errorDisplayField>BODY__c</errorDisplayField>
-    <errorMessage>Body field cannot be empty</errorMessage>
-</ValidationRule>

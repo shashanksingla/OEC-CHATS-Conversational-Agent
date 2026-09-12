@@ -245,21 +245,21 @@ export function normalizeFiscalRateResponse(value: unknown): FiscalRateNormaliza
     if (activityMonths) fee.activityMonths = activityMonths;
     if (registrationMonths) fee.registrationMonths = registrationMonths;
     if (transportationMonths) fee.transportationMonths = transportationMonths;
-    if (activityCountyAmount) fee.activityCountyAmount = activityCountyAmount;
-    if (activityFiscalAgreementAmount) {
+    if (activityCountyAmount !== undefined) fee.activityCountyAmount = activityCountyAmount;
+    if (activityFiscalAgreementAmount !== undefined) {
       fee.activityFiscalAgreementAmount = activityFiscalAgreementAmount;
     }
-    if (activityProviderAmount) fee.activityProviderAmount = activityProviderAmount;
-    if (registrationCountyAmount) fee.registrationCountyAmount = registrationCountyAmount;
-    if (registrationFiscalAgreementAmount) {
+    if (activityProviderAmount !== undefined) fee.activityProviderAmount = activityProviderAmount;
+    if (registrationCountyAmount !== undefined) fee.registrationCountyAmount = registrationCountyAmount;
+    if (registrationFiscalAgreementAmount !== undefined) {
       fee.registrationFiscalAgreementAmount = registrationFiscalAgreementAmount;
     }
-    if (registrationProviderAmount) fee.registrationProviderAmount = registrationProviderAmount;
-    if (transportationCountyAmount) fee.transportationCountyAmount = transportationCountyAmount;
-    if (transportationFiscalAgreementAmount) {
+    if (registrationProviderAmount !== undefined) fee.registrationProviderAmount = registrationProviderAmount;
+    if (transportationCountyAmount !== undefined) fee.transportationCountyAmount = transportationCountyAmount;
+    if (transportationFiscalAgreementAmount !== undefined) {
       fee.transportationFiscalAgreementAmount = transportationFiscalAgreementAmount;
     }
-    if (transportationProviderAmount) fee.transportationProviderAmount = transportationProviderAmount;
+    if (transportationProviderAmount !== undefined) fee.transportationProviderAmount = transportationProviderAmount;
     return fee;
   });
 

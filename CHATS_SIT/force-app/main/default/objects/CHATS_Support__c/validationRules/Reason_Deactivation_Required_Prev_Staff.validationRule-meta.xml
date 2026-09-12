@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Reason_Deactivation_Required_Prev_Staff</fullName>
-    <active>true</active>
-    <description>Reason for Deactivation is not specified after stating staff is replacing another.</description>
-    <errorConditionFormula>AND(ISPickval(Is_this_staff_member_replacing_another__c, &apos;Yes&apos;),Ispickval( Reason_for_Deactivation__c ,&apos;&apos;))</errorConditionFormula>
-    <errorDisplayField>Reason_for_Deactivation__c</errorDisplayField>
-    <errorMessage>You must specify the Reason for Deactivation.</errorMessage>
-</ValidationRule>

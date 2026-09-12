@@ -173,7 +173,11 @@ test("payment adapter produces canonical input from source-shaped records", () =
         ind_0_36_months__c: false,
         cde_status_encmbr__c: "3",
       }],
-      authorizationCopays: [],
+      authorizationCopays: [{
+        idn_auth__c: "auth-1",
+        amt_copay_auth__c: 0,
+        dte_begin_effv__c: "2026-09-01",
+      }],
     },
     countyData: {
       countyRatePlans: [{
@@ -385,6 +389,7 @@ test("next payout initializes provider scope before selecting its service period
 
 test("payment orchestration runs the canonical payload through the evaluator", async () => {
   let authorizationRequest: Record<string, unknown> | undefined;
+  let paymentHistoryCalls = 0;
   const client = {
     async initialize() {
       return {
@@ -428,7 +433,11 @@ test("payment orchestration runs the canonical payload through the evaluator", a
           ind_0_36_months__c: false,
           cde_status_encmbr__c: "3",
         }],
-        authorizationCopays: [],
+        authorizationCopays: [{
+          idn_auth__c: "auth-1",
+          amt_copay_auth__c: 0,
+          dte_begin_effv__c: "2026-09-01",
+        }],
       };
     },
     async getCountyData() {
@@ -471,6 +480,7 @@ test("payment orchestration runs the canonical payload through the evaluator", a
       return { holidayList: [] };
     },
     async getPaymentHistory() {
+      paymentHistoryCalls += 1;
       return { subPayments: [] };
     },
   } as unknown as Parameters<typeof getPaymentAnalysis>[0];
@@ -484,6 +494,7 @@ test("payment orchestration runs the canonical payload through the evaluator", a
   const payment = result.payment as Record<string, unknown>;
 
   assert.deepEqual(authorizationRequest?.scheduleRateTypes, { "auth-1": "1" });
+  assert.equal(paymentHistoryCalls, 1);
   assert.equal(result.paymentView, "STATUS");
   assert.equal(result.source_readiness, "COMPLETE");
   assert.equal(payment.status, "EXPECTED");
@@ -517,7 +528,10 @@ test("payment orchestration filters payment analysis by authorization name", asy
           { idn_auth__c: "auth-1", dte_care__c: "2026-09-01", cde_status_encmbr__c: "3" },
           { idn_auth__c: "auth-2", dte_care__c: "2026-09-01", cde_status_encmbr__c: "3" },
         ],
-        authorizationCopays: [],
+        authorizationCopays: [
+          { idn_auth__c: "auth-1", amt_copay_auth__c: 0, dte_begin_effv__c: "2026-09-01" },
+          { idn_auth__c: "auth-2", amt_copay_auth__c: 0, dte_begin_effv__c: "2026-09-01" },
+        ],
       };
     },
     async getCountyData() { return { countyRatePlans: [{ countyId: "county-1", absenceDaysTier1: 4 }] }; },

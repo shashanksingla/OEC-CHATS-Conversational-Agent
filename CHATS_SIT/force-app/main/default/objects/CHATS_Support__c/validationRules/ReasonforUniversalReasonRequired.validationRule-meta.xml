@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>ReasonforUniversalReasonRequired</fullName>
-    <active>true</active>
-    <errorConditionFormula>AND( RecordType.DeveloperName =&apos;System_Access_Request&apos;,ISPICKVAL(Access_Level_Requested__c , &apos;Universal User&apos;), ISBLANK( TEXT(Reason_for_Universal_User__c) )  )</errorConditionFormula>
-    <errorDisplayField>Reason_for_Universal_User__c</errorDisplayField>
-    <errorMessage>Reason for Universal reason is required for Access Level requested &apos;Universal User&apos;</errorMessage>
-</ValidationRule>

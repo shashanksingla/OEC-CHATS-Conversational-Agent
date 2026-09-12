@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Tips_Commisions_Bonuses_Greater_Than_0</fullName>
-    <active>true</active>
-    <description>Tips/Commisions/Bonuses cannot be less than 0.</description>
-    <errorConditionFormula>AMT_TIPS_AVG__c &lt; 0</errorConditionFormula>
-    <errorDisplayField>AMT_TIPS_AVG__c</errorDisplayField>
-    <errorMessage>Tips/Commisions/Bonuses cannot be less than 0.</errorMessage>
-</ValidationRule>

@@ -1,6 +1,0 @@
-<aura:event type="APPLICATION" description="Event template" >
-    <aura:attribute name="responsiblePartyObj" type="T_ADJMT_RESPBL_PARTY__c" />
-    <aura:attribute name="responsiblePartyList" type="list" />
-    <aura:attribute name="key" type="String" />
-    <aura:attribute name="selectedRec" type="Boolean" default="false" />
-</aura:event>

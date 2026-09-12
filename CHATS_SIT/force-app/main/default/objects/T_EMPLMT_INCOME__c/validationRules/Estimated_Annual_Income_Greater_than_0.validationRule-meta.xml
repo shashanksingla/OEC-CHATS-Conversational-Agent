@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Estimated_Annual_Income_Greater_than_0</fullName>
-    <active>true</active>
-    <description>Estimated Annual Income cannot be less than 0.</description>
-    <errorConditionFormula>NOT( IDN_EMPLMT_INDIV__r.IDN_CLIENT__r.Is_Peak_Data__c ) &amp;&amp; AMT_INCOME_ANNUAL_ESTMD__c&lt;0</errorConditionFormula>
-    <errorDisplayField>AMT_INCOME_ANNUAL_ESTMD__c</errorDisplayField>
-    <errorMessage>Estimated Annual Income cannot be less than 0.</errorMessage>
-</ValidationRule>

@@ -162,19 +162,6 @@ export async function getPaymentAnalysis(
       ? [String(authorizationName)]
       : [];
   }))];
-  // Payment history is temporarily commented out of the payment calculation
-  // pending rework (per explicit request): the Apex-side getPaymentHistory
-  // action wraps its query (including an external-object lookup) in a
-  // catch-all that swallows the real exception and always returns
-  // "Payment history source is unavailable" - live-traced to a ~28s stall
-  // before failing, blocking every payment view (NEXT_PAYOUT,
-  // CURRENT_WEEK_FORECAST, STATUS, CUSTOM_RANGE). Feeding an empty
-  // { subPayments: [] } here is accepted downstream (normalizeExistingSubPayments/
-  // normalizePaymentFeeHistory both treat it as valid, empty history), so
-  // payment analysis can proceed without duplicate-payment detection or
-  // settlement-amount lookups until this is reworked. Restore
-  // `client.getPaymentHistory(sourceScope)` in place of the resolved stub
-  // below once the Apex side is fixed.
   const [authorizationData, countyData, fiscalData, holidayData, paymentData, vacantSlotData] = await Promise.all([
     client.getAuthorizations({
       ...sourceScope,
@@ -186,8 +173,7 @@ export async function getPaymentAnalysis(
     client.getCountyData({ ...sourceScope, countyIds }),
     client.getFiscalRates(sourceScope),
     client.getHolidayList(sourceScope),
-    // client.getPaymentHistory(sourceScope), // commented out - see note above
-    Promise.resolve({ subPayments: [] }),
+    client.getPaymentHistory(sourceScope),
     typeof client.getVacantSlots === "function"
       ? client.getVacantSlots({ ...sourceScope, countyIds })
       : Promise.resolve({ vacantSlots: [] }),

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Effv_Beg_Date_cannot_be_in_future</fullName>
-    <active>true</active>
-    <description>CHAT- 1204: Cant be after current system Date</description>
-    <errorConditionFormula>NOT(IDN_CLIENT__r.Is_Peak_Data__c) &amp;&amp; NOT(IDN_CLIENT__r.Is_CBMS_Data__c) &amp;&amp; DTE_BEGIN_EFFV__c &gt;  TODAY()</errorConditionFormula>
-    <errorDisplayField>DTE_BEGIN_EFFV__c</errorDisplayField>
-    <errorMessage>Effective begin Date cannot be greater than Current System Date</errorMessage>
-</ValidationRule>

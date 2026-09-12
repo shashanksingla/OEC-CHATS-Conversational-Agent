@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Child_Support_End_Date_less_Than_Begin</fullName>
-    <active>true</active>
-    <description>Co-operation Child Support End Date must be greater than Co-operation Child Support Begin Date</description>
-    <errorConditionFormula>NOT( IDN_CLIENT__r.Is_Peak_Data__c ) &amp;&amp; DTE_BEGIN_CS_COOP__c &gt; DTE_END_CS_COOP__c</errorConditionFormula>
-    <errorDisplayField>DTE_END_CS_COOP__c</errorDisplayField>
-    <errorMessage>Co-operation Child Support End Date must be greater than Co-operation Child Support Begin Date</errorMessage>
-</ValidationRule>

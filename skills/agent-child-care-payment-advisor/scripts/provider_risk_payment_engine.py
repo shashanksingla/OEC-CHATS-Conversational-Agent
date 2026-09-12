@@ -123,15 +123,66 @@ def _month_allowed(value: Any, service_date: date) -> bool:
     return str(month) not in tokens and service_date.strftime("%B").upper() not in tokens
 
 
-def _frequency_applies(frequency: Any, month: str, charged_months: set[str]) -> bool:
+def _frequency_charge_key(
+    frequency: Any,
+    month: str,
+    authorization_start: date | None = None,
+) -> str | None:
     normalized = str(frequency or "").strip().upper()
-    if normalized in {"MTH", "MONTH", "MONTHLY"}:
-        return month not in charged_months
     if normalized in {"ANN", "ANNUAL", "YEARLY"}:
-        return not charged_months
-    if normalized in {"ONE", "ONE_TIME", "ONETIME"}:
-        return not charged_months
-    return False
+        if not authorization_start:
+            return None
+        month_date = _date_value(f"{month}-01")
+        if not month_date or month_date < authorization_start.replace(day=1):
+            return None
+        year_bucket = (
+            (month_date.year - authorization_start.year) * 12
+            + month_date.month - authorization_start.month
+        ) // 12
+        return f"ANN:{year_bucket}"
+    if normalized in {"MTH", "MONTH", "MONTHLY", "ONE", "ONE_TIME", "ONETIME"}:
+        return month
+    return None
+
+
+def _frequency_applies(
+    frequency: Any,
+    month: str,
+    charged_months: set[str],
+    authorization_start: date | None = None,
+) -> bool:
+    charge_key = _frequency_charge_key(frequency, month, authorization_start)
+    return charge_key is not None and charge_key not in charged_months
+
+
+def _art_fee_amount(schedule: dict[str, Any], fee_type: str) -> Decimal | None:
+    prefix = fee_type.lower()
+    authorization_amount = _hours(schedule.get(f"{prefix}_authorization_amount"))
+    base_amount = _hours(schedule.get(f"{prefix}_amount"))
+    provider_cap = _hours(schedule.get(f"{prefix}_provider_cap"))
+    county_cap = _hours(schedule.get(f"{prefix}_county_cap"))
+    if base_amount is None and authorization_amount is None:
+        return None
+    if provider_cap is not None and provider_cap <= 0:
+        return None
+    if county_cap is not None and county_cap <= 0:
+        return None
+    candidates = [value for value in (authorization_amount, provider_cap, county_cap) if value is not None and value > 0]
+    if not candidates:
+        return base_amount if base_amount and base_amount > 0 else None
+    return min(candidates)
+
+
+def _authorization_month_in_scope(schedule: dict[str, Any], month_date: date) -> bool:
+    month_end = (month_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    start = _date_value(schedule.get("authorization_effective_start"))
+    end = _date_value(schedule.get("authorization_effective_end"))
+    return (start is None or start <= month_end) and (end is None or end >= month_date)
+
+
+def _authorization_is_authorized(schedule: dict[str, Any]) -> bool:
+    status = str(schedule.get("authorization_status") or "").strip().upper()
+    return status in {"2", "AUTHORIZED", "APPROVED"}
 
 
 def _weekday_allowed(value: Any, service_date: date) -> bool:
@@ -253,26 +304,53 @@ def _scheduled_fee_totals(payload: dict[str, Any], attendance_days: list[dict[st
         return Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0")
     history = [item for item in payload.get("fee_history", []) if isinstance(item, dict)]
     fee_totals = {"activity": Decimal("0"), "registration": Decimal("0"), "transportation": Decimal("0")}
-    months = sorted({_month_key(_date_value(day["service_date"]) or date.min) for day in attendance_days if isinstance(day.get("service_date"), str)})
+    qualifying_months_by_authorization: dict[str, set[str]] = defaultdict(set)
+    for day in attendance_days:
+        service_date = _date_value(day.get("service_date"))
+        if (
+            isinstance(day.get("authorization_id"), str)
+            and service_date
+            and day.get("classification") == "ATTENDED"
+            and day.get("payment_type") == "REGULAR"
+            and day.get("payable") is True
+            and day.get("conditional") is False
+        ):
+            qualifying_months_by_authorization[day["authorization_id"]].add(_month_key(service_date))
     for schedule in schedules:
         if not isinstance(schedule, dict) or not isinstance(schedule.get("authorization_id"), str):
             continue
+        if not _authorization_is_authorized(schedule):
+            continue
+        months = sorted(qualifying_months_by_authorization.get(schedule["authorization_id"], set()))
         scheduled_months: dict[str, set[str]] = defaultdict(set)
         for month in months:
             month_date = _date_value(f"{month}-01")
             if not month_date:
                 continue
-            for fee_type, amount_key, frequency_key, months_key in (
-                ("activity", "activity_amount", "activity_frequency", "activity_months"),
-                ("registration", "registration_amount", "registration_frequency", "registration_months"),
-                ("transportation", "transportation_amount", "transportation_frequency", "transportation_months"),
+            if not _authorization_month_in_scope(schedule, month_date):
+                continue
+            for fee_type, frequency_key, months_key in (
+                ("activity", "activity_frequency", "activity_months"),
+                ("registration", "registration_frequency", "registration_months"),
+                ("transportation", "transportation_frequency", "transportation_months"),
             ):
-                amount = _hours(schedule.get(amount_key))
+                amount = _art_fee_amount(schedule, fee_type)
                 if amount is None or not _month_allowed(schedule.get(months_key), month_date):
                     continue
-                if _frequency_applies(schedule.get(frequency_key), month, scheduled_months[fee_type]):
+                if _frequency_applies(
+                    schedule.get(frequency_key),
+                    month,
+                    scheduled_months[fee_type],
+                    _date_value(schedule.get("authorization_effective_start")),
+                ):
                     fee_totals[fee_type] += amount
-                    scheduled_months[fee_type].add(month)
+                    charge_key = _frequency_charge_key(
+                        schedule.get(frequency_key),
+                        month,
+                        _date_value(schedule.get("authorization_effective_start")),
+                    )
+                    if charge_key is not None:
+                        scheduled_months[fee_type].add(charge_key)
     paid_totals = {
         fee_type: sum(
             (_signed_amount(item.get(f"{fee_type}_paid")) or Decimal("0")
@@ -287,6 +365,63 @@ def _scheduled_fee_totals(payload: dict[str, Any], attendance_days: list[dict[st
         max(fee_totals["registration"] - paid_totals["registration"], Decimal("0")),
         max(fee_totals["transportation"] - paid_totals["transportation"], Decimal("0")),
     )
+
+
+def _art_earned_total(payload: dict[str, Any], attendance_days: list[dict[str, Any]]) -> Decimal:
+    schedules = payload.get("fee_schedules")
+    if not isinstance(schedules, list):
+        return Decimal("0")
+    qualifying_months_by_authorization: dict[str, set[str]] = defaultdict(set)
+    for day in attendance_days:
+        service_date = _date_value(day.get("service_date"))
+        if (
+            isinstance(day.get("authorization_id"), str)
+            and service_date
+            and day.get("classification") == "ATTENDED"
+            and day.get("payment_type") == "REGULAR"
+            and day.get("payable") is True
+            and day.get("conditional") is False
+        ):
+            qualifying_months_by_authorization[day["authorization_id"]].add(_month_key(service_date))
+    earned = Decimal("0")
+    for schedule in schedules:
+        if not isinstance(schedule, dict):
+            continue
+        if not _authorization_is_authorized(schedule):
+            continue
+        authorization_id = schedule.get("authorization_id")
+        if not isinstance(authorization_id, str):
+            continue
+        charged_months: dict[str, set[str]] = defaultdict(set)
+        for month in sorted(qualifying_months_by_authorization.get(authorization_id, set())):
+            month_date = _date_value(f"{month}-01")
+            if not month_date:
+                continue
+            if not _authorization_month_in_scope(schedule, month_date):
+                continue
+            for fee_type, frequency_key, months_key in (
+                ("activity", "activity_frequency", "activity_months"),
+                ("registration", "registration_frequency", "registration_months"),
+                ("transportation", "transportation_frequency", "transportation_months"),
+            ):
+                amount = _art_fee_amount(schedule, fee_type)
+                if amount is None or not _month_allowed(schedule.get(months_key), month_date):
+                    continue
+                if _frequency_applies(
+                    schedule.get(frequency_key),
+                    month,
+                    charged_months[fee_type],
+                    _date_value(schedule.get("authorization_effective_start")),
+                ):
+                    earned += amount
+                    charge_key = _frequency_charge_key(
+                        schedule.get(frequency_key),
+                        month,
+                        _date_value(schedule.get("authorization_effective_start")),
+                    )
+                    if charge_key is not None:
+                        charged_months[fee_type].add(charge_key)
+    return earned
 
 
 def _vacant_slot_fee_totals(payload: dict[str, Any]) -> tuple[Decimal, list[dict[str, Any]]]:
@@ -337,22 +472,18 @@ def _vacant_slot_fee_totals(payload: dict[str, Any]) -> tuple[Decimal, list[dict
     return total, rows
 
 
-def _monthly_copay_total(payload: dict[str, Any], attendance_days: list[dict[str, Any]]) -> Decimal:
+def _copay_total(payload: dict[str, Any], attendance_days: list[dict[str, Any]]) -> tuple[Decimal, set[str]]:
     copays = payload.get("authorization_copays")
     if not isinstance(copays, list):
-        return Decimal("0")
-    payable_months = {
-        (str(day.get("authorization_id")), str(day.get("service_date"))[:7])
-        for day in attendance_days
-        if (
-            day.get("payable") is True
-            and day.get("category") == "REGULAR"
-        )
-    }
+        return Decimal("0"), set()
     total = Decimal("0")
-    for authorization_id, month in payable_months:
-        effective_date = _date_value(f"{month}-01")
-        if not effective_date:
+    missing_authorizations: set[str] = set()
+    for day in attendance_days:
+        if day.get("payable") is not True or day.get("category") != "REGULAR":
+            continue
+        authorization_id = day.get("authorization_id")
+        service_date = _date_value(day.get("service_date"))
+        if not isinstance(authorization_id, str) or not service_date:
             continue
         matching = []
         for copay in copays:
@@ -360,13 +491,15 @@ def _monthly_copay_total(payload: dict[str, Any], attendance_days: list[dict[str
                 continue
             start = _date_value(copay.get("effective_start"))
             end = _date_value(copay.get("effective_end")) if copay.get("effective_end") else None
-            if start and start <= effective_date and (not end or end >= effective_date):
+            if start and start <= service_date and (not end or end >= service_date):
                 matching.append(copay)
         if len(matching) > 1:
             raise ValueError("ambiguous_authorization_copay")
-        if matching:
-            total += _hours(matching[0].get("amount")) or Decimal("0")
-    return total
+        if not matching:
+            missing_authorizations.add(authorization_id)
+            continue
+        total += _hours(matching[0].get("amount")) or Decimal("0")
+    return total, missing_authorizations
 
 
 def _build_payment_summary_view(
@@ -681,6 +814,11 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
         if isinstance(authorization, dict) and isinstance(authorization.get("id"), str)
     }
     policy_by_authorization = _policy_by_authorization(authorization_rows, county_policy_rows)
+    provider_closure_dates = {
+        str(value)[:10]
+        for value in payload.get("provider_closure_dates", [])
+        if isinstance(value, str)
+    }
     history = [item for item in payload.get("fee_history", []) if isinstance(item, dict)]
     absence_counts: dict[str, int] = defaultdict(int)
     drop_in_counts: dict[str, int] = defaultdict(int)
@@ -734,6 +872,7 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
             attendance_day.get("holiday_date"),
             attendance_day.get("observed_holiday_date"),
         )
+        provider_closed = service_date.isoformat() in provider_closure_dates
         holiday_paid_on_other_date = _holiday_paid_on_paired_date(
             history,
             authorization_id,
@@ -750,11 +889,13 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
             payment_type = "FORECAST"
             info_code = "FORECAST"
             flags.append("SCHEDULED_FUTURE_DAY")
-        elif attendance_day.get("care_not_offered") is True:
+        elif (attendance_day.get("care_not_offered") is True or provider_closed) and not county_holiday_match:
             classification = "CARE_NOT_OFFERED"
             payable = False
             paid_tier = None
             info_code = "14"
+            if provider_closed:
+                flags.append("PROVIDER_CLOSED")
         elif attended_hours > 0 and authorized_hours == 0:
             # Genuine drop-in: attended without any authorized hours that day.
             classification = "DROP_IN"
@@ -783,7 +924,7 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
                 unit_hours = attended_hours
                 payment_type = "DROP_IN"
             info_code = "3"
-        elif attended_hours > 0:
+        elif attended_hours > 0 and not county_holiday_match:
             classification = "ATTENDED"
             payable = True
             paid_tier = _tier_for_hours(min(authorized_hours, attended_hours))
@@ -1017,21 +1158,15 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             payment
             for payment in payload["existing_sub_payments"]
             if isinstance(payment, dict)
-            and payment.get("authorization_id") in authorization_ids
+            and (
+                payment.get("authorization_id") is None
+                or payment.get("authorization_id") in authorization_ids
+            )
             and payment.get("service_period_id") == period["id"]
             and payment.get("status") in PAID_PAYMENT_STATUSES
         ),
         None,
     )
-    if duplicate:
-        return {
-            "status": "ok",
-            "rule_version": RULE_VERSION,
-            "source_readiness": "COMPLETE",
-            "attendance": attendance,
-            "payment": {"status": "DUPLICATE_GUARD", "existing_status": duplicate["status"]},
-        }
-
     rates: dict[tuple[str, str], Decimal] = {}
     for rate in payload["fiscal_rates"]:
         if not isinstance(rate, dict):
@@ -1055,6 +1190,13 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             and (authorization_id, "NO_PAYMENT") not in rates
         ):
             excluded_authorizations.add(authorization_id)
+    copay, missing_copay_authorizations = _copay_total(payload, attendance["days"])
+    if missing_copay_authorizations:
+        for day in attendance["days"]:
+            if day.get("authorization_id") in missing_copay_authorizations:
+                day["payable"] = False
+                day["payment_excluded"] = True
+                day["flags"] = sorted({*day["flags"], "COPAY_UNAVAILABLE"})
     total = Decimal("0")
     conditional_total = Decimal("0")
     # Expected/Forecasted/At-risk is an additive breakdown alongside the
@@ -1168,6 +1310,7 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         payload,
         attendance["days"],
     )
+    art_earned = _art_earned_total(payload, attendance["days"])
     vacant_slot_fee, vacant_slot_days = _vacant_slot_fee_totals(payload)
     # Vacant slots have no parent/child confirmation concept, so the
     # Expected/Forecasted split is purely date-based: past the confirmation
@@ -1186,11 +1329,16 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         else:
             slot_day["amount_class"] = "EXPECTED"
             expected_total += slot_amount
-    copay = _monthly_copay_total(payload, attendance["days"])
+    if missing_copay_authorizations:
+        copay = Decimal("0")
     scheduled_fees = vacant_slot_fee + activity_fee + registration_fee + transportation_fee
     gross_total = total + scheduled_fees
     net_total = max(gross_total - copay, Decimal("0"))
     payment_status = "CONDITIONAL" if conditional_total else "EXPECTED"
+    if missing_copay_authorizations:
+        payment_status = "BLOCKED"
+    elif duplicate:
+        payment_status = "SUBMITTED"
     summary_groups: dict[tuple[str, str, str], dict[str, Any]] = {}
     for day in attendance["days"]:
         if (
@@ -1265,7 +1413,12 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             "activity_fee": _money(activity_fee),
             "registration_fee": _money(registration_fee),
             "transportation_fee": _money(transportation_fee),
+            "art_earned": _money(art_earned),
+            "art_paid": "0.00",
+            "art_pending": _money(art_earned),
             "parent_copay": _money(copay),
+            "missing_copay_authorizations": sorted(missing_copay_authorizations),
+            **({"existing_status": duplicate["status"]} if duplicate else {}),
             "summary": payment_summary,
             "summary_view": summary_view,
             **_settlement_fields(payload, period_end, as_of_date, net_total),

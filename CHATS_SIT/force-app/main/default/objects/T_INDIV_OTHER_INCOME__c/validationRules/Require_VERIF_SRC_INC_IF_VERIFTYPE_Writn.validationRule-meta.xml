@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Require_VERIF_SRC_INC_IF_VERIFTYPE_Writn</fullName>
-    <active>true</active>
-    <errorConditionFormula>AND( NOT( IDN_CLIENT__r.Is_Peak_Data__c ),NOT( IDN_CLIENT__r.Is_CBMS_Data__c ),ISPICKVAL(CDE_TYPE_VERIF__c, &quot;V&quot;) , 
-    ISBLANK( TEXT(CDE_SOURCE_VRFYD_INCOME__c) ) )</errorConditionFormula>
-    <errorDisplayField>CDE_SOURCE_VRFYD_INCOME__c</errorDisplayField>
-    <errorMessage>Income How Verified Field is Required</errorMessage>
-</ValidationRule>

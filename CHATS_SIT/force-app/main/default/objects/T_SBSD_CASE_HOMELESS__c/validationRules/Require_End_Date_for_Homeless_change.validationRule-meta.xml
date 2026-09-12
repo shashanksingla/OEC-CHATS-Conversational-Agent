@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Require_End_Date_for_Homeless_change</fullName>
-    <active>true</active>
-    <description>Effective End Date is required if Is the family homeless is changed from Yes to No</description>
-    <errorConditionFormula>AND(!IDN_CASE__r.Is_Peak_Data__c, !IDN_CASE__r.Is_CBMS_Data__c, ISBLANK(DTE_END_EFFV__c), ISCHANGED(Is_family_homeless__c) , ISPICKVAL(Is_family_homeless__c,&apos;N&apos;),ISPICKVAL(PRIORVALUE(Is_family_homeless__c),&apos;Y&apos;))</errorConditionFormula>
-    <errorDisplayField>DTE_END_EFFV__c</errorDisplayField>
-    <errorMessage>Effective End Date is required if Is the family homeless is changed from Yes to No</errorMessage>
-</ValidationRule>

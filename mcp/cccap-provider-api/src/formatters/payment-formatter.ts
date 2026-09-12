@@ -1,4 +1,5 @@
-import { actionControls, countyPaymentSummary, estimatedMoney, plainMoney, humanizeAttendanceType, numericValue, recordValue, renderActionSections, renderCountyComposition, result, shortDateLabel, tableValue, type ToolResult, DISCLAIMER_AT_RISK, DISCLAIMER_EXPECTED, DISCLAIMER_FORECASTED, DISCLAIMER_GLOBAL } from './shared.js';
+import { actionControls, countyPaymentSummary, estimatedMoney, plainMoney, humanizeAttendanceType, numericValue, recordValue, renderActionSections, renderCountyComposition, result, shortDateLabel, tableValue, type ToolResult, DISCLAIMER_AT_RISK, DISCLAIMER_EXPECTED, DISCLAIMER_FORECASTED, DISCLAIMER_GLOBAL, DISCLAIMER_GUARANTEED } from './shared.js';
+import { actionViewMetadata, viewState } from '../view-state.js';
 
 /** Render a markdown table while omitting numeric columns that carry no information in this view. */
 function renderNumericTable(headers: string[], rows: string[][], numericColumns: number[]): string[] {
@@ -15,11 +16,45 @@ function renderNumericTable(headers: string[], rows: string[][], numericColumns:
   ];
 }
 
+function renderCategoryTable(rows: Record<string, unknown>[]): string[] {
+  const definitions = [
+    { header: "Category", value: (row: Record<string, unknown>) => tableValue(row.label), numeric: false },
+    { header: "Children/contracts", value: (row: Record<string, unknown>) => tableValue(row.children_served ?? row.children ?? row.contracts), numeric: true },
+    { header: "Days", value: (row: Record<string, unknown>) => tableValue(row.days), numeric: true },
+    { header: "Care hours", value: (row: Record<string, unknown>) => tableValue(row.hours), numeric: true },
+    { header: "Expected amount", value: (row: Record<string, unknown>) => plainMoney(row.amount), numeric: true },
+    { header: "At-risk amount", value: (row: Record<string, unknown>) => plainMoney(row.conditional_amount), numeric: true },
+    { header: "Excluded days", value: (row: Record<string, unknown>) => tableValue(row.excluded_days), numeric: true },
+  ];
+  const renderedRows = rows.map((row) => definitions.map((definition) => definition.value(row)));
+  const numericColumns = definitions.flatMap((definition, index) => definition.numeric ? [index] : []);
+  return renderNumericTable(definitions.map((definition) => definition.header), renderedRows, numericColumns);
+}
+
 function atRiskDisclaimer(confirmByDate: unknown): string {
   if (typeof confirmByDate === 'string' && confirmByDate.trim()) {
     return DISCLAIMER_AT_RISK.replace('{deadline}', shortDateLabel(confirmByDate) ?? tableValue(confirmByDate));
   }
   return DISCLAIMER_AT_RISK.replace(' before {deadline}', ' before the confirmation deadline');
+}
+
+function paymentDisclaimers(
+  payment: Record<string, unknown>,
+  paymentResult: Record<string, unknown>,
+  attendance: Record<string, unknown>[],
+): string[] {
+  const disclaimers = [DISCLAIMER_GLOBAL];
+  if (Number(payment.expected_amount) > 0) disclaimers.push(DISCLAIMER_EXPECTED);
+  if (Number(payment.forecasted_amount) > 0) disclaimers.push(DISCLAIMER_FORECASTED);
+  if (Number(payment.at_risk_amount ?? payment.amount_at_risk) > 0) {
+    disclaimers.push(atRiskDisclaimer(
+      attendance.find((day) => typeof day.confirm_by_date === "string")?.confirm_by_date
+        ?? payment.confirm_by_date
+        ?? paymentResult.confirm_by_date,
+    ));
+  }
+  if (Number(payment.guaranteed_amount) > 0) disclaimers.push(DISCLAIMER_GUARANTEED);
+  return [...new Set(disclaimers)];
 }
 
 /**
@@ -222,6 +257,16 @@ export function formatPaymentResult(data: unknown): ToolResult {
   const status = typeof payment.status === "string" ? payment.status.toUpperCase() : "BLOCKED";
   const detailPagination = recordValue(paymentResult.detailPagination);
   const detailPage = detailPagination && Number(detailPagination.page) > 0;
+  const requestedTableId = paymentResult.tableId === "payment-county-rollup" || paymentResult.tableId === "vacant-slot-rollup"
+    ? paymentResult.tableId
+    : undefined;
+  const activeTableId = requestedTableId ?? (status === "BLOCKED" && paymentResult.paymentView === "NEXT_PAYOUT"
+    ? "payout-summary"
+    : paymentResult.paymentView === "CURRENT_WEEK_FORECAST"
+      ? "forecast-date-detail"
+      : detailPage
+        ? "sub-payment-detail"
+        : "payment-category-rollup");
   const view = paymentResult.paymentView === "NEXT_PAYOUT"
     ? detailPage ? "Upcoming payout detail" : "Upcoming payout summary"
     : paymentResult.paymentView === "CURRENT_WEEK_FORECAST"
@@ -242,6 +287,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
     ? payment.missing_inputs.filter((value): value is string => typeof value === "string")
     : [];
   const summaryView = paymentSummaryView(payment.summary_view);
+  const disclaimers = paymentDisclaimers(payment, paymentResult, attendance);
   const statusLabel = status === "DUPLICATE_GUARD"
     ? "Already paid or requested"
     : status === "CONDITIONAL"
@@ -293,7 +339,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
       if (payment[key] !== undefined && key === "amount") {
         lines.push(`| ${label} | ${estimatedMoney(payment[key])} |`);
       } else if (payment[key] !== undefined && key === "payout_date") {
-        lines.push(`| ${label} | ${shortDateLabel(payment[key]) ?? String(payment[key])} |`);
+        lines.push(`| ${label} | ${shortDateLabel(payment[key]) ?? tableValue(payment[key])} |`);
       } else if (payment[key] !== undefined) {
         lines.push(`| ${label} | ${String(payment[key])} |`);
       }
@@ -348,9 +394,9 @@ export function formatPaymentResult(data: unknown): ToolResult {
       );
     }
     const summary = Array.isArray(payment.summary) ? payment.summary.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row)) : [];
-    if (summary.length > 0 && !summaryView && detailPage) {
+    if (summary.length > 0 && !summaryView && activeTableId === "payment-county-rollup") {
       const countySummary = countyPaymentSummary(summary);
-      lines.push("", "County payment totals:", "The table below shows children served, care hours, and calculated payment by county.", "| County | Children served | Care hours | Expected amount ($) | At-risk amount ($) |", "| --- | ---: | ---: | ---: | ---: |", ...countySummary.map((row) => `| ${tableValue(row.county_name)} | ${tableValue(row.children_served)} | ${tableValue(row.hours)} | ${plainMoney(row.amount)} | ${plainMoney(row.conditional_amount)} |`));
+      lines.push("", "County payment totals:", "> This compares children served, care hours, and calculated payment by county for the selected payment scope.", "| County | Children served | Care hours | Expected amount ($) | At-risk amount ($) |", "| --- | ---: | ---: | ---: | ---: |", ...countySummary.map((row) => `| ${tableValue(row.county_name)} | ${tableValue(row.children_served)} | ${tableValue(row.hours)} | ${plainMoney(row.amount)} | ${plainMoney(row.conditional_amount)} |`));
     }
     const overview = summaryView && recordValue(summaryView.overview);
     // An excluded-only request or a single-child drill-down already narrows
@@ -365,7 +411,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
     const childRollup = suppressRollups ? [] : summaryRows(summaryView, "children");
     const vacantSlots = suppressRollups ? [] : summaryRows(summaryView, "vacant_slots");
     const nextActions = summaryRows(summaryView, "next_actions");
-    if (overview && detailPage) {
+    if (overview && activeTableId === "payment-category-rollup") {
       // Vacant-slot amount is a provider/slot-level figure, not tied to any
       // individual child's attendance - showing it in a single-child
       // drill-down is misleading. Show Drop-in amount instead there, since
@@ -403,18 +449,18 @@ export function formatPaymentResult(data: unknown): ToolResult {
         lines.push("🔍 Flagged categories = distinct issue types, not days.");
       }
     }
-    if (categories.length > 0 && detailPage) {
-      lines.push("", "Payment by category:", "| Category | Days | Care hours | Expected amount | At-risk amount | Excluded days |", "| --- | ---: | ---: | ---: | ---: | ---: |", ...categories.map((row) => `| ${tableValue(row.label)} | ${tableValue(row.days)} | ${tableValue(row.hours)} | ${plainMoney(row.amount)} | ${plainMoney(row.conditional_amount)} | ${tableValue(row.excluded_days)} |`));
+    if (categories.length > 0 && activeTableId === "payment-category-rollup") {
+      lines.push("", "Payment by category:", "> This separates only the payment measures available for the requested category view; omitted columns were not populated for this scope.", ...renderCategoryTable(categories));
     }
     // County detail (the flat Days/Hours/Expected/At-risk/Excluded rollup)
     // has been merged into County payment composition below - it now
     // renders unconditionally instead of only for a summary (!detailPage)
     // view, so the county breakdown no longer reshapes entirely between a
     // payout summary and a payout detail response.
-    if (countyComposition.length > 0) {
+    if (countyComposition.length > 0 && (activeTableId === "payment-county-rollup" || (activeTableId === "payment-category-rollup" && categories.length === 0))) {
       lines.push(...renderCountyComposition(countyComposition));
     }
-    if (childRollup.length > 0 && detailPage) {
+    if (childRollup.length > 0 && activeTableId === "payment-category-rollup") {
       // A child name alone does not uniquely identify a child - joining
       // every authorization number the rollup's days came from (there can
       // be more than one per child) disambiguates duplicate names.
@@ -424,9 +470,9 @@ export function formatPaymentResult(data: unknown): ToolResult {
           : [];
         return names.length > 0 ? names.join(", ") : "Unavailable from the current source";
       };
-      lines.push("", "Child detail:", "| Child | Authorization | Days | Care hours | Expected amount | At-risk amount | Excluded days |", "| --- | --- | ---: | ---: | ---: | ---: | ---: |", ...childRollup.map((row) => `| ${tableValue(row.label)} | ${authorizationCell(row)} | ${tableValue(row.days)} | ${tableValue(row.hours)} | ${plainMoney(row.amount)} | ${plainMoney(row.conditional_amount)} | ${tableValue(row.excluded_days)} |`));
+      lines.push("", "Child detail:", "> This shows the payment measures behind the selected child scope; amounts remain estimates or at risk where labeled.", "| Child | Authorization | Days | Care hours | Expected amount | At-risk amount | Excluded days |", "| --- | --- | ---: | ---: | ---: | ---: | ---: |", ...childRollup.map((row) => `| ${tableValue(row.label)} | ${authorizationCell(row)} | ${tableValue(row.days)} | ${tableValue(row.hours)} | ${plainMoney(row.amount)} | ${plainMoney(row.conditional_amount)} | ${tableValue(row.excluded_days)} |`));
     }
-    if (vacantSlots.length > 0) {
+    if (vacantSlots.length > 0 && activeTableId === "vacant-slot-rollup") {
       // Rollup by county (Total days | Total amount) instead of one row per
       // slot-day - a provider gets the facility-level total at a glance;
       // the full day-by-day breakdown is available through the drill-down
@@ -439,7 +485,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
         current.amount += Number(row.amount) || 0;
         vacantSlotsByCounty.set(countyName, current);
       }
-      lines.push("", "Vacant slots (separate from child payments):", "| County | Total days | Total amount |", "| --- | ---: | ---: |", ...[...vacantSlotsByCounty.values()].map((row) => `| ${row.county} | ${row.days} | ${plainMoney(row.amount)} |`));
+      lines.push("", "Vacant slots (separate from child payments):", "> This is a facility-level vacant-slot amount and is kept separate from child attendance payments.", "| County | Total days | Total amount |", "| --- | ---: | ---: |", ...[...vacantSlotsByCounty.values()].map((row) => `| ${row.county} | ${row.days} | ${plainMoney(row.amount)} |`));
     }
     if (nextActions.length > 0) {
       lines.push("", "Payment next actions:", ...nextActions.slice(0, 3).map((row) => `- ${tableValue(row.label)}: ${tableValue(row.reason)} (${tableValue(row.days)} day(s), ${plainMoney(row.amount_at_risk)} at risk)`));
@@ -456,33 +502,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
         "A verified dollar amount at risk isn't available for this scope yet, so the drill-down below shows the child with the most scheduled hours instead of the highest dollar impact.",
       );
     }
-    if (attendance.length > 0 && !detailPage) {
-      // Summary view: the orchestration now includes a small preview (a
-      // few rows, not a full page) instead of an empty attendance.days -
-      // render a compact preview table plus the total-row count, rather
-      // than either the full ranked detail table (reserved for a real
-      // detailPage request) or the old bare "Detail available: N rows"
-      // text-only hint.
-      const previewRows = attendance.map((day) => {
-        const serviceDateLabel = shortDateLabel(day.service_date) ?? tableValue(day.service_date);
-        const baseTypeLabel = day.payment_excluded === true
-          ? humanizeAttendanceType(day.classification).replace(/\s*\(paid\)/i, "")
-          : humanizeAttendanceType(day.classification);
-        const attendanceTypeCell = day.payment_excluded === true
-          ? `${baseTypeLabel} [${exclusionReason(day)}]`
-          : baseTypeLabel;
-        return `| ${tableValue(day.child_name)} | ${tableValue(day.county_name ?? "Unavailable from the current source")} | ${serviceDateLabel} | ${attendanceTypeCell} |`;
-      });
-      lines.push(
-        "",
-        `Detail preview (${attendance.length} of ${tableValue(detailPagination?.totalRows)} child/date rows):`,
-        "| Child | County | Service date | Attendance type |",
-        "| --- | --- | --- | --- |",
-        ...previewRows,
-        "",
-        "Request a detail page to inspect the remaining rows.",
-      );
-    } else if (attendance.length > 0) {
+    if (attendance.length > 0 && detailPage) {
       const forecastBasisRows = paymentResult.paymentView === "CURRENT_WEEK_FORECAST"
         && attendance.some((day) => day.attendance_basis === "ACTUAL" || day.attendance_basis === "SCHEDULED");
       // actual_hours_total/scheduled_hours_total arrive as decimal-formatted
@@ -565,8 +585,74 @@ export function formatPaymentResult(data: unknown): ToolResult {
     // (attendance.length > 0 && !detailPage -> preview table; else -> full
     // ranked table) already cover every reachable case.
   }
+  const paymentFilters = recordValue(paymentResult.filters);
+  const paymentViewId = activeTableId === "payment-county-rollup"
+    ? "PAYMENT_COUNTY_ROLLUP" as const
+    : activeTableId === "vacant-slot-rollup"
+      ? "VACANT_SLOT_ROLLUP" as const
+      : paymentResult.paymentView === "NEXT_PAYOUT"
+    ? "NEXT_UPCOMING_PAYOUT" as const
+    : paymentResult.paymentView === "CURRENT_WEEK_FORECAST"
+      ? "CURRENT_SERVICE_PERIOD_FORECAST" as const
+      : detailPage
+        ? "SUB_PAYMENT_DETAIL" as const
+        : "PAYMENT_CATEGORY_ROLLUP" as const;
+  const currentView = viewState({
+    viewId: paymentViewId,
+    tableId: activeTableId,
+    tableTitle: activeTableId === "payment-county-rollup"
+      ? "Payment by county"
+      : activeTableId === "vacant-slot-rollup"
+        ? "Vacant-slot payments"
+        : paymentResult.paymentView === "CURRENT_WEEK_FORECAST"
+      ? "Current service-period forecast"
+      : paymentResult.paymentView === "NEXT_PAYOUT"
+        ? "Next upcoming payout"
+        : detailPage
+          ? "Sub-payment detail"
+          : "Payment category summary",
+    tableDescription: activeTableId === "payment-county-rollup"
+      ? "This table compares children served, care hours, expected amount, and at-risk amount by county."
+      : activeTableId === "vacant-slot-rollup"
+        ? "This table keeps facility-level vacant-slot amounts separate from child attendance payments."
+        : paymentResult.paymentView === "CURRENT_WEEK_FORECAST"
+      ? "This table projects scheduled and attended services into the current service-period payment estimate."
+      : paymentResult.paymentView === "NEXT_PAYOUT"
+        ? "This table shows the next upcoming service-period payout and its current payment status."
+        : detailPage
+          ? "This table replaces the payment summary with the child and service-date rows behind the selected payment result."
+          : "This table groups the requested payment result into decision-ready payment categories.",
+    ...(detailPage ? { parentViewId: "PAYMENT_CATEGORY_ROLLUP" as const } : {}),
+    scope: paymentResult.scope,
+        ...(paymentFilters ? { filters: paymentFilters } : {}),
+        ...(typeof paymentResult.sourceRetrievedAt === "string" ? { sourceRetrievedAt: paymentResult.sourceRetrievedAt } : {}),
+        ...(typeof paymentResult.rule_version === "string" ? { ruleVersion: paymentResult.rule_version } : {}),
+    ...(detailPagination ? {
+      page: numericValue(detailPagination.page),
+      pageSize: numericValue(detailPagination.pageSize),
+      totalRows: numericValue(detailPagination.totalRows),
+    } : {}),
+  });
   const actionIntents = paymentActionMetadata(paymentResult, payment, detailPagination, status, Boolean(detailPage));
-  const providerMessage = `${renderActionSections(lines.join("\n"), actionIntents)}\n\n${DISCLAIMER_GLOBAL}`;
+  if (detailPage) {
+    const parentInput = { ...(paymentFilters ?? {}) } as Record<string, unknown>;
+    delete parentInput.detailPage;
+    delete parentInput.detailPageSize;
+    actionIntents.push({
+      actionId: "return-to-payment-summary",
+      capability: "payment-analysis",
+      tool: "cccap_analyze_payment",
+      label: "Return to payment category summary",
+      reason: "Go back to the parent payment view without widening the verified provider scope.",
+      priority: "medium",
+      section: "navigation",
+      source: "current-result",
+      input: { ...parentInput, viewId: "PAYMENT_CATEGORY_ROLLUP" },
+    });
+  }
+  const viewAwareActionIntents = actionIntents
+    .map((action) => actionViewMetadata(action, currentView));
+  const providerMessage = `${renderActionSections(lines.join("\n"), viewAwareActionIntents)}\n\n${DISCLAIMER_GLOBAL}`;
   const providerSummary = Array.isArray(payment.summary)
     ? countyPaymentSummary(payment.summary.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row))).map((row) => ({
         county: row.county_name,
@@ -594,10 +680,12 @@ export function formatPaymentResult(data: unknown): ToolResult {
     content: [{ type: "text" as const, text: providerMessage }],
     structuredContent: {
       capability: "payment-analysis",
+      viewState: currentView,
       scope: paymentResult.scope,
       paymentView: paymentResult.paymentView,
       actionIntents,
-      actionControls: actionControls(actionIntents),
+      actionControls: actionControls(viewAwareActionIntents),
+      paymentDisclaimers: disclaimers,
       servicePeriod: providerServicePeriod,
       ruleVersion: paymentResult.rule_version,
       resultStatus: paymentResult.status,
@@ -631,14 +719,23 @@ export function formatServicePeriodLedgerResult(data: unknown): ToolResult {
   const dateLabel = (date: unknown): string => shortDateLabel(date) ?? "Unavailable from the current source";
   const entry = recordValue(value.entry);
   const periods = Array.isArray(value.periods) ? value.periods.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row)) : undefined;
+  const multiPeriod = value.periodMode === "MULTI_PERIOD" || (periods?.length ?? 0) > 1;
   const lines: string[] = [];
   if (periods) {
     const upcoming = periods.filter((period) => period.periodStatus !== "PAID").sort((a, b) => String(a.payoutDate ?? "").localeCompare(String(b.payoutDate ?? "")))[0];
-    lines.push(upcoming ? `Showing ${periods.length} service periods. The soonest upcoming payout is an estimated ${estimatedMoney(upcoming.netAmount)} net on ${dateLabel(upcoming.payoutDate)}.` : `Showing ${periods.length} service periods. No upcoming unpaid payout is currently identified from verified data.`, "", "| Service period | Payout date | Status | Net amount | Calculated amount | At-risk amount |", "| --- | --- | --- | ---: | ---: | ---: |", ...periods.map((period) => {
+    const renderPeriodRow = (period: Record<string, unknown>): string => {
       const begin = dateLabel(period.serviceBeginDate), end = dateLabel(period.serviceEndDate);
       const servicePeriod = begin !== "Unavailable from the current source" && end !== "Unavailable from the current source" ? `${begin}-${end}` : "Unavailable from the current source";
       return `| ${tableValue(servicePeriod)} | ${tableValue(dateLabel(period.payoutDate))} | ${tableValue(labels[String(period.periodStatus)] ?? "Unavailable from the current source")} | ${plainMoney(period.netAmount)} | ${plainMoney(period.guaranteedAmount)} | ${plainMoney(period.amountAtRisk)} |`;
-    }));
+    };
+    if (multiPeriod) {
+      lines.push(`Showing ${periods.length} service periods from the verified payout ledger. The soonest upcoming payout is estimated at ~ ${estimatedMoney(upcoming?.netAmount)} net.`);
+      lines.push("", "> This ledger compares multiple service periods; select the next upcoming payout for a single-period view.", "| Service period | Payout date | Status | Net amount | Calculated amount | At-risk amount |", "| --- | --- | --- | ---: | ---: | ---: |", ...periods.map(renderPeriodRow));
+    } else if (upcoming) {
+      lines.push(`Showing the next upcoming service period only: an estimated ${estimatedMoney(upcoming.netAmount)} net on ${dateLabel(upcoming.payoutDate)}.`, "", "> This shows only the next unpaid or upcoming payout identified from verified service-period data.", "| Service period | Payout date | Status | Net amount | Calculated amount | At-risk amount |", "| --- | --- | --- | ---: | ---: | ---: |", renderPeriodRow(upcoming));
+    } else {
+      lines.push("No upcoming unpaid payout is currently identified from verified data.");
+    }
   } else if (entry) {
     const days = value.daysUntilPayout;
     const countdown = typeof days === "number" ? `${days} day${days === 1 ? "" : "s"}` : "an undetermined number of days";
@@ -647,7 +744,26 @@ export function formatServicePeriodLedgerResult(data: unknown): ToolResult {
       ? atRiskDisclaimer(entry.confirm_by_date ?? entry.confirmByDate ?? value.confirm_by_date)
       : DISCLAIMER_EXPECTED);
   } else lines.push("No upcoming payout is currently identified from verified data.");
-  const actionIntents = [{ actionId: "review-service-period-payout-ledger", capability: "payment-analysis", label: "Review payment details for a service period", reason: "Inspect the source-backed payment calculation behind a payout period.", priority: "medium", section: "next-actions", source: "current-result" }];
-  const providerMessage = `${renderActionSections(lines.join("\n"), actionIntents)}\n\n${DISCLAIMER_GLOBAL}`;
-  return { content: [{ type: "text" as const, text: providerMessage }], structuredContent: { capability: "service-period-payout-ledger", periods: periods ?? [], ...(entry ? { entry } : {}), ...(value.daysUntilPayout !== undefined ? { daysUntilPayout: value.daysUntilPayout } : {}), sourceRetrievedAt: value.sourceRetrievedAt, actionIntents, actionControls: actionControls(actionIntents), responseSections: ["summary", "ledger", "next-actions"] } };
+  const ledgerDisclaimers = [
+    DISCLAIMER_GLOBAL,
+    ...(entry && Number(entry.amountAtRisk) > 0
+      ? [atRiskDisclaimer(entry.confirm_by_date ?? entry.confirmByDate ?? value.confirm_by_date)]
+      : entry ? [DISCLAIMER_EXPECTED] : []),
+  ];
+  const actionIntents = multiPeriod
+    ? [
+        { actionId: "open-next-upcoming-payout", capability: "payment-analysis", label: "Open next upcoming payout", reason: "Focus on the nearest unpaid or upcoming service period.", priority: "high", section: "next-actions", source: "current-result", input: { viewId: "NEXT_UPCOMING_PAYOUT" } },
+      ]
+    : [{ actionId: "review-service-period-payout-ledger", capability: "payment-analysis", label: "Review payment details for this service period", reason: "Inspect the source-backed payment calculation behind this payout period.", priority: "medium", section: "next-actions", source: "current-result" }];
+  const currentView = viewState({
+    viewId: multiPeriod ? "PAYOUT_LEDGER" : "NEXT_UPCOMING_PAYOUT",
+    tableId: multiPeriod ? "payout-ledger" : "payout-summary",
+    tableTitle: multiPeriod ? "Payout ledger" : "Next upcoming payout",
+    tableDescription: multiPeriod ? "This table compares multiple verified service periods and their payout status." : "This table shows only the next unpaid or upcoming payout identified from verified service-period data.",
+    ...(value.scope !== undefined ? { scope: value.scope } : {}),
+    ...(typeof value.sourceRetrievedAt === "string" ? { sourceRetrievedAt: value.sourceRetrievedAt } : {}),
+  });
+  const viewAwareActionIntents = actionIntents.map((action) => actionViewMetadata(action, currentView));
+  const providerMessage = `${renderActionSections(lines.join("\n"), viewAwareActionIntents)}\n\n${DISCLAIMER_GLOBAL}`;
+  return { content: [{ type: "text" as const, text: providerMessage }], structuredContent: { capability: "service-period-payout-ledger", viewState: currentView, periods: periods ?? [], ...(entry ? { entry } : {}), ...(value.daysUntilPayout !== undefined ? { daysUntilPayout: value.daysUntilPayout } : {}), sourceRetrievedAt: value.sourceRetrievedAt, paymentDisclaimers: [...new Set(ledgerDisclaimers)], actionIntents, actionControls: actionControls(viewAwareActionIntents), responseSections: ["summary", "ledger", "next-actions"] } };
 }

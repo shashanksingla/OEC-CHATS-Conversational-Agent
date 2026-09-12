@@ -1,3 +1,0 @@
-<aura:component extensible="true">
-	    <aura:attribute name="mapProviderType" type="Map" default="{'HOM':'Home','CEN':'Center','EXE':'Exempt'}" description="stores the mapping of provider type as backend picklist values."/>
-</aura:component>

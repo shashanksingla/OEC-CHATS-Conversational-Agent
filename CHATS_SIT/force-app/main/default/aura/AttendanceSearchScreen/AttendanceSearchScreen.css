@@ -1,9 +1,0 @@
-.THIS .searchResult{
-    width:100%;
-    max-width:100%; 
-    table-layout:fixed;
-}
-.THIS .searchResult th{
-    word-wrap: break-word;
-    width:9%;
-}

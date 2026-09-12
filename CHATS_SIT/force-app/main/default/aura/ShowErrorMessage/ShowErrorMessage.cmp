@@ -1,7 +1,0 @@
-<aura:component >
-    <aura:attribute name="objectToFieldValue" type="String"/>
-    <aura:attribute name="errorMessage" type="String"/>
-    <div class="slds-has-error">
-    	<lightning:formattedText value="{!v.errorMessage}" class="slds-p-around__small slds-form-element__help"/>
-    </div>
-</aura:component>

@@ -17,6 +17,92 @@ SPEC.loader.exec_module(provider_risk_payment_engine)
 
 
 class ProviderRiskPaymentEngineTests(unittest.TestCase):
+    def test_monthly_art_is_earned_once_for_a_qualifying_month(self) -> None:
+        payload = self._complete_input()
+        payload["attendance_days"][0]["service_date"] = "2026-09-02"
+        payload["fee_schedules"] = [{
+            "authorization_id": "auth-1",
+            "authorization_status": "AUTHORIZED",
+            "activity_amount": 30,
+            "activity_frequency": "MTH",
+            "activity_months": "",
+            "registration_amount": 0,
+            "registration_frequency": "MTH",
+            "registration_months": "",
+            "transportation_amount": 0,
+            "transportation_frequency": "MTH",
+            "transportation_months": "",
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["payment"]["art_earned"], "30.00")
+
+    def test_annual_art_is_earned_once_per_authorization_year(self) -> None:
+        payload = self._complete_input()
+        payload["as_of_date"] = "2027-10-01"
+        payload["service_period"]["end_date"] = "2027-09-30"
+        payload["attendance_days"].append({
+            **payload["attendance_days"][0],
+            "service_date": "2027-09-02",
+        })
+        payload["fee_schedules"] = [{
+            "authorization_id": "auth-1",
+            "authorization_status": "AUTHORIZED",
+            "authorization_effective_start": "2026-09-15",
+            "activity_amount": 30,
+            "activity_frequency": "ANN",
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["payment"]["art_earned"], "60.00")
+
+    def test_one_time_art_uses_first_non_excluded_month(self) -> None:
+        payload = self._complete_input()
+        payload["service_period"]["end_date"] = "2026-10-31"
+        payload["attendance_days"].append({
+            **payload["attendance_days"][0],
+            "service_date": "2026-10-02",
+        })
+        payload["fee_schedules"] = [{
+            "authorization_id": "auth-1",
+            "authorization_status": "AUTHORIZED",
+            "authorization_effective_start": "2026-09-15",
+            "activity_amount": 30,
+            "activity_frequency": "ONE",
+            "activity_months": "9",
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["payment"]["art_earned"], "30.00")
+
+    def test_non_authorized_art_schedule_is_not_earned(self) -> None:
+        payload = self._complete_input()
+        payload["fee_schedules"] = [{
+            "authorization_id": "auth-1",
+            "authorization_status": "TERMINATED",
+            "activity_amount": 30,
+            "activity_frequency": "MTH",
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["payment"]["art_earned"], "0.00")
+
+    def test_provider_closure_overrides_attended_payment(self) -> None:
+        payload = self._complete_input()
+        payload["provider_closure_dates"] = ["2026-09-02"]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        day = result["attendance"]["days"][0]
+        self.assertEqual(day["classification"], "CARE_NOT_OFFERED")
+        self.assertFalse(day["payable"])
+        self.assertIn("PROVIDER_CLOSED", day["flags"])
+        self.assertEqual(result["payment"]["amount"], "0.00")
+
     def test_complete_canonical_input_returns_rule_traceable_payment(self) -> None:
         result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(
             self._complete_input()
@@ -51,7 +137,7 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         self.assertNotIn("amount", result["payment"])
         self.assertIn("fiscal_rates", result["payment"]["missing_inputs"])
 
-    def test_existing_requested_or_paid_payment_returns_duplicate_guard(self) -> None:
+    def test_existing_requested_or_paid_payment_preserves_amount_and_marks_submitted(self) -> None:
         payload = self._complete_input()
         payload["existing_sub_payments"] = [{
             "authorization_id": "auth-1",
@@ -61,8 +147,9 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
 
         result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
 
-        self.assertEqual(result["payment"]["status"], "DUPLICATE_GUARD")
-        self.assertNotIn("amount", result["payment"])
+        self.assertEqual(result["payment"]["status"], "SUBMITTED")
+        self.assertEqual(result["payment"]["existing_status"], "REQUESTED")
+        self.assertEqual(result["payment"]["amount"], "45.00")
 
     def test_pending_confirmation_returns_conditional_amount_and_count(self) -> None:
         payload = self._complete_input()
@@ -277,6 +364,7 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         payload["county_policies"][0]["county_holiday_list"] = ["2026-09-02"]
         payload["fee_schedules"] = [{
             "authorization_id": "auth-1",
+            "authorization_status": "AUTHORIZED",
             "effective_start": "2026-09-01",
             "slot_rate_amount": "9.00",
             "days_of_month": 5,
@@ -538,7 +626,7 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         self.assertEqual(len(view["vacant_slots"]), 1)
         self.assertEqual(view["vacant_slots"][0]["classification"], "VACANT_SLOT")
 
-    def test_paid_payment_returns_duplicate_guard(self) -> None:
+    def test_paid_payment_preserves_amount_and_marks_submitted(self) -> None:
         payload = self._complete_input()
         payload["existing_sub_payments"] = [{
             "authorization_id": "auth-1",
@@ -548,7 +636,9 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
 
         result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
 
-        self.assertEqual(result["payment"]["status"], "DUPLICATE_GUARD")
+        self.assertEqual(result["payment"]["status"], "SUBMITTED")
+        self.assertEqual(result["payment"]["existing_status"], "PAID")
+        self.assertEqual(result["payment"]["amount"], "45.00")
 
     def test_no_payment_care_unit_produces_zero_base_amount(self) -> None:
         payload = self._complete_input()
@@ -558,7 +648,7 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
 
         self.assertEqual(result["payment"]["amount"], "0.00")
 
-    def test_monthly_copay_is_deducted_once_per_authorization_month(self) -> None:
+    def test_copay_is_deducted_for_each_eligible_attended_day(self) -> None:
         payload = self._complete_input()
         payload["attendance_days"].append({**payload["attendance_days"][0], "service_date": "2026-09-03"})
         payload["authorization_copays"] = [{
@@ -571,13 +661,29 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
 
         self.assertEqual(result["payment"]["gross_amount"], "90.00")
-        self.assertEqual(result["payment"]["parent_copay"], "12.00")
-        self.assertEqual(result["payment"]["amount"], "78.00")
+        self.assertEqual(result["payment"]["parent_copay"], "24.00")
+        self.assertEqual(result["payment"]["amount"], "66.00")
+
+    def test_missing_copay_blocks_only_the_affected_authorization(self) -> None:
+        payload = self._complete_input()
+        payload["authorization_copays"] = [{
+            "authorization_id": "other-auth",
+            "amount": "12.00",
+            "effective_start": "2026-09-01",
+        }]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["payment"]["status"], "BLOCKED")
+        self.assertEqual(result["payment"]["missing_copay_authorizations"], ["auth-1"])
+        self.assertEqual(result["payment"]["amount"], "0.00")
+        self.assertIn("COPAY_UNAVAILABLE", result["attendance"]["days"][0]["flags"])
 
     def test_scheduled_fees_are_offset_by_payment_detail_history(self) -> None:
         payload = self._complete_input()
         payload["fee_schedules"] = [{
             "authorization_id": "auth-1",
+            "authorization_status": "AUTHORIZED",
             "effective_start": "2026-09-01",
             "activity_amount": "10.00",
             "activity_frequency": "MTH",

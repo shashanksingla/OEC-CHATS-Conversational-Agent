@@ -20,8 +20,16 @@ export class CccapClient {
         this.requestApex = options.requestApex;
     }
     async initialize(scope = {}) {
+        // Provider identity (facility name, quality tier, active county
+        // agreements) does not vary by date scope - it's the same regardless of
+        // which period a later call is asking about. Previously `scope` was
+        // folded into the cache key, so every call with a different dateFilter
+        // (attendance vs. payment vs. forecast, each within the same
+        // conversation) missed the cache and re-triggered a fresh
+        // getProviderData round trip even though nothing about the provider
+        // had changed. Keying on userId alone lets one getProviderData call
+        // serve the whole session.
         const data = await this.cachedCall("getProviderData", {
-            ...scope,
             userId: this.providerUserId,
         });
         const result = this.requireRecord(data, "getProviderData.data");

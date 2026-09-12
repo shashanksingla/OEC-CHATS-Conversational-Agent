@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Req_Actual_Results_if_Supp_Cat_is_System</fullName>
-    <active>true</active>
-    <errorConditionFormula>AND(ISPICKVAL(Support_Category__c , &apos;System&apos;), RecordType.DeveloperName =&apos;Support_Ticket&apos;,   ISBLANK( Actual_Results__c)    )</errorConditionFormula>
-    <errorDisplayField>Actual_Results__c</errorDisplayField>
-    <errorMessage>Required when Support Category is System.</errorMessage>
-</ValidationRule>

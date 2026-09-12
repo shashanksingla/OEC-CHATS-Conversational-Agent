@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Staus_Close_Validation</fullName>
-    <active>true</active>
-    <description>Without Reason of  closure user can&apos;t change status to &apos;Closed&apos;.</description>
-    <errorConditionFormula>AND( ISPICKVAL( CDE_TYPE_STATUS__c , &apos;CLS&apos;) , ISPICKVAL( CDE_REASON_END_AGRMT__c , &quot;&quot;))</errorConditionFormula>
-    <errorDisplayField>CDE_TYPE_STATUS__c</errorDisplayField>
-    <errorMessage>Can not close the fiscal agreement without reason of closure.</errorMessage>
-</ValidationRule>

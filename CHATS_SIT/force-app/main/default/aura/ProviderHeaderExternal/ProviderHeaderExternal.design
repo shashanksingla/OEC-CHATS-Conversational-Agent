@@ -1,3 +1,0 @@
-<design:component >
-    <design:attribute name="providerLookupName" label="Lookup Relationship API Name"/>
-</design:component>
