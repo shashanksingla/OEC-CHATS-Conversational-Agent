@@ -2,7 +2,7 @@ import { actionControls, compactActionControls, recordValue, renderActionSection
 import { actionMetadata, attendanceSummary } from './attendance-formatter.js';
 import { actionViewMetadata, viewState } from '../view-state.js';
 
-export function snapshotResult(data: unknown): ToolResult {
+export function snapshotResult(data: unknown, includeContinuationMetadata = false): ToolResult {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return result(data);
   }
@@ -51,6 +51,7 @@ export function snapshotResult(data: unknown): ToolResult {
       responseMode: "SUMMARY",
       responseSections: ["summary", "next-actions", "drill-down", "available-views"],
       providerMessage: renderedMessage,
+      ...(includeContinuationMetadata ? { actionIntents } : {}),
       actionControls: actionControls(actionIntents),
     },
   };

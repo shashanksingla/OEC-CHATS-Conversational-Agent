@@ -47,6 +47,8 @@ This is the single source of truth for every `action_id`'s provider-facing label
 | `review-drop-in-limit` | `Review drop-in-limit days` | none |
 | `confirm-pending-attendance` | `Review pending confirmations` | none |
 | `review-holiday-plan` | `Review the county holiday plan` | none |
+| `open-next-upcoming-payout` | `Open next upcoming payout` | none |
+| `review-service-period-payout-ledger` | `Review payment details for this service period` | none |
 
 `open-highest-hours-child-detail` is used only when no child has a verified dollar amount at risk or total amount for the current scope; the response body must say explicitly that the ranking is by scheduled hours, not dollars, whenever this label is shown.
 

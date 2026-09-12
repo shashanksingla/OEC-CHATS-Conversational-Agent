@@ -1,7 +1,7 @@
 import { actionControls, recordValue, renderActionSections, result, tableValue } from './shared.js';
 import { actionMetadata, attendanceSummary } from './attendance-formatter.js';
 import { actionViewMetadata, viewState } from '../view-state.js';
-export function snapshotResult(data) {
+export function snapshotResult(data, includeContinuationMetadata = false) {
     if (!data || typeof data !== "object" || Array.isArray(data)) {
         return result(data);
     }
@@ -50,6 +50,7 @@ export function snapshotResult(data) {
             responseMode: "SUMMARY",
             responseSections: ["summary", "next-actions", "drill-down", "available-views"],
             providerMessage: renderedMessage,
+            ...(includeContinuationMetadata ? { actionIntents } : {}),
             actionControls: actionControls(actionIntents),
         },
     };

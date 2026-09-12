@@ -129,11 +129,24 @@ export function normalizePaymentSourceBundle(sources) {
             max_drop_in_days_per_month: policy.maxDropInDaysPerMonth,
             drop_in_response: policy.dropInResponse,
             manage_drop_in_at_auth_level: policy.manageDropInAtAuthLevel,
+            activityArtCap: policy.activityArtCap,
+            registrationArtCap: policy.registrationArtCap,
+            transportationArtCap: policy.transportationArtCap,
         };
     });
     const normalizedFiscal = record(record(sources.fiscalData, "Fiscal rates").normalizedFiscalRates, "Normalized fiscal rates");
     const fiscalRates = normalizeFiscalRatesForPayment(normalizedFiscal.fiscalRates, authorizationMatches, authorizationAgeGroupCodes, authorizationRateTypeCodes);
     const feeSchedules = normalizePaymentFeeSchedules(normalizedFiscal.fiscalRates, normalizedFiscal.fiscalRateFees, authorizationData.slotContracts, authorizationMatches);
+    const providerClosures = Array.isArray(initialization.providerClosures)
+        ? initialization.providerClosures
+        : Array.isArray(initialization.provider_closures)
+            ? initialization.provider_closures
+            : [];
+    const providerClosureDates = providerClosures.flatMap((value) => {
+        const closure = record(value, "Provider closure");
+        const date = closure.DTE_BEGIN_CLOSURE__c ?? closure.closure_date;
+        return typeof date === "string" ? [date] : [];
+    });
     const vacantSlotData = record(sources.vacantSlotData ?? { vacantSlots: [] }, "Vacant slots");
     const paymentHistory = sources.paymentData;
     let vacantSlotMappingGaps = 0;
@@ -147,6 +160,7 @@ export function normalizePaymentSourceBundle(sources) {
         paymentHistory,
         authorizationRecords,
         feeSchedules,
+        providerClosureDates,
         vacantSlotSchedules: (() => {
             const resolved = normalizeVacantSlotSchedules(vacantSlotData.vacantSlots, normalizedFiscal.fiscalRates, countyIds, providerTier, sources.initialization, countyNameById);
             vacantSlotMappingGaps = countEligibleVacantSlots(vacantSlotData.vacantSlots) - resolved.length;

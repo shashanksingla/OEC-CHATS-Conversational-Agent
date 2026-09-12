@@ -257,10 +257,14 @@ export function formatPaymentResult(data: unknown): ToolResult {
   const status = typeof payment.status === "string" ? payment.status.toUpperCase() : "BLOCKED";
   const detailPagination = recordValue(paymentResult.detailPagination);
   const detailPage = detailPagination && Number(detailPagination.page) > 0;
+  const paymentFilters = recordValue(paymentResult.filters);
+  const requestedGrouping = typeof paymentFilters?.grouping === "string" ? paymentFilters.grouping : undefined;
   const requestedTableId = paymentResult.tableId === "payment-county-rollup" || paymentResult.tableId === "vacant-slot-rollup"
     ? paymentResult.tableId
     : undefined;
-  const activeTableId = requestedTableId ?? (status === "BLOCKED" && paymentResult.paymentView === "NEXT_PAYOUT"
+  const activeTableId = requestedTableId ?? (requestedGrouping === "COUNTY" && !detailPage
+    ? "payment-county-rollup"
+    : status === "BLOCKED" && paymentResult.paymentView === "NEXT_PAYOUT"
     ? "payout-summary"
     : paymentResult.paymentView === "CURRENT_WEEK_FORECAST"
       ? "forecast-date-detail"
@@ -405,10 +409,14 @@ export function formatPaymentResult(data: unknown): ToolResult {
     // main contributor to an oversized response for these cases, so they
     // are omitted here rather than rendered and then discarded by the client.
     const suppressRollups = excludedOnly || singleChildFilter;
-    const categories = suppressRollups ? [] : summaryRows(summaryView, "categories");
-    const countyRollup = suppressRollups ? [] : summaryRows(summaryView, "counties");
-    const countyComposition = suppressRollups ? [] : summaryRows(summaryView, "county_composition");
-    const childRollup = suppressRollups ? [] : summaryRows(summaryView, "children");
+    const categories = suppressRollups || (requestedGrouping !== undefined && !["CATEGORY", "SERVICE_PERIOD"].includes(requestedGrouping))
+      ? [] : summaryRows(summaryView, "categories");
+    const countyRollup = suppressRollups || (requestedGrouping !== undefined && requestedGrouping !== "COUNTY")
+      ? [] : summaryRows(summaryView, "counties");
+    const countyComposition = suppressRollups || (requestedGrouping !== undefined && requestedGrouping !== "COUNTY")
+      ? [] : summaryRows(summaryView, "county_composition");
+    const childRollup = suppressRollups || (requestedGrouping !== undefined && requestedGrouping !== "CHILD")
+      ? [] : summaryRows(summaryView, "children");
     const vacantSlots = suppressRollups ? [] : summaryRows(summaryView, "vacant_slots");
     const nextActions = summaryRows(summaryView, "next_actions");
     if (overview && activeTableId === "payment-category-rollup") {
@@ -585,7 +593,6 @@ export function formatPaymentResult(data: unknown): ToolResult {
     // (attendance.length > 0 && !detailPage -> preview table; else -> full
     // ranked table) already cover every reachable case.
   }
-  const paymentFilters = recordValue(paymentResult.filters);
   const paymentViewId = activeTableId === "payment-county-rollup"
     ? "PAYMENT_COUNTY_ROLLUP" as const
     : activeTableId === "vacant-slot-rollup"
@@ -719,10 +726,10 @@ export function formatServicePeriodLedgerResult(data: unknown): ToolResult {
   const dateLabel = (date: unknown): string => shortDateLabel(date) ?? "Unavailable from the current source";
   const entry = recordValue(value.entry);
   const periods = Array.isArray(value.periods) ? value.periods.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row)) : undefined;
+  const upcoming = periods?.filter((period) => period.periodStatus !== "PAID").sort((a, b) => String(a.payoutDate ?? "").localeCompare(String(b.payoutDate ?? "")))[0];
   const multiPeriod = value.periodMode === "MULTI_PERIOD" || (periods?.length ?? 0) > 1;
   const lines: string[] = [];
   if (periods) {
-    const upcoming = periods.filter((period) => period.periodStatus !== "PAID").sort((a, b) => String(a.payoutDate ?? "").localeCompare(String(b.payoutDate ?? "")))[0];
     const renderPeriodRow = (period: Record<string, unknown>): string => {
       const begin = dateLabel(period.serviceBeginDate), end = dateLabel(period.serviceEndDate);
       const servicePeriod = begin !== "Unavailable from the current source" && end !== "Unavailable from the current source" ? `${begin}-${end}` : "Unavailable from the current source";
@@ -750,11 +757,27 @@ export function formatServicePeriodLedgerResult(data: unknown): ToolResult {
       ? [atRiskDisclaimer(entry.confirm_by_date ?? entry.confirmByDate ?? value.confirm_by_date)]
       : entry ? [DISCLAIMER_EXPECTED] : []),
   ];
+  const ledgerScope = recordValue(value.scope);
+  const selectedPeriod = upcoming ?? entry;
+  const ledgerInput = selectedPeriod?.serviceBeginDate && selectedPeriod?.serviceEndDate
+    ? {
+        view: "STATUS",
+        dateFilter: "DATE_RANGE",
+        dateFrom: String(selectedPeriod.serviceBeginDate),
+        dateTo: String(selectedPeriod.serviceEndDate),
+        detailDepth: "DETAIL",
+      }
+    : {
+        view: "NEXT_PAYOUT",
+        ...(ledgerScope?.dateFilter ? { dateFilter: ledgerScope.dateFilter } : {}),
+        ...(ledgerScope?.dateFrom ? { dateFrom: ledgerScope.dateFrom } : {}),
+        ...(ledgerScope?.dateTo ? { dateTo: ledgerScope.dateTo } : {}),
+      };
   const actionIntents = multiPeriod
     ? [
-        { actionId: "open-next-upcoming-payout", capability: "payment-analysis", label: "Open next upcoming payout", reason: "Focus on the nearest unpaid or upcoming service period.", priority: "high", section: "next-actions", source: "current-result", input: { viewId: "NEXT_UPCOMING_PAYOUT" } },
+        { actionId: "open-next-upcoming-payout", capability: "payment-analysis", label: "Open next upcoming payout", reason: "Focus on the nearest unpaid or upcoming service period.", priority: "high", section: "next-actions", source: "current-result", input: ledgerInput },
       ]
-    : [{ actionId: "review-service-period-payout-ledger", capability: "payment-analysis", label: "Review payment details for this service period", reason: "Inspect the source-backed payment calculation behind this payout period.", priority: "medium", section: "next-actions", source: "current-result" }];
+    : [{ actionId: "review-service-period-payout-ledger", capability: "payment-analysis", label: "Review payment details for this service period", reason: "Inspect the source-backed payment calculation behind this payout period.", priority: "medium", section: "next-actions", source: "current-result", input: ledgerInput }];
   const currentView = viewState({
     viewId: multiPeriod ? "PAYOUT_LEDGER" : "NEXT_UPCOMING_PAYOUT",
     tableId: multiPeriod ? "payout-ledger" : "payout-summary",
@@ -765,5 +788,5 @@ export function formatServicePeriodLedgerResult(data: unknown): ToolResult {
   });
   const viewAwareActionIntents = actionIntents.map((action) => actionViewMetadata(action, currentView));
   const providerMessage = `${renderActionSections(lines.join("\n"), viewAwareActionIntents)}\n\n${DISCLAIMER_GLOBAL}`;
-  return { content: [{ type: "text" as const, text: providerMessage }], structuredContent: { capability: "service-period-payout-ledger", viewState: currentView, periods: periods ?? [], ...(entry ? { entry } : {}), ...(value.daysUntilPayout !== undefined ? { daysUntilPayout: value.daysUntilPayout } : {}), sourceRetrievedAt: value.sourceRetrievedAt, paymentDisclaimers: [...new Set(ledgerDisclaimers)], actionIntents, actionControls: actionControls(viewAwareActionIntents), responseSections: ["summary", "ledger", "next-actions"] } };
+  return { content: [{ type: "text" as const, text: providerMessage }], structuredContent: { capability: "service-period-payout-ledger", providerMessage, viewState: currentView, periods: periods ?? [], ...(entry ? { entry } : {}), ...(value.daysUntilPayout !== undefined ? { daysUntilPayout: value.daysUntilPayout } : {}), sourceRetrievedAt: value.sourceRetrievedAt, paymentDisclaimers: [...new Set(ledgerDisclaimers)], actionIntents, actionControls: actionControls(viewAwareActionIntents), responseSections: ["summary", "ledger", "next-actions"] } };
 }

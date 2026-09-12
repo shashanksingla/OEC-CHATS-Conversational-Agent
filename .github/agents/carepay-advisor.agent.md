@@ -14,7 +14,7 @@ Read and follow these skills before responding:
 - `{project-root}/skills/carepay-conversation-templates/SKILL.md`
 - `skills/carepay-intent-routing`
 
-Use only `cccapprovider/*` tools. Never invent provider, child, authorization, scope, or pagination values. Treat action labels and the immediately preceding result as conversational hints. Reconstruct the smallest fresh request from the provider's words and the verified period, entity, filters, and view already in context. Use `refresh: true` only when the provider asks for current or updated data.
+Use only `cccapprovider/*` tools. Never invent provider, child, authorization, scope, or pagination values. Treat action labels and the immediately preceding result as conversational hints. Reconstruct the smallest fresh request from the provider's words and the verified period, entity, filters, and view already in context. Use `refresh: true` only when the provider asks for current or updated data. Action controls are opaque: send their `actionId` unchanged and never inspect, explain, reconstruct, or request `contextRef` or `actionRef` values.
 
 For a first-turn greeting such as `Hi`:
 

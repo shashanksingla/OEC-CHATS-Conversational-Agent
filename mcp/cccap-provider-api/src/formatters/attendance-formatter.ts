@@ -31,7 +31,7 @@ export function sourceIntegrityError(scope: unknown, message: string): ToolResul
   };
 }
 
-export function formatAttendanceRiskResult(data: unknown): ToolResult {
+export function formatAttendanceRiskResult(data: unknown, includeContinuationMetadata = false): ToolResult {
   const analysis = recordValue(data);
   const risk = analysis && recordValue(analysis.attendanceRisk);
   const children = risk && Array.isArray(risk.children) ? risk.children : undefined;
@@ -270,23 +270,41 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
     const renderedColumns = drillDownColumns.filter((column) => column.present);
     const extraHeader = renderedColumns.length > 0 ? ` ${renderedColumns.map((column) => column.label).join(" | ")} |` : "";
     const extraSeparator = renderedColumns.length > 0 ? ` ${renderedColumns.map(() => "---:").join(" | ")} |` : "";
-    lines.push(
-      "",
-      isAbsenceLimitFocus
-        ? "Absences used = days counted against the monthly limit. County limit = approved monthly limit. Over limit = days beyond the limit."
-        : isIncompleteAttendanceFocus
-          ? "Scheduled days = total days scheduled this period. Incomplete days = days missing a check-in or check-out."
+    if (isIncompleteAttendanceFocus) {
+      const incompleteRows = displayedChildren.flatMap((child) => {
+        const records = Array.isArray(child.incomplete_attendance_records)
+          ? child.incomplete_attendance_records.map(recordValue).filter((record): record is Record<string, unknown> => Boolean(record))
+          : [];
+        return records.length > 0
+          ? records.map((record) => `| ${tableValue(child.child_name)} | ${authorizationNames(child.authorization_names)} | ${tableValue(child.county)} | ${tableValue(record.date)} | ${tableValue(record.missing_record)} | ${tableValue(record.care_hours_at_risk)} |`)
+          : [`| ${tableValue(child.child_name)} | ${authorizationNames(child.authorization_names)} | ${tableValue(child.county)} | Unavailable from the current source | Unavailable from the current source | Unavailable from the current source |`];
+      });
+      lines.push(
+        "",
+        "Incomplete attendance detail:",
+        "Missing record identifies whether the check-in, check-out, or both records were not returned.",
+        "",
+        "| Child | Authorization | County | Date | Missing record | Care hours at risk |",
+        "| --- | --- | --- | --- | --- | ---: |",
+        ...incompleteRows,
+      );
+    } else {
+      lines.push(
+        "",
+        isAbsenceLimitFocus
+          ? "Absences used = days counted against the monthly limit. County limit = approved monthly limit. Over limit = days beyond the limit."
           : isParentConfirmationsFocus
             ? "Pending = days still awaiting parent confirmation. Deadline/Days left = when the confirmation window closes for this child's earliest pending day."
             : "Pending = awaiting confirmation. Absences used = past window, unconfirmed. Over limit = beyond county limit.",
-      "",
-      `| Child | Authorization | County |${extraHeader}`,
-      `| --- | --- | --- |${extraSeparator}`,
-      ...displayedChildren.map((child) => {
-        const extraCells = renderedColumns.length > 0 ? ` ${renderedColumns.map((column) => column.value(child)).join(" | ")} |` : "";
-        return `| ${tableValue(child.child_name)} | ${authorizationNames(child.authorization_names)} | ${tableValue(child.county)} |${extraCells}`;
-      }),
-    );
+        "",
+        `| Child | Authorization | County |${extraHeader}`,
+        `| --- | --- | --- |${extraSeparator}`,
+        ...displayedChildren.map((child) => {
+          const extraCells = renderedColumns.length > 0 ? ` ${renderedColumns.map((column) => column.value(child)).join(" | ")} |` : "";
+          return `| ${tableValue(child.child_name)} | ${authorizationNames(child.authorization_names)} | ${tableValue(child.county)} |${extraCells}`;
+        }),
+      );
+    }
     if (affectedChildren.length > displayedChildren.length) {
       lines.push(
         "",
@@ -403,6 +421,7 @@ export function formatAttendanceRiskResult(data: unknown): ToolResult {
       sourceRetrievedAt: analysis.sourceRetrievedAt,
       resultStatus: noAttendanceRecords ? "NO_ATTENDANCE_SCHEDULES" : "COMPLETED",
       riskFocus,
+      ...(includeContinuationMetadata ? { actionIntents } : {}),
       actionControls: compactActionControls(actionIntents),
       attendanceSummary: compactAttendanceSummary(attendanceView),
       providerMessage,
@@ -489,7 +508,7 @@ export function actionMetadata(
       section: "next-actions",
       source: "current-result",
       riskFocus: "ABSENCE_LIMITS",
-      input: Object.assign({ riskFocus: "ABSENCE_LIMITS" }, scopeInput, { childNames: absenceChildNames }),
+      input: Object.assign({}, scopeInput, { riskFocus: "ABSENCE_LIMITS", childNames: absenceChildNames }),
       scope,
     });
   }
@@ -506,7 +525,7 @@ export function actionMetadata(
       source: "current-result",
       scope,
       tool: "cccap_analyze_payment_risk",
-      input: Object.assign({ riskFocus: "PARENT_CONFIRMATIONS" }, scopeInput, { childNames: pendingChildNames }),
+      input: Object.assign({}, scopeInput, { riskFocus: "PARENT_CONFIRMATIONS", childNames: pendingChildNames }),
     });
   }
   if (incompleteChildNames.length > 0 && riskFocus !== "ABSENCE_LIMITS" && riskFocus !== "INCOMPLETE_ATTENDANCE") {
@@ -521,7 +540,7 @@ export function actionMetadata(
       source: "current-result",
       scope,
       riskFocus: "INCOMPLETE_ATTENDANCE",
-      input: Object.assign({ riskFocus: "INCOMPLETE_ATTENDANCE" }, scopeInput, { childNames: incompleteChildNames }),
+      input: Object.assign({}, scopeInput, { riskFocus: "INCOMPLETE_ATTENDANCE", childNames: incompleteChildNames }),
     });
   }
   if (actions.length === 0 && !includePaymentAction) {

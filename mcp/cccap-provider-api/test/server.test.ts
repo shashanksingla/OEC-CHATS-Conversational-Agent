@@ -1626,6 +1626,16 @@ test("service period ledger formatter translates statuses and renders each payou
   assert.match(result.content[0].text, /24th Aug'26-30th Aug'26/);
   assert.match(result.content[0].text, /~ \$125\.50/);
   assert.match(result.content[0].text, /Paid/);
+  assert.equal(result.structuredContent?.providerMessage, result.content[0].text);
+  const actionControls = result.structuredContent?.actionControls as Array<Record<string, unknown>>;
+  const drillDownInput = (actionControls[0]?.input ?? {}) as Record<string, unknown>;
+  assert.deepEqual(drillDownInput, {
+    view: "STATUS",
+    dateFilter: "DATE_RANGE",
+    dateFrom: "2026-08-24",
+    dateTo: "2026-08-30",
+    detailDepth: "DETAIL",
+  });
 });
 
 test("service period payout formatter renders countdown and verified-data absence", () => {

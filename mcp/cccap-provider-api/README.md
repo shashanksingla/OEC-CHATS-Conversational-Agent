@@ -2,7 +2,7 @@
 
 ## Opaque Follow-Ups
 
-Composite responses include a process-local, provider-bound `contextRef`. Their action controls send only `{ contextRef, actionRef }` to the target composite tool; they never repeat child names, pagination rows, or server-side filters. Pass `refresh: true` with a valid reference to bypass the continuation and fetch current source data. References expire and are evicted under bounded in-memory limits, so callers must treat a failed continuation as unavailable rather than reconstructing hidden filters.
+Composite responses expose stable action controls whose only caller-supplied continuation field is `{ actionId }`. The server keeps provider-bound context and reference handles private; callers never need to inspect, store, reconstruct, or explain `contextRef` or `actionRef`. Action plans never repeat child names, pagination rows, or server-side filters. Pass `refresh: true` when the provider asks for current source data. If an action cannot be resolved after a restart or expiry, create a fresh result instead of reconstructing hidden filters.
 
 This local stdio MCP server gives Provider Assist read-only tools backed by `CccapPortalApiV1` in the Salesforce target org.
 

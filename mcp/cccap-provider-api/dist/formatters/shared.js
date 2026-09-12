@@ -266,15 +266,16 @@ export function actionControls(actions) {
 const MAX_NEXT_ACTIONS = 2;
 export function renderActionSections(message, actions) {
     const base = message.replace(/\n\*\*Priority Actions\*\*[\s\S]*$/, "");
+    const uniqueActions = [...new Map(actions.map((action) => [String(action.actionId), action])).values()];
     // Cap to the two highest-priority next actions so the response names the
     // one or two things that actually matter instead of listing every
     // candidate action; numbered (not bulleted) to match the drill-down
     // action-list convention and avoid the list reading as an open-ended pile.
-    const nextActions = actions
+    const nextActions = uniqueActions
         .filter((action) => action.section === "next-actions")
         .slice(0, MAX_NEXT_ACTIONS);
-    const drillDown = actions.filter((action) => action.section === "drill-down");
-    const availableViews = actions.filter((action) => action.section === "available-options" || action.section === "available-views");
+    const drillDown = uniqueActions.filter((action) => action.section === "drill-down");
+    const availableViews = uniqueActions.filter((action) => action.section === "available-options" || action.section === "available-views");
     // Numbers are reserved exclusively for the Priority Actions list per the
     // carepay-conversation-templates skill contract ("never use numbering
     // across separate action sections because repeated numbers are
@@ -291,7 +292,14 @@ export function renderActionSections(message, actions) {
     if (availableViews.length > 0) {
         lines.push("", "**Available views**", ...availableViews.map((action) => `- ${String(action.label)}`));
     }
-    lines.push("", "**Next step**", "Ask about a specific child, authorization, county, date, or payment impact, or choose one of the reviews above.");
+    const nextStep = nextActions.length > 0
+        ? "Choose one of the priority reviews above to continue this result."
+        : drillDown.length > 0
+            ? "Choose a drill-down above to inspect the verified records in this result."
+            : availableViews.length > 0
+                ? "Choose an available view above to continue with the same verified scope."
+                : "Ask about the specific child, county, date, or payment detail you want reviewed next.";
+    lines.push("", "**Next step**", nextStep);
     return lines.join("\n");
 }
 export function countyPaymentSummary(rows) {

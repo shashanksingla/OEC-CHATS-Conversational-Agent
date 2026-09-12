@@ -10,6 +10,29 @@ export type ContinuationPlan = {
 export type ResolvedContinuation = ContinuationPlan & {
   result?: unknown;
   resultTool?: ContinuationPlan["tool"];
+  graph?: ConversationResultGraph;
+};
+
+export type ConversationActionState =
+  | "OFFERED"
+  | "SELECTED"
+  | "COMPLETED"
+  | "SUPERSEDED"
+  | "HIDDEN_BY_SCOPE"
+  | "EXPIRED";
+
+export type ConversationResultGraph = {
+  parentContextRef?: string;
+  currentIntent?: string;
+  scope?: unknown;
+  selectedServicePeriod?: unknown;
+  currentView?: unknown;
+  parentView?: unknown;
+  availableEvidence?: string[];
+  severity?: string;
+  sourceRetrievedAt?: string;
+  ruleVersion?: string;
+  actionStates?: Record<string, ConversationActionState>;
 };
 
 export type ContinuationAction = {
@@ -29,12 +52,14 @@ type ContextRecord = {
   bytes: number;
   lastUsed: number;
   compatibilityKey: string;
+  graph?: ConversationResultGraph;
 };
 
 type SessionActionRecord = ContinuationAction & {
   contextRef: string;
   expiresAt: number;
   lastUsed: number;
+  state: ConversationActionState;
 };
 
 export type ConversationContextOptions = {
@@ -67,6 +92,7 @@ export class ConversationContextStore {
     resultTool?: ContinuationPlan["tool"],
     ruleVersion?: string,
     actionMetadata: Record<string, unknown>[] = [],
+    graph?: ConversationResultGraph,
   ): {
     contextRef: string;
     actionRefs: string[];
@@ -82,7 +108,9 @@ export class ConversationContextStore {
       }];
     }));
     const compatibilityKey = compatibilityKeyFor(capability, ruleVersion, actions);
-    const bytes = Buffer.byteLength(JSON.stringify({ providerKey, capability, ruleVersion, actions, result, compatibilityKey }), "utf8");
+    const fullBytes = Buffer.byteLength(JSON.stringify({ providerKey, capability, ruleVersion, actions, result, compatibilityKey }), "utf8");
+    const storedResult = fullBytes <= this.maxBytes ? result : undefined;
+    const bytes = Buffer.byteLength(JSON.stringify({ providerKey, capability, ruleVersion, actions, storedResult, compatibilityKey }), "utf8");
     const now = this.now();
     const providerActions = this.sessionActions.get(providerKey) ?? new Map<string, SessionActionRecord>();
     for (const [index, action] of actionMetadata.entries()) {
@@ -95,6 +123,7 @@ export class ConversationContextStore {
         contextRef,
         expiresAt: now + this.ttlMs,
         lastUsed: now,
+        state: "OFFERED",
       });
     }
     this.sessionActions.set(providerKey, providerActions);
@@ -102,13 +131,14 @@ export class ConversationContextStore {
       providerKey,
       capability,
       ...(resultTool ? { resultTool } : {}),
-      ...(result !== undefined ? { result } : {}),
+      ...(storedResult !== undefined ? { result: storedResult } : {}),
       ...(ruleVersion ? { ruleVersion } : {}),
       expiresAt: now + this.ttlMs,
       actions: actionMap,
       bytes,
       lastUsed: now,
       compatibilityKey,
+      ...(graph ? { graph } : {}),
     });
     this.evict();
     return { contextRef, actionRefs };
@@ -121,6 +151,7 @@ export class ConversationContextStore {
     if (!actions) return [];
     return [...actions.values()]
       .filter((action) => !currentIds.has(action.actionId) && this.contextIsLive(action.contextRef))
+      .filter((action) => action.state === "OFFERED")
       .map((action) => {
         action.lastUsed = this.now();
         return { ...action, plan: publicPlan(action.plan) };
@@ -142,6 +173,7 @@ export class ConversationContextStore {
       ...publicPlan(plan),
       ...(context.result !== undefined ? { result: context.result } : {}),
       ...(context.resultTool ? { resultTool: context.resultTool } : {}),
+      ...(context.graph ? { graph: context.graph } : {}),
     };
   }
 
@@ -151,8 +183,20 @@ export class ConversationContextStore {
     const action = this.sessionActions.get(providerKey)?.get(actionId);
     if (!action || action.plan.tool !== tool || action.expiresAt <= this.now()) return undefined;
     if (requestedInput && !isCompatibleInput(requestedInput, action.plan.input)) return undefined;
+    const context = this.contexts.get(action.contextRef);
+    if (!context || context.providerKey !== providerKey || context.expiresAt <= this.now()) {
+      action.state = "EXPIRED";
+      return undefined;
+    }
     action.lastUsed = this.now();
-    return { ...publicPlan(action.plan) };
+    context.lastUsed = this.now();
+    action.state = "SELECTED";
+    return {
+      ...publicPlan(action.plan),
+      ...(context.result !== undefined ? { result: context.result } : {}),
+      ...(context.resultTool ? { resultTool: context.resultTool } : {}),
+      ...(context.graph ? { graph: context.graph } : {}),
+    };
   }
 
   private evict(): void {

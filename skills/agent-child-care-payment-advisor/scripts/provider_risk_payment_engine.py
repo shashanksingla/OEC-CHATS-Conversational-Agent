@@ -647,12 +647,6 @@ def _build_payment_summary_view(
             elif day.get("classification") not in {"NO_CARE", "CARE_NOT_OFFERED"}:
                 item["excluded_days"] += 1
 
-    for vacant_slot in vacant_slot_days:
-        county_key = str(vacant_slot.get("county_id") or "UNKNOWN")
-        county = composition_bucket(county_key, str(vacant_slot.get("county_name") or "Unavailable from the current source"))
-        county["vacant_slots"]["days"] += 1
-        county["vacant_slots"]["amount"] += _hours(vacant_slot.get("amount")) or Decimal("0")
-
         if "FISCAL_RATE_UNAVAILABLE" in day.get("flags", []):
             add_action("missing-fiscal-rate", "Review unmatched fiscal rates", "A payable day has no matching fiscal rate.", amount, "high")
         if "ABSENCE_LIMIT_EXCEEDED" in day.get("flags", []):
@@ -663,6 +657,12 @@ def _build_payment_summary_view(
             add_action("confirm-pending-attendance", "Review pending confirmations", "Confirmation is still pending and may affect the payable amount.", amount, "high")
         if "HOLIDAY_NOT_IN_COUNTY_PLAN" in day.get("flags", []):
             add_action("review-holiday-plan", "Review the county holiday plan", "The date was not found in the active county holiday plan.", amount, "medium")
+
+    for vacant_slot in vacant_slot_days:
+        county_key = str(vacant_slot.get("county_id") or "UNKNOWN")
+        county = composition_bucket(county_key, str(vacant_slot.get("county_name") or "Unavailable from the current source"))
+        county["vacant_slots"]["days"] += 1
+        county["vacant_slots"]["amount"] += _hours(vacant_slot.get("amount")) or Decimal("0")
 
     def render_bucket(item: dict[str, Any]) -> dict[str, Any]:
         return {

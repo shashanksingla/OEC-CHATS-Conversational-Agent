@@ -252,6 +252,22 @@ test("schedule normalizer owns nested attendance mapping", () => {
   assert.equal(normalized.transactions[0]?.type, 1);
 });
 
+test("schedule normalizer accepts explicit parent confirmation fields", () => {
+  const normalized = normalizeScheduleAttendance([
+    {
+      Id: "schedule-1",
+      Authorization__c: "auth-1",
+      CI_Authorization_Date__c: "2026-09-08",
+      Parent_Confirmation__c: "Approved",
+      Absence_Parent_Approved__c: true,
+      Attendance__r: { records: [] },
+    },
+  ], "denver", 5);
+
+  assert.equal(normalized.schedules[0]?.parent_confirmation, "CONFIRMED");
+  assert.equal(normalized.schedules[0]?.absence_parent_approved, true);
+});
+
 test("schedule county falls back to the joined authorization county", () => {
   const normalized = normalizeScheduleAttendance(
     [{

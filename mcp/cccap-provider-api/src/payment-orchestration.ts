@@ -99,7 +99,7 @@ export async function getPaymentAnalysis(
   scope: DateScope,
   view: PaymentView = "STATUS",
   asOfDate = new Date().toISOString().slice(0, 10),
-  filters: { childNames?: string[]; authNames?: string[]; countyNames?: string[]; detailPage?: number; detailPageSize?: number; excludedOnly?: boolean } = {},
+  filters: { childNames?: string[]; authNames?: string[]; countyNames?: string[]; grouping?: "SERVICE_PERIOD" | "COUNTY" | "CHILD" | "CATEGORY"; detailDepth?: "SUMMARY" | "DETAIL"; detailPage?: number; detailPageSize?: number; excludedOnly?: boolean } = {},
 ): Promise<unknown> {
   const initialization = record(await client.initialize(scope), "Provider context");
   // CUSTOM_RANGE is an arbitrary provider-chosen span (validated to <= 31 days
@@ -279,7 +279,7 @@ export async function getPaymentAnalysis(
       displayableDays,
     );
     delete result.child_payment_impacts;
-    const showDetail = filters.detailPage !== undefined || filters.detailPageSize !== undefined;
+    const showDetail = filters.detailDepth === "DETAIL" || filters.detailPage !== undefined || filters.detailPageSize !== undefined;
     const detailPage = filters.detailPage ?? 1;
     const detailPageSize = filters.detailPageSize ?? 25;
     const detailStart = (detailPage - 1) * detailPageSize;
@@ -308,6 +308,9 @@ export async function getPaymentAnalysis(
       filters: {
         ...(filters.childNames ? { childNames: filters.childNames } : {}),
         ...(filters.authNames ? { authNames: filters.authNames } : {}),
+        ...(filters.countyNames ? { countyNames: filters.countyNames } : {}),
+        ...(filters.grouping ? { grouping: filters.grouping } : {}),
+        ...(filters.detailDepth ? { detailDepth: filters.detailDepth } : {}),
         ...(filters.detailPageSize ? { detailPageSize: filters.detailPageSize } : {}),
         ...(filters.excludedOnly ? { excludedOnly: true } : {}),
       },
@@ -329,7 +332,13 @@ function utcPlusDays(date: string, days: number): string { const d = new Date(`$
 export async function getServicePeriodLedger(client: CccapClient, scope: DateScope, asOfDate: string, options: { periodCount?: number } = {}): Promise<{ periods: LedgerPeriodEntry[]; sourceRetrievedAt: string }> {
   // Five periods is enough to cover the current month plus one prior.
   const count = options.periodCount ?? 5;
-  const response = record(await client.getServicePeriods({ ...scope, limitOne: false }), "Service periods");
+  const ledgerScope: DateScope = {
+    dateFilter: scope.dateFilter ?? "THIS_MONTH",
+    ...(scope.periodCount !== undefined ? { periodCount: scope.periodCount } : {}),
+    ...(scope.dateFrom !== undefined ? { dateFrom: scope.dateFrom } : {}),
+    ...(scope.dateTo !== undefined ? { dateTo: scope.dateTo } : {}),
+  };
+  const response = record(await client.getServicePeriods({ ...ledgerScope, limitOne: false }), "Service periods");
   const selected = array(response.servicePeriods, "Service periods").slice(0, count).map((value) => { const row = record(value, "Service period"); return { servicePeriodId: String(row.servicePeriodId), serviceBeginDate: String(row.serviceBeginDate), serviceEndDate: String(row.serviceEndDate) }; });
   const results = await Promise.all(selected.map(async (period) => ({ period, result: record(await getPaymentAnalysis(client, { dateFilter: "DATE_RANGE", dateFrom: period.serviceBeginDate, dateTo: period.serviceEndDate }, "CUSTOM_RANGE", asOfDate), "Payment evaluation") })));
   const periods = results.map(({ period, result }) => { const payment = record(result.payment, "Evaluated payment"); const payoutDate = typeof payment.payout_date === "string" ? payment.payout_date : computePayoutDate(period.serviceEndDate); // Fallback is non-fatal for older evaluator output.

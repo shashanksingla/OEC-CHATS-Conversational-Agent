@@ -2,7 +2,7 @@
 title: 'Provider payout summary and drill-down'
 type: 'feature'
 created: '2026-09-09'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'd2b630e752810f49e69d71482991383339a4a522'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -82,3 +82,9 @@ Summary rows should be grouped by `county_id`, `paid_tier`, `rate`, and `basis`;
 - `python skills/agent-child-care-payment-advisor/scripts/tests/test_provider_risk_payment_engine.py` -- expected: all evaluator tests pass.
 - `npm test` -- expected: all MCP tests pass.
 - `npm run build` -- expected: TypeScript compilation succeeds.
+
+## Completion Notes
+
+- Multi-period payout responses use the verified service-period ledger with one row per period.
+- Ledger actions now resolve to an exact service-period date range and detail view, preventing silent period widening.
+- Summary and drill-down behavior is covered by the MCP formatter/server tests and deterministic evaluator tests.

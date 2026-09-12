@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from decimal import Decimal
 from pathlib import Path
 
 
@@ -17,6 +18,21 @@ SPEC.loader.exec_module(provider_risk_payment_engine)
 
 
 class ProviderRiskPaymentEngineTests(unittest.TestCase):
+    def test_payment_summary_handles_vacant_slots_without_attendance_rows(self) -> None:
+        summary = provider_risk_payment_engine._build_payment_summary_view(
+            [],
+            {},
+            [{"county_id": "county-1", "county_name": "Adams", "amount": "6.00"}],
+            Decimal("0"),
+            Decimal("0"),
+            Decimal("0"),
+            Decimal("0"),
+            0,
+        )
+
+        self.assertEqual(summary["vacant_slots"], [{"county_id": "county-1", "county_name": "Adams", "amount": "6.00"}])
+        self.assertEqual(summary["next_actions"], [])
+
     def test_monthly_art_is_earned_once_for_a_qualifying_month(self) -> None:
         payload = self._complete_input()
         payload["attendance_days"][0]["service_date"] = "2026-09-02"

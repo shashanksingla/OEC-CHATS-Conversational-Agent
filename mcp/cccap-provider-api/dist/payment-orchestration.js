@@ -248,7 +248,7 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
         });
         const topChild = highestImpactChildName(Array.isArray(result.child_payment_impacts) ? result.child_payment_impacts : [], displayableDays);
         delete result.child_payment_impacts;
-        const showDetail = filters.detailPage !== undefined || filters.detailPageSize !== undefined;
+        const showDetail = filters.detailDepth === "DETAIL" || filters.detailPage !== undefined || filters.detailPageSize !== undefined;
         const detailPage = filters.detailPage ?? 1;
         const detailPageSize = filters.detailPageSize ?? 25;
         const detailStart = (detailPage - 1) * detailPageSize;
@@ -277,6 +277,9 @@ export async function getPaymentAnalysis(client, scope, view = "STATUS", asOfDat
             filters: {
                 ...(filters.childNames ? { childNames: filters.childNames } : {}),
                 ...(filters.authNames ? { authNames: filters.authNames } : {}),
+                ...(filters.countyNames ? { countyNames: filters.countyNames } : {}),
+                ...(filters.grouping ? { grouping: filters.grouping } : {}),
+                ...(filters.detailDepth ? { detailDepth: filters.detailDepth } : {}),
                 ...(filters.detailPageSize ? { detailPageSize: filters.detailPageSize } : {}),
                 ...(filters.excludedOnly ? { excludedOnly: true } : {}),
             },
@@ -298,7 +301,13 @@ function utcPlusDays(date, days) { const d = new Date(`${date}T00:00:00Z`); d.se
 export async function getServicePeriodLedger(client, scope, asOfDate, options = {}) {
     // Five periods is enough to cover the current month plus one prior.
     const count = options.periodCount ?? 5;
-    const response = record(await client.getServicePeriods({ ...scope, limitOne: false }), "Service periods");
+    const ledgerScope = {
+        dateFilter: scope.dateFilter ?? "THIS_MONTH",
+        ...(scope.periodCount !== undefined ? { periodCount: scope.periodCount } : {}),
+        ...(scope.dateFrom !== undefined ? { dateFrom: scope.dateFrom } : {}),
+        ...(scope.dateTo !== undefined ? { dateTo: scope.dateTo } : {}),
+    };
+    const response = record(await client.getServicePeriods({ ...ledgerScope, limitOne: false }), "Service periods");
     const selected = array(response.servicePeriods, "Service periods").slice(0, count).map((value) => { const row = record(value, "Service period"); return { servicePeriodId: String(row.servicePeriodId), serviceBeginDate: String(row.serviceBeginDate), serviceEndDate: String(row.serviceEndDate) }; });
     const results = await Promise.all(selected.map(async (period) => ({ period, result: record(await getPaymentAnalysis(client, { dateFilter: "DATE_RANGE", dateFrom: period.serviceBeginDate, dateTo: period.serviceEndDate }, "CUSTOM_RANGE", asOfDate), "Payment evaluation") })));
     const periods = results.map(({ period, result }) => {

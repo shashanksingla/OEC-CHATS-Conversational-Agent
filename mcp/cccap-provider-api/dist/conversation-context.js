@@ -12,7 +12,7 @@ export class ConversationContextStore {
         this.maxEntries = options.maxEntries ?? 100;
         this.maxBytes = options.maxBytes ?? 1_000_000;
     }
-    create(providerKey, capability, actions, result, resultTool, ruleVersion, actionMetadata = []) {
+    create(providerKey, capability, actions, result, resultTool, ruleVersion, actionMetadata = [], graph) {
         this.evict();
         const contextRef = this.reference();
         const actionRefs = actions.map(() => this.reference());
@@ -24,7 +24,9 @@ export class ConversationContextStore {
                 }];
         }));
         const compatibilityKey = compatibilityKeyFor(capability, ruleVersion, actions);
-        const bytes = Buffer.byteLength(JSON.stringify({ providerKey, capability, ruleVersion, actions, result, compatibilityKey }), "utf8");
+        const fullBytes = Buffer.byteLength(JSON.stringify({ providerKey, capability, ruleVersion, actions, result, compatibilityKey }), "utf8");
+        const storedResult = fullBytes <= this.maxBytes ? result : undefined;
+        const bytes = Buffer.byteLength(JSON.stringify({ providerKey, capability, ruleVersion, actions, storedResult, compatibilityKey }), "utf8");
         const now = this.now();
         const providerActions = this.sessionActions.get(providerKey) ?? new Map();
         for (const [index, action] of actionMetadata.entries()) {
@@ -38,6 +40,7 @@ export class ConversationContextStore {
                 contextRef,
                 expiresAt: now + this.ttlMs,
                 lastUsed: now,
+                state: "OFFERED",
             });
         }
         this.sessionActions.set(providerKey, providerActions);
@@ -45,13 +48,14 @@ export class ConversationContextStore {
             providerKey,
             capability,
             ...(resultTool ? { resultTool } : {}),
-            ...(result !== undefined ? { result } : {}),
+            ...(storedResult !== undefined ? { result: storedResult } : {}),
             ...(ruleVersion ? { ruleVersion } : {}),
             expiresAt: now + this.ttlMs,
             actions: actionMap,
             bytes,
             lastUsed: now,
             compatibilityKey,
+            ...(graph ? { graph } : {}),
         });
         this.evict();
         return { contextRef, actionRefs };
@@ -64,6 +68,7 @@ export class ConversationContextStore {
             return [];
         return [...actions.values()]
             .filter((action) => !currentIds.has(action.actionId) && this.contextIsLive(action.contextRef))
+            .filter((action) => action.state === "OFFERED")
             .map((action) => {
             action.lastUsed = this.now();
             return { ...action, plan: publicPlan(action.plan) };
@@ -87,6 +92,7 @@ export class ConversationContextStore {
             ...publicPlan(plan),
             ...(context.result !== undefined ? { result: context.result } : {}),
             ...(context.resultTool ? { resultTool: context.resultTool } : {}),
+            ...(context.graph ? { graph: context.graph } : {}),
         };
     }
     resolveAction(providerKey, actionId, tool, requestedInput) {
@@ -98,8 +104,20 @@ export class ConversationContextStore {
             return undefined;
         if (requestedInput && !isCompatibleInput(requestedInput, action.plan.input))
             return undefined;
+        const context = this.contexts.get(action.contextRef);
+        if (!context || context.providerKey !== providerKey || context.expiresAt <= this.now()) {
+            action.state = "EXPIRED";
+            return undefined;
+        }
         action.lastUsed = this.now();
-        return { ...publicPlan(action.plan) };
+        context.lastUsed = this.now();
+        action.state = "SELECTED";
+        return {
+            ...publicPlan(action.plan),
+            ...(context.result !== undefined ? { result: context.result } : {}),
+            ...(context.resultTool ? { resultTool: context.resultTool } : {}),
+            ...(context.graph ? { graph: context.graph } : {}),
+        };
     }
     evict() {
         const now = this.now();
