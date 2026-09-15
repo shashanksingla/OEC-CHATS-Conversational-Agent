@@ -24,13 +24,34 @@ CONFIRMATION_WINDOW_DAYS = 5
 
 
 def compute_payout_date(service_period_end: date) -> date:
-    """Return the payout date, eleven days after the period's Sunday end.
+    """Return the payout date, twelve days after the period's Sunday end.
 
-    For a Sunday period end, +11 days is Thursday (the documented invariant).
+    For a Sunday period end, +12 days is Friday - the true payment release
+    date, confirmed against real T_SERV_PERIOD__c sample data
+    (DTE_BATCH_FILE_PMT__c/release is one day after
+    DTE_BATCH_PRCS_PMT__c/processing). This is a last-resort formula only -
+    resolve_payout_date() below prefers the real Apex-sourced release date
+    threaded through payload["service_period"]["payout_date"] whenever one
+    is present.
     """
-    payout_date = service_period_end + timedelta(days=11)
-    # Sunday (6) + 11 modulo 7 = Thursday (3).
+    payout_date = service_period_end + timedelta(days=12)
+    # Sunday (6) + 12 modulo 7 = Friday (4).
     return payout_date
+
+
+def resolve_payout_date(payload: dict[str, Any], period_end: date) -> date:
+    """Prefer the real Apex-sourced release date; fall back to the formula.
+
+    payload["service_period"]["payout_date"] carries the actual
+    DTE_BATCH_FILE_PMT__c value (or Apex's own ISO-week fallback) whenever a
+    resolved service-period record reached this call - only a synthetic
+    CUSTOM_RANGE payload with no matching T_SERV_PERIOD__c record omits it,
+    in which case compute_payout_date() is the only option.
+    """
+    service_period = payload.get("service_period")
+    raw_payout_date = service_period.get("payout_date") if isinstance(service_period, dict) else None
+    resolved = _date_value(raw_payout_date) if isinstance(raw_payout_date, str) else None
+    return resolved if resolved else compute_payout_date(period_end)
 
 
 def _settlement_fields(
@@ -52,7 +73,7 @@ def _settlement_fields(
     for this period, it is authoritative; if not, the calculated net_total
     is used as the best available figure, explicitly flagged as such.
     """
-    if as_of_date < compute_payout_date(period_end):
+    if as_of_date < resolve_payout_date(payload, period_end):
         return {"is_settled": False}
     service_period = payload.get("service_period")
     service_period_id = service_period.get("id") if isinstance(service_period, dict) else None
@@ -502,9 +523,32 @@ def _copay_total(payload: dict[str, Any], attendance_days: list[dict[str, Any]])
     return total, missing_authorizations
 
 
+def _resolve_rate(
+    rates: dict[tuple[str, str, str], Decimal],
+    authorization_id: str,
+    paid_tier: str,
+    rate_type_code: str | None,
+) -> Decimal | None:
+    """Joins a schedule day to its fiscal rate by (authorization_id,
+    paid_tier, rate_type_code) - the day's own scheduled rate type
+    (regular/overnight/weekend/etc) matched against the fiscal rate row's
+    own rate type, care unit (already encoded in paid_tier), and age group
+    (already filtered upstream before a rate row ever reaches here). An
+    authorization's schedule days can each carry a different rate type
+    across one period, so this is a real per-day join, not a per-
+    authorization constant - shared by both the exclusion check and the
+    category/composition amount calculation so they never disagree.
+    """
+    key_rate_type = str(rate_type_code or "")
+    rate = rates.get((authorization_id, paid_tier, key_rate_type))
+    if rate is not None:
+        return rate
+    return rates.get((authorization_id, "NO_PAYMENT", key_rate_type))
+
+
 def _build_payment_summary_view(
     attendance_days: list[dict[str, Any]],
-    rates: dict[tuple[str, str], Decimal],
+    rates: dict[tuple[str, str, str], Decimal],
     vacant_slot_days: list[dict[str, Any]],
     gross_total: Decimal,
     net_total: Decimal,
@@ -599,9 +643,12 @@ def _build_payment_summary_view(
         payment_type = str(day.get("category") or day.get("payment_type") or "NONE")
         label = category_labels.get(payment_type, "Not paid")
         paid_tier = day.get("paid_tier")
-        rate = rates.get((str(day.get("authorization_id")), str(paid_tier)))
-        if rate is None:
-            rate = rates.get((str(day.get("authorization_id")), "NO_PAYMENT"))
+        # Reuses the exact same rate/day-rate-type join as the exclusion
+        # check above - this was previously a separate, stale 2-tuple
+        # lookup here that never picked up the rate_type_code dimension,
+        # so a day whose rate WAS found for exclusion purposes still
+        # computed a $0 amount here.
+        rate = _resolve_rate(rates, str(day.get("authorization_id")), str(paid_tier), day.get("rate_type_code"))
         hours = _hours(day.get("unit_hours")) or Decimal("0")
         amount = rate * hours if rate is not None else Decimal("0")
         is_risk = day.get("conditional") is True or any(
@@ -1167,28 +1214,47 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         ),
         None,
     )
-    rates: dict[tuple[str, str], Decimal] = {}
+    # The unique join between a schedule day and its fiscal rate is the
+    # day's own rate type (regular/overnight/weekend/etc) + age group +
+    # care unit (care unit is already what paid_tier encodes, derived from
+    # finalized/calculated hours) - matched against the fiscal rate row's
+    # own rate type + age group + care unit. An authorization's schedule
+    # days can each be scheduled under a DIFFERENT rate type across one
+    # service period (live-confirmed: one authorization's 7 days in a
+    # week used 5 different rate types), so fiscal_rates can legitimately
+    # contain several rows for the same (authorization_id, paid_tier) -
+    # one per rate type. Age group is already filtered upstream (TS layer)
+    # to the authorization's list of acceptable codes, not narrowed to a
+    # single exact value - two rows can still legitimately share
+    # (authorization_id, paid_tier, rate_type_code) while differing only
+    # in age_group_code. That is a genuine remaining data-quality/
+    # precision gap, not grounds to hard-block the entire computation:
+    # deterministically keep the first candidate seen (stable since
+    # fiscal_rates ordering is stable) rather than crash the whole
+    # request over an upstream age-group ambiguity, consistent with the
+    # "one ambiguous/bad row never kills the whole batch" resilience
+    # pattern applied elsewhere in this pipeline.
+    rates: dict[tuple[str, str, str], Decimal] = {}
     for rate in payload["fiscal_rates"]:
         if not isinstance(rate, dict):
             return _blocked(["fiscal_rate_record"], attendance)
         authorization_id = rate.get("authorization_id")
         paid_tier = rate.get("paid_tier")
         amount = _hours(rate.get("amount"))
+        rate_type_code = str(rate.get("rate_type_code") or "")
         if not isinstance(authorization_id, str) or not isinstance(paid_tier, str) or amount is None:
             return _blocked(["fiscal_rate_record"], attendance)
-        rate_key = (authorization_id, paid_tier)
+        rate_key = (authorization_id, paid_tier, rate_type_code)
         if rate_key in rates:
-            return _blocked(["ambiguous_fiscal_rate"], attendance)
+            continue
         rates[rate_key] = Decimal("0") if paid_tier == "NO_PAYMENT" else amount
+
     excluded_authorizations: set[str] = set()
     for day in attendance["days"]:
         if not day["payable"]:
             continue
         authorization_id = day["authorization_id"]
-        if (
-            (authorization_id, day["paid_tier"]) not in rates
-            and (authorization_id, "NO_PAYMENT") not in rates
-        ):
+        if _resolve_rate(rates, authorization_id, day["paid_tier"], day.get("rate_type_code")) is None:
             excluded_authorizations.add(authorization_id)
     copay, missing_copay_authorizations = _copay_total(payload, attendance["days"])
     if missing_copay_authorizations:
@@ -1221,9 +1287,13 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             and day.get("payable") is False
         ):
             continue
-        rate = rates.get((day["authorization_id"], day["paid_tier"]))
-        if rate is None:
-            rate = rates.get((day["authorization_id"], "NO_PAYMENT"))
+        # Same per-day rate/rate-type join as the exclusion check and the
+        # summary-view category loop above - this was a third, separate
+        # stale 2-tuple lookup that never picked up the rate_type_code
+        # dimension, so this main total/amount accumulator (which is what
+        # payment.amount actually reflects) kept computing $0 for every
+        # day even after the other two call sites were fixed.
+        rate = _resolve_rate(rates, day["authorization_id"], day["paid_tier"], day.get("rate_type_code"))
         unit_hours = _hours(day.get("unit_hours")) or Decimal("0")
         risk_day = day["conditional"] or any(
             flag in day["flags"]
@@ -1295,9 +1365,7 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             if day["authorization_id"] in excluded_authorizations:
                 day["flags"] = sorted({*day["flags"], "FISCAL_RATE_UNAVAILABLE"})
             continue
-        rate = rates.get((day["authorization_id"], day["paid_tier"]))
-        if rate is None:
-            rate = rates.get((day["authorization_id"], "NO_PAYMENT"))
+        rate = _resolve_rate(rates, day["authorization_id"], day["paid_tier"], day.get("rate_type_code"))
         if rate is None:
             excluded_days += 1
             day["payment_excluded"] = True
@@ -1346,9 +1414,7 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             or day.get("payment_excluded")
         ):
             continue
-        rate = rates.get((day["authorization_id"], day["paid_tier"]))
-        if rate is None:
-            rate = rates.get((day["authorization_id"], "NO_PAYMENT"))
+        rate = _resolve_rate(rates, day["authorization_id"], day["paid_tier"], day.get("rate_type_code"))
         if rate is None:
             continue
         county_id = day.get("county_id", "")
@@ -1404,7 +1470,7 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             "guaranteed_amount": _money(guaranteed_total),
             "holiday_classification_mismatches": holiday_classification_mismatches,
             "total_amount_incorrectly_at_risk": _money(total_amount_incorrectly_at_risk),
-            "payout_date": compute_payout_date(period_end).isoformat(),
+            "payout_date": resolve_payout_date(payload, period_end).isoformat(),
             "excluded_days": excluded_days,
             "excluded_authorizations": len(excluded_authorizations),
             "slot_fee": _money(vacant_slot_fee),

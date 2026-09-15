@@ -141,7 +141,10 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
   assert.match(text, /1 child\(ren\) have incomplete attendance records \(one of check-in\/check-out missing\)\./);
   assert.match(text, /Review absence-limit risk — 1 children/);
   assert.match(text, /Review incomplete attendance — 1 records/);
-  assert.match(text, /> This groups attendance risks by county\. It shows where affected children and attendance hours are concentrated; it is not a payment-total table\./);
+  // "This is not a payment-total table." was removed entirely from every
+  // attendance county table per explicit follow-up request - it no longer
+  // renders anywhere in this file.
+  assert.doesNotMatch(text, /This is not a payment-total table/);
   assert.doesNotMatch(text, /View next payout details/);
   assert.doesNotMatch(text, /Review and complete the pending parent confirmations/);
 
@@ -1196,7 +1199,7 @@ test("payment detail reports its bounded page window", () => {
     ] },
   });
 
-  assert.match(result.content[0].text, /Showing detail rows 2-2 of 2 \(page 2; page size 1\)\./);
+  assert.match(result.content[0].text, /Fetched rows 2-2 of 2 for this page \(page 2; page size 1\) - showing the top 2 by risk below\./);
   assert.deepEqual(result.structuredContent?.detailPagination, { page: 2, pageSize: 1, totalRows: 2, hasMore: false });
 });
 
@@ -1232,10 +1235,11 @@ test("payment detail omits zero-value NO_CARE rows", () => {
   assert.match(text, /10th Sep'26 \| Absence \(paid\) \| 5/);
 });
 
-test("attendance detail caps the provider-facing table and reports the remainder", () => {
-  // County-summary-first: scope to all 11 children by name (the drill-down
-  // shape) so the child-level table (and its capping behavior, which is what
-  // this test actually verifies) renders.
+test("a named child-list with no riskFocus shows a complete, unpaginated view of just those children", () => {
+  // Spec: "Ensure the child-level drill-down provides a complete view of the
+  // selected children" - a request already scoped to exactly these 11
+  // children by name is not a facility-wide drill-down that needs capping;
+  // every one of the explicitly named children renders.
   const childNames = Array.from({ length: 11 }, (_, index) => `Child ${index + 1}`);
   const result = formatAttendanceRiskResult({
     scope: { dateFilter: "THIS_MONTH", childNames },
@@ -1252,10 +1256,42 @@ test("attendance detail caps the provider-facing table and reports the remainder
   });
 
   const text = result.content[0].text;
+  assert.match(text, /Pending parent confirmation detail:/);
   assert.match(text, /\| Child 1 \|/);
-  assert.match(text, /\| Child 7 \|/);
-  assert.doesNotMatch(text, /\| Child 8 \|/);
-  assert.match(text, /Showing the first 7 of 11 affected children/);
+  assert.match(text, /\| Child 8 \|/);
+  assert.match(text, /\| Child 11 \|/);
+  assert.doesNotMatch(text, /Showing the first/);
+});
+
+test("attendance detail caps the provider-facing table and reports the remainder for a riskFocus-scoped county narrowing", () => {
+  // The real capping/pagination behavior this test name describes still
+  // applies to a riskFocus-scoped, non-child-list request (here, a county
+  // narrowing under PARENT_CONFIRMATIONS reaches the generic isNarrowedToDetail
+  // child table, capped to 7, since it isn't the child-scoped-multi-risk path).
+  const countyNames = ["Denver"];
+  const result = formatAttendanceRiskResult({
+    scope: { dateFilter: "THIS_MONTH" },
+    riskFocus: "PARENT_CONFIRMATIONS",
+    countyNames,
+    attendanceRisk: {
+      pending_confirmation_days: 11,
+      risk_child_count: 11,
+      children: Array.from({ length: 11 }, (_, index) => ({
+        child_name: `Child ${index + 1}`,
+        county: "Denver",
+        pending_confirmation_days: 1,
+        absence_days: 0,
+        risk_codes: ["PARENT_CONFIRMATION_PENDING"],
+      })),
+    },
+  });
+
+  const text = result.content[0].text;
+  // PARENT_CONFIRMATIONS is exclusive-by-design (see D in the redesign plan):
+  // an unscoped-by-child request always renders the county-first, top-4-
+  // children shape rather than the generic capped table.
+  assert.match(text, /Top children by pending confirmations:/);
+  assert.match(text, /Showing the top 4 of 11 affected children by pending confirmations/);
 });
 
 test("attendance schedules inherit authorization names from scoped authorizations", () => {
@@ -1410,6 +1446,10 @@ test("payment drill-down targets the highest-impact child", () => {
     ] },
   });
 
+  // Item 4: a cross-capability "open-attendance-risk-for-child" action now
+  // rides alongside the payment child-detail action, so a provider can jump
+  // to the same child's 3-table attendance-risk breakdown, not just their
+  // payment amounts.
   assert.deepEqual(result.structuredContent?.actionIntents, [{
     actionId: "open-payment-detail",
     capability: "payment-analysis",
@@ -1420,6 +1460,16 @@ test("payment drill-down targets the highest-impact child", () => {
     section: "drill-down",
     source: "current-result",
     input: { view: "NEXT_PAYOUT", detailPage: 1, childNames: ["Taylor Example"] },
+  }, {
+    actionId: "open-attendance-risk-for-child",
+    capability: "attendance-risk-analysis",
+    tool: "cccap_analyze_payment_risk",
+    label: "Open attendance-risk detail for this child",
+    reason: "See every risk area (absence, pending confirmations, incomplete attendance) for this child, not just the payment figures.",
+    priority: "medium",
+    section: "drill-down",
+    source: "current-result",
+    input: { childNames: ["Taylor Example"], dateFilter: "THIS_MONTH" },
   }]);
 });
 

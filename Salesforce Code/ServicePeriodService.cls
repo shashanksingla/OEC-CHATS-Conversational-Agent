@@ -9,8 +9,8 @@
  *   IDN_EXTNL__c          — external ID used as servicePeriodId
  *   DTE_BEGIN_EFFV__c     — service period start date
  *   DTE_END_EFFV__c       — service period end date
- *   DTE_BATCH_FILE_PMT__c — payment processing date (Thursday payroll)
- *   DTE_BATCH_PRCS_PMT__c — payment release date (Friday)
+ *   DTE_BATCH_FILE_PMT__c — payment release date (Friday) — the true payout date; confirmed against real T_SERV_PERIOD__c data
+ *   DTE_BATCH_PRCS_PMT__c — payment processing date (Thursday payroll) — internal batch processing, one day before release
  *
  * Filters (all optional — agent passes only what it needs):
  *
@@ -167,15 +167,19 @@ public with sharing class ServicePeriodService {
         ServicePeriodResult res   = new ServicePeriodResult();
         res.serviceBeginDate      = r.DTE_BEGIN_EFFV__c;
         res.serviceEndDate        = r.DTE_END_EFFV__c;
-        res.paymentProcessingDate = r.DTE_BATCH_FILE_PMT__c;
-        res.paymentReleaseDate    = r.DTE_BATCH_PRCS_PMT__c;
+        // DTE_BATCH_FILE_PMT__c is the true payout/release date (Friday) and
+        // DTE_BATCH_PRCS_PMT__c is the internal processing date (Thursday,
+        // one day earlier) - confirmed against real T_SERV_PERIOD__c sample
+        // data. Previously mapped backwards here.
+        res.paymentReleaseDate    = r.DTE_BATCH_FILE_PMT__c;
+        res.paymentProcessingDate = r.DTE_BATCH_PRCS_PMT__c;
         res.fromStoredRecord      = true;
         res.storedRecordId        = r.Id;
         res.servicePeriodId       = String.isNotBlank(r.IDN_EXTNL__c)
             ? r.IDN_EXTNL__c
             : 'SP-' + String.valueOf(r.DTE_BEGIN_EFFV__c).substring(0, 10);
-        Date releaseDate = r.DTE_BATCH_PRCS_PMT__c != null
-            ? r.DTE_BATCH_PRCS_PMT__c
+        Date releaseDate = r.DTE_BATCH_FILE_PMT__c != null
+            ? r.DTE_BATCH_FILE_PMT__c
             : (r.DTE_END_EFFV__c != null ? r.DTE_END_EFFV__c.addDays(12) : null);
         res.status = (releaseDate != null && releaseDate < Date.today())
             ? 'RELEASED' : 'SCHEDULED';

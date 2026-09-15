@@ -12,7 +12,13 @@ export interface FiscalScheduleCandidate {
 export interface AuthorizationScheduleMatch {
   status: "MATCHED" | "UNRESOLVED";
   fiscalScheduleId?: string;
-  reason?: "MISSING_SCHEDULE_RATE_TYPE" | "RATE_TYPE_CONFLICT" | "NO_MATCH" | "AMBIGUOUS_MATCH";
+  // NO_MATCH_COUNTY/RATE_TYPE/DATE replace the old blanket "NO_MATCH" -
+  // selectFiscalScheduleForAuthorization now filters step-by-step and
+  // reports exactly which criterion produced zero candidates, instead of
+  // one opaque reason covering all three failure modes. "NO_MATCH" stays
+  // in the type as a defensive fallback only - the step-by-step logic
+  // should never actually return it.
+  reason?: "MISSING_SCHEDULE_RATE_TYPE" | "RATE_TYPE_CONFLICT" | "NO_MATCH" | "NO_MATCH_COUNTY" | "NO_MATCH_RATE_TYPE" | "NO_MATCH_DATE" | "AMBIGUOUS_MATCH";
 }
 
 function record(value: unknown, label: string): RecordValue {
@@ -45,7 +51,22 @@ export function selectFiscalScheduleForAuthorization(
   authorizationValue: unknown,
   schedules: FiscalScheduleCandidate[],
   careDate: string,
-  scheduleRateType?: string,
+  // A single authorization's schedule can legitimately carry a DIFFERENT
+  // rate type per day across one service period (e.g. regular weekdays,
+  // an evening day, a weekend day, an overnight day, all under the SAME
+  // authorization) - live org data confirmed one authorization's 7 days in
+  // a week using rate types 31/31/31/1/91/43/37. Accepting only a single
+  // scheduleRateType here (and its caller previously collapsing all of an
+  // authorization's rate types down to just one, last-wins) matched a
+  // schedule that only actually covers ONE of those rate types, then
+  // silently excluded every other day's rate rows downstream - the
+  // confirmed root cause of the recurring "rate unavailable" exclusions.
+  // Accept every rate type the authorization's days actually use and
+  // match if the candidate schedule serves ANY of them - the schedule
+  // record itself spans multiple rate types (verified: one externalId's
+  // rate rows cover rate types 1/31/37/43/91 together), so requiring an
+  // exact single-value match was never structurally correct.
+  scheduleRateTypes?: readonly string[],
 ): AuthorizationScheduleMatch {
   const authorization = record(authorizationValue, "authorization");
   const countyId = requiredString(authorization.CDE_COUNTY__c, "authorization.CDE_COUNTY__c");
@@ -60,18 +81,28 @@ export function selectFiscalScheduleForAuthorization(
     return { status: "UNRESOLVED", reason: "NO_MATCH" };
   }
 
-  if (!scheduleRateType) {
+  const requestedRateTypes = (scheduleRateTypes ?? []).filter((value) => value.length > 0);
+  if (requestedRateTypes.length === 0) {
     return { status: "UNRESOLVED", reason: "MISSING_SCHEDULE_RATE_TYPE" };
   }
 
-  const matches = schedules.filter((schedule) =>
-    schedule.countyId === countyId
-    && containsRateType(schedule.rateTypeCode, scheduleRateType)
-    && containsDate(schedule.beginDate, schedule.endDate, careDate),
+  // Filtered step-by-step (county -> rate type -> date) instead of one
+  // combined filter, so a zero-result step reports exactly which
+  // criterion failed - previously all three collapsed into one opaque
+  // "NO_MATCH", which told a debugger nothing about whether the county,
+  // the rate type, or the date range was the actual problem.
+  const countyMatches = schedules.filter((schedule) => schedule.countyId === countyId);
+  if (countyMatches.length === 0) return { status: "UNRESOLVED", reason: "NO_MATCH_COUNTY" };
+
+  const rateTypeMatches = countyMatches.filter((schedule) =>
+    requestedRateTypes.some((rateType) => containsRateType(schedule.rateTypeCode, rateType)),
   );
-  if (matches.length === 0) return { status: "UNRESOLVED", reason: "NO_MATCH" };
+  if (rateTypeMatches.length === 0) return { status: "UNRESOLVED", reason: "NO_MATCH_RATE_TYPE" };
+
+  const matches = rateTypeMatches.filter((schedule) => containsDate(schedule.beginDate, schedule.endDate, careDate));
+  if (matches.length === 0) return { status: "UNRESOLVED", reason: "NO_MATCH_DATE" };
   const firstMatch = matches[0];
-  if (!firstMatch) return { status: "UNRESOLVED", reason: "NO_MATCH" };
+  if (!firstMatch) return { status: "UNRESOLVED", reason: "NO_MATCH_DATE" };
 
   const latestBeginDate = matches.reduce(
     (latest, schedule) => schedule.beginDate > latest ? schedule.beginDate : latest,
@@ -83,5 +114,5 @@ export function selectFiscalScheduleForAuthorization(
   }
   const selectedMatch = latestMatches[0];
   if (!selectedMatch) return { status: "UNRESOLVED", reason: "NO_MATCH" };
-  return { status: "MATCHED", fiscalScheduleId: selectedMatch.id };
+  return { status: "MATCHED", fiscalScheduleId: selectedMatch.externalId };
 }

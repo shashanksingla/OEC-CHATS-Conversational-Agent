@@ -53,6 +53,16 @@ This is the single source of truth for every `action_id`'s provider-facing label
 | `review-service-period-payout-ledger` | `Review payment details for this service period` | none |
 | `show-affected-children` | `Show affected children — {N}` | count of affected children behind a county-summary-only attendance-risk response |
 | `open-service-period-{n}` | `Open {dateFrom}-{dateTo} payout` | date-range qualifier; `{n}` is a 0-based index among the ledger's non-"next" periods, capped at 2 additional entries per response |
+| `return-to-attendance-summary` | `Return to attendance risk summary` | none — the only navigation offered out of a riskFocus-scoped attendance response |
+| `next-attendance-detail-page` | `Open next page of affected children` | none — real pagination for the ABSENCE_LIMITS child-level drill-down |
+| `open-attendance-risk-for-child` | `Open attendance-risk detail for this child` | none — cross-capability link from a payment child-detail response to the same child's 3-table attendance-risk view |
+| `view-county-composition-for-range` | `View county-level payment composition for this range` | none — offered only from a multi-period payout ledger, aggregating county composition across the full requested range |
+
+`review-absence-limit-risk`, `review-pending-parent-confirmations`, and `review-incomplete-attendance` are cross-risk navigation suggestions and only ever render in the fully unscoped, facility-wide attendance response (no `riskFocus` set), in the same order the risk-issues summary table lists them (Pending confirmations -> Absence limits -> Missing check-ins/check-outs). Once a response is already focused on one risk area, it never links to another risk area's counts — `return-to-attendance-summary` is the only way back to the all-risk-areas view.
+
+## `"return"` section — always last, never capped
+
+`return-to-attendance-summary` and `return-to-payment-summary` use a dedicated `section: "return"` that `renderActionSections` (shared.ts) always renders after every `next-actions`/`drill-down`/`available-views` entry and never subjects to the `MAX_NEXT_ACTIONS` cap. Do not tag a return/navigation-back action as `"next-actions"` (it can be capped away) or `"navigation"` (that section string is not read by `renderActionSections` at all and would never render in the text list).
 
 `open-highest-hours-child-detail` is used only when no child has a verified dollar amount at risk or total amount for the current scope; the response body must say explicitly that the ranking is by scheduled hours, not dollars, whenever this label is shown.
 

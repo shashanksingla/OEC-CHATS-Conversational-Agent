@@ -66,30 +66,36 @@ export function normalizePaymentSourceBundle(sources) {
     const normalizedAuthorizations = array(authorizationData.normalizedAuthorizations, "Normalized authorizations");
     const authorizationRecords = normalizedAuthorizations.map((value, index) => record(record(value, `Normalized authorization[${index}]`).authorization, `Authorization[${index}]`));
     const authorizationMatches = {};
+    // An authorization's own schedule rows can use several DIFFERENT rate
+    // types across one service period (verified live: 31/31/31/1/91/43/37
+    // across one week) - a single string here would only let one of those
+    // rate types find its fiscal rate row downstream, silently excluding
+    // every day whose rate type isn't the one retained. See client.ts's
+    // getAuthorizations for where this list is populated.
     const authorizationRateTypeCodes = {};
     const authorizationAgeGroupCodes = {};
-    const authorizations = normalizedAuthorizations.map((value, index) => {
+    // An UNRESOLVED fiscalScheduleMatch on one authorization (e.g. a fiscal
+    // schedule that genuinely has no county/rate-type/date match in the
+    // source data) is a per-authorization data-quality gap, not an invariant
+    // violation of the whole request - a hard throw here previously crashed
+    // the entire payment computation for every authorization in the period
+    // (and, via getServicePeriodLedger's Promise.all, every other period in
+    // the same ledger/NEXT_PAYOUT call) over one bad row. Skip the
+    // unresolved row and track it, mirroring the vacantSlotMappingGaps
+    // silent-drop-risk pattern below, instead of failing the whole request.
+    let authorizationMappingGaps = 0;
+    const authorizations = normalizedAuthorizations.flatMap((value, index) => {
         const row = record(value, `Normalized authorization[${index}]`);
         const authorization = record(row.authorization, `Authorization[${index}]`);
         const match = record(row.fiscalScheduleMatch, `Fiscal schedule match[${index}]`);
         if (typeof authorization.Id !== "string" ||
             match.status !== "MATCHED" ||
             typeof match.fiscalScheduleId !== "string") {
-            const authorizationKey = [
-                ["id", authorization.Id],
-                ["name", authorization.Name],
-                ["external", authorization.IDN_EXTNL__c],
-                ["county", authorization.CDE_COUNTY__c],
-            ]
-                .filter(([, value]) => typeof value === "string" && value.length > 0)
-                .map(([key, value]) => `${key}=${value}`)
-                .join(", ");
-            const reason = typeof match.reason === "string" ? match.reason : "UNKNOWN";
-            throw new Error(`Authorization fiscal schedule mapping failed for row ${index}`
-                + ` (${authorizationKey || "no authorization identity"}; reason=${reason})`);
+            authorizationMappingGaps += 1;
+            return [];
         }
         authorizationMatches[authorization.Id] = match.fiscalScheduleId;
-        if (typeof row.rateTypeCode === "string" && row.rateTypeCode.length > 0) {
+        if (Array.isArray(row.rateTypeCode) && row.rateTypeCode.every((code) => typeof code === "string") && row.rateTypeCode.length > 0) {
             authorizationRateTypeCodes[authorization.Id] = row.rateTypeCode;
         }
         const client = authorization.IDN_CLIENT__r;
@@ -98,12 +104,12 @@ export function normalizePaymentSourceBundle(sources) {
             : undefined;
         if (ageGroupCodes)
             authorizationAgeGroupCodes[authorization.Id] = ageGroupCodes;
-        return {
-            id: authorization.Id,
-            county_id: authorization.CDE_COUNTY__c,
-            quality_tier: providerTier,
-            drop_in_limit: authorization.Number_of_Drop_in_Days__c,
-        };
+        return [{
+                id: authorization.Id,
+                county_id: authorization.CDE_COUNTY__c,
+                quality_tier: providerTier,
+                drop_in_limit: authorization.Number_of_Drop_in_Days__c,
+            }];
     });
     const normalizedSchedules = normalizeScheduleAttendance(array(record(sources.scheduleData, "Schedules").schedules, "Schedules"), countyIds.length === 1 ? countyIds[0] : undefined, providerTier, authorizationData);
     const schedulesWithCountyNames = normalizedSchedules.schedules.map((schedule) => {
@@ -113,6 +119,17 @@ export function normalizePaymentSourceBundle(sources) {
         return countyName ? { ...schedule, county_name: countyName } : schedule;
     });
     const enrichment = deriveAttendanceEnrichment(schedulesWithCountyNames, authorizationData, sources.holidayData);
+    // deriveAttendanceEnrichment skips (does not add an entry for) any
+    // schedule whose authorization reference could not be matched to a real
+    // authorization record - there is no age band, encumbrance status, or
+    // client DOB to derive for it. normalizeAttendanceDays requires an
+    // enrichment entry for every schedule it receives, so those same
+    // unresolved rows must be excluded here too, otherwise they would hit
+    // the exact same "enrichment is missing" wall one step later. This is a
+    // genuine per-row data-quality gap (an orphaned schedule/authorization
+    // link), not a reason to drop every other valid schedule in the period.
+    const enrichedSchedules = schedulesWithCountyNames.filter((schedule) => typeof schedule.authorization_id === "string" && schedule.authorization_id in enrichment);
+    authorizationMappingGaps += schedulesWithCountyNames.length - enrichedSchedules.length;
     const countyPolicies = countyPlanRows.map((value, index) => {
         const policy = record(value, `County policy[${index}]`);
         const absenceLimit = policy[`absenceDaysTier${providerTier}`];
@@ -171,7 +188,7 @@ export function normalizePaymentSourceBundle(sources) {
         asOfDate: sources.asOfDate,
     });
     payload.authorization_copays = normalizeAuthorizationCopays(authorizationData.authorizationCopays, authorizationRecords);
-    return { payload, servicePeriod, vacantSlotMappingGaps };
+    return { payload, servicePeriod, vacantSlotMappingGaps, authorizationMappingGaps };
 }
 // A vacant slot that is genuinely occupied (IDN_AUTH__c set) is correctly
 // excluded by normalizeVacantSlotSchedules and is not a mapping gap. Any

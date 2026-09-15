@@ -42,11 +42,12 @@ function paymentDisclaimers(
   payment: Record<string, unknown>,
   paymentResult: Record<string, unknown>,
   attendance: Record<string, unknown>[],
+  settled = false,
 ): string[] {
   const disclaimers = [DISCLAIMER_GLOBAL];
-  if (Number(payment.expected_amount) > 0) disclaimers.push(DISCLAIMER_EXPECTED);
-  if (Number(payment.forecasted_amount) > 0) disclaimers.push(DISCLAIMER_FORECASTED);
-  if (Number(payment.at_risk_amount ?? payment.amount_at_risk) > 0) {
+  if (!settled && Number(payment.expected_amount) > 0) disclaimers.push(DISCLAIMER_EXPECTED);
+  if (!settled && Number(payment.forecasted_amount) > 0) disclaimers.push(DISCLAIMER_FORECASTED);
+  if (!settled && Number(payment.at_risk_amount ?? payment.amount_at_risk) > 0) {
     disclaimers.push(atRiskDisclaimer(
       attendance.find((day) => typeof day.confirm_by_date === "string")?.confirm_by_date
         ?? payment.confirm_by_date
@@ -209,6 +210,32 @@ export function paymentActionMetadata(
       }),
     });
   }
+  // Item 4(a): a cross-capability link alongside the payment child-detail
+  // action, so a provider following payment's highest-impact child can jump
+  // to the same 3-table attendance-risk view (absence/pending/incomplete)
+  // for that child, not just its payment amounts. No riskFocus - this always
+  // resolves through attendance-formatter.ts's child-scoped-multi-risk view.
+  if (highestImpactChildName && !detailPage) {
+    const attendanceScopeInput: Record<string, unknown> = { childNames: [highestImpactChildName] };
+    const dateFilter = filterInput.dateFilter;
+    const dateFrom = filterInput.dateFrom;
+    const dateTo = filterInput.dateTo;
+    if (typeof dateFilter === "string") attendanceScopeInput.dateFilter = dateFilter;
+    if (typeof dateFrom === "string") attendanceScopeInput.dateFrom = dateFrom;
+    if (typeof dateTo === "string") attendanceScopeInput.dateTo = dateTo;
+    if (!attendanceScopeInput.dateFilter) attendanceScopeInput.dateFilter = "THIS_MONTH";
+    actions.push({
+      actionId: "open-attendance-risk-for-child",
+      capability: "attendance-risk-analysis",
+      tool: "cccap_analyze_payment_risk",
+      label: "Open attendance-risk detail for this child",
+      reason: "See every risk area (absence, pending confirmations, incomplete attendance) for this child, not just the payment figures.",
+      priority: "medium",
+      section: "drill-down",
+      source: "current-result",
+      input: attendanceScopeInput,
+    });
+  }
   if (numericValue(payment.excluded_days) > 0) {
     actions.push({
       actionId: "review-excluded-payment-days",
@@ -291,6 +318,13 @@ export function formatPaymentResult(data: unknown): ToolResult {
       ? "Current service-period forecast"
       : "Payment status";
   const servicePeriod = recordValue(paymentResult.servicePeriod);
+  // A PAID service period is settled: it must not receive the forward-looking
+  // expected/forecasted/at-risk language used by upcoming payment views.
+  const isSettled = paymentResult.paymentView === "LAST_PAYOUT"
+    || paymentResult.periodStatus === "PAID"
+    || payment.periodStatus === "PAID"
+    || servicePeriod?.status === "PAID"
+    || servicePeriod?.service_period_status === "PAID";
   const attendanceContainer = recordValue(paymentResult.attendance);
   const attendanceDays = attendanceContainer?.["days"];
   const excludedOnly = recordValue(paymentResult.filters)?.excludedOnly === true;
@@ -305,13 +339,15 @@ export function formatPaymentResult(data: unknown): ToolResult {
     ? payment.missing_inputs.filter((value): value is string => typeof value === "string")
     : [];
   const summaryView = paymentSummaryView(payment.summary_view);
-  const disclaimers = paymentDisclaimers(payment, paymentResult, attendance);
+  const disclaimers = paymentDisclaimers(payment, paymentResult, attendance, isSettled);
   // The Python engine's real duplicate/already-submitted status string is
   // "SUBMITTED" (see provider_risk_payment_engine.py's payment_status
   // assignment) - checking only "DUPLICATE_GUARD" let a genuinely submitted
   // payment fall through to the default "Blocked" label even though the
   // response carries a complete amount/at-risk breakdown, not a block.
-  const statusLabel = status === "DUPLICATE_GUARD" || status === "SUBMITTED"
+  const statusLabel = isSettled
+    ? "Paid"
+    : status === "DUPLICATE_GUARD" || status === "SUBMITTED"
     ? "Already paid or requested"
     : status === "CONDITIONAL"
       ? "Conditional"
@@ -372,7 +408,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
     }
     const netAmountNumeric = typeof payment.amount === "number" ? payment.amount : Number(payment.amount);
     const amountAtRiskNumeric = typeof payment.amount_at_risk === "number" ? payment.amount_at_risk : Number(payment.amount_at_risk);
-    if (netAmountNumeric === 0 && Number.isFinite(amountAtRiskNumeric) && amountAtRiskNumeric > 0) {
+    if (!isSettled && netAmountNumeric === 0 && Number.isFinite(amountAtRiskNumeric) && amountAtRiskNumeric > 0) {
       lines.push(
         "",
         `This shows ${plainMoney(0)} net because the payable amount is still conditional, not denied - an estimated ${plainMoney(amountAtRiskNumeric)} remains possible once the pending confirmations below are completed. This is an estimate and will change as confirmations are completed.`,
@@ -395,7 +431,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
     // they reuse that table's existing "Expected amount"/"At-risk amount"
     // columns rather than introducing new columns.
     const breakdownRows: Record<string, unknown>[] = [];
-    if (hasAmountBreakdown && detailPage) {
+    if (hasAmountBreakdown && detailPage && !isSettled) {
       lines.push(
         "",
         "Expected - past the confirmation window; likely payable.",
@@ -481,7 +517,14 @@ export function formatPaymentResult(data: unknown): ToolResult {
     // so a detail-page response with a real category breakdown gets both in
     // ONE table instead of the table plus two standalone mini-tables.
     const categoriesWithBreakdown = [...categories, ...breakdownRows];
-    if (categoriesWithBreakdown.length > 0 && activeTableId === "payment-category-rollup") {
+    // "forecast-date-detail" (CURRENT_PERIOD_FORECAST's activeTableId) is
+    // included here alongside the default "payment-category-rollup" -
+    // previously this table only ever rendered for STATUS/CUSTOM_RANGE
+    // views, so a forecast response showed county composition but never
+    // the category breakdown, even though `categories` was already
+    // computed and available. Mirrors the same fix already applied to the
+    // county-composition condition just below.
+    if (categoriesWithBreakdown.length > 0 && (activeTableId === "payment-category-rollup" || activeTableId === "forecast-date-detail")) {
       lines.push("", "Payment by category:", "> This separates only the payment measures available for the requested category view; omitted columns were not populated for this scope.", ...renderCategoryTable(categoriesWithBreakdown));
     }
     // County detail (the flat Days/Hours/Expected/At-risk/Excluded rollup)
@@ -495,7 +538,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
     // composition data (auth/vacant-slot/paid-holiday/drop-in amounts) was
     // already computed and available, just never rendered for this view.
     if (countyComposition.length > 0 && (activeTableId === "payment-county-rollup" || activeTableId === "forecast-date-detail" || (activeTableId === "payment-category-rollup" && categories.length === 0))) {
-      lines.push(...renderCountyComposition(countyComposition));
+      lines.push(...renderCountyComposition(countyComposition, { settled: isSettled }));
     }
     if (childRollup.length > 0 && activeTableId === "payment-category-rollup") {
       // A child name alone does not uniquely identify a child - joining
@@ -507,9 +550,33 @@ export function formatPaymentResult(data: unknown): ToolResult {
           : [];
         return names.length > 0 ? names.join(", ") : "Unavailable from the current source";
       };
-      lines.push("", "Child detail:", "> This shows the payment measures behind the selected child scope; amounts remain estimates or at risk where labeled.", "| Child | Authorization | Days | Care hours | Expected amount | At-risk amount | Excluded days |", "| --- | --- | ---: | ---: | ---: | ---: | ---: |", ...childRollup.map((row) => `| ${tableValue(row.label)} | ${authorizationCell(row)} | ${tableValue(row.days)} | ${tableValue(row.hours)} | ${plainMoney(row.amount)} | ${plainMoney(row.conditional_amount)} | ${tableValue(row.excluded_days)} |`));
+      // Item 4(b): a quick attendance-risk signal per child, derived from
+      // this same response's already-fetched attendance day flags, so the
+      // payment table carries a signal without requiring the extra hop to
+      // open-attendance-risk-for-child. Never fabricates a risk that isn't
+      // backed by a verified flag on one of this child's own days.
+      const attendanceRiskTag = (childName: unknown): string => {
+        const childDays = attendance.filter((day) => day.child_name === childName);
+        if (childDays.length === 0) return "Unavailable from the current source";
+        const tags = new Set<string>();
+        for (const day of childDays) {
+          const flags = Array.isArray(day.flags) ? day.flags.filter((flag): flag is string => typeof flag === "string") : [];
+          if (flags.includes("ABSENCE_LIMIT_EXCEEDED") || flags.includes("ABSENCE_LIMIT_APPROACHING")) tags.add("Absence");
+          if (flags.includes("PARENT_CONFIRMATION_UNAVAILABLE")) tags.add("Pending confirmation");
+          if (flags.includes("MISSING_ATTENDANCE_TRANSACTION")) tags.add("Incomplete attendance");
+        }
+        return tags.size > 0 ? [...tags].join(", ") : "None";
+      };
+      lines.push("", "Child detail:", "> This shows the payment measures behind the selected child scope; amounts remain estimates or at risk where labeled. Attendance risk summarizes this same response's day-level flags - open the attendance-risk detail action below for the complete breakdown.", "| Child | Authorization | Days | Care hours | Expected amount | At-risk amount | Excluded days | Attendance risk |", "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |", ...childRollup.map((row) => `| ${tableValue(row.label)} | ${authorizationCell(row)} | ${tableValue(row.days)} | ${tableValue(row.hours)} | ${plainMoney(row.amount)} | ${plainMoney(row.conditional_amount)} | ${tableValue(row.excluded_days)} | ${attendanceRiskTag(row.label)} |`));
     }
-    if (vacantSlots.length > 0 && activeTableId === "vacant-slot-rollup") {
+    // Vacant-slot contract data is a separate payment scenario that doesn't
+    // depend on attendance - it now renders by default alongside the
+    // category table for any date/period-scoped summarization (not just the
+    // dedicated vacant-slot-rollup drill-down), per the spec's "include a
+    // separate table for vacant slot contract counts" requirement. Still
+    // excluded from single-child/excluded-only views via suppressRollups
+    // (vacant slots are facility-level, not tied to any one child).
+    if (vacantSlots.length > 0 && (activeTableId === "vacant-slot-rollup" || activeTableId === "payment-category-rollup")) {
       // Rollup by county (Total days | Total amount) instead of one row per
       // slot-day - a provider gets the facility-level total at a glance;
       // the full day-by-day breakdown is available through the drill-down
@@ -525,10 +592,16 @@ export function formatPaymentResult(data: unknown): ToolResult {
       lines.push("", "Vacant slots (separate from child payments):", "> This is a facility-level vacant-slot amount and is kept separate from child attendance payments.", "| County | Total days | Total amount |", "| --- | ---: | ---: |", ...[...vacantSlotsByCounty.values()].map((row) => `| ${row.county} | ${row.days} | ${plainMoney(row.amount)} |`));
     }
     if (nextActions.length > 0) {
-      // Bolded the dollar-at-risk figure and day count - previously buried
-      // inline in prose alongside the reason text, making the two numbers
-      // that actually matter easy to skip past while scanning.
-      lines.push("", "**Payment next actions:**", ...nextActions.slice(0, 3).map((row) => `- ${tableValue(row.label)}: ${tableValue(row.reason)} (**${tableValue(row.days)} day(s), ${plainMoney(row.amount_at_risk)} at risk**)`));
+      // Keep the action label canonical and put its explanation/metrics in
+      // prose; appending reason text to labels creates a competing action UI.
+      lines.push(
+        "",
+        "**Payment next actions:**",
+        ...nextActions.slice(0, 3).flatMap((row) => [
+          `- ${tableValue(row.label)}`,
+          `  ${tableValue(row.reason)}${row.days !== undefined || row.amount_at_risk !== undefined ? ` (${tableValue(row.days)} day(s), ${plainMoney(row.amount_at_risk)} at risk)` : ""}`,
+        ]),
+      );
     }
     if (numericValue(payment.total_amount_incorrectly_at_risk) > 0) {
       lines.push(
@@ -556,9 +629,6 @@ export function formatPaymentResult(data: unknown): ToolResult {
           `Actual (checked in): ${tableValue(attendanceContainer?.actual_hours_total)} hours. Scheduled (projected): ${tableValue(attendanceContainer?.scheduled_hours_total)} hours.`,
         );
       }
-      const pageLabel = detailPagination
-        ? `Showing detail rows ${((Number(detailPagination.page) - 1) * Number(detailPagination.pageSize)) + 1}-${Math.min(Number(detailPagination.page) * Number(detailPagination.pageSize), Number(detailPagination.totalRows))} of ${tableValue(detailPagination.totalRows)} (page ${tableValue(detailPagination.page)}; page size ${tableValue(detailPagination.pageSize)}).`
-        : "";
       // Rank by risk and spread across distinct children - a single child's
       // tied absence-limit days must not crowd out every other affected
       // child, so at most MAX_DETAIL_ROWS children are shown, each
@@ -567,6 +637,16 @@ export function formatPaymentResult(data: unknown): ToolResult {
       // a provider who wants everything.
       const displayedAttendance = topRankedRowsByChild(attendance);
       const distinctChildCount = new Set(attendance.map((day) => typeof day.child_name === "string" ? day.child_name : "UNKNOWN")).size;
+      // Fetched-vs-shown reconciliation: detailPagination describes the raw
+      // page fetched from the source (e.g. rows 1-25 of 153), but the table
+      // below only ever renders up to MAX_DETAIL_ROWS ranked rows out of
+      // that page. Stating the fetched range alone (the old "Showing detail
+      // rows..." wording) previously implied the full page would be listed
+      // below it - both figures are now stated together on one line so they
+      // reconcile instead of contradicting each other.
+      const pageLabel = detailPagination
+        ? `Fetched rows ${((Number(detailPagination.page) - 1) * Number(detailPagination.pageSize)) + 1}-${Math.min(Number(detailPagination.page) * Number(detailPagination.pageSize), Number(detailPagination.totalRows))} of ${tableValue(detailPagination.totalRows)} for this page (page ${tableValue(detailPagination.page)}; page size ${tableValue(detailPagination.pageSize)}) - showing the top ${displayedAttendance.length} by risk below.`
+        : "";
       const rankedNote = distinctChildCount > displayedAttendance.length
         ? `Top ${displayedAttendance.length} of ${distinctChildCount} affected children, ranked by risk.`
         : "";
@@ -684,7 +764,12 @@ export function formatPaymentResult(data: unknown): ToolResult {
       label: "Return to payment category summary",
       reason: "Go back to the parent payment view without widening the verified provider scope.",
       priority: "medium",
-      section: "navigation",
+      // Item 2: "navigation" was never read by renderActionSections at all
+      // (it only collects next-actions/drill-down/available-views), so this
+      // action previously never rendered in the text list, only in the raw
+      // actionControls. "return" is the dedicated, always-last, uncapped
+      // bucket renderActionSections now reads.
+      section: "return",
       source: "current-result",
       input: { ...parentInput, viewId: "PAYMENT_CATEGORY_ROLLUP" },
     });
@@ -752,7 +837,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
 export function formatServicePeriodLedgerResult(data: unknown): ToolResult {
   const value = recordValue(data);
   if (!value) return result(data);
-  const labels: Record<string, string> = { NOT_YET_STARTED: "Not yet started", IN_PROGRESS: "In progress", PENDING_CONFIRMATION: "Pending confirmation", EXPECTED_AWAITING_PAYOUT: "Expected, awaiting payout", PAID: "Paid" };
+  const labels: Record<string, string> = { NOT_YET_STARTED: "Not yet started", IN_PROGRESS: "In progress", PENDING_CONFIRMATION: "Pending confirmation", EXPECTED_AWAITING_PAYOUT: "Expected, awaiting payout", OVERDUE: "Overdue, needs follow-up", PAID: "Paid" };
   // shortDateLabel already embeds the 2-digit year (e.g. "31st Aug'26"), so no
   // separate year suffix is appended here.
   const dateLabel = (date: unknown): string => shortDateLabel(date) ?? "Unavailable from the current source";
@@ -781,12 +866,28 @@ export function formatServicePeriodLedgerResult(data: unknown): ToolResult {
     // Legend for the Status column's five possible values - added so a
     // provider doesn't have to guess what "Not yet started" vs "Expected,
     // awaiting payout" actually mean relative to each other.
-    const statusLegend = "> Status: Not yet started = period hasn't begun · In progress = today falls within this period · Pending confirmation = period ended, within the 5-day confirmation window · Expected, awaiting payout = confirmation window passed, not yet due · Paid = released and settled.";
+    const statusLegend = "> Status: Not yet started = period hasn't begun · In progress = today falls within this period · Pending confirmation = period ended, within the 5-day confirmation window · Expected, awaiting payout = confirmation window passed, not yet due · Overdue, needs follow-up = payout date has passed with no confirmed payment - review this period directly · Paid = released and settled.";
     if (multiPeriod) {
       lines.push(`**Showing ${periods.length} service periods from the verified payout ledger. The soonest upcoming payout is estimated at ${estimatedMoney(upcomingHeadlineAmount)}.**`);
       lines.push("", "> This ledger shows every service period in the requested range; released periods show a Net amount, unreleased periods show a Calculated (current estimate) amount.", statusLegend, "| Service period | Payout date | Status | Net amount | Calculated amount | At-risk amount |", "| --- | --- | --- | ---: | ---: | ---: |", ...periods.map(renderPeriodRow));
+      // "Payment by category" was previously never rendered anywhere in this
+      // formatter (only county composition was) - shown here for the
+      // soonest upcoming period only (not every row) to avoid cluttering a
+      // multi-period table with N separate category breakdowns.
+      const upcomingCategories = Array.isArray(upcoming?.categories)
+        ? upcoming.categories.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row))
+        : [];
+      if (upcomingCategories.length > 0) {
+        lines.push("", `Payment by category (soonest upcoming period, ${dateLabel(upcoming?.serviceBeginDate)}-${dateLabel(upcoming?.serviceEndDate)}):`, ...renderCategoryTable(upcomingCategories));
+      }
     } else if (upcoming) {
       lines.push(`**Showing the next upcoming service period only: an estimated ${estimatedMoney(upcomingHeadlineAmount)} on ${dateLabel(upcoming.payoutDate)}.**`, "", "> This shows only the single next unpaid or upcoming payout identified from verified service-period data.", statusLegend, "| Service period | Payout date | Status | Net amount | Calculated amount | At-risk amount |", "| --- | --- | --- | ---: | ---: | ---: |", renderPeriodRow(upcoming));
+      const upcomingCategories = Array.isArray(upcoming.categories)
+        ? upcoming.categories.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row))
+        : [];
+      if (upcomingCategories.length > 0) {
+        lines.push("", "Payment by category:", ...renderCategoryTable(upcomingCategories));
+      }
     } else {
       lines.push("No upcoming unpaid payout is currently identified from verified data.");
     }
@@ -809,7 +910,20 @@ export function formatServicePeriodLedgerResult(data: unknown): ToolResult {
       ? entry.countyComposition.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row))
       : [];
     if (entryCountyComposition.length > 0) {
-      lines.push(...renderCountyComposition(entryCountyComposition));
+      // A released (Paid) period is settled - nothing shown here is
+      // "potential" anymore, so the composition table drops that
+      // disambiguation rather than showing it alongside a settled figure.
+      lines.push(...renderCountyComposition(entryCountyComposition, { settled: isLastPayout }));
+    }
+    // "Payment by category" (Care/Absence/Drop-in/Holiday breakdown) was
+    // never rendered anywhere in this formatter before - only county
+    // composition was. LedgerPeriodEntry.categories threads this through
+    // from the same underlying payment analysis as countyComposition above.
+    const entryCategories = Array.isArray(entry.categories)
+      ? entry.categories.map(recordValue).filter((row): row is Record<string, unknown> => Boolean(row))
+      : [];
+    if (entryCategories.length > 0) {
+      lines.push("", "Payment by category:", ...renderCategoryTable(entryCategories));
     }
   } else lines.push("No upcoming payout is currently identified from verified data.");
   const isLastPayoutEntry = Boolean(entry) && !periods && entry?.periodStatus === "PAID";
@@ -858,14 +972,18 @@ export function formatServicePeriodLedgerResult(data: unknown): ToolResult {
   // own drill-down entries, each with a dynamic date-range label - a
   // provider can otherwise only reach the "next" period, with no
   // discoverable way to open any other listed row.
-  const additionalPeriodActions = multiPeriod && periods
+  const additionalPeriodActions: Record<string, unknown>[] = multiPeriod && periods
     ? periods
         .filter((period) => period !== upcoming)
         .slice(0, 2)
-        .map((period, index) => {
+        .flatMap((period, index) => {
           const begin = dateLabel(period.serviceBeginDate);
           const end = dateLabel(period.serviceEndDate);
-          return {
+          // Skip rather than render a garbled label ("Open Unavailable from
+          // the current source-Unavailable from the current source payout")
+          // when either boundary date can't be resolved to a display value.
+          if (begin === "Unavailable from the current source" || end === "Unavailable from the current source") return [];
+          return [{
             actionId: `open-service-period-${index}`,
             capability: "payment-analysis",
             label: `Open ${begin}-${end} payout`,
@@ -884,13 +1002,53 @@ export function formatServicePeriodLedgerResult(data: unknown): ToolResult {
               dateTo: String(period.serviceEndDate),
               detailDepth: "DETAIL",
             },
-          };
+          }];
         })
+    : [];
+  // Item 7: the multi-period ledger renders only the flat period rollup
+  // table above (confirmed - renderCountyComposition is never called in the
+  // multiPeriod branch); this follow-up action aggregates county-level
+  // composition (Care/Absence/Drop-in/Vacant Slot/Paid Holiday amounts)
+  // across the FULL requested range as the next step, per the ordering
+  // requested: service-period rollup first, county-level composition next.
+  // The single-period case above is unchanged - it already shows composition
+  // inline via the `entry` branch.
+  const rangeBoundaryDates = multiPeriod && periods
+    ? periods.reduce<{ begin?: string; end?: string }>((bounds, period) => {
+        const begin = typeof period.serviceBeginDate === "string" ? period.serviceBeginDate : undefined;
+        const end = typeof period.serviceEndDate === "string" ? period.serviceEndDate : undefined;
+        const nextBegin = begin && (!bounds.begin || begin < bounds.begin) ? begin : bounds.begin;
+        const nextEnd = end && (!bounds.end || end > bounds.end) ? end : bounds.end;
+        return {
+          ...(nextBegin ? { begin: nextBegin } : {}),
+          ...(nextEnd ? { end: nextEnd } : {}),
+        };
+      }, {})
+    : {};
+  const countyCompositionRangeAction = multiPeriod && rangeBoundaryDates.begin && rangeBoundaryDates.end
+    ? [{
+        actionId: "view-county-composition-for-range",
+        capability: "payment-analysis",
+        tool: "cccap_analyze_payment",
+        label: "View county-level payment composition for this range",
+        reason: "Aggregate Care/Absence/Drop-in/Vacant Slot/Paid Holiday amounts by county across every period in this range.",
+        priority: "medium",
+        section: "drill-down",
+        source: "current-result",
+        input: {
+          view: "CUSTOM_RANGE",
+          dateFilter: "DATE_RANGE",
+          dateFrom: rangeBoundaryDates.begin,
+          dateTo: rangeBoundaryDates.end,
+          grouping: "COUNTY",
+        },
+      }]
     : [];
   const actionIntents = multiPeriod
     ? [
         { actionId: "open-next-upcoming-payout", capability: "payment-analysis", label: "Open next upcoming payout", reason: "Focus on the nearest unpaid or upcoming service period.", priority: "high", section: "next-actions", source: "current-result", input: ledgerInput },
         ...additionalPeriodActions,
+        ...countyCompositionRangeAction,
       ]
     : isLastPayoutEntry
       ? [{ actionId: "open-next-upcoming-payout-from-last", capability: "payment-analysis", label: "View next upcoming payout", reason: "See the next payout still ahead, separate from this released one.", priority: "medium", section: "next-actions", source: "current-result", input: { view: "NEXT_PAYOUT" } }]

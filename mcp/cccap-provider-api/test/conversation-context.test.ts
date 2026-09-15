@@ -1,143 +1,72 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ConversationContextStore } from "../src/conversation-context.js";
+import { ConversationContextStore, cacheKeyFor } from "../src/conversation-context.js";
 
-test("context references are provider-bound, expiring, and action-bound", () => {
+test("cached results are provider-bound and expire", () => {
   let now = 0;
   const store = new ConversationContextStore({ now: () => now, ttlMs: 10 });
-  const { contextRef, actionRefs } = store.create("provider-a", "continuation", [{
-    tool: "cccap_analyze_payment_risk",
-    input: { dateFilter: "THIS_MONTH", childNames: ["Taylor Example"] },
-  }]);
+  const key = cacheKeyFor("provider-a", "cccap_analyze_payment_risk", { dateFilter: "THIS_MONTH" });
+  store.cacheResult(key, "provider-a", "continuation", { attendanceRisk: { scheduled_days: 4 } }, "cccap_analyze_payment_risk");
 
-  assert.deepEqual(store.resolve("provider-a", contextRef, actionRefs[0], "continuation"), {
-    tool: "cccap_analyze_payment_risk",
-    input: { dateFilter: "THIS_MONTH", childNames: ["Taylor Example"] },
+  assert.deepEqual(store.getCachedResult(key, "provider-a"), {
+    result: { attendanceRisk: { scheduled_days: 4 } },
+    resultTool: "cccap_analyze_payment_risk",
   });
-  assert.equal(store.resolve("provider-b", contextRef, actionRefs[0], "continuation"), undefined);
+  assert.equal(store.getCachedResult(key, "provider-b"), undefined);
   now = 11;
-  assert.equal(store.resolve("provider-a", contextRef, actionRefs[0], "continuation"), undefined);
+  assert.equal(store.getCachedResult(key, "provider-a"), undefined);
 });
 
-test("context store evicts least-recently-used entries within its entry cap", () => {
+test("cache store evicts least-recently-used entries within its entry cap", () => {
   let now = 0;
   const store = new ConversationContextStore({ now: () => now++, maxEntries: 1 });
-  const first = store.create("provider-a", "continuation", [{ tool: "cccap_analyze_payment", input: { view: "NEXT_PAYOUT" } }]);
-  const second = store.create("provider-a", "continuation", [{ tool: "cccap_analyze_payment", input: { view: "STATUS" } }]);
+  const firstKey = cacheKeyFor("provider-a", "cccap_analyze_payment", { view: "NEXT_PAYOUT" });
+  const secondKey = cacheKeyFor("provider-a", "cccap_analyze_payment", { view: "STATUS" });
+  store.cacheResult(firstKey, "provider-a", "continuation", { payment: { status: "EXPECTED" } }, "cccap_analyze_payment");
+  store.cacheResult(secondKey, "provider-a", "continuation", { payment: { status: "CONDITIONAL" } }, "cccap_analyze_payment");
 
-  assert.equal(store.resolve("provider-a", first.contextRef, first.actionRefs[0], "continuation"), undefined);
-  assert.equal(store.resolve("provider-a", second.contextRef, second.actionRefs[0], "continuation")?.tool, "cccap_analyze_payment");
+  assert.equal(store.getCachedResult(firstKey, "provider-a"), undefined);
+  assert.equal(store.getCachedResult(secondKey, "provider-a")?.resultTool, "cccap_analyze_payment");
 });
 
-test("context stores the canonical result alongside its continuation plan", () => {
-  const result = { attendanceRisk: { scheduled_days: 4 } };
-  const store = new ConversationContextStore();
-  const { contextRef, actionRefs } = store.create("provider-a", "continuation", [{
-    tool: "cccap_analyze_payment_risk",
-    input: { dateFilter: "THIS_MONTH", riskFocus: "PARENT_CONFIRMATIONS" },
-  }], result, "cccap_analyze_payment_risk");
-
-  assert.deepEqual(
-    store.resolve("provider-a", contextRef, actionRefs[0], "continuation"),
-    {
-      tool: "cccap_analyze_payment_risk",
-      input: { dateFilter: "THIS_MONTH", riskFocus: "PARENT_CONFIRMATIONS" },
-      result,
-      resultTool: "cccap_analyze_payment_risk",
-    },
-  );
-});
-
-test("provider session retains executable actions across capability drill-downs", () => {
-  const store = new ConversationContextStore();
-  store.create(
-    "provider-a",
-    "continuation",
-    [{ tool: "cccap_analyze_payment", input: { view: "NEXT_PAYOUT" } }],
-    undefined,
-    undefined,
-    undefined,
-    [{
-      actionId: "review-next-payout",
-      label: "Review the next payout summary",
-      tool: "cccap_analyze_payment",
-      input: { view: "NEXT_PAYOUT" },
-    }],
-  );
-
-  const inherited = store.getInheritedActions("provider-a", [{ actionId: "review-incomplete-attendance" }]);
-  assert.equal(inherited.length, 1);
-  assert.equal(inherited[0]?.actionId, "review-next-payout");
-  assert.deepEqual(inherited[0]?.plan, {
-    tool: "cccap_analyze_payment",
-    input: { view: "NEXT_PAYOUT" },
-  });
-});
-
-test("stable action ids resolve the selected tool plan", () => {
-  const store = new ConversationContextStore();
-  store.create(
-    "provider-a",
-    "continuation",
-    [{ tool: "cccap_analyze_payment", input: { view: "NEXT_PAYOUT", detailPage: 1 } }],
-    { payment: { status: "EXPECTED" } },
-    "cccap_analyze_payment",
-    undefined,
-    [{ actionId: "review-excluded-payment-days", label: "Review excluded days" }],
-  );
-
-  assert.deepEqual(
-    store.resolveAction("provider-a", "review-excluded-payment-days", "cccap_analyze_payment"),
-    {
-      tool: "cccap_analyze_payment",
-      input: { view: "NEXT_PAYOUT", detailPage: 1 },
-      result: { payment: { status: "EXPECTED" } },
-      resultTool: "cccap_analyze_payment",
-    },
-  );
-  assert.equal(
-    store.resolveAction("provider-a", "review-excluded-payment-days", "cccap_analyze_payment_risk"),
-    undefined,
-  );
-});
-
-test("continuation compatibility ignores reference transport fields but rejects changed filters", () => {
-  const store = new ConversationContextStore();
-  const { contextRef, actionRefs } = store.create("provider-a", "continuation", [{
-    tool: "cccap_analyze_payment",
-    input: { dateFilter: "THIS_MONTH", view: "STATUS" },
-  }]);
-
-  assert.ok(store.resolve("provider-a", contextRef, actionRefs[0], "continuation", undefined));
-  assert.equal(store.resolve("provider-a", contextRef, actionRefs[0], "continuation", undefined, { dateFilter: "LAST_MONTH", view: "STATUS" }), undefined);
-});
-
-test("context byte accounting includes provenance and action metadata", () => {
+test("cached result reuse extends the entry's TTL (sliding window)", () => {
   let now = 0;
-  const store = new ConversationContextStore({ now: () => now++, maxBytes: 400 });
-  const first = store.create("provider-a", "continuation", [{
-    tool: "cccap_analyze_payment",
-    input: { view: "STATUS" },
-    provenance: { capability: "attendance-risk-analysis", scope: { dateFilter: "THIS_MONTH" } },
-  }], { large: "x".repeat(100) }, undefined, undefined, [{ actionId: "a", label: "A" }]);
-  assert.equal(store.resolve("provider-a", first.contextRef, first.actionRefs[0], "continuation"), undefined);
+  const store = new ConversationContextStore({ now: () => now, ttlMs: 10 });
+  const key = cacheKeyFor("provider-a", "cccap_analyze_payment_risk", { dateFilter: "THIS_MONTH" });
+  store.cacheResult(key, "provider-a", "continuation", { attendanceRisk: {} }, "cccap_analyze_payment_risk");
+
+  now = 9;
+  assert.ok(store.getCachedResult(key, "provider-a"));
+  now = 15; // would have expired at 10 under a fixed deadline, but the read at now=9 extended it to 19
+  assert.ok(store.getCachedResult(key, "provider-a"));
+  now = 30;
+  assert.equal(store.getCachedResult(key, "provider-a"), undefined);
 });
 
-test("oversized results retain executable action references", () => {
+test("cacheKeyFor only depends on the stable date-scope portion of a request", () => {
+  const withNarrowing = cacheKeyFor("provider-a", "cccap_analyze_payment_risk", {
+    dateFilter: "THIS_MONTH",
+    riskFocus: "ABSENCE_LIMITS",
+    childNames: ["Taylor Example"],
+  });
+  const unscoped = cacheKeyFor("provider-a", "cccap_analyze_payment_risk", { dateFilter: "THIS_MONTH" });
+  assert.equal(withNarrowing, unscoped);
+
+  const differentDate = cacheKeyFor("provider-a", "cccap_analyze_payment_risk", { dateFilter: "LAST_MONTH" });
+  assert.notEqual(withNarrowing, differentDate);
+});
+
+test("oversized results are simply not cached (never an error)", () => {
   const store = new ConversationContextStore({ maxBytes: 1_000 });
-  const created = store.create(
+  const key = cacheKeyFor("provider-a", "cccap_analyze_payment_risk", { dateFilter: "THIS_MONTH" });
+  store.cacheResult(
+    key,
     "provider-a",
     "continuation",
-    [{
-      tool: "cccap_analyze_payment_risk",
-      input: { dateFilter: "THIS_MONTH", riskFocus: "INCOMPLETE_ATTENDANCE" },
-    }],
     { attendanceRisk: { children: [{ child_name: "Example", detail: "x".repeat(10_000) }] } },
     "cccap_analyze_payment_risk",
   );
 
-  const resolved = store.resolve("provider-a", created.contextRef, created.actionRefs[0], "continuation");
-  assert.equal(resolved?.tool, "cccap_analyze_payment_risk");
-  assert.equal(resolved?.result, undefined);
+  assert.equal(store.getCachedResult(key, "provider-a"), undefined);
 });

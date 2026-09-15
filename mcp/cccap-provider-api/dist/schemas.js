@@ -4,12 +4,16 @@ import * as z from "zod/v4";
 // is generous headroom while still rejecting an unbounded/oversized payload.
 const boundedIdentifier = z.string().min(1).max(200);
 const identifierList = z.array(boundedIdentifier).max(50);
+// Stable semantic identifier (e.g. "review-absence-limit-risk") for
+// display/dedup/documentation - see action-labels.md. Distinct from
+// actionToken below, which is the actual signed credential.
 const continuationReference = z.string().min(1).max(64);
-function validateContinuation(value, context) {
-    if (Boolean(value.contextRef) !== Boolean(value.actionRef)) {
-        context.addIssue({ code: "custom", message: "contextRef and actionRef must be supplied together" });
-    }
-}
+// Stateless signed continuation credential (see continuation-token.ts).
+// Replaces the previous contextRef/actionRef pair - the token embeds its
+// own scope/tool/expiry, so no server-side lookup is needed to verify it.
+// Bounded generously: a token can carry a childNames array of up to 50
+// names (see identifierList) plus a few scope fields, base64url-encoded.
+const actionTokenSchema = z.string().min(1).max(4000);
 export const dateFilterSchema = z.enum([
     "TODAY",
     "THIS_MONTH",
@@ -19,11 +23,24 @@ export const dateFilterSchema = z.enum([
     "DATE_RANGE",
 ]);
 const isoDateSchema = z.iso.date();
+// Debug-only passthrough: the provider's exact verbatim chat message/
+// selection for this turn (e.g. "3", "Review absence-limit risk"). Never
+// used for business logic - server.ts's withConversationLogging wrapper
+// strips this out of every request before the real handler ever sees it,
+// so it exists purely to give conversation-logger.ts something to log
+// beyond the structured tool-call arguments (which never reveal what the
+// provider actually typed or which numbered option they picked). Spread
+// into dateScopeShape so every schema that spreads dateScopeShape (nearly
+// all of them) accepts it without a separate per-schema edit.
+const debugMetaShape = {
+    providerUtterance: z.string().max(4000).optional(),
+};
 const dateScopeShape = {
     dateFilter: dateFilterSchema.optional(),
     periodCount: z.number().int().positive().optional(),
     dateFrom: isoDateSchema.optional(),
     dateTo: isoDateSchema.optional(),
+    ...debugMetaShape,
 };
 function validateDateScope(value, context) {
     if ((value.dateFilter === "LAST_N_MONTHS" ||
@@ -127,16 +144,20 @@ export const attendanceAnalysisSchema = z
     authNames: identifierList.min(1).optional(),
     countyNames: identifierList.min(1).optional(),
     riskFocus: z.enum(["PARENT_CONFIRMATIONS", "ABSENCE_LIMITS", "INCOMPLETE_ATTENDANCE"]).optional(),
+    // Real pagination for the ABSENCE_LIMITS child-level drill-down, matching
+    // the same detailPage/detailPageSize contract already used by
+    // paymentAnalysisSchema - lets a provider page through the complete
+    // affected-child list instead of only seeing a capped preview.
+    detailPage: z.number().int().positive().max(10_000).optional(),
+    detailPageSize: z.number().int().positive().max(100).optional(),
     actionId: continuationReference.optional(),
-    contextRef: continuationReference.optional(),
-    actionRef: continuationReference.optional(),
+    actionToken: actionTokenSchema.optional(),
     refresh: z.boolean().optional(),
 })
     .strict()
     .superRefine((value, context) => {
     validateDateScope(value, context);
-    validateContinuation(value, context);
-    if (!value.dateFilter && !(value.contextRef && value.actionRef) && !value.actionId) {
+    if (!value.dateFilter && !value.actionToken && !value.actionId) {
         context.addIssue({ code: "custom", message: "dateFilter is required when a continuation is not supplied" });
     }
 });
@@ -144,6 +165,7 @@ export const paymentComparisonSchema = z.object({
     periodOne: z.object({ dateFrom: isoDateSchema, dateTo: isoDateSchema }).strict(),
     periodTwo: z.object({ dateFrom: isoDateSchema, dateTo: isoDateSchema }).strict(),
     significantDeltaThresholdPct: z.number().nonnegative().max(1000).optional(),
+    ...debugMetaShape,
 }).strict();
 export const paymentAnalysisSchema = z
     .object({
@@ -162,15 +184,13 @@ export const paymentAnalysisSchema = z
     // attendance detail. Backs the "review excluded payment days" action.
     excludedOnly: z.boolean().optional(),
     actionId: continuationReference.optional(),
-    contextRef: continuationReference.optional(),
-    actionRef: continuationReference.optional(),
+    actionToken: actionTokenSchema.optional(),
     refresh: z.boolean().optional(),
 })
     .strict()
     .superRefine((value, context) => {
     validateDateScope(value, context);
-    validateContinuation(value, context);
-    if (!value.view && !value.dateFilter && !(value.contextRef && value.actionRef) && !value.actionId) {
+    if (!value.view && !value.dateFilter && !value.actionToken && !value.actionId) {
         context.addIssue({
             code: "custom",
             message: "dateFilter is required when view is not specified",

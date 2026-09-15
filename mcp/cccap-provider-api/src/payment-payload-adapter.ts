@@ -54,6 +54,11 @@ function resolveOptionalAuthorizationId(
 
 export function normalizeServicePeriod(value: unknown): CanonicalServicePeriod {
   const period = asRecord(value, "service period");
+  // paymentReleaseDate is the real Apex-sourced release date (or its own
+  // ISO-week fallback) from ServicePeriodService.cls - undefined only for a
+  // synthetic CUSTOM_RANGE period with no matching T_SERV_PERIOD__c record.
+  // payout_date stays optional precisely for that case.
+  const releaseDate = period.paymentReleaseDate ?? period.payout_date;
   return {
     id: requiredString(period.servicePeriodId ?? period.id, "service period id"),
     start_date: requiredString(
@@ -64,6 +69,7 @@ export function normalizeServicePeriod(value: unknown): CanonicalServicePeriod {
       period.serviceEndDate ?? period.end_date,
       "service period end date",
     ),
+    ...(typeof releaseDate === "string" && releaseDate.length > 0 ? { payout_date: releaseDate } : {}),
   };
 }
 
@@ -122,6 +128,13 @@ export interface CanonicalAttendanceDay {
   holiday_name?: string;
   holiday_date?: string;
   observed_holiday_date?: string;
+  // The rate type actually scheduled for THIS specific day - an
+  // authorization's schedule days can each carry a different rate type
+  // across one period (live-confirmed: 31/31/31/1/91/43/37 across one
+  // week under the same authorization). Threaded through so the Python
+  // evaluator can select the fiscal rate matching this exact day instead
+  // of collapsing every day of an authorization onto one rate type.
+  rate_type_code?: string;
 }
 
 function requiredNonNegativeNumber(value: unknown, label: string): number {
@@ -209,6 +222,20 @@ export function deriveAttendanceEnrichment(
     );
     const serviceDate = requiredString(schedule.work_date, `schedules[${index}].work_date`);
     const authorization = findAuthorizationForSchedule(schedule, authorizationRecords);
+    // A schedule whose authorization reference cannot be matched to any
+    // authorization record in this response (e.g. its CI_Authorization_Id__c
+    // is absent and its raw Authorization__c lookup does not correspond to
+    // any authorization id/name/external-id returned for this scope) cannot
+    // have its age band, encumbrance status, or client DOB derived at all -
+    // there is nothing here to guess. Previously this fell through to
+    // childIsUnder36Months with an undefined client and threw "child date
+    // of birth is missing", which was misleading (the DOB is not actually
+    // missing from the source - the authorization link for THIS schedule
+    // row never resolved) and crashed enrichment for every other schedule
+    // in the same call via the enclosing forEach. Skip only this
+    // unresolved row; normalizePaymentSourceBundle excludes it from the
+    // payload downstream instead of fabricating enrichment for it.
+    if (!authorization) return;
     const authorizationReferences = new Set([
       authorizationId,
       authorization?.Id,
@@ -363,6 +390,9 @@ export function normalizeAttendanceDays(
       ...(typeof enrichment.holiday_date === "string" ? { holiday_date: enrichment.holiday_date } : {}),
       ...(typeof enrichment.observed_holiday_date === "string"
         ? { observed_holiday_date: enrichment.observed_holiday_date }
+        : {}),
+      ...(typeof schedule.rate_type_code === "string" && schedule.rate_type_code.length > 0
+        ? { rate_type_code: schedule.rate_type_code }
         : {}),
     };
   });
@@ -683,7 +713,16 @@ export function normalizeFiscalRatesForPayment(
   normalizedFiscalRates: unknown,
   authorizationMatches: Record<string, string>,
   authorizationAgeGroupCodes: Record<string, string[]> = {},
-  authorizationRateTypeCodes: Record<string, string> = {},
+  // An authorization's own schedule rows can each use a DIFFERENT rate
+  // type across one service period (live-confirmed: one authorization's 7
+  // days in a week used rate types 31/31/31/1/91/43/37 - overnight,
+  // regular, out-of-county, evening, weekend all under the same
+  // authorization). A single rate-type string here would keep only the
+  // fiscal rate rows for ONE of those rate types and silently exclude
+  // every day whose rate type differs - the confirmed root cause of the
+  // recurring "rate unavailable" exclusions. Every rate type list must be
+  // checked for membership, not equality against one value.
+  authorizationRateTypeCodes: Record<string, string[]> = {},
 ): RecordValue[] {
   const rates = requiredRecords(normalizedFiscalRates, "normalized fiscal rates");
   return rates.flatMap((rate, index) => {
@@ -701,9 +740,9 @@ export function normalizeFiscalRatesForPayment(
     }
     return authorizationIds
       .filter((authorizationId) => {
-        const rateTypeCode = authorizationRateTypeCodes[authorizationId];
+        const rateTypeCodes = authorizationRateTypeCodes[authorizationId];
         const ageGroups = authorizationAgeGroupCodes[authorizationId];
-        return (!rateTypeCode || rate.rateTypeCode === rateTypeCode)
+        return (!rateTypeCodes || rateTypeCodes.length === 0 || rateTypeCodes.includes(String(rate.rateTypeCode)))
           && (!ageGroups || rate.ageGroupCode === undefined
           || ageGroups.includes(String(rate.ageGroupCode)));
       })

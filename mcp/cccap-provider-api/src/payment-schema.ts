@@ -4,6 +4,13 @@ export interface CanonicalServicePeriod {
   id: string;
   start_date: string;
   end_date: string;
+  // Real payout/release date (Apex's DTE_BATCH_FILE_PMT__c via
+  // ServicePeriodService.cls, or its own ISO-week fallback when no stored
+  // record exists) - undefined only for a synthetic CUSTOM_RANGE period
+  // with no matching T_SERV_PERIOD__c record. provider_risk_payment_engine.py's
+  // resolve_payout_date() prefers this over its own compute_payout_date()
+  // formula whenever it's present.
+  payout_date?: string;
 }
 
 export interface CanonicalExistingSubPayment {

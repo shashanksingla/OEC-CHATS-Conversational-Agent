@@ -297,7 +297,6 @@ export async function getAttendanceRiskSnapshot(
       "| --- | ---: |",
       `| Children scheduled | ${today.scheduled_children} |`,
       `| Children checked in | ${today.checked_in_children} |`,
-      "> Scheduled = children with attendance expected today. Checked in = children with a recorded arrival so far today.",
       "",
       attentionLine,
       "",
@@ -336,6 +335,14 @@ export async function getAttendanceRiskAnalysis(
   authNames?: string[],
   riskFocus?: "PARENT_CONFIRMATIONS" | "ABSENCE_LIMITS" | "INCOMPLETE_ATTENDANCE",
   countyNames?: string[],
+  // Real pagination for the ABSENCE_LIMITS child-level drill-down. The Python
+  // evaluator always returns the complete, unfiltered children list for the
+  // scope (it is not a large day-by-day dataset like payment attendance
+  // rows), so no source-side slicing is needed here - detailPage/detailPageSize
+  // pass straight through to the formatter, which already holds the
+  // riskFocus-filtered, criticality-sorted list and slices it there.
+  detailPage?: number,
+  detailPageSize?: number,
 ): Promise<{
   providerDisplayName: string;
   facilityName: string;
@@ -344,6 +351,8 @@ export async function getAttendanceRiskAnalysis(
   scope: DateScope;
   riskFocus: "PARENT_CONFIRMATIONS" | "ABSENCE_LIMITS" | "INCOMPLETE_ATTENDANCE" | undefined;
   countyNames: string[] | undefined;
+  detailPage: number | undefined;
+  detailPageSize: number | undefined;
   sourceRetrievedAt: string;
   situation: SituationEnvelope;
 }> {
@@ -439,14 +448,26 @@ export async function getAttendanceRiskAnalysis(
         .filter((value): value is string => Boolean(value)),
     ),
   ];
-  const scheduleRateTypes = Object.fromEntries(schedules.flatMap((value) => {
+  // An authorization's schedule days can each carry a DIFFERENT rate type
+  // across one period (live-confirmed: one authorization's 7 days in a
+  // week used 5 different rate types) - collecting only the last one seen
+  // per authorization (as a plain Object.fromEntries did previously)
+  // matches the fiscal schedule against just one of them and silently
+  // drops fiscal rates for every other day. Mirrors the same fix in
+  // payment-orchestration.ts's scheduleRateTypes construction.
+  const scheduleRateTypesByKey = new Map<string, Set<string>>();
+  for (const value of schedules) {
     const schedule = asRecord(value);
     const authorizationId = authorizationKey(schedule?.authorization_name ?? schedule?.CI_Authorization_Id__c);
     const rateType = schedule?.rate_type_code ?? schedule?.CI_Authorization_Rate_Type__c;
-    return authorizationId && typeof rateType === "string"
-      ? [[authorizationId, rateType]]
-      : [];
-  }));
+    if (!authorizationId || typeof rateType !== "string") continue;
+    const set = scheduleRateTypesByKey.get(authorizationId) ?? new Set<string>();
+    set.add(rateType);
+    scheduleRateTypesByKey.set(authorizationId, set);
+  }
+  const scheduleRateTypes = Object.fromEntries(
+    [...scheduleRateTypesByKey.entries()].map(([key, set]) => [key, [...set]]),
+  );
   const salesforceAuthorizationIds = authorizationIds.filter(isSalesforceId);
   const authorizationData = authorizationIds.length > 0 || authorizationNames.length > 0
     ? await client.getAuthorizations({
@@ -507,6 +528,8 @@ export async function getAttendanceRiskAnalysis(
       scope,
       riskFocus,
       countyNames,
+      detailPage,
+      detailPageSize,
       sourceRetrievedAt,
       situation,
     };

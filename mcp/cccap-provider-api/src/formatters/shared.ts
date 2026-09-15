@@ -148,7 +148,7 @@ export function amountWithUnit(amount: unknown, count: unknown, unit: "Days" | "
   return `${money} (${numericCount} ${unit})`;
 }
 
-export function renderCountyComposition(rows: Record<string, unknown>[]): string[] {
+export function renderCountyComposition(rows: Record<string, unknown>[], options: { settled?: boolean } = {}): string[] {
   const component = (row: Record<string, unknown>, key: string): Record<string, unknown> =>
     recordValue(row[key]) ?? {};
   const componentHasValue = (key: string, countKey: string): boolean => rows.some((row) => {
@@ -167,7 +167,7 @@ export function renderCountyComposition(rows: Record<string, unknown>[]): string
     ...(componentHasValue("drop_in", "hours") ? ["Drop-in Amount"] : []),
     ...(componentHasValue("vacant_slots", "days") ? ["Vacant Slot Amount"] : []),
     ...(componentHasValue("paid_holidays", "days") ? ["Paid Holiday Amount"] : []),
-    "Potential total",
+    options.settled ? "Total amount" : "Potential total",
   ];
   const separator = headers.map((header) => header === "County" ? "---" : "---:");
   const renderedRows = rows.map((row) => {
@@ -184,6 +184,12 @@ export function renderCountyComposition(rows: Record<string, unknown>[]): string
       ...(componentHasValue("drop_in", "hours") ? [amountWithUnit(dropIn.amount, dropIn.hours, "Hours")] : []),
       ...(componentHasValue("vacant_slots", "days") ? [amountWithUnit(vacantSlots.amount, vacantSlots.days, "Days")] : []),
       ...(componentHasValue("paid_holidays", "days") ? [amountWithUnit(paidHolidays.amount, paidHolidays.days, "Days")] : []),
+      // Always read potential_total - it's the only total field the Python
+      // engine's render_composition ever populates. row.total_amount never
+      // exists (previously read here for a settled period, which always
+      // rendered "Unavailable from the current source"). options.settled
+      // still controls only the column label/legend text above, not which
+      // underlying field is read.
       plainMoney(row.potential_total),
     ];
     return values.join(" | ");
@@ -198,12 +204,18 @@ export function renderCountyComposition(rows: Record<string, unknown>[]): string
     ...(componentHasValue("drop_in", "hours") ? ["Drop-in Amount = unscheduled care outside the child's regular authorization"] : []),
     ...(componentHasValue("vacant_slots", "days") ? ["Vacant Slot Amount = a contracted slot held open with no child attending"] : []),
     ...(componentHasValue("paid_holidays", "days") ? ["Paid Holiday Amount = a county-recognized holiday paid without attendance"] : []),
-    "Potential total = the sum of all populated categories for that county",
+    options.settled
+      ? "Total amount = the sum of all populated categories for that county"
+      : "Potential total = the sum of all populated categories for that county",
   ];
+  // A settled/released (Paid) period has definite actual amounts, not
+  // potential/conditional ones - the "potential amounts" disambiguation is
+  // actively wrong there, not just unnecessary, so it's dropped rather than
+  // shown alongside a settled figure.
   return [
     "",
-    "**County payment composition (potential amounts)**",
-    "> Potential amounts include calculated and conditional amounts; the payable amount remains shown in the summary above.",
+    options.settled ? "**County payment composition**" : "**County payment composition (potential amounts)**",
+    ...(options.settled ? [] : ["> Potential amounts include calculated and conditional amounts; the payable amount remains shown in the summary above."]),
     `> ${legendTerms.join(" · ")}.`,
     `| ${headers.join(" | ")} |`,
     `| ${separator.join(" | ")} |`,
@@ -293,8 +305,53 @@ export function hasAbsenceLimitConcern(child: Record<string, unknown>): boolean 
     || code === "ABSENCE_LIMIT_CONFLICT",
   );
 }
+const MAX_NEXT_ACTIONS = 2;
+
+// Single source of truth for action ordering/capping - used identically by
+// renderActionSections (the rendered "N." text) and actionControls (the
+// structured array the calling agent resolves "position N" against). These
+// two previously diverged: renderActionSections capped "next-actions" to
+// MAX_NEXT_ACTIONS and reordered into [next-actions, drill-down,
+// available-views, return], but actionControls mapped over the raw,
+// uncapped, original-declaration-order actions - so whenever a response had
+// more than MAX_NEXT_ACTIONS next-actions candidates, the rendered "3." and
+// actionControls[2] pointed at two different actions. Routing both through
+// this one function makes that divergence structurally impossible.
+export function orderedActionList(actions: Record<string, unknown>[]): Record<string, unknown>[] {
+  const uniqueActions = [...new Map(actions.map((action) => [String(action.actionId), action])).values()];
+  // Cap to the two highest-priority next actions so the response names the
+  // one or two things that actually matter instead of listing every
+  // candidate action.
+  const nextActions = uniqueActions
+    .filter((action) => action.section === "next-actions")
+    .slice(0, MAX_NEXT_ACTIONS);
+  const drillDown = uniqueActions.filter((action) => action.section === "drill-down");
+  const availableViews = uniqueActions.filter((action) => action.section === "available-options" || action.section === "available-views");
+  // Dedicated "return" bucket: a navigation-back action (return to
+  // attendance summary, return to payment summary) must never be dropped by
+  // the next-actions cap and must always render LAST, after every other
+  // action - it was previously either tagged "next-actions" (and could be
+  // capped away by MAX_NEXT_ACTIONS before it rendered) or tagged
+  // "navigation" (a section this function never read at all, so it silently
+  // never appeared in the text list).
+  const returnActions = uniqueActions.filter((action) => action.section === "return");
+  // Combined into one simple numbered list - priority next-actions first,
+  // then drill-downs, then available views, then return-navigation last -
+  // replacing the previous four separate sections (Priority Actions / Drill
+  // down / Available views / Next step). A single list is inherently
+  // unambiguous to number: the earlier "numbers reserved for exactly one
+  // section" rule existed only to prevent two competing numbered surfaces in
+  // the same response, which cannot happen once every action lives in one
+  // combined list.
+  return [...nextActions, ...drillDown, ...availableViews, ...returnActions];
+}
+
+// Any action dropped here by orderedActionList's cap is now also absent
+// from actionControls, matching renderActionSections's text exactly - an
+// action never shown to the provider as a numbered option is no longer
+// separately resolvable/selectable either.
 export function actionControls(actions: Record<string, unknown>[]): Record<string, unknown>[] {
-  return actions.map((action) => ({
+  return orderedActionList(actions).map((action) => ({
     type: "button",
     actionId: action.actionId,
     label: action.label,
@@ -310,34 +367,81 @@ export function actionControls(actions: Record<string, unknown>[]): Record<strin
     ...(action.view ? { view: action.view } : {}),
   }));
 }
-const MAX_NEXT_ACTIONS = 2;
 
 export function renderActionSections(message: string, actions: Record<string, unknown>[]): string {
   const base = message
     .replace(/\n\*\*Priority Actions\*\*[\s\S]*$/, "")
     .replace(/\n\*\*Recommended actions\*\*[\s\S]*$/, "");
-  const uniqueActions = [...new Map(actions.map((action) => [String(action.actionId), action])).values()];
-  // Cap to the two highest-priority next actions so the response names the
-  // one or two things that actually matter instead of listing every
-  // candidate action.
-  const nextActions = uniqueActions
-    .filter((action) => action.section === "next-actions")
-    .slice(0, MAX_NEXT_ACTIONS);
-  const drillDown = uniqueActions.filter((action) => action.section === "drill-down");
-  const availableViews = uniqueActions.filter((action) => action.section === "available-options" || action.section === "available-views");
-  // Combined into one simple numbered list - priority next-actions first,
-  // then drill-downs, then available views - replacing the previous four
-  // separate sections (Priority Actions / Drill down / Available views /
-  // Next step). A single list is inherently unambiguous to number: the
-  // earlier "numbers reserved for exactly one section" rule existed only to
-  // prevent two competing numbered surfaces in the same response, which
-  // cannot happen once every action lives in one combined list.
-  const combined = [...nextActions, ...drillDown, ...availableViews];
+  const combined = orderedActionList(actions);
   const lines = [base, "", "**Recommended actions**"];
   lines.push(...(combined.length > 0
     ? combined.map((action, index) => `${index + 1}. ${String(action.label)}`)
     : ["No urgent action identified from the current verified result. Ask about the specific child, county, date, or payment detail you want reviewed next."]));
   return lines.join("\n");
+}
+
+// Human-facing label for a riskFocus enum value, for the scope-clarification
+// prompt below - kept intentionally small and local rather than importing
+// from attendance-formatter.ts, to avoid a circular import between the two
+// formatter files.
+function riskFocusLabel(riskFocus: string): string {
+  if (riskFocus === "ABSENCE_LIMITS") return "absence-limit risk";
+  if (riskFocus === "PARENT_CONFIRMATIONS") return "pending parent confirmations";
+  if (riskFocus === "INCOMPLETE_ATTENDANCE") return "incomplete attendance records";
+  return "this risk area";
+}
+
+/**
+ * Renders a short clarifying question instead of running an analysis, for
+ * the case where a freeform riskFocus request's inherited scope granularity
+ * doesn't match the scope the provider's risk figures actually came from
+ * (see scopeGranularity in conversation-context.ts) - e.g. the original
+ * month-wide snapshot introduced these numbers, but the conversation has
+ * since narrowed to one service period via a payout drill-down. Offers
+ * exactly the two live options rather than silently picking one.
+ */
+export function formatScopeClarification(
+  riskFocus: string,
+  periodScope: { dateFrom: string; dateTo: string },
+): ToolResult {
+  const focusLabel = riskFocusLabel(riskFocus);
+  const periodLabel = `${shortDateLabel(periodScope.dateFrom) ?? periodScope.dateFrom}-${shortDateLabel(periodScope.dateTo) ?? periodScope.dateTo}`;
+  const message = [
+    `**Which scope do you want for ${focusLabel}?**`,
+    "The conversation has since narrowed to a specific service period, but the risk figures you were originally shown came from the current month - these can be different numbers.",
+  ].join("\n");
+  const actions: Record<string, unknown>[] = [
+    {
+      actionId: "clarify-scope-month",
+      capability: "attendance-risk-analysis",
+      tool: "cccap_analyze_payment_risk",
+      label: "Use the current month (matches the original snapshot)",
+      reason: "Recompute this review against the same month-wide scope the earlier figures came from.",
+      priority: "high",
+      section: "next-actions",
+      source: "current-result",
+      input: { dateFilter: "THIS_MONTH", riskFocus },
+    },
+    {
+      actionId: "clarify-scope-period",
+      capability: "attendance-risk-analysis",
+      tool: "cccap_analyze_payment_risk",
+      label: `Use just the current period (${periodLabel})`,
+      reason: "Keep the review scoped to the service period currently under discussion.",
+      priority: "high",
+      section: "next-actions",
+      source: "current-result",
+      input: { dateFilter: "DATE_RANGE", dateFrom: periodScope.dateFrom, dateTo: periodScope.dateTo, riskFocus },
+    },
+  ];
+  return {
+    content: [{ type: "text" as const, text: renderActionSections(message, actions) }],
+    structuredContent: {
+      capability: "attendance-risk-analysis",
+      scopeClarification: true,
+      actionIntents: actions,
+    },
+  };
 }
 
 export function countyPaymentSummary(rows: Record<string, unknown>[]): Record<string, unknown>[] {

@@ -23,6 +23,6 @@ export function formatPeriodComparisonResult(data) {
     };
     renderTable("Payment by category:", Array.isArray(value.byCategory) ? value.byCategory : []);
     renderTable("County detail:", Array.isArray(value.byCounty) ? value.byCounty : []);
-    const message = renderActionSections(`${lines.join("\n")}\n\nExpected amount is the payable estimate; At-risk amount is not included where no baseline is available.\n\n${DISCLAIMER_GLOBAL}`, []);
+    const message = renderActionSections(`${lines.join("\n")}\n\nAt-risk amount is not included where no baseline is available.\n\n${DISCLAIMER_GLOBAL}`, []);
     return { content: [{ type: "text", text: message }], structuredContent: { capability: "payment-comparison", periodOne: one, periodTwo: two, netDeltaAmount: value.netDeltaAmount, flaggedDeltas: notable, sourceRetrievedAt: value.sourceRetrievedAt } };
 }

@@ -7,7 +7,7 @@ import {
   deriveFiscalAgeGroupCodes,
   normalizeFiscalRatesForPayment,
 } from "../src/payment-payload-adapter.js";
-import { getPaymentAnalysis } from "../src/payment-orchestration.js";
+import { getPaymentAnalysis, getUpcomingPayoutDetail } from "../src/payment-orchestration.js";
 import { normalizePaymentStatus } from "../src/payment-schema.js";
 import { normalizeQualityTier } from "../src/provider-policy.js";
 import { normalizeScheduleAttendance } from "../src/schedule-normalizer.js";
@@ -403,6 +403,24 @@ test("next payout initializes provider scope before selecting its service period
   assert.deepEqual(events, ["initialize:{}"]);
 });
 
+test("next payout ledger initializes provider scope before reading service periods", async () => {
+  const events: string[] = [];
+  const client = {
+    async initialize() {
+      events.push("initialize");
+    },
+    async getServicePeriods() {
+      events.push("service period");
+      return { servicePeriods: [] };
+    },
+  } as unknown as Parameters<typeof getUpcomingPayoutDetail>[0];
+
+  const result = await getUpcomingPayoutDetail(client, {}, "2026-09-15");
+
+  assert.equal(result.entry, undefined);
+  assert.deepEqual(events, ["initialize", "service period"]);
+});
+
 test("payment orchestration runs the canonical payload through the evaluator", async () => {
   let authorizationRequest: Record<string, unknown> | undefined;
   let paymentHistoryCalls = 0;
@@ -509,7 +527,10 @@ test("payment orchestration runs the canonical payload through the evaluator", a
   ) as Record<string, unknown>;
   const payment = result.payment as Record<string, unknown>;
 
-  assert.deepEqual(authorizationRequest?.scheduleRateTypes, { "auth-1": "1" });
+  // scheduleRateTypes now collects every rate type an authorization's
+  // schedule days actually use (not just the last one seen) - see
+  // payment-orchestration.ts's scheduleRateTypes construction.
+  assert.deepEqual(authorizationRequest?.scheduleRateTypes, { "auth-1": ["1"] });
   assert.equal(paymentHistoryCalls, 1);
   assert.equal(result.paymentView, "STATUS");
   assert.equal(result.source_readiness, "COMPLETE");
