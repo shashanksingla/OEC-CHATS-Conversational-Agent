@@ -415,7 +415,7 @@ Files touched:
        tool: "cccap_analyze_payment",
 -      label: "Forecast this week's services payout",
 -      reason: "Project this week's actual and scheduled services into an estimated payout.",
-+      label: "Forecast this period's services payout",
++      label: "Estimate current week's service payout",
 +      reason: "Project this service period's actual and scheduled services into an estimated payout.",
        priority: "medium",
        section: "available-options",

@@ -121,7 +121,7 @@ Recommended actions
 1. [Canonical label from skills/agent-child-care-payment-advisor/references/action-labels.md]
 2. [Optional second canonical label from another returned finding or source limitation]
 3. Open upcoming payout summary
-4. Forecast this period's services payout
+4. Estimate current week's service payout
 ```
 
 The rendered greeting risk table's third column is `Potential Loss (Care Hours)` (not a `Status`/`Finding` prose column): the scheduled hours behind that row's unresolved days — every pending-confirmation or missing-check-in day's hours count in full (nothing is resolved either way yet), while the absence-limit row counts only the hours for absence days actually over the county limit, not every absence day. Never derive it from anything other than the row's own verified `potential_loss_hours` figure; show `0.00 hour(s)` for a row with no risk, never omit the row. The review action itself lives in the Recommended actions list below, not restated in this table. The payment-readiness table always contains exactly those three rows (approaching and crossed absence-limit risk combined into one row, per the current redesign), even when a value is zero. For no risk, use a short plain finding such as `No pending parent confirmations` or `No children currently near or over county monthly absence limits`. Do not add generic rows such as `Attendance`, `Payments`, `Unavailable`, or `Required measure unavailable`.

@@ -34,7 +34,7 @@ This is the single source of truth for every `action_id`'s provider-facing label
 | `review-attendance-records` | `Review attendance records` | none — generic fallback when no specific risk qualifies |
 | `open-attendance-detail` | `Open highest-impact attendance detail` | none |
 | `review-next-payout` | `View upcoming payout summary` | none |
-| `forecast-current-period-services` | `Forecast this period's services payout` | none |
+| `forecast-current-period-services` | `Estimate current week's service payout` | none |
 | `return-to-payment-summary` | `Return to payment category summary` | none |
 | `open-next-upcoming-payout-from-last` | `View next upcoming payout` | none |
 | `retry-payment-analysis` | `Retry payment review` | none |

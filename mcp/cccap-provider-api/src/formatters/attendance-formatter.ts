@@ -1000,7 +1000,7 @@ export function actionMetadata(
       actionId: "forecast-current-period-services",
       capability: "payment-analysis",
       tool: "cccap_analyze_payment",
-      label: "Forecast this period's services payout",
+      label: "Estimate current week's service payout",
       reason: "Project this service period's actual and scheduled services into an estimated payout.",
       priority: "medium",
       section: "available-options",
