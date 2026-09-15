@@ -252,33 +252,6 @@ function toolError(capability, error) {
         },
     };
 }
-function paymentClarification(request) {
-    const filterKinds = [request.childNames, request.authNames, request.countyNames]
-        .filter((value) => Array.isArray(value) && value.length > 0).length;
-    const missingGrouping = !request.grouping && filterKinds > 1;
-    const missingScope = request.grouping === "CHILD" && (!request.childNames || request.childNames.length === 0)
-        ? "childNames"
-        : request.grouping === "COUNTY" && (!request.countyNames || request.countyNames.length === 0)
-            ? "countyNames"
-            : undefined;
-    if (!missingGrouping && !missingScope)
-        return undefined;
-    const question = missingScope
-        ? `Which ${missingScope === "childNames" ? "child" : "county"} should this payment summary be grouped by? Provide ${missingScope}.`
-        : "Which grouping should this filtered payment summary use: CHILD, COUNTY, CATEGORY, or SERVICE_PERIOD?";
-    return {
-        content: [{ type: "text", text: question }],
-        structuredContent: {
-            capability: "payment-analysis",
-            status: "CLARIFICATION_REQUIRED",
-            clarificationRequired: true,
-            clarificationQuestion: question,
-            availableGroupings: ["SERVICE_PERIOD", "COUNTY", "CHILD", "CATEGORY"],
-            scope: request,
-            responseSections: ["clarification"],
-        },
-    };
-}
 async function execute(capability, operation, formatResult = result) {
     try {
         return formatResult(await operation());
@@ -510,17 +483,8 @@ export function createServer(client, providerDisplayName, contextStore = new Con
         // and so `request.view`'s type never carries the alias past this point.
         const normalizedView = resolvedRequest.view === "CURRENT_PERIOD_FORECAST" ? "CURRENT_WEEK_FORECAST" : resolvedRequest.view;
         const request = { ...resolvedRequest, view: normalizedView };
-        const clarification = paymentClarification({
-            ...(request.grouping ? { grouping: request.grouping } : {}),
-            ...(request.childNames ? { childNames: request.childNames } : {}),
-            ...(request.authNames ? { authNames: request.authNames } : {}),
-            ...(request.countyNames ? { countyNames: request.countyNames } : {}),
-        });
-        if (clarification)
-            return clarification;
         if (input.refresh)
             client.clearReadCache();
-        const requestsDetailPage = request.detailDepth === "DETAIL" || request.detailPage !== undefined || request.detailPageSize !== undefined;
         // NEXT_PAYOUT/LAST_PAYOUT/PAYOUT_LEDGER all render through the ledger
         // formatter (single or multi-period), never the payment-summary
         // formatter - keep the cached-continuation branch and the routing
@@ -530,7 +494,7 @@ export function createServer(client, providerDisplayName, contextStore = new Con
         // cccap_analyze_payment_risk above. A miss falls straight through to
         // a fresh evaluation, never an error.
         const cacheKey = cacheKeyFor(providerKey, "cccap_analyze_payment", request);
-        const cached = !input.refresh && !requestsDetailPage
+        const cached = !input.refresh
             ? contextStore.getCachedResult(cacheKey, providerKey)
             : undefined;
         if (cached && cached.resultTool === "cccap_analyze_payment") {
@@ -581,11 +545,6 @@ export function createServer(client, providerDisplayName, contextStore = new Con
             ...(request.childNames ? { childNames: request.childNames } : {}),
             ...(request.authNames ? { authNames: request.authNames } : {}),
             ...(request.countyNames ? { countyNames: request.countyNames } : {}),
-            ...(request.grouping ? { grouping: request.grouping } : {}),
-            ...(request.detailDepth ? { detailDepth: request.detailDepth } : {}),
-            ...(request.detailPage ? { detailPage: request.detailPage } : {}),
-            ...(request.detailPageSize ? { detailPageSize: request.detailPageSize } : {}),
-            ...(request.excludedOnly ? { excludedOnly: true } : {}),
         }), (data) => attachDialogueState(contextualize(formatPaymentResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
         const paymentResult = await runPaymentAnalysis();
         if (paymentResult.isError && !hasContinuation && !input.refresh) {

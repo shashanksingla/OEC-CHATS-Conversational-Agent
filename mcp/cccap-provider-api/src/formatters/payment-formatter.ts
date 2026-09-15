@@ -147,9 +147,7 @@ function exclusionReason(day: Record<string, unknown>): string {
 export function paymentActionMetadata(
   paymentResult: Record<string, unknown>,
   payment: Record<string, unknown>,
-  detailPagination: Record<string, unknown> | undefined,
   status: string,
-  detailPage: boolean,
 ): Record<string, unknown>[] {
   const filterInput = recordValue(paymentResult.filters) ?? {};
   const highestImpactChildName = typeof paymentResult.highestImpactChildName === "string"
@@ -174,25 +172,7 @@ export function paymentActionMetadata(
   const actions: Record<string, unknown>[] = [];
   const attendance = recordValue(paymentResult.attendance);
   const returnedRows = Array.isArray(attendance?.days) ? attendance.days.length : 0;
-  const totalRows = detailPagination
-    ? numericValue(detailPagination.totalRows)
-    : returnedRows;
-  const hasMore = detailPagination?.hasMore === true;
-  if (detailPage && hasMore) {
-    actions.push({
-      actionId: "next-payment-detail-page",
-      capability: "payment-analysis",
-      tool: "cccap_analyze_payment",
-      label: "Open next payment detail page",
-      reason: "Continue reviewing the remaining payment rows in priority order.",
-      priority: "medium",
-      section: "drill-down",
-      source: "current-result",
-      input: {
-        ...paymentInput({ detailPage: numericValue(detailPagination?.page) + 1 }),
-      },
-    });
-  } else if (!detailPage && totalRows > 0) {
+  if (returnedRows > 0) {
     actions.push({
       actionId: highestImpactRankedByDollars === false ? "open-highest-hours-child-detail" : "open-payment-detail",
       capability: "payment-analysis",
@@ -205,7 +185,6 @@ export function paymentActionMetadata(
       section: "drill-down",
       source: "current-result",
       input: paymentInput({
-        detailPage: 1,
         ...(highestImpactChildName ? { childNames: [highestImpactChildName] } : {}),
       }),
     });
@@ -215,7 +194,7 @@ export function paymentActionMetadata(
   // to the same 3-table attendance-risk view (absence/pending/incomplete)
   // for that child, not just its payment amounts. No riskFocus - this always
   // resolves through attendance-formatter.ts's child-scoped-multi-risk view.
-  if (highestImpactChildName && !detailPage) {
+  if (highestImpactChildName) {
     const attendanceScopeInput: Record<string, unknown> = { childNames: [highestImpactChildName] };
     const dateFilter = filterInput.dateFilter;
     const dateFrom = filterInput.dateFrom;
@@ -234,19 +213,6 @@ export function paymentActionMetadata(
       section: "drill-down",
       source: "current-result",
       input: attendanceScopeInput,
-    });
-  }
-  if (numericValue(payment.excluded_days) > 0) {
-    actions.push({
-      actionId: "review-excluded-payment-days",
-      capability: "payment-analysis",
-      tool: "cccap_analyze_payment",
-      label: "Review excluded payment days",
-      reason: "Excluded days may explain a lower estimated amount.",
-      priority: "high",
-      section: "next-actions",
-      source: "current-result",
-      input: paymentInput({ detailPage: 1, excludedOnly: true }),
     });
   }
   if (actions.length === 0) {
@@ -299,13 +265,10 @@ export function formatPaymentResult(data: unknown): ToolResult {
   const detailPagination = recordValue(paymentResult.detailPagination);
   const detailPage = detailPagination && Number(detailPagination.page) > 0;
   const paymentFilters = recordValue(paymentResult.filters);
-  const requestedGrouping = typeof paymentFilters?.grouping === "string" ? paymentFilters.grouping : undefined;
   const requestedTableId = paymentResult.tableId === "payment-county-rollup" || paymentResult.tableId === "vacant-slot-rollup"
     ? paymentResult.tableId
     : undefined;
-  const activeTableId = requestedTableId ?? (requestedGrouping === "COUNTY" && !detailPage
-    ? "payment-county-rollup"
-    : status === "BLOCKED" && paymentResult.paymentView === "NEXT_PAYOUT"
+  const activeTableId = requestedTableId ?? (status === "BLOCKED" && paymentResult.paymentView === "NEXT_PAYOUT"
     ? "payout-summary"
     : paymentResult.paymentView === "CURRENT_WEEK_FORECAST"
       ? "forecast-date-detail"
@@ -327,13 +290,11 @@ export function formatPaymentResult(data: unknown): ToolResult {
     || servicePeriod?.service_period_status === "PAID";
   const attendanceContainer = recordValue(paymentResult.attendance);
   const attendanceDays = attendanceContainer?.["days"];
-  const excludedOnly = recordValue(paymentResult.filters)?.excludedOnly === true;
   const attendance = Array.isArray(attendanceDays)
     ? attendanceDays
         .map(recordValue)
         .filter((row): row is Record<string, unknown> => Boolean(row))
         .filter((row) => row.classification !== "NO_CARE")
-        .filter((row) => !excludedOnly || row.payment_excluded === true)
     : [];
   const missingInputs = Array.isArray(payment.missing_inputs)
     ? payment.missing_inputs.filter((value): value is string => typeof value === "string")
@@ -445,12 +406,10 @@ export function formatPaymentResult(data: unknown): ToolResult {
         forecastedAmount > 0 ? DISCLAIMER_FORECASTED : undefined,
       ].filter((disclaimer): disclaimer is string => Boolean(disclaimer));
       if (breakdownDisclaimers.length > 0) lines.push(breakdownDisclaimers.join(" "));
-      if (!excludedOnly) {
-        breakdownRows.push(
-          { label: "Expected", amount: payment.expected_amount },
-          { label: "Forecasted", amount: payment.forecasted_amount },
-        );
-      }
+      breakdownRows.push(
+        { label: "Expected", amount: payment.expected_amount },
+        { label: "Forecasted", amount: payment.forecasted_amount },
+      );
       breakdownRows.push({ label: "Excluded or flagged (at-risk)", conditional_amount: payment.at_risk_amount });
     }
     // Table 8 ("County payment totals") retired - County payment
@@ -463,15 +422,11 @@ export function formatPaymentResult(data: unknown): ToolResult {
     // category/county/child rollups restate the same totals and are the
     // main contributor to an oversized response for these cases, so they
     // are omitted here rather than rendered and then discarded by the client.
-    const suppressRollups = excludedOnly || singleChildFilter;
-    const categories = suppressRollups || (requestedGrouping !== undefined && !["CATEGORY", "SERVICE_PERIOD"].includes(requestedGrouping))
-      ? [] : summaryRows(summaryView, "categories");
-    const countyRollup = suppressRollups || (requestedGrouping !== undefined && requestedGrouping !== "COUNTY")
-      ? [] : summaryRows(summaryView, "counties");
-    const countyComposition = suppressRollups || (requestedGrouping !== undefined && requestedGrouping !== "COUNTY")
-      ? [] : summaryRows(summaryView, "county_composition");
-    const childRollup = suppressRollups || (requestedGrouping !== undefined && requestedGrouping !== "CHILD")
-      ? [] : summaryRows(summaryView, "children");
+    const suppressRollups = singleChildFilter;
+    const categories = suppressRollups ? [] : summaryRows(summaryView, "categories");
+    const countyRollup = suppressRollups ? [] : summaryRows(summaryView, "counties");
+    const countyComposition = suppressRollups ? [] : summaryRows(summaryView, "county_composition");
+    const childRollup = suppressRollups ? [] : summaryRows(summaryView, "children");
     const vacantSlots = suppressRollups ? [] : summaryRows(summaryView, "vacant_slots");
     const nextActions = summaryRows(summaryView, "next_actions");
     if (overview && activeTableId === "payment-category-rollup") {
@@ -486,11 +441,9 @@ export function formatPaymentResult(data: unknown): ToolResult {
       // unrelated figure.
       const rawCategories = summaryRows(summaryView, "categories");
       const dropInCategory = rawCategories.find((row) => tableValue(row.label) === "Drop-in");
-      const lastColumn = excludedOnly
-        ? undefined
-        : singleChildFilter
-          ? { label: "Drop-in amount", value: plainMoney(dropInCategory?.amount ?? 0) }
-          : { label: "Vacant-slot amount", value: plainMoney(payment.vacant_slot_fee) };
+      const lastColumn = singleChildFilter
+        ? { label: "Drop-in amount", value: plainMoney(dropInCategory?.amount ?? 0) }
+        : { label: "Vacant-slot amount", value: plainMoney(payment.vacant_slot_fee) };
       // "Excluded days" is dropped here too, for consistency with the Measure
       // table: it duplicates the per-row exclusion reasons already shown in
       // the Attendance type brackets in the detail table below, and reads as
@@ -752,7 +705,7 @@ export function formatPaymentResult(data: unknown): ToolResult {
       totalRows: numericValue(detailPagination.totalRows),
     } : {}),
   });
-  const actionIntents = paymentActionMetadata(paymentResult, payment, detailPagination, status, Boolean(detailPage));
+  const actionIntents = paymentActionMetadata(paymentResult, payment, status);
   if (detailPage) {
     const parentInput = { ...(paymentFilters ?? {}) } as Record<string, unknown>;
     delete parentInput.detailPage;
@@ -959,7 +912,6 @@ export function formatServicePeriodLedgerResult(data: unknown): ToolResult {
         dateFilter: "DATE_RANGE",
         dateFrom: String(selectedPeriod.serviceBeginDate),
         dateTo: String(selectedPeriod.serviceEndDate),
-        detailDepth: "DETAIL",
       }
     : {
         view: "NEXT_PAYOUT",
@@ -1000,7 +952,6 @@ export function formatServicePeriodLedgerResult(data: unknown): ToolResult {
               dateFilter: "DATE_RANGE",
               dateFrom: String(period.serviceBeginDate),
               dateTo: String(period.serviceEndDate),
-              detailDepth: "DETAIL",
             },
           }];
         })

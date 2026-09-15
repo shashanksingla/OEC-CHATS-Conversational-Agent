@@ -1,7 +1,6 @@
 import {
   normalizePaymentStatus,
   type CanonicalExistingSubPayment,
-  type CanonicalPaymentFeeSchedule,
   type CanonicalVacantSlotSchedule,
   type CanonicalServicePeriod,
   type RecordValue,
@@ -11,7 +10,6 @@ import { normalizeQualityTier } from "./provider-policy.js";
 export {
   normalizePaymentStatus,
   type CanonicalExistingSubPayment,
-  type CanonicalPaymentFeeSchedule,
   type CanonicalServicePeriod,
 } from "./payment-schema.js";
 
@@ -408,35 +406,8 @@ export interface CanonicalPaymentPayload {
   county_policies: RecordValue[];
   fiscal_rates: RecordValue[];
   existing_sub_payments: CanonicalExistingSubPayment[];
-  authorization_copays?: RecordValue[];
-  fee_schedules?: CanonicalPaymentFeeSchedule[];
   fee_history?: RecordValue[];
   vacant_slot_schedules?: CanonicalVacantSlotSchedule[];
-}
-
-export function normalizeAuthorizationCopays(
-  value: unknown,
-  authorizations: RecordValue[] = [],
-): RecordValue[] {
-  if (!Array.isArray(value)) throw new Error("authorization copays must be an array");
-  return value.map((item, index) => {
-    const row = asRecord(item, `authorizationCopays[${index}]`);
-    const authorizationId = resolveAuthorizationId(
-      row.idn_auth__c,
-      authorizations,
-      `authorizationCopays[${index}].idn_auth__c`,
-    );
-    const amount = row.amt_copay_auth__c;
-    if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0) {
-      throw new Error(`authorizationCopays[${index}].amt_copay_auth__c must be non-negative`);
-    }
-    return {
-      authorization_id: authorizationId,
-      amount,
-      effective_start: row.dte_begin_effv__c,
-      effective_end: row.dte_end_effv__c,
-    };
-  });
 }
 
 function optionalNonNegativeNumber(value: unknown, label: string): number | undefined {
@@ -452,6 +423,13 @@ function optionalFiniteNumber(value: unknown, label: string): number | undefined
   return value;
 }
 
+// Kept despite the ART/copay removal: this feeds evaluate_attendance's
+// history-based absence-limit and drop-in-limit counting (_history_count)
+// and paid-holiday-on-paired-date detection (_holiday_paid_on_paired_date)
+// in provider_risk_payment_engine.py via payload.get("fee_history") -
+// both explicitly kept features, unrelated to the removed ART fee-offset
+// calculation that used to also read this same array's activity_paid/
+// registration_paid/transportation_paid/slot_paid fields.
 export function normalizePaymentFeeHistory(
   value: unknown,
   authorizations: RecordValue[] = [],
@@ -477,110 +455,13 @@ export function normalizePaymentFeeHistory(
         `payment detail[${index}].authorization_id`,
       ),
       service_date: requiredString(detail.dte_care__c, `payment detail[${index}].dte_care__c`),
-      activity_paid: optionalFiniteNumber(detail.amt_act_paid__c, `payment detail[${index}].amt_act_paid__c`) ?? 0,
-      registration_paid: optionalFiniteNumber(detail.amt_reg_paid__c, `payment detail[${index}].amt_reg_paid__c`) ?? 0,
-      transportation_paid: optionalFiniteNumber(detail.amt_trans_paid__c, `payment detail[${index}].amt_trans_paid__c`) ?? 0,
-      slot_paid: optionalFiniteNumber(detail.amt_slot_paid__c, `payment detail[${index}].amt_slot_paid__c`) ?? 0,
     };
     if (detail.cde_type_info_addntl__c !== undefined) normalized.info_code = detail.cde_type_info_addntl__c;
-    const expectedHours = optionalNonNegativeNumber(detail.cnt_unit_care_exptd__c, `payment detail[${index}].cnt_unit_care_exptd__c`);
-    const actualHours = optionalNonNegativeNumber(detail.cnt_unit_care_actual__c, `payment detail[${index}].cnt_unit_care_actual__c`);
-    if (expectedHours !== undefined) normalized.expected_hours = expectedHours;
-    if (actualHours !== undefined) normalized.actual_hours = actualHours;
-    if (detail.ind_adjmt__c !== undefined) normalized.adjusted = detail.ind_adjmt__c === true;
-    if (detail.ind_recovery__c !== undefined) normalized.recovery = detail.ind_recovery__c === true;
     if (detail.ind_record_delete_logcl__c !== undefined) {
       normalized.deleted = detail.ind_record_delete_logcl__c === true;
     }
     return normalized;
   });
-}
-
-export function normalizePaymentFeeSchedules(
-  normalizedFiscalRates: unknown,
-  normalizedFiscalRateFees: unknown,
-  slotContracts: unknown,
-  authorizationMatches: Record<string, string>,
-): CanonicalPaymentFeeSchedule[] {
-  const rates = requiredRecords(normalizedFiscalRates, "normalized fiscal rates");
-  const fees = requiredRecords(normalizedFiscalRateFees, "normalized fiscal rate fees");
-  if (!Array.isArray(slotContracts)) throw new Error("slot contracts must be an array");
-  return slotContracts
-    .filter((item) => {
-      const slot = asRecord(item, "slot contract");
-      return slot.IDN_AUTH__c !== null && slot.IDN_AUTH__c !== undefined;
-    })
-    .flatMap((item, index) => {
-    const slot = asRecord(item, `slotContracts[${index}]`);
-    const authorizationId = requiredString(slot.IDN_AUTH__c, `slotContracts[${index}].IDN_AUTH__c`);
-    const fiscalScheduleId = authorizationMatches[authorizationId];
-    if (!fiscalScheduleId) return [];
-    const rateTypeCode = requiredString(slot.CDE_RATE_TYPE__c, `slotContracts[${index}].CDE_RATE_TYPE__c`);
-    const careUnitCode = requiredString(slot.CDE_CARE_UNIT__c, `slotContracts[${index}].CDE_CARE_UNIT__c`);
-    const careLevelCode = requiredString(slot.CDE_CARE_LEVEL__c, `slotContracts[${index}].CDE_CARE_LEVEL__c`);
-    const matchingRates = rates.filter((rate) =>
-      rate.fiscalScheduleId === fiscalScheduleId
-      && rate.rateTypeCode === rateTypeCode
-      && rate.careUnitCode === careUnitCode
-      && rate.ageGroupCode === careLevelCode,
-    );
-    if (matchingRates.length !== 1) return [];
-    const rate = matchingRates[0];
-    if (!rate) return [];
-    const matchingFees = fees.filter((fee) => fee.fiscalScheduleId === fiscalScheduleId);
-    if (matchingFees.length > 1) throw new Error(`fiscal schedule ${fiscalScheduleId} has ambiguous fee rows`);
-    const fee = matchingFees[0];
-    const result: CanonicalPaymentFeeSchedule = {
-      authorization_id: authorizationId,
-      fiscal_schedule_id: fiscalScheduleId,
-      slot_contract_id: requiredString(slot.Id, `slotContracts[${index}].Id`),
-      care_level: requiredString(slot.CDE_CARE_LEVEL__c, `slotContracts[${index}].CDE_CARE_LEVEL__c`),
-      effective_start: requiredString(slot.DTE_BEGIN_SLOT__c, `slotContracts[${index}].DTE_BEGIN_SLOT__c`),
-      slot_rate_amount: Number(rate.fiscalAgreementAmount),
-    };
-    const effectiveEnd = slot.DTE_END_SLOT__c;
-    if (effectiveEnd !== undefined && effectiveEnd !== null) {
-      result.effective_end = requiredString(effectiveEnd, `slotContracts[${index}].DTE_END_SLOT__c`);
-    }
-    const daysOfMonth = optionalNonNegativeNumber(slot.CNT_DAYS_OF_MONTH__c, `slotContracts[${index}].CNT_DAYS_OF_MONTH__c`);
-    const daysOfWeek = slot.CNT_DAYS_OF_WEEK__c;
-    if (daysOfMonth !== undefined) result.days_of_month = daysOfMonth;
-    if (typeof daysOfWeek === "string" && daysOfWeek) result.days_of_week = daysOfWeek;
-    else if (typeof daysOfWeek === "number" && Number.isFinite(daysOfWeek) && daysOfWeek >= 0) result.days_of_week = daysOfWeek;
-    if (fee) {
-      const amountFields: Array<[string, keyof CanonicalPaymentFeeSchedule]> = [
-        ["activityFiscalAgreementAmount", "activity_amount"],
-        ["registrationFiscalAgreementAmount", "registration_amount"],
-        ["transportationFiscalAgreementAmount", "transportation_amount"],
-      ];
-      amountFields.forEach(([source, target]) => {
-        if (fee[source] !== undefined) (result as unknown as RecordValue)[target] = Number(fee[source]);
-      });
-      const capFields: Array<[string, keyof CanonicalPaymentFeeSchedule]> = [
-        ["activityFiscalAgreementAmount", "activity_provider_cap"],
-        ["activityCountyAmount", "activity_county_cap"],
-        ["registrationFiscalAgreementAmount", "registration_provider_cap"],
-        ["registrationCountyAmount", "registration_county_cap"],
-        ["transportationFiscalAgreementAmount", "transportation_provider_cap"],
-        ["transportationCountyAmount", "transportation_county_cap"],
-      ];
-      capFields.forEach(([source, target]) => {
-        if (fee[source] !== undefined) (result as unknown as RecordValue)[target] = Number(fee[source]);
-      });
-      const scheduleFields: Array<[string, keyof CanonicalPaymentFeeSchedule]> = [
-        ["activityFrequency", "activity_frequency"],
-        ["activityMonths", "activity_months"],
-        ["registrationFrequency", "registration_frequency"],
-        ["registrationMonths", "registration_months"],
-        ["transportationFrequency", "transportation_frequency"],
-        ["transportationMonths", "transportation_months"],
-      ];
-      scheduleFields.forEach(([source, target]) => {
-        if (fee[source] !== undefined) (result as unknown as RecordValue)[target] = fee[source];
-      });
-    }
-      return [result];
-    });
 }
 
 function requiredRecords(value: unknown, label: string): RecordValue[] {
@@ -599,7 +480,6 @@ export function buildCanonicalPaymentPayload(input: {
   fiscalRates: unknown;
   paymentHistory: unknown;
   authorizationRecords?: RecordValue[];
-  feeSchedules?: CanonicalPaymentFeeSchedule[];
   feeHistory?: RecordValue[];
   vacantSlotSchedules?: CanonicalVacantSlotSchedule[];
   providerClosureDates?: string[];
@@ -616,44 +496,6 @@ export function buildCanonicalPaymentPayload(input: {
   const countyPolicyById = new Map(
     countyPolicyRows.map((row) => [String(row.countyId ?? row.CDE_COUNTY__c ?? ""), row]),
   );
-  const enrichedFeeSchedules = input.feeSchedules?.map((schedule) => {
-    const authorization = authorizationById.get(schedule.authorization_id);
-    const countyPolicy = countyPolicyById.get(String(authorization?.CDE_COUNTY__c ?? ""));
-    const result = { ...schedule } as CanonicalPaymentFeeSchedule;
-    if (typeof authorization?.DTE_BEGIN_EFFV_AUTH__c === "string") {
-      result.authorization_effective_start = authorization.DTE_BEGIN_EFFV_AUTH__c;
-    }
-    if (typeof authorization?.DTE_END_EFFV_AUTH__c === "string") {
-      result.authorization_effective_end = authorization.DTE_END_EFFV_AUTH__c;
-    }
-    const authorizationStatus = authorization?.Authorization_Status__c
-      ?? authorization?.authorization_status
-      ?? authorization?.expr0;
-    if (authorizationStatus !== undefined && authorizationStatus !== null) {
-      result.authorization_status = String(authorizationStatus);
-    }
-    const authorizationFields: Array<[string, keyof CanonicalPaymentFeeSchedule]> = [
-      ["AMT_ACTV_AUTH__c", "activity_authorization_amount"],
-      ["AMT_RGSTR_AUTH__c", "registration_authorization_amount"],
-      ["AMT_TRANSP_AUTH__c", "transportation_authorization_amount"],
-    ];
-    authorizationFields.forEach(([source, target]) => {
-      if (authorization?.[source] !== undefined && authorization?.[source] !== null) {
-        (result as unknown as RecordValue)[target] = Number(authorization[source]);
-      }
-    });
-    const countyFields: Array<[string, keyof CanonicalPaymentFeeSchedule]> = [
-      ["activityArtCap", "activity_county_cap"],
-      ["registrationArtCap", "registration_county_cap"],
-      ["transportationArtCap", "transportation_county_cap"],
-    ];
-    countyFields.forEach(([source, target]) => {
-      if (countyPolicy?.[source] !== undefined && countyPolicy?.[source] !== null) {
-        (result as unknown as RecordValue)[target] = Number(countyPolicy[source]);
-      }
-    });
-    return result;
-  });
   return {
     rule_version: "provider-risk-payment-v3",
     as_of_date: requiredString(input.asOfDate, "as-of date"),
@@ -676,7 +518,6 @@ export function buildCanonicalPaymentPayload(input: {
       : {}),
     fiscal_rates: requiredRecords(input.fiscalRates, "fiscal rates"),
     existing_sub_payments: normalizeExistingSubPayments(input.paymentHistory, input.authorizationRecords),
-    ...(enrichedFeeSchedules ? { fee_schedules: enrichedFeeSchedules } : {}),
     ...(input.feeHistory ? { fee_history: input.feeHistory } : {}),
     ...(input.vacantSlotSchedules ? { vacant_slot_schedules: input.vacantSlotSchedules } : {}),
   };

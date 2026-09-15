@@ -175,14 +175,6 @@ export const paymentAnalysisSchema = z
     childNames: identifierList.min(1).optional(),
     authNames: identifierList.min(1).optional(),
     countyNames: identifierList.min(1).optional(),
-    grouping: z.enum(["SERVICE_PERIOD", "COUNTY", "CHILD", "CATEGORY"]).optional(),
-    detailDepth: z.enum(["SUMMARY", "DETAIL"]).optional(),
-    detailPage: z.number().int().positive().max(10_000).optional(),
-    detailPageSize: z.number().int().positive().max(100).optional(),
-    // Narrows the detail table to rows the payment engine excluded from
-    // payment (unpayable/excluded-authorization days), instead of the full
-    // attendance detail. Backs the "review excluded payment days" action.
-    excludedOnly: z.boolean().optional(),
     actionId: continuationReference.optional(),
     actionToken: actionTokenSchema.optional(),
     refresh: z.boolean().optional(),

@@ -1,4 +1,4 @@
-import { buildCanonicalPaymentPayload, deriveAttendanceEnrichment, deriveFiscalAgeGroupCodes, normalizeAuthorizationCopays, normalizeFiscalRatesForPayment, normalizePaymentFeeHistory, normalizePaymentFeeSchedules, normalizeServicePeriod, } from "./payment-payload-adapter.js";
+import { buildCanonicalPaymentPayload, deriveAttendanceEnrichment, deriveFiscalAgeGroupCodes, normalizeFiscalRatesForPayment, normalizeServicePeriod, } from "./payment-payload-adapter.js";
 import { normalizeQualityTier } from "./provider-policy.js";
 import { normalizeProviderContext } from "./provider-context.js";
 import { normalizeScheduleAttendance } from "./schedule-normalizer.js";
@@ -153,7 +153,6 @@ export function normalizePaymentSourceBundle(sources) {
     });
     const normalizedFiscal = record(record(sources.fiscalData, "Fiscal rates").normalizedFiscalRates, "Normalized fiscal rates");
     const fiscalRates = normalizeFiscalRatesForPayment(normalizedFiscal.fiscalRates, authorizationMatches, authorizationAgeGroupCodes, authorizationRateTypeCodes);
-    const feeSchedules = normalizePaymentFeeSchedules(normalizedFiscal.fiscalRates, normalizedFiscal.fiscalRateFees, authorizationData.slotContracts, authorizationMatches);
     const providerClosures = Array.isArray(initialization.providerClosures)
         ? initialization.providerClosures
         : Array.isArray(initialization.provider_closures)
@@ -176,18 +175,15 @@ export function normalizePaymentSourceBundle(sources) {
         fiscalRates,
         paymentHistory,
         authorizationRecords,
-        feeSchedules,
         providerClosureDates,
         vacantSlotSchedules: (() => {
             const resolved = normalizeVacantSlotSchedules(vacantSlotData.vacantSlots, normalizedFiscal.fiscalRates, countyIds, providerTier, sources.initialization, countyNameById);
             vacantSlotMappingGaps = countEligibleVacantSlots(vacantSlotData.vacantSlots) - resolved.length;
             return resolved;
         })(),
-        feeHistory: normalizePaymentFeeHistory(paymentHistory, authorizationRecords),
         mode: sources.mode,
         asOfDate: sources.asOfDate,
     });
-    payload.authorization_copays = normalizeAuthorizationCopays(authorizationData.authorizationCopays, authorizationRecords);
     return { payload, servicePeriod, vacantSlotMappingGaps, authorizationMappingGaps };
 }
 // A vacant slot that is genuinely occupied (IDN_AUTH__c set) is correctly

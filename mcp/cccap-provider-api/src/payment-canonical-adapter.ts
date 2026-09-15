@@ -2,10 +2,7 @@ import {
   buildCanonicalPaymentPayload,
   deriveAttendanceEnrichment,
   deriveFiscalAgeGroupCodes,
-  normalizeAuthorizationCopays,
   normalizeFiscalRatesForPayment,
-  normalizePaymentFeeHistory,
-  normalizePaymentFeeSchedules,
   normalizeServicePeriod,
   type CanonicalPaymentPayload,
 } from "./payment-payload-adapter.js";
@@ -229,12 +226,6 @@ export function normalizePaymentSourceBundle(
     authorizationAgeGroupCodes,
     authorizationRateTypeCodes,
   );
-  const feeSchedules = normalizePaymentFeeSchedules(
-    normalizedFiscal.fiscalRates,
-    normalizedFiscal.fiscalRateFees,
-    authorizationData.slotContracts,
-    authorizationMatches,
-  );
   const providerClosures = Array.isArray(initialization.providerClosures)
     ? initialization.providerClosures
     : Array.isArray(initialization.provider_closures)
@@ -257,7 +248,6 @@ export function normalizePaymentSourceBundle(
     fiscalRates,
     paymentHistory,
     authorizationRecords,
-    feeSchedules,
     providerClosureDates,
     vacantSlotSchedules: (() => {
       const resolved = normalizeVacantSlotSchedules(
@@ -271,14 +261,9 @@ export function normalizePaymentSourceBundle(
       vacantSlotMappingGaps = countEligibleVacantSlots(vacantSlotData.vacantSlots) - resolved.length;
       return resolved;
     })(),
-    feeHistory: normalizePaymentFeeHistory(paymentHistory, authorizationRecords),
     mode: sources.mode,
     asOfDate: sources.asOfDate,
   });
-  payload.authorization_copays = normalizeAuthorizationCopays(
-    authorizationData.authorizationCopays,
-    authorizationRecords,
-  );
   return { payload, servicePeriod, vacantSlotMappingGaps, authorizationMappingGaps };
 }
 

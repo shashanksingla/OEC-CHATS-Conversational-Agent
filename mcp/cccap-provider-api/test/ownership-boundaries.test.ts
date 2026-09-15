@@ -592,13 +592,4 @@ test("payment orchestration filters payment analysis by authorization name", asy
   const childPayment = childResult.payment as Record<string, unknown>;
   assert.equal(childPayment.status, "EXPECTED");
   assert.equal(childPayment.amount, "45.00");
-
-  const pagedResult = await getPaymentAnalysis(client, { dateFilter: "THIS_MONTH" }, "STATUS", "2026-09-08", { detailPage: 2, detailPageSize: 1 }) as Record<string, unknown>;
-  const pagedAttendance = pagedResult.attendance as Record<string, unknown>;
-  const pagination = pagedResult.detailPagination as Record<string, unknown>;
-  assert.equal((pagedAttendance.days as unknown[]).length, 1);
-  assert.equal(pagination.page, 2);
-  assert.equal(pagination.pageSize, 1);
-  assert.equal(pagination.totalRows, 2);
-  assert.equal(pagination.hasMore, false);
 });

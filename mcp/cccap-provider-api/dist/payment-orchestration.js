@@ -459,48 +459,31 @@ filters = {}) {
                 return false;
             // Backs the "review excluded payment days" action: narrows to rows the
             // payment engine actually excluded from payment (payment_excluded is
-            // tagged by the evaluator for every exclusion path), instead of the
-            // full attendance detail the action's label would otherwise mismatch.
-            if (filters.excludedOnly)
-                return day.payment_excluded === true;
             return true;
         });
         const topChild = highestImpactChildName(Array.isArray(result.child_payment_impacts) ? result.child_payment_impacts : [], displayableDays);
         delete result.child_payment_impacts;
-        const showDetail = filters.detailDepth === "DETAIL" || filters.detailPage !== undefined || filters.detailPageSize !== undefined;
-        const detailPage = filters.detailPage ?? 1;
-        const detailPageSize = filters.detailPageSize ?? 25;
-        const detailStart = (detailPage - 1) * detailPageSize;
-        // When no detail page was requested, still include a small preview (not
-        // the full page) so the summary response can show a few rows inline
-        // instead of only a bare "N rows available" text hint - the formatter
-        // renders this as a compact preview table, distinct from the full
-        // ranked detail table shown once a real detail page is requested.
+        // Bounded preview only - no full-page detail mode (pagination/grouping/
+        // excludedOnly removed as part of the payment-module simplification).
         const PREVIEW_ROW_COUNT = 3;
         const pagedAttendance = {
             ...attendance,
-            days: showDetail
-                ? displayableDays.slice(detailStart, detailStart + detailPageSize)
-                : displayableDays.slice(0, PREVIEW_ROW_COUNT),
+            days: displayableDays.slice(0, PREVIEW_ROW_COUNT),
         };
         const sourceRetrievedAt = new Date().toISOString();
         return {
             ...result,
             attendance: pagedAttendance,
             detailPagination: {
-                page: showDetail ? detailPage : 0,
-                pageSize: showDetail ? detailPageSize : 0,
+                page: 0,
+                pageSize: 0,
                 totalRows: displayableDays.length,
-                hasMore: showDetail ? detailStart + detailPageSize < displayableDays.length : displayableDays.length > 0,
+                hasMore: displayableDays.length > 0,
             },
             filters: {
                 ...(filters.childNames ? { childNames: filters.childNames } : {}),
                 ...(filters.authNames ? { authNames: filters.authNames } : {}),
                 ...(filters.countyNames ? { countyNames: filters.countyNames } : {}),
-                ...(filters.grouping ? { grouping: filters.grouping } : {}),
-                ...(filters.detailDepth ? { detailDepth: filters.detailDepth } : {}),
-                ...(filters.detailPageSize ? { detailPageSize: filters.detailPageSize } : {}),
-                ...(filters.excludedOnly ? { excludedOnly: true } : {}),
             },
             ...(topChild ? { highestImpactChildName: topChild.name, highestImpactRankedByDollars: topChild.rankedByDollars } : {}),
             ...(vacantSlotMappingGaps > 0 ? { vacantSlotMappingGaps } : {}),
@@ -746,7 +729,7 @@ function comparisonPeriod(result) { const payment = record(result.payment, "Eval
 export async function comparePaymentPeriods(client, periodOneScope, periodTwoScope, asOfDate, options = {}) {
     const scope = (value) => { if ("servicePeriodId" in value)
         throw new Error("servicePeriodId comparison scope is not supported; use dateFrom and dateTo"); return { dateFilter: "DATE_RANGE", dateFrom: value.dateFrom, dateTo: value.dateTo }; };
-    const [firstResult, secondResult] = await Promise.all([getPaymentAnalysis(client, scope(periodOneScope), "CUSTOM_RANGE", asOfDate, { detailPage: 1 }), getPaymentAnalysis(client, scope(periodTwoScope), "CUSTOM_RANGE", asOfDate, { detailPage: 1 })]);
+    const [firstResult, secondResult] = await Promise.all([getPaymentAnalysis(client, scope(periodOneScope), "CUSTOM_RANGE", asOfDate, {}), getPaymentAnalysis(client, scope(periodTwoScope), "CUSTOM_RANGE", asOfDate, {})]);
     const first = record(firstResult, "Payment evaluation");
     const second = record(secondResult, "Payment evaluation");
     const one = comparisonPeriod(first);

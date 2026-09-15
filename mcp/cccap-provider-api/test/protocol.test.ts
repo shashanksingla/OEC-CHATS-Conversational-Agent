@@ -48,40 +48,6 @@ test("MCP protocol preserves attendance provider text and structured scope", asy
   await server.close();
 });
 
-test("payment protocol asks for grouping before making provider reads", async () => {
-  let providerReads = 0;
-  const fakeClient = {
-    async initialize() {
-      providerReads += 1;
-      throw new Error("provider read should not occur before clarification");
-    },
-  };
-  const server = createServer(fakeClient as never, "Example Provider");
-  const client = new Client({ name: "payment-clarification-test-client", version: "1.0.0" });
-  const [clientTransport, serverTransport] = ClientTransport.createLinkedPair();
-  await server.connect(serverTransport);
-  await client.connect(clientTransport);
-
-  const response = await client.callTool({
-    name: "cccap_analyze_payment",
-    arguments: {
-      dateFilter: "THIS_MONTH",
-      childNames: ["Taylor Example"],
-      countyNames: ["Denver"],
-    },
-  });
-  const structured = response.structuredContent as Record<string, unknown>;
-
-  assert.equal(response.isError, undefined);
-  assert.equal(structured.status, "CLARIFICATION_REQUIRED");
-  assert.equal(structured.clarificationRequired, true);
-  assert.equal(providerReads, 0);
-  assert.match(response.content.find((item) => item.type === "text")?.text ?? "", /Which grouping/);
-
-  await client.close();
-  await server.close();
-});
-
 test("current-month snapshot counts five-day-old unconfirmed absences toward county risk", async () => {
   let scheduleReads = 0;
   const fakeClient = {

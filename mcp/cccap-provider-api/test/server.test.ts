@@ -21,9 +21,6 @@ import {
   buildCanonicalPaymentPayload,
   deriveAttendanceEnrichment,
   normalizeAttendanceDays,
-  normalizeAuthorizationCopays,
-  normalizePaymentFeeHistory,
-  normalizePaymentFeeSchedules,
   normalizeEncumbranceStatus,
   normalizeExistingSubPayments,
   normalizeQualityTier,
@@ -908,134 +905,6 @@ test("normalizes encumbrance lifecycle statuses including care not offered", () 
   assert.equal(normalizeEncumbranceStatus("UNKNOWN"), undefined);
 });
 
-test("normalizes authorization copays without allowing invalid amounts", () => {
-  assert.deepEqual(
-    normalizeAuthorizationCopays([{
-      idn_auth__c: "auth-1",
-      amt_copay_auth__c: 12.5,
-      dte_begin_effv__c: "2026-09-01",
-      dte_end_effv__c: "2026-09-30",
-    }]),
-    [{
-      authorization_id: "auth-1",
-      amount: 12.5,
-      effective_start: "2026-09-01",
-      effective_end: "2026-09-30",
-    }],
-  );
-  assert.throws(
-    () => normalizeAuthorizationCopays([{ idn_auth__c: "auth-1", amt_copay_auth__c: -1 }]),
-    /must be non-negative/,
-  );
-});
-
-test("normalizes scheduled slot and ART fees from fiscal and slot-contract sources", () => {
-  assert.deepEqual(
-    normalizePaymentFeeSchedules(
-      [{
-        fiscalScheduleId: "schedule-1",
-        rateTypeCode: "1",
-        ageGroupCode: "5",
-        careUnitCode: "3",
-        fiscalAgreementAmount: "45.00",
-        providerAmount: "45.00",
-      }],
-      [{
-        fiscalScheduleId: "schedule-1",
-        activityFiscalAgreementAmount: "10.00",
-        activityProviderAmount: "10.00",
-        activityFrequency: "MTH",
-        activityMonths: "7,8",
-      }],
-      [{
-        Id: "slot-1",
-        IDN_AUTH__c: "auth-1",
-        CDE_RATE_TYPE__c: "1",
-        CDE_CARE_UNIT__c: "3",
-        CDE_CARE_LEVEL__c: "5",
-        DTE_BEGIN_SLOT__c: "2026-09-01",
-        DTE_END_SLOT__c: "2026-09-30",
-        CNT_DAYS_OF_MONTH__c: 20,
-        CNT_DAYS_OF_WEEK__c: 5,
-      }, {
-        Id: "vacant-slot-1",
-        IDN_AUTH__c: null,
-      }],
-      { "auth-1": "schedule-1" },
-    ),
-    [{
-      authorization_id: "auth-1",
-      fiscal_schedule_id: "schedule-1",
-      slot_contract_id: "slot-1",
-      care_level: "5",
-      effective_start: "2026-09-01",
-      effective_end: "2026-09-30",
-      days_of_month: 20,
-      days_of_week: 5,
-      slot_rate_amount: 45,
-      activity_amount: 10,
-      activity_provider_cap: 10,
-      activity_frequency: "MTH",
-      activity_months: "7,8",
-    }],
-  );
-});
-
-test("does not let an ambiguous slot rate block authorization-level payment mapping", () => {
-  assert.deepEqual(
-    normalizePaymentFeeSchedules(
-      [{
-        fiscalScheduleId: "schedule-1",
-        rateTypeCode: "1",
-        ageGroupCode: "5",
-        careUnitCode: "3",
-        fiscalAgreementAmount: "45.00",
-        providerAmount: "45.00",
-      }, {
-        fiscalScheduleId: "schedule-1",
-        rateTypeCode: "1",
-        ageGroupCode: "6",
-        careUnitCode: "3",
-        fiscalAgreementAmount: "46.00",
-        providerAmount: "46.00",
-      }],
-      [{ fiscalScheduleId: "schedule-1" }],
-      [{
-        Id: "slot-ambiguous",
-        IDN_AUTH__c: "auth-1",
-        CDE_RATE_TYPE__c: "1",
-        CDE_CARE_UNIT__c: "3",
-        CDE_CARE_LEVEL__c: "7",
-        DTE_BEGIN_SLOT__c: "2026-09-01",
-      }],
-      { "auth-1": "schedule-1" },
-    ),
-    [],
-  );
-});
-
-test("normalizes payment detail history by sub-payment authorization", () => {
-  assert.deepEqual(
-    normalizePaymentFeeHistory({
-      subPayments: [{ idn_pmt_sub__c: 1001, idn_auth__c: "auth-1" }],
-      paymentDetails: [{
-        idn_pmt_sub__c: 1001,
-        dte_care__c: "2026-09-01",
-        amt_act_paid__c: 3,
-        amt_slot_paid__c: 4,
-      }],
-    }),
-    [{
-      authorization_id: "auth-1",
-      service_date: "2026-09-01",
-      activity_paid: 3,
-      registration_paid: 0,
-      transportation_paid: 0,
-      slot_paid: 4,
-    }],
-  );
-});
-
 test("payment results use a provider-facing table and preserve blocked states", () => {
   const result = formatPaymentResult({
     paymentView: "NEXT_PAYOUT",
@@ -1167,7 +1036,7 @@ test("payment results keep initial summary to the measure table and composition"
       priority: "high",
       section: "drill-down",
       source: "current-result",
-      input: { view: "NEXT_PAYOUT", detailPage: 1 },
+      input: { view: "NEXT_PAYOUT" },
     },
   ]);
 });
@@ -1459,7 +1328,7 @@ test("payment drill-down targets the highest-impact child", () => {
     priority: "high",
     section: "drill-down",
     source: "current-result",
-    input: { view: "NEXT_PAYOUT", detailPage: 1, childNames: ["Taylor Example"] },
+    input: { view: "NEXT_PAYOUT", childNames: ["Taylor Example"] },
   }, {
     actionId: "open-attendance-risk-for-child",
     capability: "attendance-risk-analysis",
@@ -1705,7 +1574,6 @@ test("service period ledger formatter translates statuses and renders each payou
     dateFilter: "DATE_RANGE",
     dateFrom: "2026-08-24",
     dateTo: "2026-08-30",
-    detailDepth: "DETAIL",
   });
 });
 
