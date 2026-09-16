@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { getAttendanceDataAnalysis, getAttendanceRiskAnalysis, getAttendanceRiskSnapshot, getCurrentMonthAttendanceSnapshot, } from "./attendance-snapshot.js";
+import { getAttendanceDataAnalysis, getAttendanceRiskAnalysis, getAttendanceRiskSnapshot, getCurrentMonthAttendanceSnapshot, } from "./attendance-engine.js";
 import { comparePaymentPeriods, getLastPayoutDetail, getPaymentAnalysis, getServicePeriodLedger, getUpcomingPayoutDetail } from "./payment-orchestration.js";
 import { ConversationContextStore, cacheKeyFor, isCompatibleWithStoredInput, scopeGranularity } from "./conversation-context.js";
 import { conversationLogger as defaultConversationLogger } from "./conversation-logger.js";
@@ -10,13 +10,12 @@ import { authorizationSchema, attendanceAnalysisSchema, attendanceDataSchema, ca
 import { formatScopeClarification, orderedActionList, readOnlyAnnotations, recordValue, result, } from './formatters/shared.js';
 import { formatCasesResult } from './formatters/cases-formatter.js';
 import { formatAuthorizationsResult } from './formatters/authorizations-formatter.js';
-import { snapshotResult } from './formatters/snapshot-formatter.js';
-import { formatAttendanceRiskResult } from './formatters/attendance-formatter.js';
-import { formatPaymentResult, formatServicePeriodLedgerResult } from './formatters/payment-formatter.js';
+import { snapshotResult, formatAttendanceRiskResult } from './formatters/attendance-formatter.js';
+import { formatPayoutResult } from './formatters/payment-formatter.js';
 import { formatCountyPolicyResult } from './formatters/county-policy-formatter.js';
 import { formatPeriodComparisonResult } from './formatters/comparison-formatter.js';
 export { formatAttendanceRiskResult } from './formatters/attendance-formatter.js';
-export { formatPaymentResult, formatServicePeriodLedgerResult } from './formatters/payment-formatter.js';
+export { formatPayoutResult } from './formatters/payment-formatter.js';
 export { formatCasesResult } from './formatters/cases-formatter.js';
 export { formatAuthorizationsResult } from './formatters/authorizations-formatter.js';
 export { formatCountyPolicyResult } from './formatters/county-policy-formatter.js';
@@ -34,13 +33,13 @@ function contextualize(value, store, providerKey, capability, result, resultTool
             ? structuredContentBase.actionControls.map(recordValue).filter((action) => Boolean(action))
             : [];
     if (actions.length === 0)
-        return value;
+        return contextualizedValue;
     const hasPlanActions = actions.some((action) => {
         const input = recordValue(action.input);
         return Boolean(input) && (action.tool === "cccap_analyze_payment_risk" || action.tool === "cccap_analyze_payment");
     });
     if (!hasPlanActions)
-        return value;
+        return contextualizedValue;
     const currentCapability = typeof structuredContentBase.capability === "string"
         ? structuredContentBase.capability
         : undefined;
@@ -91,7 +90,10 @@ function contextualize(value, store, providerKey, capability, result, resultTool
             : viewState?.scope !== undefined ? { scope: viewState.scope } : {}),
         ...(resultRecord?.servicePeriod !== undefined ? { selectedServicePeriod: resultRecord.servicePeriod } : {}),
         ...(viewState?.parentViewId !== undefined ? { parentView: viewState.parentViewId } : {}),
-        ...(viewState ? { currentView: viewState } : {}),
+        // Keep a compact current-view pointer for hosts that render navigation
+        // from resultGraph rather than the top-level viewState. The object is
+        // already scope-compacted by viewState(), so this is bounded metadata,
+        // not a second copy of provider rows.
         ...(Array.isArray(structuredContentBase.responseSections)
             ? { availableEvidence: structuredContentBase.responseSections.filter((section) => typeof section === "string") }
             : {}),
@@ -99,9 +101,34 @@ function contextualize(value, store, providerKey, capability, result, resultTool
         ...(typeof structuredContentBase.sourceRetrievedAt === "string"
             ? { sourceRetrievedAt: structuredContentBase.sourceRetrievedAt }
             : {}),
+        ...(viewState ? { currentView: viewState } : {}),
         ...(ruleVersion ? { ruleVersion } : {}),
     };
-    const { actionIntents: _actionIntents, filters: _filters, responseContext: _responseContext, ...structuredContent } = structuredContentBase;
+    const isPaymentCapability = currentCapability === "payment-analysis"
+        || currentCapability === "service-period-payout-ledger";
+    const { actionIntents: _actionIntents, filters: _filters, responseContext: _responseContext, providerMessage: _providerMessage, summary: _summary, summaryView: _summaryView, periods: _periods, selectedPeriod: _selectedPeriod, daysUntilPayout: _daysUntilPayout, paymentDisclaimers: _paymentDisclaimers, responseSections: _responseSections, ...structuredContentWithoutRouting } = structuredContentBase;
+    // providerMessage is the documented structuredContent fallback (see
+    // carepay-advisor.agent.md section 2: "If content[0].text is absent, use
+    // structuredContent.providerMessage as the fallback") and must survive
+    // this routing-field strip for EVERY capability, payment included. It was
+    // previously destructured out above and only ever restored on the
+    // non-payment branch below, so every payment-analysis/service-period-
+    // payout-ledger result that reached this hasPlanActions branch (i.e.
+    // virtually all of them, since every payment action carries
+    // tool: "cccap_analyze_payment") silently lost its fallback field even
+    // though content[0].text still carried the text - leaving no working
+    // fallback whenever a client failed to read content[0].text directly.
+    const structuredContent = isPaymentCapability
+        ? {
+            ...structuredContentWithoutRouting,
+            ...(_providerMessage !== undefined ? { providerMessage: _providerMessage } : {}),
+        }
+        : {
+            ...structuredContentWithoutRouting,
+            ...(_summary !== undefined ? { summary: _summary } : {}),
+            ...(_summaryView !== undefined ? { summaryView: _summaryView } : {}),
+            ...(_providerMessage !== undefined ? { providerMessage: _providerMessage } : {}),
+        };
     return {
         ...contextualizedValue,
         structuredContent: {
@@ -501,9 +528,7 @@ export function createServer(client, providerDisplayName, contextStore = new Con
             const cachedResult = recordValue(cached.result);
             if (cachedResult) {
                 const continuationResult = { ...cachedResult, filters: request };
-                return attachDialogueState(contextualize(usesLedgerFormatter
-                    ? formatServicePeriodLedgerResult(continuationResult)
-                    : formatPaymentResult(continuationResult), contextStore, providerKey, "continuation", continuationResult, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(cachedResult.scope) ?? request, typeof cachedResult.sourceRetrievedAt === "string" ? cachedResult.sourceRetrievedAt : undefined);
+                return attachDialogueState(contextualize(formatPayoutResult(continuationResult), contextStore, providerKey, "continuation", continuationResult, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(cachedResult.scope) ?? request, typeof cachedResult.sourceRetrievedAt === "string" ? cachedResult.sourceRetrievedAt : undefined);
             }
         }
         // NEXT_PAYOUT resolves to a single upcoming period by default - a
@@ -518,12 +543,12 @@ export function createServer(client, providerDisplayName, contextStore = new Con
             ...(request.childNames ? { childNames: request.childNames } : {}),
             ...(request.authNames ? { authNames: request.authNames } : {}),
             ...(request.countyNames ? { countyNames: request.countyNames } : {}),
-        }), (data) => attachDialogueState(contextualize(formatServicePeriodLedgerResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope ?? request, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
+        }), (data) => attachDialogueState(contextualize(formatPayoutResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope ?? request, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
         const runLastPayout = () => execute("payment payout ledger", () => getLastPayoutDetail(client, request, asOfDateForLedger, {
             ...(request.childNames ? { childNames: request.childNames } : {}),
             ...(request.authNames ? { authNames: request.authNames } : {}),
             ...(request.countyNames ? { countyNames: request.countyNames } : {}),
-        }), (data) => attachDialogueState(contextualize(formatServicePeriodLedgerResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope ?? request, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
+        }), (data) => attachDialogueState(contextualize(formatPayoutResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope ?? request, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
         const runPayoutLedger = () => execute("payment payout ledger", () => getServicePeriodLedger(client, request, asOfDateForLedger, {
             ...(request.periodCount ? { periodCount: request.periodCount } : {}),
             filters: {
@@ -531,7 +556,7 @@ export function createServer(client, providerDisplayName, contextStore = new Con
                 ...(request.authNames ? { authNames: request.authNames } : {}),
                 ...(request.countyNames ? { countyNames: request.countyNames } : {}),
             },
-        }), (data) => attachDialogueState(contextualize(formatServicePeriodLedgerResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope ?? request, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
+        }), (data) => attachDialogueState(contextualize(formatPayoutResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope ?? request, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
         if (request.view === "NEXT_PAYOUT") {
             return runNextPayout();
         }
@@ -545,7 +570,7 @@ export function createServer(client, providerDisplayName, contextStore = new Con
             ...(request.childNames ? { childNames: request.childNames } : {}),
             ...(request.authNames ? { authNames: request.authNames } : {}),
             ...(request.countyNames ? { countyNames: request.countyNames } : {}),
-        }), (data) => attachDialogueState(contextualize(formatPaymentResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
+        }), (data) => attachDialogueState(contextualize(formatPayoutResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"), dialogueStore, providerKey, "payment-analysis", recordValue(data)?.scope, typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt : undefined));
         const paymentResult = await runPaymentAnalysis();
         if (paymentResult.isError && !hasContinuation && !input.refresh) {
             client.clearReadCache();
@@ -569,7 +594,7 @@ export function createServer(client, providerDisplayName, contextStore = new Con
         annotations: readOnlyAnnotations,
     }, withConversationLogging("cccap_get_service_period_payout_ledger", async (input) => execute("service-period payout ledger", () => input.upcomingOnly
         ? getUpcomingPayoutDetail(client, input, new Date().toISOString().slice(0, 10))
-        : getServicePeriodLedger(client, input, new Date().toISOString().slice(0, 10), input.periodCount === undefined ? {} : { periodCount: input.periodCount }), formatServicePeriodLedgerResult)));
+        : getServicePeriodLedger(client, input, new Date().toISOString().slice(0, 10), input.periodCount === undefined ? {} : { periodCount: input.periodCount }), formatPayoutResult)));
     server.registerTool("cccap_get_payment_history", {
         title: "Get CCCAP Payment History",
         description: "After initialization, retrieve read-only sub-payment history for the authenticated provider and the requested service-period date scope. The server resolves the date scope to overlapping service periods before querying payments, so use this to detect existing paid or requested payments before any future payout calculation.",

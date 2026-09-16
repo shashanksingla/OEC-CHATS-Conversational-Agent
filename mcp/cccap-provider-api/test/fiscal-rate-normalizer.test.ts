@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeFiscalRateResponse } from "../src/fiscal-rate-normalizer.js";
+import { normalizeFiscalRateResponse } from "../src/payment-engine.js";
 
 test("normalizes the live fiscal-rate response without guessing payment tiers", () => {
   const result = normalizeFiscalRateResponse({

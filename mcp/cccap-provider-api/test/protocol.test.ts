@@ -43,6 +43,7 @@ test("MCP protocol preserves attendance provider text and structured scope", asy
   assert.equal(structured.providerMessage, text);
   assert.equal(structured.capability, "attendance-risk-analysis");
   assert.deepEqual(structured.scope, { dateFilter: "THIS_MONTH" });
+  assert.deepEqual((structured.resultGraph as Record<string, unknown>).currentView, structured.viewState);
 
   await client.close();
   await server.close();

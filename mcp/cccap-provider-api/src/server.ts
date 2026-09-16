@@ -6,7 +6,7 @@ import {
   getAttendanceRiskAnalysis,
   getAttendanceRiskSnapshot,
   getCurrentMonthAttendanceSnapshot,
-} from "./attendance-snapshot.js";
+} from "./attendance-engine.js";
 import { comparePaymentPeriods, getLastPayoutDetail, getPaymentAnalysis, getServicePeriodLedger, getUpcomingPayoutDetail } from "./payment-orchestration.js";
 import { CccapClient } from "./client.js";
 import { ConversationContextStore, cacheKeyFor, isCompatibleWithStoredInput, scopeGranularity, type ConversationResultGraph, type ContinuationPlan } from "./conversation-context.js";
@@ -47,14 +47,13 @@ import {
 } from './formatters/shared.js';
 import { formatCasesResult } from './formatters/cases-formatter.js';
 import { formatAuthorizationsResult } from './formatters/authorizations-formatter.js';
-import { snapshotResult } from './formatters/snapshot-formatter.js';
-import { formatAttendanceRiskResult } from './formatters/attendance-formatter.js';
-import { formatPaymentResult, formatServicePeriodLedgerResult } from './formatters/payment-formatter.js';
+import { snapshotResult, formatAttendanceRiskResult } from './formatters/attendance-formatter.js';
+import { formatPayoutResult } from './formatters/payment-formatter.js';
 import { formatCountyPolicyResult } from './formatters/county-policy-formatter.js';
 import { formatPeriodComparisonResult } from './formatters/comparison-formatter.js';
 
 export { formatAttendanceRiskResult } from './formatters/attendance-formatter.js';
-export { formatPaymentResult, formatServicePeriodLedgerResult } from './formatters/payment-formatter.js';
+export { formatPayoutResult } from './formatters/payment-formatter.js';
 export { formatCasesResult } from './formatters/cases-formatter.js';
 export { formatAuthorizationsResult } from './formatters/authorizations-formatter.js';
 export { formatCountyPolicyResult } from './formatters/county-policy-formatter.js';
@@ -83,12 +82,12 @@ function contextualize(
       : Array.isArray(structuredContentBase.actionControls)
         ? structuredContentBase.actionControls.map(recordValue).filter((action): action is Record<string, unknown> => Boolean(action))
         : [];
-  if (actions.length === 0) return value;
+  if (actions.length === 0) return contextualizedValue;
   const hasPlanActions = actions.some((action) => {
     const input = recordValue(action.input);
     return Boolean(input) && (action.tool === "cccap_analyze_payment_risk" || action.tool === "cccap_analyze_payment");
   });
-  if (!hasPlanActions) return value;
+  if (!hasPlanActions) return contextualizedValue;
   const currentCapability = typeof structuredContentBase.capability === "string"
     ? structuredContentBase.capability
     : undefined;
@@ -138,7 +137,10 @@ function contextualize(
       : viewState?.scope !== undefined ? { scope: viewState.scope } : {}),
     ...(resultRecord?.servicePeriod !== undefined ? { selectedServicePeriod: resultRecord.servicePeriod } : {}),
     ...(viewState?.parentViewId !== undefined ? { parentView: viewState.parentViewId } : {}),
-    ...(viewState ? { currentView: viewState } : {}),
+    // Keep a compact current-view pointer for hosts that render navigation
+    // from resultGraph rather than the top-level viewState. The object is
+    // already scope-compacted by viewState(), so this is bounded metadata,
+    // not a second copy of provider rows.
     ...(Array.isArray(structuredContentBase.responseSections)
       ? { availableEvidence: structuredContentBase.responseSections.filter((section): section is string => typeof section === "string") }
       : {}),
@@ -146,9 +148,47 @@ function contextualize(
     ...(typeof structuredContentBase.sourceRetrievedAt === "string"
       ? { sourceRetrievedAt: structuredContentBase.sourceRetrievedAt }
       : {}),
+    ...(viewState ? { currentView: viewState } : {}),
     ...(ruleVersion ? { ruleVersion } : {}),
   };
-  const { actionIntents: _actionIntents, filters: _filters, responseContext: _responseContext, ...structuredContent } = structuredContentBase;
+  const isPaymentCapability = currentCapability === "payment-analysis"
+    || currentCapability === "service-period-payout-ledger";
+  const {
+    actionIntents: _actionIntents,
+    filters: _filters,
+    responseContext: _responseContext,
+    providerMessage: _providerMessage,
+    summary: _summary,
+    summaryView: _summaryView,
+    periods: _periods,
+    selectedPeriod: _selectedPeriod,
+    daysUntilPayout: _daysUntilPayout,
+    paymentDisclaimers: _paymentDisclaimers,
+    responseSections: _responseSections,
+    ...structuredContentWithoutRouting
+  } = structuredContentBase;
+  // providerMessage is the documented structuredContent fallback (see
+  // carepay-advisor.agent.md section 2: "If content[0].text is absent, use
+  // structuredContent.providerMessage as the fallback") and must survive
+  // this routing-field strip for EVERY capability, payment included. It was
+  // previously destructured out above and only ever restored on the
+  // non-payment branch below, so every payment-analysis/service-period-
+  // payout-ledger result that reached this hasPlanActions branch (i.e.
+  // virtually all of them, since every payment action carries
+  // tool: "cccap_analyze_payment") silently lost its fallback field even
+  // though content[0].text still carried the text - leaving no working
+  // fallback whenever a client failed to read content[0].text directly.
+  const structuredContent = isPaymentCapability
+    ? {
+        ...structuredContentWithoutRouting,
+        ...(_providerMessage !== undefined ? { providerMessage: _providerMessage } : {}),
+      }
+    : {
+        ...structuredContentWithoutRouting,
+        ...(_summary !== undefined ? { summary: _summary } : {}),
+        ...(_summaryView !== undefined ? { summaryView: _summaryView } : {}),
+        ...(_providerMessage !== undefined ? { providerMessage: _providerMessage } : {}),
+      };
   return {
     ...contextualizedValue,
     structuredContent: {
@@ -754,9 +794,7 @@ export function createServer(
           const continuationResult = { ...cachedResult, filters: request };
           return attachDialogueState(
             contextualize(
-              usesLedgerFormatter
-                ? formatServicePeriodLedgerResult(continuationResult)
-                : formatPaymentResult(continuationResult),
+              formatPayoutResult(continuationResult),
               contextStore,
               providerKey,
               "continuation",
@@ -787,7 +825,7 @@ export function createServer(
           ...(request.countyNames ? { countyNames: request.countyNames } : {}),
         }),
         (data) => attachDialogueState(
-          contextualize(formatServicePeriodLedgerResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
+          contextualize(formatPayoutResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
           dialogueStore,
           providerKey,
           "payment-analysis",
@@ -803,7 +841,7 @@ export function createServer(
           ...(request.countyNames ? { countyNames: request.countyNames } : {}),
         }),
         (data) => attachDialogueState(
-          contextualize(formatServicePeriodLedgerResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
+          contextualize(formatPayoutResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
           dialogueStore,
           providerKey,
           "payment-analysis",
@@ -822,7 +860,7 @@ export function createServer(
           },
         }),
         (data) => attachDialogueState(
-          contextualize(formatServicePeriodLedgerResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
+          contextualize(formatPayoutResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
           dialogueStore,
           providerKey,
           "payment-analysis",
@@ -847,7 +885,7 @@ export function createServer(
           ...(request.countyNames ? { countyNames: request.countyNames } : {}),
         }),
         (data) => attachDialogueState(
-          contextualize(formatPaymentResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
+          contextualize(formatPayoutResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
           dialogueStore,
           providerKey,
           "payment-analysis",
@@ -895,7 +933,7 @@ export function createServer(
       () => input.upcomingOnly
         ? getUpcomingPayoutDetail(client, input, new Date().toISOString().slice(0, 10))
         : getServicePeriodLedger(client, input, new Date().toISOString().slice(0, 10), input.periodCount === undefined ? {} : { periodCount: input.periodCount }),
-      formatServicePeriodLedgerResult,
+      formatPayoutResult,
     )),
   );
 

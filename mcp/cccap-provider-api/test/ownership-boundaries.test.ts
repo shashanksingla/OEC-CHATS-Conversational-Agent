@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeAttendanceRiskSchedules } from "../src/attendance-canonical-adapter.js";
-import { normalizePaymentSourceBundle } from "../src/payment-canonical-adapter.js";
 import {
+  normalizeAttendanceRiskSchedules,
+} from "../src/attendance-engine.js";
+import {
+  normalizePaymentSourceBundle,
   deriveFiscalAgeGroupCodes,
   normalizeFiscalRatesForPayment,
-} from "../src/payment-payload-adapter.js";
+  normalizePaymentStatus,
+} from "../src/payment-engine.js";
 import { getPaymentAnalysis, getUpcomingPayoutDetail } from "../src/payment-orchestration.js";
-import { normalizePaymentStatus } from "../src/payment-schema.js";
 import { normalizeQualityTier } from "../src/provider-policy.js";
 import { normalizeScheduleAttendance } from "../src/schedule-normalizer.js";
 import {
@@ -540,7 +542,7 @@ test("payment orchestration runs the canonical payload through the evaluator", a
   // formatter can show a compact preview table instead of a bare row-count
   // hint. With only 1 total row available, the preview is that 1 row.
   assert.equal(((result.attendance as Record<string, unknown>).days as unknown[]).length, 1);
-  assert.deepEqual(result.detailPagination, { page: 0, pageSize: 0, totalRows: 1, hasMore: true });
+  assert.deepEqual(result.detailPagination, { page: 0, pageSize: 3, totalRows: 1, hasMore: false });
 });
 
 test("payment orchestration filters payment analysis by authorization name", async () => {
@@ -592,4 +594,26 @@ test("payment orchestration filters payment analysis by authorization name", asy
   const childPayment = childResult.payment as Record<string, unknown>;
   assert.equal(childPayment.status, "EXPECTED");
   assert.equal(childPayment.amount, "45.00");
+});
+
+test("preserves fiscal rate type codes for per-day payment joins", () => {
+  assert.deepEqual(
+    normalizeFiscalRatesForPayment(
+      [{
+        fiscalScheduleId: "selected-schedule",
+        rateTypeCode: "31",
+        paidTier: "PART_TIME",
+        fiscalAgreementAmount: 45,
+        sourceId: "selected-rate",
+      }],
+      { "auth-1": "selected-schedule" },
+    ),
+    [{
+      authorization_id: "auth-1",
+      paid_tier: "PART_TIME",
+      rate_type_code: "31",
+      amount: 45,
+      source_id: "selected-rate",
+    }],
+  );
 });

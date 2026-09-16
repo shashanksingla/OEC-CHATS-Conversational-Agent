@@ -1,32 +1,33 @@
-import { actionControls, countyPaymentSummary, estimatedMoney, plainMoney, humanizeAttendanceType, numericValue, recordValue, renderActionSections, renderCountyComposition, result, shortDateLabel, tableValue, DISCLAIMER_AT_RISK, DISCLAIMER_EXPECTED, DISCLAIMER_FORECASTED, DISCLAIMER_GLOBAL, DISCLAIMER_GUARANTEED } from './shared.js';
+// Consolidated payment formatter: merges payment-summary-renderer.ts (2026-09-15 consolidation).
+import { actionControls, countyPaymentSummary, estimatedMoney, plainMoney, humanizeAttendanceType, numericValue, recordValue, renderActionSections, result, shortDateLabel, tableValue, DISCLAIMER_AT_RISK, DISCLAIMER_EXPECTED, DISCLAIMER_FORECASTED, DISCLAIMER_GLOBAL, DISCLAIMER_GUARANTEED, PAYMENT_AMOUNT_LEGEND } from './shared.js';
 import { actionViewMetadata, viewState } from '../view-state.js';
-/** Render a markdown table while omitting numeric columns that carry no information in this view. */
-function renderNumericTable(headers, rows, numericColumns) {
-    const keep = headers.map((_, index) => !numericColumns.includes(index) || rows.some((row) => {
-        const value = (row[index] ?? '').trim();
-        return value !== '' && value !== '—' && value !== '$0.00' && value !== '0' && value !== 'Unavailable from the current source';
-    }));
-    const filtered = (row) => row.filter((_, index) => keep[index]);
-    const separator = headers.map((header, index) => numericColumns.includes(index) ? '---:' : '---');
-    return [
-        `| ${headers.filter((_, index) => keep[index]).join(' | ')} |`,
-        `| ${separator.filter((_, index) => keep[index]).join(' | ')} |`,
-        ...rows.map((row) => `| ${filtered(row).join(' | ')} |`),
-    ];
-}
-function renderCategoryTable(rows) {
-    const definitions = [
-        { header: "Category", value: (row) => tableValue(row.label), numeric: false },
-        { header: "Children/contracts", value: (row) => tableValue(row.children_served ?? row.children ?? row.contracts), numeric: true },
-        { header: "Days", value: (row) => tableValue(row.days), numeric: true },
-        { header: "Care hours", value: (row) => tableValue(row.hours), numeric: true },
-        { header: "Expected amount", value: (row) => plainMoney(row.amount), numeric: true },
-        { header: "At-risk amount", value: (row) => plainMoney(row.conditional_amount), numeric: true },
-        { header: "Excluded days", value: (row) => tableValue(row.excluded_days), numeric: true },
-    ];
-    const renderedRows = rows.map((row) => definitions.map((definition) => definition.value(row)));
-    const numericColumns = definitions.flatMap((definition, index) => definition.numeric ? [index] : []);
-    return renderNumericTable(definitions.map((definition) => definition.header), renderedRows, numericColumns);
+// Single relay/assembly point for every payout path (NEXT_PAYOUT, LAST_PAYOUT,
+// PAYOUT_LEDGER, and the STATUS/CUSTOM_RANGE/CURRENT_WEEK_FORECAST path below).
+// Each path still builds its own headline/table lines and action list (the
+// data shapes genuinely differ per path), but the assembly that turns those
+// into a ToolResult - actionViewMetadata mapping, renderActionSections,
+// appending DISCLAIMER_GLOBAL, actionControls shaping, and the common
+// structuredContent fields - was previously duplicated with small,
+// inconsistent variations between formatPaymentResult and
+// formatServicePeriodLedgerResult (e.g. the ledger path computed
+// ledgerDisclaimers but never deduped/inlined them the same way). This is now
+// the one place that does it, for every path.
+function finalizePayoutResponse(input) {
+    const viewAwareActions = input.actions.map((action) => actionViewMetadata(action, input.currentView));
+    const providerMessage = `${renderActionSections(input.lines.join("\n"), viewAwareActions)}\n\n${DISCLAIMER_GLOBAL}`;
+    return {
+        content: [{ type: "text", text: providerMessage }],
+        structuredContent: {
+            capability: input.capability,
+            providerMessage,
+            viewState: input.currentView,
+            actionIntents: input.actions,
+            actionControls: actionControls(viewAwareActions),
+            paymentDisclaimers: [...new Set(input.disclaimers)],
+            responseSections: input.responseSections,
+            ...input.extraStructured,
+        },
+    };
 }
 function atRiskDisclaimer(confirmByDate) {
     if (typeof confirmByDate === 'string' && confirmByDate.trim()) {
@@ -36,9 +37,9 @@ function atRiskDisclaimer(confirmByDate) {
 }
 function paymentDisclaimers(payment, paymentResult, attendance, settled = false) {
     const disclaimers = [DISCLAIMER_GLOBAL];
-    if (!settled && Number(payment.expected_amount) > 0)
+    if (!settled && Number(payment.base_amount ?? payment.expected_amount) > 0)
         disclaimers.push(DISCLAIMER_EXPECTED);
-    if (!settled && Number(payment.forecasted_amount) > 0)
+    if (!settled && Number(payment.scheduled_forecast_amount ?? payment.forecasted_amount) > 0)
         disclaimers.push(DISCLAIMER_FORECASTED);
     if (!settled && Number(payment.at_risk_amount ?? payment.amount_at_risk) > 0) {
         disclaimers.push(atRiskDisclaimer(attendance.find((day) => typeof day.confirm_by_date === "string")?.confirm_by_date
@@ -259,7 +260,30 @@ export function summaryRows(value, key) {
         ? summary[key].map(recordValue).filter((row) => Boolean(row))
         : [];
 }
-export function formatPaymentResult(data) {
+/**
+ * Single public entry point for every payout path - NEXT_PAYOUT, LAST_PAYOUT,
+ * PAYOUT_LEDGER (multi-period), STATUS, CUSTOM_RANGE, CURRENT_WEEK_FORECAST,
+ * and the detail-page drill-down. Dispatches purely on the shape of the raw
+ * orchestration result:
+ * - `entry` (LedgerPeriodEntry | undefined) or `periods` (array) identifies a
+ *   ledger-sourced result from getUpcomingPayoutDetail/getLastPayoutDetail/
+ *   getServicePeriodLedger.
+ * - `payment` identifies a direct payment-analysis result from
+ *   getPaymentAnalysis.
+ * Both internal implementations funnel into the same finalizePayoutResponse()
+ * for the actual relay/assembly - this dispatcher is the only function any
+ * caller needs regardless of which payout path was requested.
+ */
+export function formatPayoutResult(data) {
+    const value = recordValue(data);
+    if (value && ("entry" in value || Array.isArray(value.periods))) {
+        return formatLedgerResult(data);
+    }
+    return formatPaymentAnalysisResult(data);
+}
+// Internal - handles STATUS/CUSTOM_RANGE/CURRENT_WEEK_FORECAST/detail-page
+// payment-analysis results. Reached only through formatPayoutResult() above.
+function formatPaymentAnalysisResult(data) {
     const paymentResult = recordValue(data);
     const payment = paymentResult && recordValue(paymentResult.payment);
     if (!paymentResult || !payment)
@@ -303,6 +327,28 @@ export function formatPaymentResult(data) {
         ? payment.missing_inputs.filter((value) => typeof value === "string")
         : [];
     const summaryView = paymentSummaryView(payment.summary_view);
+    const summaryOverview = summaryView ? recordValue(summaryView.overview) : undefined;
+    const childrenServed = summaryOverview?.children_served;
+    const summaryCategories = summaryRows(summaryView, "categories");
+    const scheduledForecastCategory = summaryCategories.find((row) => tableValue(row.label).toLowerCase() === "scheduled forecast");
+    const scheduledForecastAmount = scheduledForecastCategory
+        ? numericField(scheduledForecastCategory, ["amount"])
+        : undefined;
+    const scheduledForecastAtRisk = scheduledForecastCategory
+        ? numericField(scheduledForecastCategory, ["conditional_amount"])
+        : undefined;
+    const baseAmount = numericField(payment, ["base_amount", "amount"]);
+    const estimatedTotal = estimatedPaymentTotal(payment, baseAmount, scheduledForecastAmount);
+    const engineAmountAtRisk = numericField(payment, ["amount_at_risk", "at_risk_amount"]);
+    const hasReconciledAmount = estimatedTotal !== undefined
+        && (estimatedTotal !== baseAmount
+            || payment.vacant_slot_fee !== undefined
+            || payment.slot_fee !== undefined
+            || scheduledForecastAmount !== undefined
+            || engineAmountAtRisk !== undefined);
+    const attendanceAmountAtRisk = attendanceDerivedAtRisk(attendance);
+    const amountAtRiskNumeric = engineAmountAtRisk ?? attendanceAmountAtRisk ?? scheduledForecastAtRisk;
+    const displayAmountAtRisk = amountAtRiskNumeric ?? Number.NaN;
     const disclaimers = paymentDisclaimers(payment, paymentResult, attendance, isSettled);
     // The Python engine's real duplicate/already-submitted status string is
     // "SUBMITTED" (see provider_risk_payment_engine.py's payment_status
@@ -322,58 +368,82 @@ export function formatPaymentResult(data) {
     const periodEndLabel = servicePeriod ? shortDateLabel(servicePeriod.serviceEndDate ?? servicePeriod.end_date) : undefined;
     // shortDateLabel already embeds the 2-digit year (e.g. "31st Aug'26"), so no
     // separate year suffix is appended here - that would duplicate the year.
+    const verifiedServicePeriodId = typeof servicePeriod?.servicePeriodId === "string"
+        ? servicePeriod.servicePeriodId
+        : undefined;
     const periodHeaderLabel = periodBeginLabel && periodEndLabel
-        ? `${paymentResult.paymentView === "CUSTOM_RANGE" ? "Custom period" : "Payout period"}: ${periodBeginLabel}-${periodEndLabel}`
+        ? `${paymentResult.paymentView === "CUSTOM_RANGE" && !detailPage && (!verifiedServicePeriodId || verifiedServicePeriodId.startsWith("CUSTOM:")) ? "Custom period" : "Service period"}: ${periodBeginLabel}-${periodEndLabel}`
         : undefined;
     const lines = [
         // Bolded: this is the response's "Interpretation" line and mandatory
         // "Scope" line per the conversation-templates contract - previously
         // rendered as plain prose indistinguishable from any other sentence.
+        // Status is stated here, not as a separate table row - matching the
+        // ledger path's headline-carries-status convention (e.g. "Upcoming
+        // payout in 2 days...") so status isn't shown twice.
         `**${view}: ${statusLabel}.**`,
-        ...(periodHeaderLabel ? [`**${periodHeaderLabel}**`] : []),
+        "",
+        PAYMENT_AMOUNT_LEGEND,
         "",
         "| Measure | Result |",
         "| --- | --- |",
-        `| Status | ${statusLabel} |`,
     ];
-    if (servicePeriod) {
-        for (const [label, keys] of [
-            ["Services from", ["serviceBeginDate", "start_date"]],
-            ["Services through", ["serviceEndDate", "end_date"]],
-            ["Payment processing date", ["paymentProcessingDate", "processing_date"]],
-            ["Payment release date", ["paymentReleaseDate", "release_date"]],
-            ["Service-period status", ["status", "service_period_status"]],
-        ]) {
-            const value = keys.map((key) => servicePeriod[key]).find((candidate) => candidate !== undefined && candidate !== null);
-            const isDateField = label === "Services from" || label === "Services through" || label === "Payment processing date" || label === "Payment release date";
-            if (value !== undefined)
-                lines.push(`| ${label} | ${isDateField ? (shortDateLabel(value) ?? tableValue(value)) : tableValue(value)} |`);
-        }
+    // Row set intentionally matches the ledger path's (NEXT_PAYOUT/LAST_PAYOUT)
+    // top summary table exactly - Service period and Payout date first,
+    // regardless of status - so the two payout paths present the same shape
+    // regardless of which one produced the response, including the BLOCKED
+    // case (a blocked result must still say which period it's blocked for).
+    // Children served, Excluded authorizations, Existing payment status, and
+    // the separate Services from/through/Payment processing/release date/
+    // Service-period status rows are no longer shown here: none of those
+    // exist in the ledger path's table either, and the information they
+    // carried is still available via the county/category tables below (which
+    // already break out per-category Scheduled forecast/Vacant slots/
+    // Unavailable-days detail) rather than being duplicated at this top level.
+    if (periodBeginLabel && periodEndLabel) {
+        lines.push(`| ${periodHeaderLabel?.startsWith("Custom period") ? "Custom period" : "Service period"} | ${periodBeginLabel}-${periodEndLabel} |`);
+    }
+    if (payment.payout_date !== undefined) {
+        lines.push(`| Payout date | ${shortDateLabel(payment.payout_date) ?? tableValue(payment.payout_date)} |`);
+    }
+    else if (servicePeriod?.paymentReleaseDate !== undefined) {
+        lines.push(`| Payout date | ${shortDateLabel(servicePeriod.paymentReleaseDate) ?? tableValue(servicePeriod.paymentReleaseDate)} |`);
     }
     if (status === "BLOCKED") {
         lines.push(`| Missing source areas | ${missingInputs.length > 0 ? missingInputs.join(", ") : "Required source data is unavailable"} |`, "", "No payment amount is shown because the approved source data is incomplete.");
     }
     else {
-        for (const [label, key] of [
-            ["Estimated total", "amount"],
-            ["Payout date", "payout_date"],
-            ["Excluded authorizations", "excluded_authorizations"],
-            ["Existing payment status", "existing_status"],
-        ]) {
-            if (payment[key] !== undefined && key === "amount") {
-                lines.push(`| ${label} | ${estimatedMoney(payment[key])} |`);
-            }
-            else if (payment[key] !== undefined && key === "payout_date") {
-                lines.push(`| ${label} | ${shortDateLabel(payment[key]) ?? tableValue(payment[key])} |`);
-            }
-            else if (payment[key] !== undefined) {
-                lines.push(`| ${label} | ${String(payment[key])} |`);
-            }
+        // The "Net payment" figure actually shown in the table below is either
+        // the reconciled payableBeforeRisk (when estimatedTotal is available -
+        // e.g. scheduled forecast/vacant slots can make this nonzero even when
+        // the raw payment.amount net is 0) or the raw payment.amount otherwise.
+        // Computed once here, BEFORE the table rows, so the explanatory
+        // sentence below can never contradict the actual displayed figure -
+        // previously it hardcoded "$0.00 net" and gated on the raw unreconciled
+        // payment.amount, so a response with a nonzero reconciled Net payment
+        // (e.g. driven entirely by scheduled forecast + vacant slots) still
+        // showed a jarring "This shows $0.00 net..." sentence directly under a
+        // table row that already read "$6021.50".
+        const payableBeforeRisk = estimatedTotal !== undefined
+            ? Math.max(0, estimatedTotal - (Number.isFinite(displayAmountAtRisk) ? displayAmountAtRisk : 0))
+            : undefined;
+        const displayedNetPayment = payableBeforeRisk !== undefined
+            ? (isSettled ? estimatedTotal : payableBeforeRisk)
+            : (typeof payment.amount === "number" ? payment.amount : Number(payment.amount));
+        if (payment.amount !== undefined && !hasReconciledAmount) {
+            lines.push(`| Net payment | ${estimatedMoney(baseAmount ?? payment.amount)} |`);
         }
-        const netAmountNumeric = typeof payment.amount === "number" ? payment.amount : Number(payment.amount);
-        const amountAtRiskNumeric = typeof payment.amount_at_risk === "number" ? payment.amount_at_risk : Number(payment.amount_at_risk);
-        if (!isSettled && netAmountNumeric === 0 && Number.isFinite(amountAtRiskNumeric) && amountAtRiskNumeric > 0) {
-            lines.push("", `This shows ${plainMoney(0)} net because the payable amount is still conditional, not denied - an estimated ${plainMoney(amountAtRiskNumeric)} remains possible once the pending confirmations below are completed. This is an estimate and will change as confirmations are completed.`, atRiskDisclaimer(attendance.find((day) => typeof day.confirm_by_date === "string")?.confirm_by_date ?? payment.confirm_by_date ?? paymentResult.confirm_by_date));
+        if (estimatedTotal !== undefined) {
+            // Scheduled forecast and Vacant slots are intentionally NOT inlined
+            // here anymore - matching the ledger path's top table exactly (it has
+            // never shown them at this level either). Both amounts are still
+            // fully visible per-category in the "Payment by category" table below.
+            lines.push(`| Net payment | ${plainMoney(displayedNetPayment)} |`);
+            lines.push(`| Conditional at-risk | ${plainMoney(isSettled ? 0 : displayAmountAtRisk)} |`);
+            lines.push(`| Maximum estimated payout | ${estimatedMoney(estimatedTotal)} |`);
+        }
+        if (!isSettled && displayedNetPayment === 0 && Number.isFinite(displayAmountAtRisk) && displayAmountAtRisk > 0) {
+            lines.push("", `This shows ${plainMoney(0)} net because the payable amount is still conditional, not denied - an estimated ${plainMoney(displayAmountAtRisk)} remains possible once the pending confirmations below are completed. This is an estimate and will change as confirmations are completed.`, atRiskDisclaimer(attendance.find((day) => typeof day.confirm_by_date === "string")?.confirm_by_date ?? payment.confirm_by_date ?? paymentResult.confirm_by_date));
         }
         // Expected/Forecasted/At-risk breakdown replaces the single "Amount at
         // risk" row above. "Confirmed" is deliberately never used as a label -
@@ -382,7 +452,10 @@ export function formatPaymentResult(data) {
         const singleChildFilter = Array.isArray(recordValue(paymentResult.filters)?.childNames)
             ? (recordValue(paymentResult.filters)?.childNames).length === 1
             : false;
-        const hasAmountBreakdown = payment.expected_amount !== undefined
+        const hasAmountBreakdown = payment.base_amount !== undefined
+            || payment.scheduled_forecast_amount !== undefined
+            || payment.amount_at_risk !== undefined
+            || payment.expected_amount !== undefined
             || payment.forecasted_amount !== undefined
             || payment.at_risk_amount !== undefined;
         // Expected/Forecasted/At-risk are STATUS-level figures (one number
@@ -392,23 +465,22 @@ export function formatPaymentResult(data) {
         // columns rather than introducing new columns.
         const breakdownRows = [];
         if (hasAmountBreakdown && detailPage && !isSettled) {
-            lines.push("", "Expected - past the confirmation window; likely payable.", "Forecasted - within the confirmation window or a future date; may change.", "At risk - excluded or flagged; may reduce or exclude payment.");
-            const expectedAmount = Number(payment.expected_amount) || 0;
-            const forecastedAmount = Number(payment.forecasted_amount) || 0;
+            lines.push("", "Net payment - resolved attendance, absence, drop-in, and facility amounts currently included in the estimate.", "Scheduled forecast - future authorized schedule days only.", "Conditional at-risk - unresolved or excluded amounts that may reduce or increase the final payment.");
+            const expectedAmount = Number(payment.base_amount ?? payment.expected_amount) || 0;
+            const forecastedAmount = Number(payment.scheduled_forecast_amount ?? payment.forecasted_amount) || 0;
             const breakdownDisclaimers = [
                 expectedAmount > 0 ? DISCLAIMER_EXPECTED : undefined,
                 forecastedAmount > 0 ? DISCLAIMER_FORECASTED : undefined,
             ].filter((disclaimer) => Boolean(disclaimer));
             if (breakdownDisclaimers.length > 0)
                 lines.push(breakdownDisclaimers.join(" "));
-            breakdownRows.push({ label: "Expected", amount: payment.expected_amount }, { label: "Forecasted", amount: payment.forecasted_amount });
-            breakdownRows.push({ label: "Excluded or flagged (at-risk)", conditional_amount: payment.at_risk_amount });
+            breakdownRows.push({ label: "Net payment", amount: payment.base_amount ?? payment.expected_amount }, { label: "Scheduled forecast", amount: payment.scheduled_forecast_amount ?? payment.forecasted_amount });
+            breakdownRows.push({ label: "Amount at risk", amount: payment.amount_at_risk ?? payment.at_risk_amount });
         }
         // Table 8 ("County payment totals") retired - County payment
         // composition (rendered further below via renderCountyComposition) is
         // now the only county-level payment table; it already covers this same
         // information with a richer per-category breakdown.
-        const overview = summaryView && recordValue(summaryView.overview);
         // An excluded-only request or a single-child drill-down already narrows
         // the detail table to exactly the rows the provider asked about; the
         // category/county/child rollups restate the same totals and are the
@@ -416,52 +488,15 @@ export function formatPaymentResult(data) {
         // are omitted here rather than rendered and then discarded by the client.
         const suppressRollups = singleChildFilter;
         const categories = suppressRollups ? [] : summaryRows(summaryView, "categories");
-        const countyRollup = suppressRollups ? [] : summaryRows(summaryView, "counties");
         const countyComposition = suppressRollups ? [] : summaryRows(summaryView, "county_composition");
         const childRollup = suppressRollups ? [] : summaryRows(summaryView, "children");
         const vacantSlots = suppressRollups ? [] : summaryRows(summaryView, "vacant_slots");
         const nextActions = summaryRows(summaryView, "next_actions");
-        if (overview && activeTableId === "payment-category-rollup") {
-            // Vacant-slot amount is a provider/slot-level figure, not tied to any
-            // individual child's attendance - showing it in a single-child
-            // drill-down is misleading. Show Drop-in amount instead there, since
-            // drop-in care is a genuine per-child attendance pattern. An
-            // excluded-days-only review is about which days didn't pay, and vacant
-            // slots are guaranteed regardless of any child's attendance, so
-            // neither vacant-slot nor drop-in amount is relevant there - the
-            // column is dropped entirely for that view rather than showing an
-            // unrelated figure.
-            const rawCategories = summaryRows(summaryView, "categories");
-            const dropInCategory = rawCategories.find((row) => tableValue(row.label) === "Drop-in");
-            const lastColumn = singleChildFilter
-                ? { label: "Drop-in amount", value: plainMoney(dropInCategory?.amount ?? 0) }
-                : { label: "Vacant-slot amount", value: plainMoney(payment.vacant_slot_fee) };
-            // "Excluded days" is dropped here too, for consistency with the Measure
-            // table: it duplicates the per-row exclusion reasons already shown in
-            // the Attendance type brackets in the detail table below, and reads as
-            // a resolved-exclusion count that gets conflated with "Amount at risk"
-            // (which is a distinct, still-conditional dollar figure).
-            // "Review items" renamed to "Flagged categories" - it is a count of
-            // distinct issue TYPES flagged (missing rate, absence-limit exceeded,
-            // etc.), not a day count, which read as easy to misinterpret next to
-            // "Paid days" in the same row.
-            const diffHeader = lastColumn
-                ? `| Paid days | 🔍 Flagged categories | Amount at risk | ${lastColumn.label} |`
-                : "| Paid days | 🔍 Flagged categories | Amount at risk |";
-            const diffSeparator = lastColumn ? "| ---: | ---: | ---: | ---: |" : "| ---: | ---: | ---: |";
-            const diffRow = lastColumn
-                ? `| ${tableValue(overview.paid_days)} | ${tableValue(overview.review_items)} | ${plainMoney(overview.amount_at_risk)} | ${lastColumn.value} |`
-                : `| ${tableValue(overview.paid_days)} | ${tableValue(overview.review_items)} | ${plainMoney(overview.amount_at_risk)} |`;
-            lines.push("", "Payment differences:", diffHeader, diffSeparator, diffRow);
-            if (numericValue(overview.review_items) > 0) {
-                lines.push("🔍 Flagged categories = distinct issue types, not days.");
-            }
-        }
         // Folded-in Expected/Forecasted/At-risk breakdown rows (see
         // breakdownRows above) append to whatever category rows already exist,
         // so a detail-page response with a real category breakdown gets both in
         // ONE table instead of the table plus two standalone mini-tables.
-        const categoriesWithBreakdown = [...categories, ...breakdownRows];
+        const categoriesWithBreakdown = splitConditionalScheduledForecast(categories);
         // "forecast-date-detail" (CURRENT_PERIOD_FORECAST's activeTableId) is
         // included here alongside the default "payment-category-rollup" -
         // previously this table only ever rendered for STATUS/CUSTOM_RANGE
@@ -469,8 +504,34 @@ export function formatPaymentResult(data) {
         // the category breakdown, even though `categories` was already
         // computed and available. Mirrors the same fix already applied to the
         // county-composition condition just below.
-        if (categoriesWithBreakdown.length > 0 && (activeTableId === "payment-category-rollup" || activeTableId === "forecast-date-detail")) {
-            lines.push("", "Payment by category:", "> This separates only the payment measures available for the requested category view; omitted columns were not populated for this scope.", ...renderCategoryTable(categoriesWithBreakdown));
+        if (activeTableId === "payment-category-rollup" || activeTableId === "forecast-date-detail" || activeTableId === "payout-summary") {
+            const categoryRows = [...categoriesWithBreakdown];
+            const vacantSlotAmount = vacantSlots.reduce((total, row) => total + (Number(row.amount) || 0), 0);
+            const vacantSlotCategoryAmount = payment.vacant_slot_fee ?? (vacantSlots.length > 0 ? vacantSlotAmount : undefined);
+            if (vacantSlotCategoryAmount !== undefined
+                && !categoryRows.some((row) => ["vacant slots", "vacant-slot amount"].includes(tableValue(row.label).toLowerCase()))) {
+                // days: vacantSlots.length - the count of vacant-slot-day records
+                // backing vacantSlotCategoryAmount. Previously omitted, so this
+                // synthesized row always showed 0 Days in "Payment by category"
+                // (normalizedCategoryRows sums Number(row.days), and undefined ->
+                // NaN is skipped) even though the amount rendered correctly. No
+                // `hours` field is added - vacant slots are a flat facility-level
+                // fee per day, not attendance/hour-based (the dedicated "Vacant
+                // slots (separate from child payments)" table below also has no
+                // Hours column), so Care hours legitimately has no source value here.
+                categoryRows.push({ label: "Vacant slots", amount: vacantSlotCategoryAmount, days: vacantSlots.length });
+            }
+            const categoryRisk = categoryRows.reduce((sum, row) => sum + (numericField(row, ["conditional_amount"]) ?? 0), 0);
+            if (Number.isFinite(displayAmountAtRisk) && displayAmountAtRisk > categoryRisk) {
+                categoryRows.push({ label: "Amount at risk", conditional_amount: displayAmountAtRisk - categoryRisk });
+            }
+            if (categoryRows.length === 0) {
+                categoryRows.push({ label: "Regular care", amount: payment.base_amount ?? payment.amount });
+            }
+            if (countyComposition.length > 0) {
+                lines.push(...renderCountyCategoryTable(countyComposition, estimatedTotal, childrenServed));
+            }
+            lines.push(...renderPaymentCategorySection("Payment by category:", categoryRows, estimatedTotal, childrenServed));
         }
         // County detail (the flat Days/Hours/Expected/At-risk/Excluded rollup)
         // has been merged into County payment composition below - it now
@@ -482,8 +543,8 @@ export function formatPaymentResult(data) {
         // single "Estimated total" figure with no county-level breakdown - the
         // composition data (auth/vacant-slot/paid-holiday/drop-in amounts) was
         // already computed and available, just never rendered for this view.
-        if (countyComposition.length > 0 && (activeTableId === "payment-county-rollup" || activeTableId === "forecast-date-detail" || (activeTableId === "payment-category-rollup" && categories.length === 0))) {
-            lines.push(...renderCountyComposition(countyComposition, { settled: isSettled }));
+        if (countyComposition.length > 0 && activeTableId === "payment-county-rollup") {
+            lines.push(...renderCountyCategoryTable(countyComposition, estimatedTotal, childrenServed));
         }
         if (childRollup.length > 0 && activeTableId === "payment-category-rollup") {
             // A child name alone does not uniquely identify a child - joining
@@ -516,7 +577,7 @@ export function formatPaymentResult(data) {
                 }
                 return tags.size > 0 ? [...tags].join(", ") : "None";
             };
-            lines.push("", "Child detail:", "> This shows the payment measures behind the selected child scope; amounts remain estimates or at risk where labeled. Attendance risk summarizes this same response's day-level flags - open the attendance-risk detail action below for the complete breakdown.", "| Child | Authorization | Days | Care hours | Expected amount | At-risk amount | Excluded days | Attendance risk |", "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |", ...childRollup.map((row) => `| ${tableValue(row.label)} | ${authorizationCell(row)} | ${tableValue(row.days)} | ${tableValue(row.hours)} | ${plainMoney(row.amount)} | ${plainMoney(row.conditional_amount)} | ${tableValue(row.excluded_days)} | ${attendanceRiskTag(row.label)} |`));
+            lines.push("", "Child detail:", "> This shows the payment measures behind the selected child scope; net payment and conditional amounts are kept separate. Attendance risk summarizes this same response's day-level flags - open the attendance-risk detail action below for the complete breakdown.", "| Child | Authorization | Days | Care hours | Net payment | Conditional at-risk | Excluded days | Attendance risk |", "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |", ...childRollup.map((row) => `| ${tableValue(row.label)} | ${authorizationCell(row)} | ${tableValue(row.days)} | ${tableValue(row.hours)} | ${plainMoney(row.amount)} | ${plainMoney(row.conditional_amount)} | ${tableValue(row.excluded_days)} | ${attendanceRiskTag(row.label)} |`));
         }
         // Vacant-slot contract data is a separate payment scenario that doesn't
         // depend on attendance - it now renders by default alongside the
@@ -540,14 +601,19 @@ export function formatPaymentResult(data) {
             }
             lines.push("", "Vacant slots (separate from child payments):", "> This is a facility-level vacant-slot amount and is kept separate from child attendance payments.", "| County | Total days | Total amount |", "| --- | ---: | ---: |", ...[...vacantSlotsByCounty.values()].map((row) => `| ${row.county} | ${row.days} | ${plainMoney(row.amount)} |`));
         }
-        if (nextActions.length > 0) {
-            // Keep the action label canonical and put its explanation/metrics in
-            // prose; appending reason text to labels creates a competing action UI.
-            lines.push("", "**Payment next actions:**", ...nextActions.slice(0, 3).flatMap((row) => [
-                `- ${tableValue(row.label)}`,
-                `  ${tableValue(row.reason)}${row.days !== undefined || row.amount_at_risk !== undefined ? ` (${tableValue(row.days)} day(s), ${plainMoney(row.amount_at_risk)} at risk)` : ""}`,
-            ]));
-        }
+        // The inline "Payment next actions:" block (built from
+        // summaryView.next_actions) previously rendered alongside the separate
+        // "**Recommended actions**" section (built from paymentActionMetadata()
+        // via renderActionSections/finalizePayoutResponse), so a response could
+        // show two competing action lists - one prose list of "next actions"
+        // and one numbered list of "recommended actions" - for the same result.
+        // Per explicit request, only the single obvious drill-down action list
+        // (paymentActionMetadata -> "**Recommended actions**") is kept; the
+        // duplicate inline list is intentionally not rendered here anymore.
+        // nextActions itself is left in place (still consumed by
+        // compactPaymentSummaryView/structuredContent) in case a future action
+        // needs the raw rows, just not rendered as a second text block.
+        void nextActions;
         if (numericValue(payment.total_amount_incorrectly_at_risk) > 0) {
             lines.push("", `Holiday-classification mismatch affecting ${plainMoney(payment.total_amount_incorrectly_at_risk)} - see detail table below.`);
         }
@@ -667,7 +733,7 @@ export function formatPaymentResult(data) {
                             ? "Sub-payment detail"
                             : "Payment category summary",
         tableDescription: activeTableId === "payment-county-rollup"
-            ? "This table compares children served, care hours, expected amount, and at-risk amount by county."
+            ? "This table compares children served, care hours, net payment amount, and conditional at-risk amount by county."
             : activeTableId === "vacant-slot-rollup"
                 ? "This table keeps facility-level vacant-slot amounts separate from child attendance payments."
                 : paymentResult.paymentView === "CURRENT_WEEK_FORECAST"
@@ -710,11 +776,29 @@ export function formatPaymentResult(data) {
             input: { ...parentInput, viewId: "PAYMENT_CATEGORY_ROLLUP" },
         });
     }
-    const viewAwareActionIntents = actionIntents
-        .map((action) => actionViewMetadata(action, currentView));
-    const providerMessage = `${renderActionSections(lines.join("\n"), viewAwareActionIntents)}\n\n${DISCLAIMER_GLOBAL}`;
-    const providerSummary = Array.isArray(payment.summary)
-        ? countyPaymentSummary(payment.summary.map(recordValue).filter((row) => Boolean(row))).map((row) => ({
+    const providerSummaryRows = summaryView && Array.isArray(summaryView.county_composition)
+        ? summaryView.county_composition
+        : Array.isArray(payment.summary) ? payment.summary : [];
+    const providerSummaryInput = providerSummaryRows
+        .map(recordValue)
+        .filter((row) => Boolean(row))
+        .map((row) => {
+        if (typeof row.county_name === "string")
+            return row;
+        const component = (key, field) => {
+            const value = recordValue(row[key])?.[field];
+            return typeof value === "number" ? value : Number(value ?? 0);
+        };
+        return {
+            county_name: row.county,
+            children_served: row.children_served,
+            hours: component("care", "hours") + component("absence", "hours") + component("enrollment_absence", "hours") + component("drop_in", "hours") + component("paid_holidays", "hours"),
+            amount: component("care", "amount") + component("absence", "amount") + component("enrollment_absence", "amount") + component("drop_in", "amount") + component("paid_holidays", "amount"),
+            conditional_amount: row.amount_at_risk,
+        };
+    });
+    const providerSummary = providerSummaryInput.length > 0
+        ? countyPaymentSummary(providerSummaryInput).map((row) => ({
             county: row.county_name,
             childrenServed: row.children_served,
             hours: row.hours,
@@ -736,16 +820,16 @@ export function formatPaymentResult(data) {
             "service_period_status",
         ].includes(key)))
         : undefined;
-    return {
-        content: [{ type: "text", text: providerMessage }],
-        structuredContent: {
-            capability: "payment-analysis",
-            viewState: currentView,
+    return finalizePayoutResponse({
+        capability: "payment-analysis",
+        lines,
+        actions: actionIntents,
+        currentView,
+        disclaimers,
+        responseSections: ["summary", "next-actions", "drill-down", "available-views"],
+        extraStructured: {
             scope: paymentResult.scope,
             paymentView: paymentResult.paymentView,
-            actionIntents,
-            actionControls: actionControls(viewAwareActionIntents),
-            paymentDisclaimers: disclaimers,
             servicePeriod: providerServicePeriod,
             ruleVersion: paymentResult.rule_version,
             resultStatus: paymentResult.status,
@@ -756,9 +840,7 @@ export function formatPaymentResult(data) {
             summaryView: compactPaymentSummaryView(summaryView),
             detailPagination,
             status,
-            providerMessage,
             filters: paymentResult.filters,
-            responseSections: ["summary", "next-actions", "drill-down", "available-views"],
             responseContext: {
                 scope: paymentResult.scope,
                 sourceRetrievedAt: paymentResult.sourceRetrievedAt,
@@ -767,9 +849,11 @@ export function formatPaymentResult(data) {
                 resultStatus: paymentResult.status,
             },
         },
-    };
+    });
 }
-export function formatServicePeriodLedgerResult(data) {
+// Internal - handles NEXT_PAYOUT/LAST_PAYOUT/PAYOUT_LEDGER ledger-sourced
+// results. Reached only through formatPayoutResult() below.
+function formatLedgerResult(data) {
     const value = recordValue(data);
     if (!value)
         return result(data);
@@ -782,6 +866,49 @@ export function formatServicePeriodLedgerResult(data) {
     const upcoming = periods?.filter((period) => period.periodStatus !== "PAID").sort((a, b) => String(a.payoutDate ?? "").localeCompare(String(b.payoutDate ?? "")))[0];
     const multiPeriod = value.periodMode === "MULTI_PERIOD" || (periods?.length ?? 0) > 1;
     const lines = [];
+    // Unlike formatPaymentResult (which always synthesizes a "Vacant slots"
+    // category row from payment.vacant_slot_fee when the python engine's
+    // categories list doesn't include one - vacant slot days are never part
+    // of the attendance_days loop that builds `categories`), this ledger
+    // path never did that synthesis at all. The result: the "Vacant slots"
+    // row in "Payment by category" always rendered as the all-zero fallback
+    // template (no matching aggregate found) for NEXT_PAYOUT/LAST_PAYOUT/
+    // PAYOUT_LEDGER, even though the period's real vacant-slot fee was
+    // available the whole time on countyComposition[].vacant_slots.amount -
+    // the exact "correct amount doesn't flow there" gap.
+    const ledgerCategoryRows = (period) => {
+        if (!period)
+            return [];
+        const rows = Array.isArray(period.categories)
+            ? period.categories.map(recordValue).filter((row) => Boolean(row))
+            : [];
+        if (rows.length === 0 && (period.baseAmount !== undefined || period.calculatedAmount !== undefined || period.netAmount !== undefined)) {
+            rows.push({ label: "Regular care", amount: period.baseAmount ?? period.calculatedAmount ?? period.netAmount });
+        }
+        const hasVacantSlotsRow = rows.some((row) => tableValue(row.label).toLowerCase() === "vacant slots");
+        if (!hasVacantSlotsRow) {
+            const countyComposition = Array.isArray(period.countyComposition)
+                ? period.countyComposition.map(recordValue).filter((row) => Boolean(row))
+                : [];
+            // county.vacant_slots already carries both {days, amount} from the
+            // Python engine (provider_risk_payment_engine.py's
+            // slot_county["vacant_slots"]["days"] += 1) - only amount was summed
+            // here previously, so this row's Days column always showed 0 even
+            // though the day count was available on the exact same object. No
+            // `hours` - vacant slots are a flat per-day facility fee, not
+            // hour-based (see the matching comment in formatPaymentAnalysisResult).
+            const vacantSlotTotals = countyComposition.reduce((sum, county) => {
+                const vacantSlots = recordValue(county.vacant_slots);
+                return {
+                    amount: sum.amount + (Number(vacantSlots?.amount) || 0),
+                    days: sum.days + (Number(vacantSlots?.days) || 0),
+                };
+            }, { amount: 0, days: 0 });
+            if (vacantSlotTotals.amount > 0)
+                rows.push({ label: "Vacant slots", amount: vacantSlotTotals.amount, days: vacantSlotTotals.days });
+        }
+        return rows;
+    };
     if (periods) {
         // A row shows exactly one of Net (released/paid, historical) or
         // Calculated (not yet released, a current estimate) - never both, and
@@ -789,9 +916,9 @@ export function formatServicePeriodLedgerResult(data) {
         const renderPeriodRow = (period) => {
             const begin = dateLabel(period.serviceBeginDate), end = dateLabel(period.serviceEndDate);
             const servicePeriod = begin !== "Unavailable from the current source" && end !== "Unavailable from the current source" ? `${begin}-${end}` : "Unavailable from the current source";
-            const netCell = period.netAmount !== undefined ? plainMoney(period.netAmount) : "—";
-            const calculatedCell = period.calculatedAmount !== undefined ? plainMoney(period.calculatedAmount) : "—";
-            return `| ${tableValue(servicePeriod)} | ${tableValue(dateLabel(period.payoutDate))} | ${tableValue(labels[String(period.periodStatus)] ?? "Unavailable from the current source")} | ${netCell} | ${calculatedCell} | ${plainMoney(period.amountAtRisk)} |`;
+            const maximum = money(period.estimatedTotal ?? period.potentialTotal);
+            const risk = money(period.amountAtRisk);
+            return `| ${tableValue(servicePeriod)} | ${tableValue(dateLabel(period.payoutDate))} | ${tableValue(labels[String(period.periodStatus)] ?? "Unavailable from the current source")} | ${plainMoney(Math.max(0, maximum - risk))} | ${plainMoney(period.scheduledForecastAmount)} | ${plainMoney(risk)} | ${plainMoney(maximum)} |`;
         };
         // Headline figure uses whichever of Net/Calculated is populated for the
         // soonest period - a released period never reaches here as "upcoming"
@@ -802,28 +929,28 @@ export function formatServicePeriodLedgerResult(data) {
         // Legend for the Status column's five possible values - added so a
         // provider doesn't have to guess what "Not yet started" vs "Expected,
         // awaiting payout" actually mean relative to each other.
-        const statusLegend = "> Status: Not yet started = period hasn't begun · In progress = today falls within this period · Pending confirmation = period ended, within the 5-day confirmation window · Expected, awaiting payout = confirmation window passed, not yet due · Overdue, needs follow-up = payout date has passed with no confirmed payment - review this period directly · Paid = released and settled.";
+        const statusLegend = "> Status: Not yet started = period hasn't begun · In progress = today falls within this period · Pending confirmation = period ended, within the 9-day confirmation window · Expected, awaiting payout = confirmation window passed, not yet due · Overdue, needs follow-up = payout date has passed with no confirmed payment - review this period directly · Paid = released and settled.";
         if (multiPeriod) {
-            lines.push(`**Showing ${periods.length} service periods from the verified payout ledger. The soonest upcoming payout is estimated at ${estimatedMoney(upcomingHeadlineAmount)}.**`);
-            lines.push("", "> This ledger shows every service period in the requested range; released periods show a Net amount, unreleased periods show a Calculated (current estimate) amount.", statusLegend, "| Service period | Payout date | Status | Net amount | Calculated amount | At-risk amount |", "| --- | --- | --- | ---: | ---: | ---: |", ...periods.map(renderPeriodRow));
+            lines.push(`**Showing ${periods.length} service periods from the verified payout ledger. The soonest upcoming payout has a maximum estimate of ${estimatedMoney(upcoming?.estimatedTotal ?? upcomingHeadlineAmount)}.**`);
+            lines.push("", PAYMENT_AMOUNT_LEGEND, "> This ledger shows net payment, future scheduled forecast, conditional at-risk, and maximum estimated payout for each service period.", statusLegend, "| Service period | Payout date | Status | Net payment | Scheduled forecast | Conditional at-risk | Maximum estimated payout |", "| --- | --- | --- | ---: | ---: | ---: | ---: |", ...periods.map(renderPeriodRow), `| Total |  |  |  |  | ${plainMoney(periods.reduce((sum, period) => sum + Number(period.amountAtRisk || 0), 0))} | ${plainMoney(periods.reduce((sum, period) => sum + Number(period.estimatedTotal ?? period.potentialTotal ?? 0), 0))} |`);
             // "Payment by category" was previously never rendered anywhere in this
             // formatter (only county composition was) - shown here for the
             // soonest upcoming period only (not every row) to avoid cluttering a
             // multi-period table with N separate category breakdowns.
-            const upcomingCategories = Array.isArray(upcoming?.categories)
-                ? upcoming.categories.map(recordValue).filter((row) => Boolean(row))
-                : [];
+            const upcomingCategories = ledgerCategoryRows(upcoming);
             if (upcomingCategories.length > 0) {
-                lines.push("", `Payment by category (soonest upcoming period, ${dateLabel(upcoming?.serviceBeginDate)}-${dateLabel(upcoming?.serviceEndDate)}):`, ...renderCategoryTable(upcomingCategories));
+                lines.push(...renderPaymentCategorySection(`Payment by category (soonest upcoming period, ${dateLabel(upcoming?.serviceBeginDate)}-${dateLabel(upcoming?.serviceEndDate)}):`, upcomingCategories, upcoming?.estimatedTotal ?? upcoming?.potentialTotal, upcoming?.childrenServed));
             }
         }
         else if (upcoming) {
-            lines.push(`**Showing the next upcoming service period only: an estimated ${estimatedMoney(upcomingHeadlineAmount)} on ${dateLabel(upcoming.payoutDate)}.**`, "", "> This shows only the single next unpaid or upcoming payout identified from verified service-period data.", statusLegend, "| Service period | Payout date | Status | Net amount | Calculated amount | At-risk amount |", "| --- | --- | --- | ---: | ---: | ---: |", renderPeriodRow(upcoming));
-            const upcomingCategories = Array.isArray(upcoming.categories)
-                ? upcoming.categories.map(recordValue).filter((row) => Boolean(row))
-                : [];
+            const upcomingMaximum = money(upcoming.estimatedTotal ?? upcoming.potentialTotal);
+            const upcomingRisk = money(upcoming.amountAtRisk);
+            lines.push(`**Showing the next upcoming service period only: maximum estimated payout ${estimatedMoney(upcomingMaximum)}, on ${dateLabel(upcoming.payoutDate)}.**`, "", PAYMENT_AMOUNT_LEGEND, "> This shows only the single next unpaid or upcoming payout identified from verified data.", "| Measure | Result |", "| --- | --- |", `| Service period | ${dateLabel(upcoming.serviceBeginDate)}-${dateLabel(upcoming.serviceEndDate)} |`, `| Payout date | ${dateLabel(upcoming.payoutDate)} |`, `| Status | ${tableValue(labels[String(upcoming.periodStatus)] ?? "Unavailable from the current source")} |`, `| Children served | ${tableValue(upcoming.childrenServed)} |`, `| Net payment | ${plainMoney(Math.max(0, upcomingMaximum - upcomingRisk))} |`, `| Scheduled forecast | ${plainMoney(upcoming.scheduledForecastAmount)} |`, `| Conditional at-risk | ${plainMoney(upcomingRisk)} |`, `| Maximum estimated payout | ${plainMoney(upcomingMaximum)} |`);
+            const upcomingCategories = ledgerCategoryRows(upcoming);
             if (upcomingCategories.length > 0) {
-                lines.push("", "Payment by category:", ...renderCategoryTable(upcomingCategories));
+                if (Array.isArray(upcoming.countyComposition) && upcoming.countyComposition.length > 0)
+                    lines.push(...renderCountyCategoryTable(upcoming.countyComposition.map(recordValue).filter((row) => Boolean(row)), upcoming.estimatedTotal ?? upcoming.potentialTotal, upcoming.childrenServed));
+                lines.push(...renderPaymentCategorySection("Payment by category:", upcomingCategories, upcoming.estimatedTotal ?? upcoming.potentialTotal, upcoming.childrenServed));
             }
         }
         else {
@@ -836,8 +963,11 @@ export function formatServicePeriodLedgerResult(data) {
         const isLastPayout = entry.periodStatus === "PAID";
         const entryAmount = isLastPayout ? entry.netAmount : entry.calculatedAmount;
         lines.push(isLastPayout
-            ? `Your last payout was released on ${dateLabel(entry.payoutDate)}: ${estimatedMoney(entryAmount)} net.`
-            : `Payout in ${countdown}, on ${dateLabel(entry.payoutDate)}: an estimated ${estimatedMoney(entryAmount)}.`);
+            ? `Your last payout was released on ${dateLabel(entry.payoutDate)}.`
+            : `Upcoming payout in ${countdown}, on ${dateLabel(entry.payoutDate)}.`);
+        const entryMaximum = money(entry.estimatedTotal ?? entry.potentialTotal ?? entry.calculatedAmount ?? entry.netAmount);
+        const entryRisk = isLastPayout ? 0 : money(entry.amountAtRisk);
+        lines.push("", PAYMENT_AMOUNT_LEGEND, "", "| Measure | Result |", "| --- | --- |", `| Service period | ${dateLabel(entry.serviceBeginDate)}-${dateLabel(entry.serviceEndDate)} |`, `| Payout date | ${dateLabel(entry.payoutDate)} |`, `| Net payment | ${plainMoney(Math.max(0, entryMaximum - entryRisk))} |`, `| Conditional at-risk | ${plainMoney(entryRisk)} |`, `| Maximum estimated payout | ${plainMoney(entryMaximum)} |`);
         lines.push(!isLastPayout && Number(entry.amountAtRisk) > 0
             ? atRiskDisclaimer(entry.confirm_by_date ?? entry.confirmByDate ?? value.confirm_by_date)
             : DISCLAIMER_EXPECTED);
@@ -848,21 +978,16 @@ export function formatServicePeriodLedgerResult(data) {
         const entryCountyComposition = Array.isArray(entry.countyComposition)
             ? entry.countyComposition.map(recordValue).filter((row) => Boolean(row))
             : [];
-        if (entryCountyComposition.length > 0) {
-            // A released (Paid) period is settled - nothing shown here is
-            // "potential" anymore, so the composition table drops that
-            // disambiguation rather than showing it alongside a settled figure.
-            lines.push(...renderCountyComposition(entryCountyComposition, { settled: isLastPayout }));
-        }
+        // County composition is rendered once, immediately before categories.
         // "Payment by category" (Care/Absence/Drop-in/Holiday breakdown) was
         // never rendered anywhere in this formatter before - only county
         // composition was. LedgerPeriodEntry.categories threads this through
         // from the same underlying payment analysis as countyComposition above.
-        const entryCategories = Array.isArray(entry.categories)
-            ? entry.categories.map(recordValue).filter((row) => Boolean(row))
-            : [];
+        const entryCategories = ledgerCategoryRows(entry);
         if (entryCategories.length > 0) {
-            lines.push("", "Payment by category:", ...renderCategoryTable(entryCategories));
+            if (entryCountyComposition.length > 0)
+                lines.push(...renderCountyCategoryTable(entryCountyComposition, entry.estimatedTotal ?? entry.potentialTotal, entry.childrenServed));
+            lines.push(...renderPaymentCategorySection("Payment by category:", entryCategories, entry.estimatedTotal ?? entry.potentialTotal, entry.childrenServed));
         }
     }
     else
@@ -982,15 +1107,24 @@ export function formatServicePeriodLedgerResult(data) {
                 },
             }]
         : [];
+    // Every action object here MUST carry an explicit `tool` field, same as
+    // every sibling action elsewhere in this file (e.g. countyCompositionRangeAction
+    // above) - these three were the one place that omitted it. Without `tool`,
+    // the calling agent has no declared MCP tool to invoke when the action is
+    // used, so the button renders but produces no output when acted on - this
+    // was the root cause of "Review payment details for this service period"
+    // (and the equivalent multi-period/last-payout actions) silently doing
+    // nothing even though the initial NEXT_PAYOUT/LAST_PAYOUT response itself
+    // rendered correctly.
     const actionIntents = multiPeriod
         ? [
-            { actionId: "open-next-upcoming-payout", capability: "payment-analysis", label: "Open next upcoming payout", reason: "Focus on the nearest unpaid or upcoming service period.", priority: "high", section: "next-actions", source: "current-result", input: ledgerInput },
+            { actionId: "open-next-upcoming-payout", capability: "payment-analysis", tool: "cccap_analyze_payment", label: "Open next upcoming payout", reason: "Focus on the nearest unpaid or upcoming service period.", priority: "high", section: "next-actions", source: "current-result", input: ledgerInput },
             ...additionalPeriodActions,
             ...countyCompositionRangeAction,
         ]
         : isLastPayoutEntry
-            ? [{ actionId: "open-next-upcoming-payout-from-last", capability: "payment-analysis", label: "View next upcoming payout", reason: "See the next payout still ahead, separate from this released one.", priority: "medium", section: "next-actions", source: "current-result", input: { view: "NEXT_PAYOUT" } }]
-            : [{ actionId: "review-service-period-payout-ledger", capability: "payment-analysis", label: "Review payment details for this service period", reason: "Inspect the source-backed payment calculation behind this payout period.", priority: "medium", section: "next-actions", source: "current-result", input: ledgerInput }];
+            ? [{ actionId: "open-next-upcoming-payout-from-last", capability: "payment-analysis", tool: "cccap_analyze_payment", label: "View next upcoming payout", reason: "See the next payout still ahead, separate from this released one.", priority: "medium", section: "next-actions", source: "current-result", input: { view: "NEXT_PAYOUT" } }]
+            : [{ actionId: "review-service-period-payout-ledger", capability: "payment-analysis", tool: "cccap_analyze_payment", label: "Review payment details for this service period", reason: "Inspect the source-backed payment calculation behind this payout period.", priority: "medium", section: "next-actions", source: "current-result", input: ledgerInput }];
     const currentView = viewState({
         viewId: multiPeriod ? "PAYOUT_LEDGER" : isLastPayoutEntry ? "LAST_PAYOUT" : "NEXT_UPCOMING_PAYOUT",
         tableId: multiPeriod ? "payout-ledger" : isLastPayoutEntry ? "last-payout-summary" : "payout-summary",
@@ -1003,7 +1137,282 @@ export function formatServicePeriodLedgerResult(data) {
         ...(value.scope !== undefined ? { scope: value.scope } : {}),
         ...(typeof value.sourceRetrievedAt === "string" ? { sourceRetrievedAt: value.sourceRetrievedAt } : {}),
     });
-    const viewAwareActionIntents = actionIntents.map((action) => actionViewMetadata(action, currentView));
-    const providerMessage = `${renderActionSections(lines.join("\n"), viewAwareActionIntents)}\n\n${DISCLAIMER_GLOBAL}`;
-    return { content: [{ type: "text", text: providerMessage }], structuredContent: { capability: "service-period-payout-ledger", providerMessage, viewState: currentView, periods: periods ?? [], ...(entry ? { entry } : {}), ...(value.daysUntilPayout !== undefined ? { daysUntilPayout: value.daysUntilPayout } : {}), sourceRetrievedAt: value.sourceRetrievedAt, paymentDisclaimers: [...new Set(ledgerDisclaimers)], actionIntents, actionControls: actionControls(viewAwareActionIntents), responseSections: ["summary", "ledger", "next-actions"] } };
+    // Keep structuredContent as navigation metadata only. The complete payout
+    // tables already live in content[0].text; copying county/category rows here
+    // makes the host ingest the same large result twice and can suppress the
+    // provider-facing text in the UI.
+    const compactLedgerPeriod = (period) => Object.fromEntries([
+        "serviceBeginDate",
+        "serviceEndDate",
+        "payoutDate",
+        "periodStatus",
+        "amountAtRisk",
+        "estimatedTotal",
+        "potentialTotal",
+        "childrenServed",
+    ]
+        .filter((key) => period[key] !== undefined)
+        .map((key) => [key, period[key]]));
+    const selectedSummaryPeriod = selectedPeriod ? compactLedgerPeriod(selectedPeriod) : undefined;
+    return finalizePayoutResponse({
+        capability: "service-period-payout-ledger",
+        lines,
+        actions: actionIntents,
+        currentView,
+        disclaimers: ledgerDisclaimers,
+        responseSections: ["summary", "ledger", "next-actions"],
+        extraStructured: {
+            periods: periods?.map(compactLedgerPeriod) ?? [],
+            ...(selectedSummaryPeriod ? { selectedPeriod: selectedSummaryPeriod } : {}),
+            ...(value.daysUntilPayout !== undefined ? { daysUntilPayout: value.daysUntilPayout } : {}),
+            sourceRetrievedAt: value.sourceRetrievedAt,
+        },
+    });
+}
+// --- Merged from payment-summary-renderer.ts (2026-09-15 consolidation) ---
+export function renderNumericTable(headers, rows, numericColumns) {
+    const keep = headers.map((_, index) => !numericColumns.includes(index) || rows.some((row) => {
+        const value = (row[index] ?? '').trim();
+        return value !== '' && value !== '—' && value !== '$0.00' && value !== '0'
+            && value !== 'Unavailable from the current source' && value !== 'N/A';
+    }));
+    const filtered = (row) => row.filter((_, index) => keep[index]);
+    const separator = headers.map((_, index) => numericColumns.includes(index) ? '---:' : '---');
+    return [
+        `| ${headers.filter((_, index) => keep[index]).join(' | ')} |`,
+        `| ${separator.filter((_, index) => keep[index]).join(' | ')} |`,
+        ...rows.map((row) => `| ${filtered(row).join(' | ')} |`),
+    ];
+}
+function renderFixedTable(headers, rows) {
+    return [
+        `| ${headers.join(' | ')} |`,
+        `| ${headers.map((_, index) => index === 0 ? '---' : '---:').join(' | ')} |`,
+        ...rows.map((row) => `| ${row.join(' | ')} |`),
+    ];
+}
+export const PAYMENT_CATEGORY_ORDER = [
+    "Enrollment absence",
+    "Paid absence",
+    "Paid holidays",
+    "Drop-ins",
+    "Regular care",
+    "Vacant slots",
+];
+const money = (value) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+};
+const CATEGORY_LABELS = new Map([
+    ["enrollment absence", "Enrollment absence"],
+    ["absence (enrollment)", "Enrollment absence"],
+    ["paid absence", "Paid absence"],
+    ["absence", "Paid absence"],
+    ["holiday", "Paid holidays"],
+    ["paid holiday", "Paid holidays"],
+    ["paid holidays", "Paid holidays"],
+    ["drop-in", "Drop-ins"],
+    ["drop-ins", "Drop-ins"],
+    ["regular care", "Regular care"],
+    ["care", "Regular care"],
+    ["base / estimated payable", "Regular care"],
+    ["scheduled forecast", "Regular care"],
+    ["amount at risk", "Regular care"],
+    ["vacant slots", "Vacant slots"],
+]);
+export function numericField(row, keys) {
+    for (const key of keys) {
+        const value = row[key];
+        const numeric = typeof value === "number" ? value : Number(value);
+        if (value !== undefined && value !== null && Number.isFinite(numeric))
+            return numeric;
+    }
+    return undefined;
+}
+export function estimatedPaymentTotal(payment, baseAmount, scheduledForecastAmount) {
+    const direct = numericField(payment, ["potential_total", "estimated_total"]);
+    if (direct !== undefined)
+        return direct;
+    if (baseAmount === undefined && scheduledForecastAmount === undefined && payment.vacant_slot_fee === undefined && payment.slot_fee === undefined)
+        return undefined;
+    return (baseAmount ?? 0) + (scheduledForecastAmount ?? 0) + (numericField(payment, ["vacant_slot_fee", "slot_fee"]) ?? 0) + (numericField(payment, ["amount_at_risk", "at_risk_amount"]) ?? 0);
+}
+export function attendanceDerivedAtRisk(attendance) {
+    let total = 0;
+    let found = false;
+    for (const day of attendance) {
+        const flags = Array.isArray(day.flags)
+            ? day.flags.filter((flag) => typeof flag === "string")
+            : [];
+        const conditional = day.conditional === true
+            || flags.some((flag) => [
+                "PARENT_CONFIRMATION_UNAVAILABLE",
+                "PARENT_CONFIRMATION_PENDING",
+                "MISSING_ATTENDANCE_TRANSACTION",
+                "INCOMPLETE_ATTENDANCE_RECORD",
+            ].includes(flag));
+        if (!conditional)
+            continue;
+        const amount = numericField(day, ["conditional_amount", "amount_at_risk", "risk_amount", "calculated_amount", "potential_amount", "amount"]);
+        if (amount !== undefined && amount > 0) {
+            total += amount;
+            found = true;
+        }
+    }
+    return found ? total : undefined;
+}
+export function splitConditionalScheduledForecast(rows) {
+    return rows.flatMap((row) => {
+        if (tableValue(row.label).toLowerCase() !== "scheduled forecast")
+            return [row];
+        const conditionalAmount = numericField(row, ["conditional_amount"]);
+        if (conditionalAmount === undefined || conditionalAmount <= 0)
+            return [row];
+        const scheduledAmount = numericField(row, ["amount"]);
+        return [
+            ...(scheduledAmount !== undefined ? [{ ...row, conditional_amount: undefined }] : []),
+            { label: "Amount at risk", conditional_amount: conditionalAmount },
+        ];
+    });
+}
+function normalizedCategoryRows(rows) {
+    const aggregate = new Map();
+    for (const row of rows) {
+        const sourceLabel = tableValue(row.label).toLowerCase();
+        const label = CATEGORY_LABELS.get(sourceLabel);
+        if (!label)
+            continue;
+        const current = aggregate.get(label) ?? {
+            label,
+            days: 0,
+            hours: 0,
+            amount: 0,
+            scheduled_forecast: 0,
+            conditional_amount: 0,
+            excluded_days: 0,
+            excluded_reasons: [],
+            children_served: 0,
+        };
+        const targetAmount = sourceLabel === "scheduled forecast" ? "scheduled_forecast" : "amount";
+        for (const key of ["days", "hours", "excluded_days"]) {
+            const value = Number(row[key]);
+            if (Number.isFinite(value))
+                current[key] = Number(current[key] ?? 0) + value;
+        }
+        const childrenServed = Number(row.children_served);
+        if (Number.isFinite(childrenServed))
+            current.children_served = Math.max(Number(current.children_served ?? 0), childrenServed);
+        for (const key of ["amount", "conditional_amount"]) {
+            const value = Number(row[key]);
+            const target = sourceLabel === "amount at risk"
+                ? "conditional_amount"
+                : targetAmount === "amount"
+                    ? key
+                    : key === "amount" ? "scheduled_forecast" : key;
+            if (Number.isFinite(value))
+                current[target] = Number(current[target] ?? 0) + value;
+        }
+        const reasons = Array.isArray(row.excluded_reasons)
+            ? row.excluded_reasons.filter((reason) => typeof reason === "string")
+            : typeof row.excluded_reason === "string" ? [row.excluded_reason] : [];
+        current.excluded_reasons = [...new Set([...current.excluded_reasons, ...reasons])];
+        aggregate.set(label, current);
+    }
+    return PAYMENT_CATEGORY_ORDER.map((label) => aggregate.get(label) ?? {
+        label,
+        days: 0,
+        hours: 0,
+        amount: 0,
+        scheduled_forecast: 0,
+        conditional_amount: 0,
+        excluded_days: 0,
+        excluded_reasons: [],
+        children_served: 0,
+    });
+}
+export function renderPaymentCategorySection(title, rows, estimatedTotal, childrenServed) {
+    const normalizedRows = normalizedCategoryRows(rows);
+    const definitions = [
+        { header: "Category", value: (row) => tableValue(row.label), numeric: false },
+        { header: "Children served", value: (row) => tableValue(row.children_served), numeric: true },
+        { header: "Days", value: (row) => tableValue(row.days), numeric: true },
+        { header: "Care hours", value: (row) => tableValue(row.hours), numeric: true },
+        { header: "Net payment", value: (row) => plainMoney(row.amount), numeric: true },
+        { header: "Scheduled forecast", value: (row) => plainMoney(row.scheduled_forecast), numeric: true },
+        { header: "Conditional at-risk", value: (row) => plainMoney(row.conditional_amount), numeric: true },
+        { header: "Unavailable days (reason)", value: (row) => {
+                const days = Number(row.excluded_days) || 0;
+                const reasons = Array.isArray(row.excluded_reasons) ? row.excluded_reasons.filter((reason) => typeof reason === "string") : [];
+                return reasons.length > 0 ? `${days} (${reasons.join(", ")})` : String(days);
+            }, numeric: true },
+        // "Vacant slots" is a normal category row here (no dedicated column,
+        // per explicit request) - its amount is summed into "Base / estimated
+        // payable" the SAME way every other category row's amount is, so the
+        // Total row always equals the sum of the rows displayed above it in
+        // THIS table. This total is allowed to differ from the headline's
+        // "Base / estimated payable" measure (which deliberately excludes
+        // vacant slots as its own separate line) - the two are different
+        // things by design; internal within-table consistency is what this
+        // table promises, and "Estimated total" (the last column) is still the
+        // one figure guaranteed to match the headline everywhere.
+        { header: "Maximum estimated payout", value: (row) => plainMoney(money(row.amount) + money(row.scheduled_forecast) + money(row.conditional_amount)), numeric: true },
+    ];
+    const renderedRows = normalizedRows.map((row) => definitions.map((definition) => definition.value(row)));
+    const headers = definitions.map((definition) => definition.header);
+    const total = normalizedRows.reduce((sum, row) => ({
+        days: sum.days + money(row.days),
+        hours: sum.hours + money(row.hours),
+        amount: sum.amount + money(row.amount),
+        scheduled: sum.scheduled + money(row.scheduled_forecast),
+        risk: sum.risk + money(row.conditional_amount),
+        excluded: sum.excluded + money(row.excluded_days),
+    }), { days: 0, hours: 0, amount: 0, scheduled: 0, risk: 0, excluded: 0 });
+    const totalRow = [
+        "Total",
+        childrenServed !== undefined ? String(Number(childrenServed) || 0) : String(normalizedRows.reduce((sum, row) => sum + money(row.children_served), 0)),
+        String(total.days),
+        String(total.hours),
+        plainMoney(total.amount),
+        plainMoney(total.scheduled),
+        plainMoney(total.risk),
+        String(total.excluded),
+        plainMoney(estimatedTotal !== undefined ? estimatedTotal : total.amount + total.scheduled + total.risk),
+    ];
+    return [
+        "",
+        title,
+        ...renderFixedTable(headers, [...renderedRows, totalRow]),
+    ];
+}
+export function renderCountyCategoryTable(rows, estimatedTotal, childrenServed) {
+    const component = (row, key) => {
+        const nested = row[key] && typeof row[key] === "object" && !Array.isArray(row[key])
+            ? row[key]
+            : {};
+        return money(nested.amount);
+    };
+    const risk = (row) => money(row.amount_at_risk ?? row.at_risk_amount ?? row.conditional_amount);
+    const total = (row) => money(row.potential_total ?? row.total_amount)
+        || ["care", "absence", "drop_in", "paid_holidays", "vacant_slots"].reduce((sum, key) => sum + component(row, key), 0) + risk(row);
+    const headers = ["County", "Children served", "Enrollment absence", "Paid absence", "Paid holidays", "Drop-ins", "Regular care", "Vacant slots", "Conditional at-risk", "Maximum estimated payout"];
+    const rendered = rows.map((row) => [
+        tableValue(row.county),
+        tableValue(row.children_served),
+        plainMoney(component(row, "enrollment_absence")),
+        plainMoney(component(row, "absence")),
+        plainMoney(component(row, "paid_holidays")),
+        plainMoney(component(row, "drop_in")),
+        plainMoney(component(row, "care")),
+        plainMoney(component(row, "vacant_slots")),
+        plainMoney(risk(row)),
+        plainMoney(total(row)),
+    ]);
+    const totalRow = ["Total", childrenServed !== undefined ? String(Number(childrenServed) || 0) : String(rows.reduce((sum, row) => sum + money(row.children_served), 0)), ...["enrollment_absence", "absence", "paid_holidays", "drop_in", "care", "vacant_slots", "risk"].map((key) => {
+            return plainMoney(rows.reduce((sum, row) => sum + (key === "risk" ? risk(row) : component(row, key)), 0));
+        }), plainMoney(estimatedTotal !== undefined ? estimatedTotal : rows.reduce((sum, row) => sum + total(row), 0))];
+    return [
+        "",
+        "County payment composition",
+        ...renderFixedTable(headers, [...rendered, totalRow]),
+    ];
 }

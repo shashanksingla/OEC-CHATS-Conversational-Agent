@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { computePayoutDate } from "../src/payout-date.js";
+import { computePayoutDate } from "../src/payment-engine.js";
 
 // Offset corrected from +11 (Thursday) to +12 (Friday) - confirmed against
 // real T_SERV_PERIOD__c sample data that DTE_BATCH_FILE_PMT__c (Friday,

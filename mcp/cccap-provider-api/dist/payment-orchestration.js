@@ -4,11 +4,9 @@ import { promisify } from "node:util";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { normalizePaymentSourceBundle } from "./payment-canonical-adapter.js";
+import { normalizePaymentSourceBundle, assertPaymentEnginePayload, computePayoutDate, } from "./payment-engine.js";
 import { normalizeProviderContext } from "./provider-context.js";
-import { assertPaymentEnginePayload } from "./payment-schema.js";
 import { buildSituationEnvelope } from "./situation-envelope.js";
-import { computePayoutDate } from "./payout-date.js";
 const execFileAsync = promisify(execFile);
 const paymentEvaluatorPath = fileURLToPath(new URL("../../../skills/agent-child-care-payment-advisor/scripts/provider_risk_payment_engine.py", import.meta.url));
 const PAYMENT_EVALUATOR_TIMEOUT_MS = 30_000;
@@ -476,9 +474,9 @@ filters = {}) {
             attendance: pagedAttendance,
             detailPagination: {
                 page: 0,
-                pageSize: 0,
+                pageSize: PREVIEW_ROW_COUNT,
                 totalRows: displayableDays.length,
-                hasMore: displayableDays.length > 0,
+                hasMore: displayableDays.length > PREVIEW_ROW_COUNT,
             },
             filters: {
                 ...(filters.childNames ? { childNames: filters.childNames } : {}),
@@ -651,6 +649,18 @@ export async function getServicePeriodLedger(client, scope, asOfDate, options = 
             : undefined;
         const countyComposition = Array.isArray(summaryView?.county_composition) ? summaryView.county_composition : undefined;
         const categories = Array.isArray(summaryView?.categories) ? summaryView.categories : undefined;
+        const overview = summaryView?.overview && typeof summaryView.overview === "object" && !Array.isArray(summaryView.overview)
+            ? summaryView.overview
+            : undefined;
+        const baseAmount = Number(payment.base_amount ?? payment.amount ?? 0);
+        const scheduledForecastAmount = Number(payment.scheduled_forecast_amount ?? payment.forecasted_amount ?? 0);
+        const vacantSlotAmount = Number(payment.vacant_slot_fee ?? payment.slot_fee ?? 0);
+        const amountAtRisk = Number(payment.amount_at_risk ?? payment.at_risk_amount ?? 0);
+        const estimatedTotal = Number.isFinite(Number(payment.potential_total))
+            ? Number(payment.potential_total)
+            : Number.isFinite(Number(payment.estimated_total))
+                ? Number(payment.estimated_total) + amountAtRisk
+                : baseAmount + scheduledForecastAmount + vacantSlotAmount + amountAtRisk;
         return {
             ...period,
             payoutDate,
@@ -667,7 +677,12 @@ export async function getServicePeriodLedger(client, scope, asOfDate, options = 
             calculatedAmount: periodStatus === "PAID" ? undefined : amount,
             grossAmount: String(payment.gross_amount ?? "0.00"),
             guaranteedAmount: String(payment.guaranteed_amount ?? "0.00"),
+            baseAmount: String(payment.base_amount ?? payment.amount ?? "0.00"),
+            scheduledForecastAmount: String(payment.scheduled_forecast_amount ?? payment.forecasted_amount ?? "0.00"),
             amountAtRisk: periodStatus === "PAID" ? "0.00" : String(payment.amount_at_risk ?? "0.00"),
+            estimatedTotal: estimatedTotal.toFixed(2),
+            potentialTotal: String(payment.potential_total ?? estimatedTotal.toFixed(2)),
+            childrenServed: typeof overview?.children_served === "number" ? overview.children_served : Number(overview?.children_served ?? NaN),
         };
     });
     return { periods, sourceRetrievedAt: new Date().toISOString() };
@@ -725,7 +740,7 @@ function comparisonDeltas(firstResult, secondResult, key) { const firstRows = co
         pair[index] += comparisonNumber(row.amount);
         map.set(label, pair);
     } return [...map.entries()].map(([label, [one, two]]) => { const delta = two - one; return { label, periodOneAmount: one.toFixed(2), periodTwoAmount: two.toFixed(2), deltaAmount: delta.toFixed(2), deltaPct: one === 0 ? null : ((delta / one) * 100).toFixed(1) }; }); }
-function comparisonPeriod(result) { const payment = record(result.payment, "Evaluated payment"); const period = record(result.servicePeriod, "Service period"); return { servicePeriodId: String(period.servicePeriodId ?? period.id ?? ""), serviceBeginDate: String(period.serviceBeginDate ?? period.start_date ?? ""), serviceEndDate: String(period.serviceEndDate ?? period.end_date ?? ""), netAmount: String(payment.amount ?? "0.00"), grossAmount: String(payment.gross_amount ?? "0.00") }; }
+function comparisonPeriod(result) { const payment = record(result.payment, "Evaluated payment"); const period = record(result.servicePeriod, "Service period"); return { servicePeriodId: String(period.servicePeriodId ?? period.id ?? ""), serviceBeginDate: String(period.serviceBeginDate ?? period.start_date ?? ""), serviceEndDate: String(period.serviceEndDate ?? period.end_date ?? ""), netAmount: String(payment.amount ?? "0.00"), grossAmount: String(payment.gross_amount ?? "0.00"), baseAmount: String(payment.base_amount ?? payment.amount ?? "0.00"), scheduledForecastAmount: String(payment.scheduled_forecast_amount ?? payment.forecasted_amount ?? "0.00"), amountAtRisk: String(payment.amount_at_risk ?? payment.at_risk_amount ?? "0.00"), potentialTotal: String(payment.potential_total ?? payment.amount ?? "0.00") }; }
 export async function comparePaymentPeriods(client, periodOneScope, periodTwoScope, asOfDate, options = {}) {
     const scope = (value) => { if ("servicePeriodId" in value)
         throw new Error("servicePeriodId comparison scope is not supported; use dateFrom and dateTo"); return { dateFilter: "DATE_RANGE", dateFrom: value.dateFrom, dateTo: value.dateTo }; };

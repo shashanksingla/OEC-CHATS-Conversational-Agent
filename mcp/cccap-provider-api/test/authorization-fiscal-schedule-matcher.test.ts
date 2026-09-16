@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { selectFiscalScheduleForAuthorization } from "../src/authorization-fiscal-schedule-matcher.js";
+import { selectFiscalScheduleForAuthorization } from "../src/payment-engine.js";
 
 const authorization = {
   Id: "auth-1",

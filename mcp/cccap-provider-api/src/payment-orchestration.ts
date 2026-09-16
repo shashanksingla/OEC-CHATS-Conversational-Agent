@@ -6,11 +6,13 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { CccapClient, type DateScope } from "./client.js";
-import { normalizePaymentSourceBundle } from "./payment-canonical-adapter.js";
+import {
+  normalizePaymentSourceBundle,
+  assertPaymentEnginePayload,
+  computePayoutDate,
+} from "./payment-engine.js";
 import { normalizeProviderContext } from "./provider-context.js";
-import { assertPaymentEnginePayload } from "./payment-schema.js";
 import { buildSituationEnvelope } from "./situation-envelope.js";
-import { computePayoutDate } from "./payout-date.js";
 
 const execFileAsync = promisify(execFile);
 const paymentEvaluatorPath = fileURLToPath(new URL(
@@ -548,9 +550,9 @@ export async function getPaymentAnalysis(
       attendance: pagedAttendance,
       detailPagination: {
         page: 0,
-        pageSize: 0,
+        pageSize: PREVIEW_ROW_COUNT,
         totalRows: displayableDays.length,
-        hasMore: displayableDays.length > 0,
+        hasMore: displayableDays.length > PREVIEW_ROW_COUNT,
       },
       filters: {
         ...(filters.childNames ? { childNames: filters.childNames } : {}),
@@ -591,7 +593,7 @@ export type LedgerPeriodStatus = "NOT_YET_STARTED" | "IN_PROGRESS" | "PENDING_CO
 // showing only a bare total. categories does the same for the "Payment by
 // category" (Care/Absence/Drop-in/Holiday) breakdown, which the ledger
 // formatter previously never rendered at all.
-export interface LedgerPeriodEntry { servicePeriodId: string; serviceBeginDate: string; serviceEndDate: string; payoutDate: string; periodStatus: LedgerPeriodStatus; netAmount: string | undefined; calculatedAmount: string | undefined; grossAmount: string; guaranteedAmount: string; amountAtRisk: string; countyComposition: unknown[] | undefined; categories: unknown[] | undefined; }
+export interface LedgerPeriodEntry { servicePeriodId: string; serviceBeginDate: string; serviceEndDate: string; payoutDate: string; periodStatus: LedgerPeriodStatus; netAmount: string | undefined; calculatedAmount: string | undefined; grossAmount: string; guaranteedAmount: string; baseAmount: string; scheduledForecastAmount: string; amountAtRisk: string; estimatedTotal: string; potentialTotal: string; childrenServed: number | undefined; countyComposition: unknown[] | undefined; categories: unknown[] | undefined; }
 function utcDayDifference(from: string, to: string): number { return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000); }
 function utcPlusDays(date: string, days: number): string { const d = new Date(`${date}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); }
 type PaymentLedgerFilters = { childNames?: string[]; authNames?: string[]; countyNames?: string[] };
@@ -744,6 +746,18 @@ export async function getServicePeriodLedger(client: CccapClient, scope: DateSco
       : undefined;
     const countyComposition = Array.isArray(summaryView?.county_composition) ? summaryView.county_composition : undefined;
     const categories = Array.isArray(summaryView?.categories) ? summaryView.categories : undefined;
+    const overview = summaryView?.overview && typeof summaryView.overview === "object" && !Array.isArray(summaryView.overview)
+      ? summaryView.overview as Record<string, unknown>
+      : undefined;
+    const baseAmount = Number(payment.base_amount ?? payment.amount ?? 0);
+    const scheduledForecastAmount = Number(payment.scheduled_forecast_amount ?? payment.forecasted_amount ?? 0);
+    const vacantSlotAmount = Number(payment.vacant_slot_fee ?? payment.slot_fee ?? 0);
+    const amountAtRisk = Number(payment.amount_at_risk ?? payment.at_risk_amount ?? 0);
+    const estimatedTotal = Number.isFinite(Number(payment.potential_total))
+      ? Number(payment.potential_total)
+      : Number.isFinite(Number(payment.estimated_total))
+        ? Number(payment.estimated_total) + amountAtRisk
+        : baseAmount + scheduledForecastAmount + vacantSlotAmount + amountAtRisk;
     return {
       ...period,
       payoutDate,
@@ -760,7 +774,12 @@ export async function getServicePeriodLedger(client: CccapClient, scope: DateSco
       calculatedAmount: periodStatus === "PAID" ? undefined : amount,
       grossAmount: String(payment.gross_amount ?? "0.00"),
       guaranteedAmount: String(payment.guaranteed_amount ?? "0.00"),
+      baseAmount: String(payment.base_amount ?? payment.amount ?? "0.00"),
+      scheduledForecastAmount: String(payment.scheduled_forecast_amount ?? payment.forecasted_amount ?? "0.00"),
       amountAtRisk: periodStatus === "PAID" ? "0.00" : String(payment.amount_at_risk ?? "0.00"),
+      estimatedTotal: estimatedTotal.toFixed(2),
+      potentialTotal: String(payment.potential_total ?? estimatedTotal.toFixed(2)),
+      childrenServed: typeof overview?.children_served === "number" ? overview.children_served : Number(overview?.children_served ?? NaN),
     };
   });
   return { periods, sourceRetrievedAt: new Date().toISOString() };
@@ -811,8 +830,8 @@ export async function getLastPayoutDetail(client: CccapClient, scope: DateScope,
 
 export interface PeriodComparisonCategoryDelta { label: string; periodOneAmount: string; periodTwoAmount: string; deltaAmount: string; deltaPct: string | null; }
 export interface PeriodComparisonResult {
-  periodOne: { servicePeriodId: string; serviceBeginDate: string; serviceEndDate: string; netAmount: string; grossAmount: string };
-  periodTwo: { servicePeriodId: string; serviceBeginDate: string; serviceEndDate: string; netAmount: string; grossAmount: string };
+  periodOne: { servicePeriodId: string; serviceBeginDate: string; serviceEndDate: string; netAmount: string; grossAmount: string; baseAmount: string; scheduledForecastAmount: string; amountAtRisk: string; potentialTotal: string };
+  periodTwo: { servicePeriodId: string; serviceBeginDate: string; serviceEndDate: string; netAmount: string; grossAmount: string; baseAmount: string; scheduledForecastAmount: string; amountAtRisk: string; potentialTotal: string };
   netDeltaAmount: string; netDeltaPct: string | null; byCategory: PeriodComparisonCategoryDelta[]; byCounty: PeriodComparisonCategoryDelta[]; significantDeltaThresholdPct: number; flaggedDeltas: PeriodComparisonCategoryDelta[]; sourceRetrievedAt: string;
 }
 type ComparisonScope = { dateFrom: string; dateTo: string } | { servicePeriodId: string };
@@ -820,7 +839,7 @@ function comparisonNumber(value: unknown): number { const n = typeof value === "
 function comparisonRows(value: unknown, key: string): Record<string, unknown>[] { const root = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined; const rows = root && Array.isArray(root[key]) ? root[key] : []; return rows.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object" && !Array.isArray(row)); }
 function comparisonRollup(result: RecordValue, key: "categories" | "counties"): Record<string, unknown>[] { const payment = record(result.payment, "Evaluated payment"); const view = payment.summary_view && typeof payment.summary_view === "object" && !Array.isArray(payment.summary_view) ? payment.summary_view : undefined; const rows = view ? comparisonRows(view, key) : []; return rows.length > 0 ? rows : (Array.isArray(payment.summary) ? payment.summary.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object" && !Array.isArray(row)) : []); }
 function comparisonDeltas(firstResult: RecordValue, secondResult: RecordValue, key: "categories" | "counties"): PeriodComparisonCategoryDelta[] { const firstRows = comparisonRollup(firstResult, key); const secondRows = comparisonRollup(secondResult, key); const map = new Map<string, [number, number]>(); for (const [index, rows] of [[0, firstRows], [1, secondRows]] as const) for (const row of rows) { const label = String(row.label ?? row.county_name ?? "Unavailable from the current source"); const pair = map.get(label) ?? [0, 0]; pair[index] += comparisonNumber(row.amount); map.set(label, pair); } return [...map.entries()].map(([label, [one, two]]) => { const delta = two - one; return { label, periodOneAmount: one.toFixed(2), periodTwoAmount: two.toFixed(2), deltaAmount: delta.toFixed(2), deltaPct: one === 0 ? null : ((delta / one) * 100).toFixed(1) }; }); }
-function comparisonPeriod(result: RecordValue): PeriodComparisonResult["periodOne"] { const payment = record(result.payment, "Evaluated payment"); const period = record(result.servicePeriod, "Service period"); return { servicePeriodId: String(period.servicePeriodId ?? period.id ?? ""), serviceBeginDate: String(period.serviceBeginDate ?? period.start_date ?? ""), serviceEndDate: String(period.serviceEndDate ?? period.end_date ?? ""), netAmount: String(payment.amount ?? "0.00"), grossAmount: String(payment.gross_amount ?? "0.00") }; }
+function comparisonPeriod(result: RecordValue): PeriodComparisonResult["periodOne"] { const payment = record(result.payment, "Evaluated payment"); const period = record(result.servicePeriod, "Service period"); return { servicePeriodId: String(period.servicePeriodId ?? period.id ?? ""), serviceBeginDate: String(period.serviceBeginDate ?? period.start_date ?? ""), serviceEndDate: String(period.serviceEndDate ?? period.end_date ?? ""), netAmount: String(payment.amount ?? "0.00"), grossAmount: String(payment.gross_amount ?? "0.00"), baseAmount: String(payment.base_amount ?? payment.amount ?? "0.00"), scheduledForecastAmount: String(payment.scheduled_forecast_amount ?? payment.forecasted_amount ?? "0.00"), amountAtRisk: String(payment.amount_at_risk ?? payment.at_risk_amount ?? "0.00"), potentialTotal: String(payment.potential_total ?? payment.amount ?? "0.00") }; }
 export async function comparePaymentPeriods(client: CccapClient, periodOneScope: ComparisonScope, periodTwoScope: ComparisonScope, asOfDate: string, options: { significantDeltaThresholdPct?: number } = {}): Promise<PeriodComparisonResult> {
   const scope = (value: ComparisonScope): DateScope => { if ("servicePeriodId" in value) throw new Error("servicePeriodId comparison scope is not supported; use dateFrom and dateTo"); return { dateFilter: "DATE_RANGE", dateFrom: value.dateFrom, dateTo: value.dateTo }; };
   const [firstResult, secondResult] = await Promise.all([getPaymentAnalysis(client, scope(periodOneScope), "CUSTOM_RANGE", asOfDate, {}), getPaymentAnalysis(client, scope(periodTwoScope), "CUSTOM_RANGE", asOfDate, {})]);

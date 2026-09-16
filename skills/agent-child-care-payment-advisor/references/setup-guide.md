@@ -6,7 +6,6 @@ Provider Assist is a stateless, read-only child care provider payment-risk agent
 
 - Provider-facing persona and six routed experiences are defined in `SKILL.md`.
 - Reusable LLM behavior is split into specialized skill files: `carepay-conversation-templates`, `carepay-attendance-readiness`, `carepay-payment-readiness`, and `carepay-data-quality`.
-- `scripts/calculate_payout.py` validates legacy normalized fixture cases and calculates fixture totals; its output is explicitly `production_ready: false`.
 - The Denver baseline covers absence limits, daily rates, parent copay, confirmation status, expected payout, amount at risk, and excluded amount.
 - Unit, baseline-quality, and trigger cases are included.
 - No operational record can be changed.
@@ -25,7 +24,6 @@ Provider Assist is a stateless, read-only child care provider payment-risk agent
 
 - Verify provider isolation and least-privilege access with negative authorization tests.
 - Verify missing or stale data blocks calculations instead of producing estimates.
-- Run `uv run scripts/tests/test_calculate_payout.py` from the agent directory.
 - Run the BMad path and script scanners against the agent directory.
 - Run baseline and trigger evals once a non-interactive VS Code Copilot adapter is configured.
 - Complete privacy, security, accessibility, audit-log, and business/compliance reviews before production use.

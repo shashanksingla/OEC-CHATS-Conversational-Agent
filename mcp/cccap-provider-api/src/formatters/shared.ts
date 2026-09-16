@@ -28,9 +28,6 @@ export const DISCLAIMER_AT_RISK =
 export const DISCLAIMER_GUARANTEED =
   "*Paid per your county contract regardless of occupancy or attendance.*";
 
-/** @deprecated Use DISCLAIMER_GLOBAL. */
-export const PAYMENT_DISCLAIMER = DISCLAIMER_GLOBAL;
-
 export function result(data: unknown): ToolResult {
   const structuredContent =
     data && typeof data === "object" && !Array.isArray(data)
@@ -110,9 +107,13 @@ export function withAtRiskAmount(potentialImpact: unknown, riskAmountEstimate: u
 }
 
 function moneyDisplay(value: unknown): string {
+  if (typeof value === "number" && !Number.isFinite(value)) return "Unavailable from the current source";
+  if (typeof value === "string" && (value.trim() === "" || !Number.isFinite(Number(value)))) {
+    return "Unavailable from the current source";
+  }
   const numeric = typeof value === "number"
     ? value
-    : typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))
+    : typeof value === "string"
       ? Number(value)
       : undefined;
   return numeric === undefined ? tableValue(value) : numeric.toFixed(2);
@@ -148,65 +149,78 @@ export function amountWithUnit(amount: unknown, count: unknown, unit: "Days" | "
   return `${money} (${numericCount} ${unit})`;
 }
 
+export const PAYMENT_AMOUNT_LEGEND = "> Payment amounts: Net payment is the current estimate excluding unresolved risk. Conditional at-risk is the amount that may be added or lost when attendance issues are resolved. Maximum estimated payout = net payment + scheduled forecast + conditional at-risk. Vacant-slot payments are included once in net payment when applicable.";
+
 export function renderCountyComposition(rows: Record<string, unknown>[], options: { settled?: boolean } = {}): string[] {
   const component = (row: Record<string, unknown>, key: string): Record<string, unknown> =>
-    recordValue(row[key]) ?? {};
-  const componentHasValue = (key: string, countKey: string): boolean => rows.some((row) => {
-    const value = component(row, key);
-    return [value.amount, value[countKey]].some((candidate) => {
-      const numeric = typeof candidate === "number" ? candidate : Number(candidate);
-      return Number.isFinite(numeric) ? numeric !== 0 : typeof candidate === "string" && candidate.trim() !== "";
-    });
-  });
-  const hasChildrenServed = rows.some((row) => row.children_served !== undefined && row.children_served !== null);
+    recordValue(row[key]) ?? (key === "attendance_based" || key === "authorized_based"
+      ? { amount: row[`${key}_amount`] }
+      : {});
+  const countyRiskAmount = (row: Record<string, unknown>): unknown => {
+    const direct = row.amount_at_risk ?? row.at_risk_amount ?? row.conditional_amount;
+    if (direct !== undefined) return direct;
+    const components = ["care", "absence", "drop_in", "vacant_slots", "paid_holidays"]
+      .map((key) => component(row, key).conditional_amount)
+      .filter((value) => value !== undefined && value !== null);
+    return components.length > 0
+      ? components.reduce((total: number, value) => total + (Number(value) || 0), 0)
+      : undefined;
+  };
   const headers = [
     "County",
-    ...(hasChildrenServed ? ["Children served"] : []),
-    ...(componentHasValue("care", "hours") ? ["Care Amount"] : []),
-    ...(componentHasValue("absence", "days") ? ["Absence Amount"] : []),
-    ...(componentHasValue("drop_in", "hours") ? ["Drop-in Amount"] : []),
-    ...(componentHasValue("vacant_slots", "days") ? ["Vacant Slot Amount"] : []),
-    ...(componentHasValue("paid_holidays", "days") ? ["Paid Holiday Amount"] : []),
-    options.settled ? "Total amount" : "Potential total",
+    "Children served",
+    "Attendance-based amount",
+    "Paid absences",
+    "Drop-in amount",
+    "Paid Holiday Amount",
+    "Vacant Slot Amount",
+    "Conditional at-risk",
+    options.settled ? "Total amount" : "Maximum estimated payout",
   ];
   const separator = headers.map((header) => header === "County" ? "---" : "---:");
+  const sumComponent = (key: string): number => rows.reduce((total, row) => {
+    const amount = Number(component(row, key).amount);
+    return Number.isFinite(amount) ? total + amount : total;
+  }, 0);
+  const sumRisk = rows.reduce((total, row) => {
+    const amount = Number(countyRiskAmount(row));
+    return Number.isFinite(amount) ? total + amount : total;
+  }, 0);
+  const sumPotential = rows.reduce((total, row) => {
+    const amount = Number(row.estimated_total ?? row.potential_total);
+    return Number.isFinite(amount) ? total + amount : total;
+  }, 0);
   const renderedRows = rows.map((row) => {
-    const care = component(row, "care");
+    const attendanceBased = component(row, "attendance_based");
     const absence = component(row, "absence");
     const dropIn = component(row, "drop_in");
-    const vacantSlots = component(row, "vacant_slots");
     const paidHolidays = component(row, "paid_holidays");
+    const vacantSlots = component(row, "vacant_slots");
     const values = [
       tableValue(row.county),
-      ...(hasChildrenServed ? [tableValue(row.children_served)] : []),
-      ...(componentHasValue("care", "hours") ? [amountWithUnit(care.amount, care.hours, "Hours")] : []),
-      ...(componentHasValue("absence", "days") ? [amountWithUnit(absence.amount, absence.days, "Days")] : []),
-      ...(componentHasValue("drop_in", "hours") ? [amountWithUnit(dropIn.amount, dropIn.hours, "Hours")] : []),
-      ...(componentHasValue("vacant_slots", "days") ? [amountWithUnit(vacantSlots.amount, vacantSlots.days, "Days")] : []),
-      ...(componentHasValue("paid_holidays", "days") ? [amountWithUnit(paidHolidays.amount, paidHolidays.days, "Days")] : []),
-      // Always read potential_total - it's the only total field the Python
-      // engine's render_composition ever populates. row.total_amount never
-      // exists (previously read here for a settled period, which always
-      // rendered "Unavailable from the current source"). options.settled
-      // still controls only the column label/legend text above, not which
-      // underlying field is read.
-      plainMoney(row.potential_total),
+      tableValue(row.children_served),
+      amountWithUnit(attendanceBased.amount, attendanceBased.days ?? attendanceBased.hours, attendanceBased.days !== undefined ? "Days" : "Hours"),
+      amountWithUnit(absence.amount, absence.days, "Days"),
+      amountWithUnit(dropIn.amount, dropIn.hours, "Hours"),
+      amountWithUnit(paidHolidays.amount, paidHolidays.days ?? paidHolidays.hours, paidHolidays.days !== undefined ? "Days" : "Hours"),
+      amountWithUnit(vacantSlots.amount, vacantSlots.days, "Days"),
+      plainMoney(countyRiskAmount(row)),
+      plainMoney(row.potential_total ?? row.estimated_total),
     ];
-    return values.join(" | ");
+    return values
+      .map((value) => value === "Unavailable from the current source" ? "N/A" : value)
+      .join(" | ");
   });
-  // Legend only defines the terms actually present as columns above - a
-  // category omitted from `headers` (no verified value in any row) must not
-  // be named here either, matching the same "omit what isn't populated"
-  // hygiene the columns themselves already follow.
-  const legendTerms = [
-    ...(componentHasValue("care", "hours") ? ["Care Amount = attended/scheduled care hours billed at the authorized rate"] : []),
-    ...(componentHasValue("absence", "days") ? ["Absence Amount = confirmed or pending absence days billed at the authorized rate"] : []),
-    ...(componentHasValue("drop_in", "hours") ? ["Drop-in Amount = unscheduled care outside the child's regular authorization"] : []),
-    ...(componentHasValue("vacant_slots", "days") ? ["Vacant Slot Amount = a contracted slot held open with no child attending"] : []),
-    ...(componentHasValue("paid_holidays", "days") ? ["Paid Holiday Amount = a county-recognized holiday paid without attendance"] : []),
-    options.settled
-      ? "Total amount = the sum of all populated categories for that county"
-      : "Potential total = the sum of all populated categories for that county",
+  const totalValues = [
+    "Total",
+    "N/A",
+    plainMoney(sumComponent("attendance_based")),
+    plainMoney(sumComponent("absence")),
+    plainMoney(sumComponent("drop_in")),
+    plainMoney(sumComponent("paid_holidays")),
+    plainMoney(sumComponent("vacant_slots")),
+    plainMoney(options.settled ? 0 : sumRisk),
+    plainMoney(sumPotential),
   ];
   // A settled/released (Paid) period has definite actual amounts, not
   // potential/conditional ones - the "potential amounts" disambiguation is
@@ -215,23 +229,16 @@ export function renderCountyComposition(rows: Record<string, unknown>[], options
   return [
     "",
     options.settled ? "**County payment composition**" : "**County payment composition (potential amounts)**",
-    ...(options.settled ? [] : ["> Potential amounts include calculated and conditional amounts; the payable amount remains shown in the summary above."]),
-    `> ${legendTerms.join(" · ")}.`,
+    ...(options.settled ? [] : []),
     `| ${headers.join(" | ")} |`,
     `| ${separator.join(" | ")} |`,
     ...renderedRows.map((row) => `| ${row} |`),
+    `| ${totalValues.join(" | ")} |`,
   ];
 }
 
 export function isSalesforceRecordId(value: string): boolean {
   return /^[A-Za-z0-9]{15}(?:[A-Za-z0-9]{3})?$/.test(value);
-}
-
-function authorizationDates(value: unknown): string {
-  if (!Array.isArray(value) || value.length === 0) {
-    return "Unavailable from the current source";
-  }
-  return value.map(tableValue).join(", ");
 }
 
 function authorizationNames(value: unknown): string {

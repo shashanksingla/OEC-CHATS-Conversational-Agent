@@ -1,3 +1,4 @@
+// Consolidated attendance engine: merges attendance-canonical-adapter.ts and attendance-snapshot.ts (2026-09-15 consolidation).
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
@@ -6,16 +7,153 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { CccapClient, type DateScope } from "./client.js";
-import {
-  authorizationKey,
-  isSalesforceId,
-  normalizeAttendanceRiskSchedules,
-} from "./attendance-canonical-adapter.js";
 import { normalizeProviderContext } from "./provider-context.js";
 import { normalizeScheduleAttendance } from "./schedule-normalizer.js";
 import { buildSituationEnvelope, type SituationEnvelope } from "./situation-envelope.js";
-export { normalizePaymentStatus } from "./payment-schema.js";
+// payment-schema.ts's contents are now merged into payment-engine.ts.
+export { normalizePaymentStatus } from "./payment-engine.js";
 export { getPaymentAnalysis } from "./payment-orchestration.js";
+export { normalizeScheduleAttendance } from "./schedule-normalizer.js";
+
+type RecordValue = Record<string, unknown>;
+
+function asRecord(value: unknown): RecordValue | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as RecordValue)
+    : undefined;
+}
+
+function nestedCountyName(schedule: RecordValue): string | undefined {
+  const authorization = asRecord(schedule.Authorization__r);
+  const county = asRecord(authorization?.County__r);
+  const countyName = county?.County_Name__c;
+  return typeof countyName === "string" && countyName ? countyName : undefined;
+}
+
+// Schedule authorization identifiers may arrive as numbers from the DECL source.
+export function authorizationKey(value: unknown): string | undefined {
+  if (typeof value === "string" && value) return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return undefined;
+}
+
+export function isSalesforceId(value: string): boolean {
+  return /^[A-Za-z0-9]{15}(?:[A-Za-z0-9]{3})?$/.test(value);
+}
+
+export function addDefaultCountyToSchedules(
+  schedules: unknown[],
+  defaultCountyId?: string,
+): unknown[] {
+  if (!defaultCountyId) return schedules;
+  return schedules.map((value) => {
+    const schedule = asRecord(value);
+    if (!schedule) return value;
+    const sourceCounty = schedule.countyId ?? schedule.County__c ?? schedule.CDE_COUNTY__c;
+    return typeof sourceCounty === "string" && sourceCounty
+      ? schedule
+      : { ...schedule, countyId: defaultCountyId };
+  });
+}
+
+export function addCanonicalCountyIdToSchedules(schedules: unknown[]): unknown[] {
+  return schedules.map((value) => {
+    const schedule = asRecord(value);
+    if (!schedule || (typeof schedule.countyId === "string" && schedule.countyId)) {
+      return value;
+    }
+    const countyId = schedule.County__c ?? schedule.CDE_COUNTY__c;
+    return typeof countyId === "string" && countyId
+      ? { ...schedule, countyId }
+      : value;
+  });
+}
+
+export function addProviderQualityTierToSchedules(
+  schedules: unknown[],
+  providerQualityTier: number,
+): unknown[] {
+  return schedules.map((value) => {
+    const schedule = asRecord(value);
+    return schedule ? { ...schedule, qualityTier: providerQualityTier } : value;
+  });
+}
+
+export function addAuthorizationNamesToSchedules(
+  schedules: unknown[],
+  authorizationData: unknown,
+): unknown[] {
+  const response = asRecord(authorizationData);
+  const authorizations = Array.isArray(response?.authorizations)
+    ? response.authorizations
+    : [];
+  const namesById = new Map<string, string>();
+  for (const value of authorizations) {
+    const authorization = asRecord(value);
+    const id = authorizationKey(authorization?.Id);
+    const externalId = authorizationKey(authorization?.IDN_EXTNL__c);
+    const name = authorization?.Name;
+    if (id && typeof name === "string" && name) namesById.set(id, name);
+    if (externalId && typeof name === "string" && name) namesById.set(externalId, name);
+    if (typeof name === "string" && name) namesById.set(name, name);
+  }
+  return schedules.map((value) => {
+    const schedule = asRecord(value);
+    if (!schedule) return value;
+    const existingName = schedule.authorization_name ?? schedule.Authorization_Name__c;
+    if (typeof existingName === "string" && existingName) return schedule;
+    const authorizationId = authorizationKey(
+      schedule.CI_Authorization_Id__c ??
+      schedule.Authorization__c ??
+      schedule.IDN_AUTH__c ??
+      schedule.Authorization_Id__c,
+    );
+    const name = authorizationId ? namesById.get(authorizationId) : undefined;
+    return name ? { ...schedule, authorization_name: name } : schedule;
+  });
+}
+
+// DECL county identifiers are joined to main-org county IDs by verified county name.
+export function addNestedCountyIdToSchedules(
+  schedules: unknown[],
+  countyIdByName: Record<string, string>,
+): unknown[] {
+  return schedules.map((value) => {
+    const schedule = asRecord(value);
+    if (!schedule) return value;
+    const existingCounty = schedule.countyId ?? schedule.County__c ?? schedule.CDE_COUNTY__c;
+    if (typeof existingCounty === "string" && existingCounty) return schedule;
+    const countyName = nestedCountyName(schedule);
+    const countyId = countyName ? countyIdByName[countyName] : undefined;
+    return countyId ? { ...schedule, countyId } : schedule;
+  });
+}
+
+export function normalizeAttendanceRiskSchedules(input: {
+  schedules: unknown[];
+  authorizationData?: unknown;
+  countyIdByName: Record<string, string>;
+  defaultCountyId?: string;
+  providerQualityTier: number;
+}): unknown[] {
+  const withAuthorizationNames = addAuthorizationNamesToSchedules(
+    input.schedules,
+    input.authorizationData,
+  );
+  const withCounties = addNestedCountyIdToSchedules(
+    withAuthorizationNames,
+    input.countyIdByName,
+  );
+  return addProviderQualityTierToSchedules(
+    addCanonicalCountyIdToSchedules(
+      addDefaultCountyToSchedules(withCounties, input.defaultCountyId),
+    ),
+    input.providerQualityTier,
+  );
+}
+
+// --- Merged from attendance-snapshot.ts (2026-09-15 consolidation) ---
+
 const execFileAsync = promisify(execFile);
 const evaluatorPath = fileURLToPath(
   new URL(
@@ -45,14 +183,6 @@ async function runAttendanceEvaluator(scriptPath: string, inputPath: string): Pr
     }
     throw error;
   }
-}
-
-type RecordValue = Record<string, unknown>;
-
-function asRecord(value: unknown): RecordValue | undefined {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as RecordValue)
-    : undefined;
 }
 
 function calendarDates(initialization: RecordValue, holidayData: RecordValue): {
@@ -93,17 +223,6 @@ function getHolidayData(client: CccapClient, scope: DateScope): Promise<unknown>
     ? client.getHolidayList(scope)
     : Promise.resolve({ holidayList: [] });
 }
-
-export {
-  addAuthorizationNamesToSchedules,
-  addCanonicalCountyIdToSchedules,
-  addDefaultCountyToSchedules,
-  addNestedCountyIdToSchedules,
-  addProviderQualityTierToSchedules,
-  authorizationKey,
-  isSalesforceId,
-} from "./attendance-canonical-adapter.js";
-export { normalizeScheduleAttendance } from "./schedule-normalizer.js";
 
 export function livePaymentReadiness(): RecordValue {
   return {
@@ -301,7 +420,7 @@ export async function getAttendanceRiskSnapshot(
       attentionLine,
       "",
       riskHeading,
-      "The findings below are the verified issues for this period; the action in the last column explains the most useful read-only review.",
+      "The findings below are the verified issues for this period",
       "| Risk Area | Verified finding | Potential Loss (Care Hours) |",
       "| --- | --- | --- |",
       ...riskRows,
@@ -388,7 +507,7 @@ export async function getAttendanceRiskAnalysis(
   // Best-effort rate_type_code -> daily amount lookup for payment-risk dollar
   // estimates. This intentionally skips the full fiscal-schedule/authorization/
   // quality-tier matching the payment engine requires for a payable amount
-  // (see payment-canonical-adapter.ts): that matching is fail-closed by design
+  // (see payment-engine.ts): that matching is fail-closed by design
   // for money actually paid, while a risk estimate is explicitly approximate
   // and must never block or throw. Any lookup failure here simply omits the
   // amount rather than surfacing an error.

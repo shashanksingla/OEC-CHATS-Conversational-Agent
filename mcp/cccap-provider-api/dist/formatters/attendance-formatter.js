@@ -1,4 +1,5 @@
-import { compactActionControls, estimatedMoney, recordValue, renderActionSections, result, shortDateLabel, tableValue, MAX_DISPLAY_CHILDREN, MAX_SUMMARY_ROWS } from './shared.js';
+// Consolidated attendance formatter: merges snapshot-formatter.ts (2026-09-15 consolidation).
+import { actionControls, compactActionControls, estimatedMoney, recordValue, renderActionSections, result, shortDateLabel, tableValue, MAX_DISPLAY_CHILDREN, MAX_SUMMARY_ROWS } from './shared.js';
 import { actionViewMetadata, viewState } from '../view-state.js';
 /** Render an attendance table while omitting numeric columns that are zero in every rendered row. */
 function renderAttendanceNumericTable(headers, rows, numericColumns) {
@@ -19,7 +20,7 @@ function renderAttendanceNumericTable(headers, rows, numericColumns) {
         ...rows.map((row) => `| ${filtered(row).join(' | ')} |`),
     ];
 }
-function compactAttendanceSummary(attendanceView) {
+export function compactAttendanceSummary(attendanceView) {
     if (!attendanceView)
         return undefined;
     return {
@@ -597,12 +598,6 @@ export function formatAttendanceRiskResult(data, includeContinuationMetadata = f
         },
     };
 }
-export function authorizationDates(value) {
-    if (!Array.isArray(value) || value.length === 0) {
-        return "Unavailable from the current source";
-    }
-    return value.map(tableValue).join(", ");
-}
 export function authorizationNames(value) {
     if (!Array.isArray(value) || value.length === 0) {
         return "Unavailable from the current source";
@@ -1015,5 +1010,60 @@ export function attendanceSummary(risk, children, scope, unmatchedChildNames, ex
             tool: "cccap_analyze_payment_risk",
             ...view,
         })),
+    };
+}
+// --- Merged from snapshot-formatter.ts (2026-09-15 consolidation) ---
+export function snapshotResult(data, includeContinuationMetadata = false) {
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+        return result(data);
+    }
+    const snapshot = data;
+    const providerMessage = snapshot.providerMessage;
+    if (typeof providerMessage !== "string" || providerMessage.length === 0) {
+        return result(data);
+    }
+    const risk = recordValue(snapshot.attendanceRisk);
+    const children = risk && Array.isArray(risk.children)
+        ? risk.children
+            .map(recordValue)
+            .filter((child) => Boolean(child))
+        : [];
+    const currentView = viewState({
+        viewId: "ATTENDANCE_RISK_SUMMARY",
+        tableId: "attendance-risk",
+        tableTitle: "Attendance risk summary",
+        tableDescription: "This table gives the provider the current attendance risks before any payment detail is opened.",
+        scope: snapshot.scope,
+        ...(typeof snapshot.sourceRetrievedAt === "string" ? { sourceRetrievedAt: snapshot.sourceRetrievedAt } : {}),
+    });
+    const actionIntents = risk
+        ? actionMetadata(snapshot.scope, risk, children, true).map((action) => actionViewMetadata(action, currentView))
+        : [];
+    const attendanceView = risk
+        ? attendanceSummary(risk, children, snapshot.scope, [], [], [])
+        : undefined;
+    const compactAttendanceView = compactAttendanceSummary(attendanceView);
+    const overview = compactAttendanceView && recordValue(compactAttendanceView.overview);
+    const snapshotSummary = overview
+        ? [
+            "",
+            "Attendance overview:",
+            `Scheduled days: ${tableValue(overview.scheduled_days)}; affected children: ${tableValue(overview.affected_children)}; pending confirmations: ${tableValue(overview.pending_confirmation_days)}; absence days: ${tableValue(overview.absence_days)}; incomplete children: ${tableValue(overview.incomplete_children)}.`,
+        ].join("\n")
+        : "";
+    const renderedMessage = renderActionSections(`${providerMessage}${snapshotSummary}`, actionIntents);
+    return {
+        content: [{ type: "text", text: renderedMessage }],
+        structuredContent: {
+            capability: "attendance-risk-snapshot",
+            viewState: currentView,
+            scope: snapshot.scope,
+            sourceRetrievedAt: snapshot.sourceRetrievedAt,
+            responseMode: "SUMMARY",
+            responseSections: ["summary", "next-actions", "drill-down", "available-views"],
+            providerMessage: renderedMessage,
+            ...(includeContinuationMetadata ? { actionIntents } : {}),
+            actionControls: actionControls(actionIntents),
+        },
     };
 }
