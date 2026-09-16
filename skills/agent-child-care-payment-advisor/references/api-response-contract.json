@@ -20,7 +20,6 @@
   "python_scripts": [
     "scripts/evaluate_attendance_risks.py",
     "scripts/analyze_attendance_transactions.py",
-    "scripts/calculate_payout.py",
     "scripts/provider_risk_payment_engine.py"
   ],
   "canonical_provider_risk_payment_contract": {
@@ -58,14 +57,8 @@
   "payment_analysis_views": {
     "STATUS": "Analyze the requested service-period scope.",
     "NEXT_PAYOUT": "Select the next unpaid service period after today and return service and payment dates plus deterministic amount status.",
-    "CURRENT_WEEK_FORECAST": "Analyze the whole service period containing today; actuals through today are combined with future scheduled hours as conditional SCHEDULED_FORECAST rows.",
+    "CURRENT_PERIOD_FORECAST": "Analyze the whole service period containing today; actuals through today are combined with future scheduled hours as conditional SCHEDULED_FORECAST rows. CURRENT_WEEK_FORECAST remains an accepted input alias.",
     "what_if": "Unsupported until an explicit scenario input schema and deterministic adapter are approved."
-  },
-  "payout_calculator_status": {
-    "script": "scripts/calculate_payout.py",
-    "source_contract": "legacy_normalized_fixture",
-    "production_ready": false,
-    "blocker": "Live Apex responses do not yet provide the approved fiscal-rate, parent-confirmation, payment-status, and transaction-level fields required for a production payout calculation."
   },
   "canonical_engine_status": {
     "script": "scripts/provider_risk_payment_engine.py",

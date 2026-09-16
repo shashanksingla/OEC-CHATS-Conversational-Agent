@@ -6,7 +6,7 @@
       "The response reports 21 reimbursable days and an expected payout of $1,260.00 from script output",
       "The response reports one non-reimbursable absence day and $60.00 excluded because the monthly absence limit is three",
       "The response distinguishes expected payout from excluded amount and does not label the confirmed payout as conditional",
-      "The transcript contains a tool call that executes scripts/calculate_payout.py rather than model-authored arithmetic",
+      "The transcript contains a tool call that executes scripts/provider_risk_payment_engine.py rather than model-authored arithmetic",
       "The response does not claim that operational records were changed"
     ],
     "state_prefix": null,

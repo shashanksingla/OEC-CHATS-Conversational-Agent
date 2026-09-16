@@ -43,9 +43,17 @@ test("county absence-limit table shows limit, remaining allowance, and status", 
   // carries a "Monthly absence limit" column, tier-resolved per child and
   // reported when every child in the county actually shares the same value
   // (Adams: 4; Denver: 5, since both Denver children share limit 5 here).
-  assert.match(text, /\| County \| Children \| Monthly absence limit \| Children over limit \| Status \|/);
-  assert.match(text, /\| Adams \| 1 \| 4 \| 1 \| 1 of 1 children over limit \|/);
-  assert.match(text, /\| Denver \| 2 \| 5 \| 0 \| Within limit \|/);
+  // County-rollup contract fix: "Risk children" and "Absence days" are
+  // required measures for this table (per view-catalog.md) and must not be
+  // omitted in favor of only the limit/status columns.
+  assert.match(text, /\| County \| Children \| Risk children \| Absence days \| Monthly absence limit \| Children over limit \| Status \|/);
+  assert.match(text, /\| Adams \| 1 \| 1 \| 5 \| 4 \| 1 \| 1 of 1 children over limit \|/);
+  // Both Denver children carry ABSENCE_LIMIT_APPROACHING (not EXCEEDED), so
+  // the county Status column's "approaching" tier applies here - "Within
+  // limit" would incorrectly imply neither child needs any attention, which
+  // contradicts the "2 approaching" figure already stated in the summary
+  // sentence above the table.
+  assert.match(text, /\| Denver \| 2 \| 2 \| 5 \| 5 \| 0 \| 2 of 2 children approaching limit \|/);
 });
 
 test("county absence-limit table reports an unavailable limit without guessing", () => {
@@ -68,5 +76,5 @@ test("county absence-limit table reports an unavailable limit without guessing",
   // No child in Jefferson has a resolved absence_limit (unavailable, not
   // conflicting), so the county limit reads "Unavailable" rather than
   // "Multiple" - "Multiple" is reserved for an actual conflicting-values case.
-  assert.match(result.content[0].text, /\| Jefferson \| 1 \| Unavailable from the current source \| 1 \| 1 of 1 children over limit \|/);
+  assert.match(result.content[0].text, /\| Jefferson \| 1 \| 1 \| 3 \| Unavailable from the current source \| 1 \| 1 of 1 children over limit \|/);
 });

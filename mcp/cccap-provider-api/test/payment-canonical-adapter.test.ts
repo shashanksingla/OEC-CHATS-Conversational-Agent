@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeVacantSlotSchedules } from "../src/payment-canonical-adapter.js";
+import { normalizeVacantSlotSchedules } from "../src/payment-engine.js";
 
 test("vacant slots select the fiscal amount for the provider quality tier", () => {
   const schedules = normalizeVacantSlotSchedules(

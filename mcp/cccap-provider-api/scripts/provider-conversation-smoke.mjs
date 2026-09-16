@@ -60,8 +60,11 @@ try {
   const confirmationReview = await callTool("cccap_analyze_payment_risk", {
     dateFilter: "THIS_MONTH",
   });
-  if (!confirmationReview.includes("**Next actions**")) {
-    throw new Error("Confirmation review did not return provider next actions");
+  // Renamed "Next actions" -> "Priority Actions" (see shared.ts
+  // renderActionSections) - this assertion was stale against the current
+  // conversation-templates contract.
+  if (!confirmationReview.includes("**Priority Actions**")) {
+    throw new Error("Confirmation review did not return provider priority actions");
   }
 
   const nextPayoutText = await callTool("cccap_get_service_periods", {

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 
-CONFIRMATION_WINDOW_DAYS = 5
+CONFIRMATION_WINDOW_DAYS = 9
 
 
 class AttendanceRiskError(ValueError):

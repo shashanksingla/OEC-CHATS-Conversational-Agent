@@ -1,8 +1,8 @@
-import { normalizeFiscalRateResponse } from "./fiscal-rate-normalizer.js";
 import {
+  normalizeFiscalRateResponse,
   selectFiscalScheduleForAuthorization,
   type FiscalScheduleCandidate,
-} from "./authorization-fiscal-schedule-matcher.js";
+} from "./payment-engine.js";
 
 export interface ApiEnvelope {
   isSuccess: boolean;
@@ -119,11 +119,21 @@ export class CccapClient {
       authIds?: string[] | undefined;
       authNames?: string[] | undefined;
       careDate?: string | undefined;
-      scheduleRateTypes?: Record<string, string> | undefined;
+      // An authorization's schedule days can each carry a DIFFERENT rate
+      // type across one period (e.g. regular/evening/weekend/overnight
+      // days under the same authorization) - a single string per
+      // authorization here previously collapsed to whichever schedule row
+      // was processed last, matching only ONE of the rate types the
+      // authorization's days actually need and silently excluding fiscal
+      // rates for every other day. Every rate type the authorization's
+      // days use must be threaded through, not just one.
+      scheduleRateTypes?: Record<string, string[]> | undefined;
+      scheduleCareDates?: Record<string, string> | undefined;
     },
   ): Promise<unknown> {
     const {
       scheduleRateTypes,
+      scheduleCareDates,
       careDate: _careDate,
       ...request
     } = input;
@@ -141,17 +151,20 @@ export class CccapClient {
     return {
       ...response,
       normalizedAuthorizations: authorizations.map((authorization) => {
-        const scheduleRateType = scheduleRateTypes?.[String(authorization.Id)]
+        const scheduleRateTypeList = scheduleRateTypes?.[String(authorization.Id)]
           ?? scheduleRateTypes?.[String(authorization.Name)]
           ?? scheduleRateTypes?.[String(authorization.IDN_EXTNL__c)];
+        const scheduleCareDate = scheduleCareDates?.[String(authorization.Id)]
+          ?? scheduleCareDates?.[String(authorization.Name)]
+          ?? scheduleCareDates?.[String(authorization.IDN_EXTNL__c)];
         return {
           authorization,
-          ...(scheduleRateType ? { rateTypeCode: scheduleRateType } : {}),
+          ...(scheduleRateTypeList && scheduleRateTypeList.length > 0 ? { rateTypeCode: scheduleRateTypeList } : {}),
           fiscalScheduleMatch: selectFiscalScheduleForAuthorization(
           authorization,
           this.fiscalSchedules,
-          careDate,
-          scheduleRateType,
+          scheduleCareDate ?? careDate,
+          scheduleRateTypeList,
           ),
         };
       }),

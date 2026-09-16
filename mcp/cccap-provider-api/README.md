@@ -2,7 +2,7 @@
 
 ## Opaque Follow-Ups
 
-Composite responses expose stable action controls whose only caller-supplied continuation field is `{ actionId }`. The server keeps provider-bound context and reference handles private; callers never need to inspect, store, reconstruct, or explain `contextRef` or `actionRef`. Action plans never repeat child names, pagination rows, or server-side filters. Pass `refresh: true` when the provider asks for current source data. If an action cannot be resolved after a restart or expiry, create a fresh result instead of reconstructing hidden filters.
+Composite responses expose stable action controls whose caller-supplied continuation fields are `{ actionId, actionToken }`. The server keeps provider-bound context and reference handles private; callers never need to inspect, store, reconstruct, or explain hidden scope. Action plans never repeat child names, pagination rows, or server-side filters. Pass `refresh: true` when the provider asks for current source data. If an action cannot be resolved after a restart or expiry, create a fresh result instead of reconstructing hidden filters.
 
 This local stdio MCP server gives Provider Assist read-only tools backed by `CccapPortalApiV1` in the Salesforce target org.
 
@@ -51,7 +51,7 @@ Use `cccap_initialize_provider` directly only when the provider explicitly needs
 
 The greeting tool (`cccap_get_current_month_risk_snapshot`) keeps its complete provider-facing tables and next actions in the primary text content. Its structured response is routing metadata only (`capability`, `scope`, freshness, `responseMode`, and response sections); it does not repeat the provider message, rollups, or action controls. This prevents the conversation starter from parsing two competing representations of the same result.
 
-Child-level dates, classifications, risk explanations, and child-scoped filters are returned only by an explicit `cccap_analyze_attendance_risk` drill-down. The in-process client cache may reuse authenticated source reads between these calls, but cached source records must not be copied into the summary envelope. Keep `content[0].text` as the provider-ready response; treat structured fields as compact routing metadata and inspect them only when a follow-up view is selected.
+Child-level dates, classifications, risk explanations, and child-scoped filters are returned only by an explicit `cccap_analyze_attendance_risk` drill-down. The in-process client cache may reuse authenticated source reads between these calls, but cached source records must not be copied into the summary envelope. Keep `content[0].text` as the provider-ready response and relay it verbatim. Treat structured fields as compact routing metadata and inspect them only when a follow-up view is selected. Payment responses intentionally do not duplicate the provider message in structured content because the MCP host renders the text content and may reject oversized duplicated envelopes.
 
 ## Payment Readiness
 

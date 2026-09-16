@@ -75,7 +75,11 @@ test("omitting countyNames returns every county unfiltered", () => {
     attendanceRisk: baseAttendanceRisk,
   });
 
+  // County-summary-first: an unscoped request (no childNames/countyNames)
+  // now renders the county rollup only, not child-level rows - verify both
+  // counties are represented there instead of checking child-row text.
   const text = result.content[0].text;
-  assert.match(text, /Denver Child/);
-  assert.match(text, /Adams Child/);
+  assert.match(text, /\| Adams \|/);
+  assert.match(text, /\| Denver \|/);
+  assert.match(text, /Show affected children — 2/);
 });

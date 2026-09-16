@@ -1,5 +1,4 @@
-import { normalizeFiscalRateResponse } from "./fiscal-rate-normalizer.js";
-import { selectFiscalScheduleForAuthorization, } from "./authorization-fiscal-schedule-matcher.js";
+import { normalizeFiscalRateResponse, selectFiscalScheduleForAuthorization, } from "./payment-engine.js";
 export class CccapClient {
     targetOrg;
     providerUserId;
@@ -55,7 +54,7 @@ export class CccapClient {
         });
     }
     async getAuthorizations(input) {
-        const { scheduleRateTypes, careDate: _careDate, ...request } = input;
+        const { scheduleRateTypes, scheduleCareDates, careDate: _careDate, ...request } = input;
         const data = await this.cachedCall("getAuthData", {
             ...request,
             countyIds: this.allowedCounties(request.countyIds),
@@ -70,13 +69,16 @@ export class CccapClient {
         return {
             ...response,
             normalizedAuthorizations: authorizations.map((authorization) => {
-                const scheduleRateType = scheduleRateTypes?.[String(authorization.Id)]
+                const scheduleRateTypeList = scheduleRateTypes?.[String(authorization.Id)]
                     ?? scheduleRateTypes?.[String(authorization.Name)]
                     ?? scheduleRateTypes?.[String(authorization.IDN_EXTNL__c)];
+                const scheduleCareDate = scheduleCareDates?.[String(authorization.Id)]
+                    ?? scheduleCareDates?.[String(authorization.Name)]
+                    ?? scheduleCareDates?.[String(authorization.IDN_EXTNL__c)];
                 return {
                     authorization,
-                    ...(scheduleRateType ? { rateTypeCode: scheduleRateType } : {}),
-                    fiscalScheduleMatch: selectFiscalScheduleForAuthorization(authorization, this.fiscalSchedules, careDate, scheduleRateType),
+                    ...(scheduleRateTypeList && scheduleRateTypeList.length > 0 ? { rateTypeCode: scheduleRateTypeList } : {}),
+                    fiscalScheduleMatch: selectFiscalScheduleForAuthorization(authorization, this.fiscalSchedules, scheduleCareDate ?? careDate, scheduleRateTypeList),
                 };
             }),
         };

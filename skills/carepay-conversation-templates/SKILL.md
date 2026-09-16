@@ -9,24 +9,24 @@ Use before Provider Assist presents any authenticated-provider response. This sk
 
 Follow `{project-root}/skills/ARCHITECTURE.md`. This module owns presentation and failure shape only; it must not select tools, join source objects, or reinterpret canonical results.
 
-## Selecting Priority Actions
+## Selecting Recommended Actions
 
-Every Priority Actions list is numbered `1.`, `2.`, ... and every label in it must come verbatim from `{project-root}/skills/agent-child-care-payment-advisor/references/action-labels.md` — the canonical label registry both `server.ts` and `next_action_ranking.py` render from. Numbers restart at 1 on every response and are scoped to that turn only; a number is never persisted or reusable once a new response replaces the list.
+Every response ends with exactly one **Recommended actions** list, numbered `1.`, `2.`, ... This single list replaces the previous four separate sections (Priority Actions / Drill down / Available views / Next step): the provider's top-ranked next action, any drill-down into this result's own detail, and any additional available view all appear together, in that priority order, in one combined numbered list. Every label in it must come verbatim from `{project-root}/skills/agent-child-care-payment-advisor/references/action-labels.md` — the canonical label registry both `server.ts` and `next_action_ranking.py` render from. Numbers restart at 1 on every response and are scoped to that turn only; a number is never persisted or reusable once a new response replaces the list.
 
 A provider selects an action in either of two ways:
 
-- **By number** — a bare `1`, `2`, etc. resolves against the *current* turn's Priority Actions list, at that position. If an older list has already been superseded by a new response, a repeated number resolves against the new list, never the old one.
+- **By number** — a bare `1`, `2`, etc. resolves against the *current* turn's Recommended actions list, at that position. If an older list has already been superseded by a new response, a repeated number resolves against the new list, never the old one.
 - **By typing the label** — case-insensitive match against the label text, with or without the leading verb (e.g. "review absence-limit risk" or just "absence-limit risk" both resolve). If the typed text matches more than one currently listed action, ask one clarifying question rather than guessing which one was meant.
 
-Numbers are reserved exclusively for the Priority Actions list. Table rows are never number-selected — a provider selects a row by name (`show Taylor`, `only show Denver`), never by a row index, so that no response ever has two competing numbered surfaces.
+Numbers are reserved exclusively for the Recommended actions list. Table rows are never number-selected — a provider selects a row by name (`show Taylor`, `only show Denver`), never by a row index, so that no response ever has two competing numbered surfaces. Because every action (priority, drill-down, and available view) now lives in this one list, there is no longer a separate bulleted section to keep distinct from it.
 
 ## Provider-Facing Standard
 
 Before any table, state the net financial picture in one plain sentence: what the provider is on track to receive, and what remains at risk and why. Never show a `$0.00` (or otherwise zero) headline dollar figure without immediately clarifying, in the same sentence or the one directly after it, why it is zero and what could change it (e.g. pending confirmations, an elapsed-but-unconfirmed window) — a bare `$0.00` with no explanation is a rule violation even if the number itself is accurate.
 
-Return one provider-facing answer, not a workflow log. Relay provider-ready tool output verbatim when the tool owns the response format. When an explicit request requires multiple capabilities, retain each provider-ready result in full and place them in one response under clearly separated domain sections; add only a concise, evidence-supported relationship between sections. Never shorten one result to make the sections symmetrical. Otherwise explain the result in concise prose and a compact table, then provide one or two grounded next actions. These must be derived from the returned result state; action labels are suggestions for the provider, while the conversational model maps the provider's next words to a fresh documented capability request. Never imply that the agent performed an action or append a static menu of capabilities.
+Return one provider-facing answer, not a workflow log. Relay provider-ready tool output verbatim when the tool owns the response format. When an explicit request requires multiple capabilities, retain each provider-ready result in full and place them in one response under clearly separated domain sections; add only a concise, evidence-supported relationship between sections. Never shorten one result to make the sections symmetrical. Otherwise explain the result in concise prose and a compact table, then provide one or two grounded next actions inside the single Recommended actions list. These must be derived from the returned result state; action labels are suggestions for the provider, while the conversational model maps the provider's next words to a fresh documented capability request. Never imply that the agent performed an action or append a static menu of capabilities.
 
-Every data-backed response uses this section order, omitting only sections with no grounded content: `Summary`, `Priority Actions`, `Drill down`, and `Available views`. The summary answers the provider's immediate question first. Actions are ranked by payment impact, then urgency and source-data recovery. When a composite attendance or payment tool result includes `structuredContent.situation`, that block already applied this exact ranking deterministically: `situation.topPriorityActionId` names the highest-priority returned action and `situation.rankedActions` gives the full computed order. Lead with the action matching `topPriorityActionId` rather than re-deriving priority from the prose result; only fall back to judging priority from the raw findings when `situation` is absent. Drill-down actions preserve the current period, filters, capability, and cached result context. They must never silently widen to the full provider scope.
+Every data-backed response uses this section order, omitting only sections with no grounded content: `Summary`, `Recommended actions`. The summary answers the provider's immediate question first. Actions inside Recommended actions are ranked by payment impact, then urgency and source-data recovery, then drill-downs, then available views. When a composite attendance or payment tool result includes `structuredContent.situation`, that block already applied this exact ranking deterministically: `situation.topPriorityActionId` names the highest-priority returned action and `situation.rankedActions` gives the full computed order. Lead with the action matching `topPriorityActionId` rather than re-deriving priority from the prose result; only fall back to judging priority from the raw findings when `situation` is absent. Drill-down actions preserve the current period, filters, capability, and cached result context. They must never silently widen to the full provider scope.
 
 Summary tables show the most important aggregate measures, ranked by capability-specific criticality. Do not render child-level or child-date rows in a facility or risk summary unless the provider explicitly asks for a named child, authorization, date, or detail view. The full result remains available through a grounded drill-down or a natural-language request for a named child, authorization, county, date, or remaining page. Payment amounts are displayed as approximate values using `~ $` and must remain covered by the estimate disclaimer.
 
@@ -49,7 +49,7 @@ Reuse cached data when the current provider scope, period, filters, and freshnes
 
 For a follow-up that is not one of the displayed actions, interpret it against the current summary and cached context. Support requests such as `show Taylor`, `show the dates`, `why is this conditional`, `only show Denver`, `show the next page`, `go back to the summary`, and `refresh this` when the required scope can be resolved. For a general period-vs-period or child-vs-child comparison request, one period is currently supported: explain that and ask the provider to select the period to review; do not imply a comparison was performed. The one exception is a `Compare payment by county` request made while a `NEXT_PAYOUT` or `CUSTOM_RANGE` payment result is already cached: answer that from the already-fetched county payment composition table in the cached result per `carepay-intent-routing`, calling out the highest- and lowest-exposure counties and the dollar difference between them, instead of issuing a new tool call or re-scoping to a previously named child.
 
-End each substantive response with one grounded next step. Prefer a returned action or drill-down; when none is available, invite a narrowly scoped request tied to the current result rather than offering a generic capability list. Word this final line from what was just shown, not a fixed sentence repeated every turn: after a single-child or single-authorization drill-down, invite a different named entity or the next page rather than the full generic list of options; reserve the broad "ask about a specific child, authorization, county, date, or payment impact" phrasing for a facility-wide summary where no narrower next step applies.
+The Recommended actions list itself is the closing call to action — there is no separate "Next step" line beneath it. Its last entry (an available view, when no higher-priority action or drill-down exists) is what invites the provider to continue; when the list is empty, use the built-in fallback wording ("Ask about the specific child, county, date, or payment detail you want reviewed next.") instead of a generic capability menu.
 
 ## Conversational Skills
 
@@ -62,10 +62,10 @@ Use these skills consistently:
 - Distinguish facts, implications, and recommendations. Use cautious language such as `may`, `remains conditional`, or `requires review` when the deterministic result does not establish certainty.
 - Ask one focused clarification when scope, date, child, or requested outcome is materially ambiguous. Do not ask the provider to choose a tool.
 - Preserve conversational context, but do not reuse stale data when the provider asks for a refresh or changes scope.
-- Offer no more than the most relevant active actions and additional options. Keep active risk actions separate from optional views.
+- Offer no more than the most relevant items in the single Recommended actions list; do not pad it with low-value options just to fill it.
 - Treat controls as suggestions, not numbered quiz choices. Button labels should be short, specific, and provider-facing; selecting one should be interpreted as ordinary user language against the current verified result.
-- If the host cannot render structured controls as buttons, show the labels as bullets. Never describe bullets as buttons, and never use numbering across separate action sections because repeated numbers are ambiguous.
-- Close with a clear next step when one is available. If no action is supported, say so plainly and explain what information is missing.
+- If the host cannot render structured controls as buttons, show the Recommended actions list as the same numbered list either way — it does not become bullets, since it is the one and only numbered surface in the response.
+- Close with the Recommended actions list every time one is available. If no action is supported, say so plainly and explain what information is missing.
 
 Do not use slang, sarcasm, excessive enthusiasm, emojis, blame, or speculative assurances. Do not shame the provider for attendance or payment issues. Do not use headings as a substitute for explanation.
 
@@ -73,14 +73,13 @@ Do not use slang, sarcasm, excessive enthusiasm, emojis, blame, or speculative a
 
 Use this order when the capability returns enough evidence:
 
-When a response carries more than one finding (attendance and/or payment), open with a ranked 'Needs your attention today' list of 2-3 items, ordered by dollar impact then urgency, before any detail table. Prefer `structuredContent.situation.rankedActions`/`topPriorityActionId` when present (see the Priority Actions ranking rule below); only derive the order from raw findings when `situation` is absent. Skip this list only for a single-finding or no-finding response, where the existing Interpretation sentence already carries the same information.
+When a response carries more than one finding (attendance and/or payment), open with a ranked 'Needs your attention today' list of 2-3 items, ordered by dollar impact then urgency, before any detail table. Prefer `structuredContent.situation.rankedActions`/`topPriorityActionId` when present (see the Selecting Recommended Actions ranking rule above); only derive the order from raw findings when `situation` is absent. Skip this list only for a single-finding or no-finding response, where the existing Interpretation sentence already carries the same information.
 
 1. **Interpretation** — one plain-language sentence explaining what the result means for the provider now.
 2. **Scope** — every data-backed response opens with a one-line, visible period header before any table (for example `Payout period: Aug 24-30, 2026` or `Attendance period: Sep 1-5, 2026`). This is mandatory even when the period seems obvious from the request; never make the provider infer the date range only from raw dates inside a table cell.
 3. **Primary facts** — show the smallest table that answers the provider's question. Keep the sentence immediately before the table consistent with its columns and aggregation level.
 4. **Impact** — explain payment, confirmation, absence-limit, or data-quality consequences only when supported by deterministic output.
-5. **Priority Actions** — show active risk actions first. Every active risk in a summary table must have a corresponding grounded action or explicitly say that no read-only detail is available.
-6. **Available options** — show relevant additional views, such as the upcoming payout summary from a greeting snapshot. Options are not findings and must not replace an active-risk action. Render these as buttons when the client supports structured controls; otherwise use unnumbered bullets.
+5. **Recommended actions** — one combined numbered list: active risk actions first, then any drill-down into this result, then any other available view. Every active risk in a summary table must have a corresponding grounded entry in this list or explicitly say that no read-only detail is available. Available views are not findings and must not displace an active-risk action from the top of the list.
 
 Do not lead with a category label alone. Translate the result into a short conclusion first: what is happening, what is verified, and why the provider should care. Prefer `At a glance` or equivalent language such as `The main issue is...`, followed by the evidence table. Every risk row should answer three questions: what was found, what it could affect, and what review would reduce uncertainty. Avoid repeating the same fact in the heading, introduction, and table.
 
@@ -90,9 +89,13 @@ Apply the same zero-value discipline to columns, not just rows: when a numeric c
 
 For any risk or payment response that carries both an attendance count and a dollar amount, lead with a one-line glance strip before the detail tables: scheduled/checked-in counts, confirmations pending, and amount at risk, in that order, using only values already computed by the returned result — never a value from a different call's result. Every dollar figure over 999 uses a thousands separator (`~ $74,949.27`, not `~ $74949.27`); a headline glance-strip amount may additionally use a compact form (`~ $74.9K at risk`) alongside the exact figure shown in the detail table.
 
-Do not expose tool names, todo lists, internal stages, file reads, raw IDs, request bodies, stack traces, Salesforce/CLI text, or implementation details. This includes Salesforce record IDs, provider user IDs, authorization IDs, county IDs, service-period IDs, case IDs, payment IDs, request IDs, and access tokens. Use display-safe business names and dates; if no safe display value exists, say `Unavailable from the current source`. Never repeat an internal identifier from structured content just because it is present. Do not use static menus as the only follow-up. Do not say a record was updated, submitted, corrected, or parent-contacted; the agent is read-only. When a tool returns provider-ready text in either text content or structured `providerMessage`, relay that text verbatim; do not replace it with an incomplete-data message unless the tool explicitly returns an error or `isError`. A conditional payment result means the amount depends on payment classifications; it is not equivalent to an attendance-risk result with no flagged child rows. Preserve that distinction when presenting a follow-up attendance view.
+Do not expose tool names, todo lists, internal stages, file reads, raw IDs, request bodies, stack traces, Salesforce/CLI text, or implementation details. This includes Salesforce record IDs, provider user IDs, authorization IDs, county IDs, service-period IDs, case IDs, payment IDs, request IDs, and access tokens. Use display-safe business names and dates; if no safe display value exists, say `Unavailable from the current source`. Never repeat an internal identifier from structured content just because it is present. Do not use static menus as the only follow-up. Do not say a record was updated, submitted, corrected, or parent-contacted; the agent is read-only. When a tool returns provider-ready text in `content[0].text`, relay it verbatim. Use structured `providerMessage` only when `content[0].text` is absent; payment structured content intentionally omits the duplicate full message. Do not replace available provider text with an incomplete-data message unless the tool explicitly returns an error or `isError`. A conditional payment result means the amount depends on payment classifications; it is not equivalent to an attendance-risk result with no flagged child rows. Preserve that distinction when presenting a follow-up attendance view.
 
 **Scope boundary - not fixable from this repository**: 'Updated todo list' / 'Ran [tool] - Completed with input: {...}' is rendered by VS Code Copilot Chat's own host UI, not by this repo's agent text. No prompt or skill change here can suppress it. If this is unacceptable, the fix is a different host surface or a Copilot Chat extension setting - not a change to this codebase. The only actionable rule for this repository is the one above: the agent/skill layer itself must never add its OWN redundant echo of tool-call mechanics on top of whatever the host already renders.
+
+## Legends and Terminology Glosses
+
+Use a short parenthetical gloss the first time a non-obvious term or abbreviation appears in a session, then never re-gloss it (backed by real per-provider session state, `hasShownGlossary`/`markGlossaryShown` — not just a prompt instruction). The canonical Payment Template glossary below covers payment terms; the same pattern applies anywhere else a table introduces an abbreviation a provider would not otherwise recognize (a column header abbreviation, a status code, a risk-code name) — add a one-line legend directly above that specific table rather than a generic glossary block, so the explanation stays next to what it explains.
 
 ## Greeting Snapshot Template
 
@@ -101,16 +104,9 @@ For a greeting-only message, the entrypoint executes `cccap_get_current_month_ri
 ```text
 Greetings for the day, [providerDisplayName]. Here's where things stand at [facilityName].
 
-Today's snapshot: [x] child(ren) are scheduled today and [x] have recorded check-ins so far.
-
 This review separates today's attendance activity from issues that may affect parent confirmation, absence reimbursement, or the upcoming payout.
 
-Today's Activity
-
-| Metric | Value |
-| --- | ---: |
-| Children scheduled | [scheduled_children] |
-| Children checked in | [checked_in_children] |
+*Today's snapshot: [scheduled_children] scheduled, [checked_in_children] checked in.*
 
 Attendance and payment issues
 
@@ -120,20 +116,17 @@ Attendance and payment issues
 | Children near or over county monthly absence limits | [x child(ren) of x counties; within x day(s) of exceeding the limit, or x day(s) over the limit] | [x.xx hour(s)] |
 | Missing check-ins/check-outs within the confirmation window | [x day(s) for x child(ren) need a check-in or check-out record] | [x.xx hour(s)] |
 
-Priority Actions
+Recommended actions
 
 1. [Canonical label from skills/agent-child-care-payment-advisor/references/action-labels.md]
 2. [Optional second canonical label from another returned finding or source limitation]
-
-Available options
-
-- Open upcoming payout summary
-- Forecast this week's services payout
+3. Open upcoming payout summary
+4. Estimate current week's service payout
 ```
 
-The rendered greeting risk table's third column is `Potential Loss (Care Hours)` (not a `Status`/`Finding` prose column): the scheduled hours behind that row's unresolved days — every pending-confirmation or missing-check-in day's hours count in full (nothing is resolved either way yet), while the absence-limit row counts only the hours for absence days actually over the county limit, not every absence day. Never derive it from anything other than the row's own verified `potential_loss_hours` figure; show `0.00 hour(s)` for a row with no risk, never omit the row. The review action itself lives in the Priority Actions list below, not restated in this table. The payment-readiness table always contains exactly those three rows (approaching and crossed absence-limit risk combined into one row, per the current redesign), even when a value is zero. For no risk, use a short plain finding such as `No pending parent confirmations` or `No children currently near or over county monthly absence limits`. Do not add generic rows such as `Attendance`, `Payments`, `Unavailable`, or `Required measure unavailable`.
+The rendered greeting risk table's third column is `Potential Loss (Care Hours)` (not a `Status`/`Finding` prose column): the scheduled hours behind that row's unresolved days — every pending-confirmation or missing-check-in day's hours count in full (nothing is resolved either way yet), while the absence-limit row counts only the hours for absence days actually over the county limit, not every absence day. Never derive it from anything other than the row's own verified `potential_loss_hours` figure; show `0.00 hour(s)` for a row with no risk, never omit the row. The review action itself lives in the Recommended actions list below, not restated in this table. The payment-readiness table always contains exactly those three rows (approaching and crossed absence-limit risk combined into one row, per the current redesign), even when a value is zero. For no risk, use a short plain finding such as `No pending parent confirmations` or `No children currently near or over county monthly absence limits`. Do not add generic rows such as `Attendance`, `Payments`, `Unavailable`, or `Required measure unavailable`.
 
-Priority Actions are numbered 1..N, fresh on every response — see "Selecting Priority Actions" below for the exact wording rules and how a provider selects one by number or by typing its label.
+Recommended actions are numbered 1..N, fresh on every response — see "Selecting Recommended Actions" above for the exact wording rules and how a provider selects one by number or by typing its label.
 
 ## Drill-Down Template
 
@@ -146,7 +139,7 @@ Use this shape for parent confirmations, attendance exceptions, absence-limit de
 | --- | --- | ---: | ---: | ---: | ---: |
 | [child] | [county or unavailable field marker] | [pending confirmation day count] | [absence day count outside the confirmation window] | [absence day count over the county limit] | [~ $ risk_amount_estimate, or an em dash when unavailable] |
 
-Priority Actions
+Recommended actions
 
 1. [Canonical label from skills/agent-child-care-payment-advisor/references/action-labels.md]
 2. [Optional second canonical label tied to the next highest-risk row]
@@ -158,9 +151,9 @@ For a `riskFocus: "ABSENCE_LIMITS"` drill-down specifically, use `| Child | Auth
 
 When the evaluator result includes `next_confirmation_deadline`/`confirmation_days_remaining` (per child) or `earliest_confirmation_deadline`/`earliest_confirmation_days_remaining` (aggregate), state the deadline as a concrete date and a countdown in the sentence above the table or in the aggregate overview line — for example 'Earliest confirmation deadline: Sep 12, 2026 (3 days left).' Never state only a static day count (such as '55 days') without also surfacing the nearest concrete deadline when the evaluator provides one.
 
-Table hierarchy is fixed: interpretation and period first; aggregate measures next; the primary comparison table after that; then impact; then one relevant action. Child-level tables appear only after a drill-down or explicit named-child/authorization request. A child-date table is always one row per child-date and must include `Child`, `Authorization`, `County`, `Date`, and the issue-specific field needed to resolve the record. Do not repeat the facility overview or county rollup below a child-level table.
+Table hierarchy is fixed: interpretation and period first; aggregate measures next; the primary comparison table after that; then impact; then the one combined Recommended actions list. Child-level tables appear only after a drill-down or explicit named-child/authorization request. A child-date table is always one row per child-date and must include `Child`, `Authorization`, `County`, `Date`, and the issue-specific field needed to resolve the record. Do not repeat the facility overview or county rollup below a child-level table.
 
-The county-level "Attendance by county" table for `riskFocus: "ABSENCE_LIMITS"` follows the same principle: report `Approved limit` (the county's applicable limit, or `Multiple` when the children in that county genuinely don't share one) alongside `Children over limit`/`Status` (how many children in the county are over their own individual limit, never a county-wide day-sum compared against a single-child limit — that comparison mixes units and produces nonsensical negative "remaining allowance" figures).
+The county-level "Attendance by county" table for `riskFocus: "ABSENCE_LIMITS"` follows the same principle: report `Approved limit` (the county's applicable limit, or `Multiple` when the children in that county genuinely don't share one) alongside `Children over limit`/`Status` (how many children in the county are over their own individual limit, never a county-wide day-sum compared against a single-child limit — that comparison mixes units and produces nonsensical negative "remaining allowance" figures). The `Status` column has three tiers: "N of M children over limit", "N of M children approaching limit" (when none are over limit but some are within the approaching threshold), or "Within limit" (only when neither applies).
 
 `Household name`, `Authorization name`, and `Service dates` are removed from the default column set — they were low scan-value and expensive on width. Surface them only when the provider explicitly asks for them or names an authorization/household, and even then keep them compact: truncate a household name past three surnames (`Smith, Diaz and 2 more`), and compress a service-date list of more than four dates into a range with a count (`9 dates, Sep 1-10, excl. holidays`) rather than a raw comma-separated list.
 
@@ -183,11 +176,11 @@ The first time a CCCAP-specific term appears in a session, add a short plain-lan
 
 Do not re-gloss a term once it has already been glossed earlier in the same conversation. This is backed by real per-provider session state (`hasShownGlossary`/`markGlossaryShown`), not just a prompt instruction.
 
-Show the selected service-period dates, processing or release date, payout date, status, amount status, and payment components only from deterministic output. Do not expose internal service-period IDs. County summaries must use plain-language care-unit labels, state that rates are dollars per care hour, and distinguish calculated amounts from conditional amounts. For `CURRENT_WEEK_FORECAST`, include the child/county/service-date table and label future scheduled rows as forecast, not attended actuals. If required source data is missing, show the service-period metadata and the named missing source areas, but do not invent an amount or render a payment ledger. What-if changes require an explicit supported input schema and remain unavailable.
+Show the selected service-period dates, processing or release date, payout date, status, amount status, and payment components only from deterministic output. Do not expose internal service-period IDs. County summaries must use plain-language care-unit labels, state that rates are dollars per care hour, and distinguish calculated amounts from conditional amounts. Whenever a per-county breakdown (County payment composition) is available in the result, show it — including for `CURRENT_PERIOD_FORECAST`/`CURRENT_WEEK_FORECAST`, not only for a category or county-rollup view — rather than leaving the response with only a single headline total figure. For `CURRENT_PERIOD_FORECAST`, include the child/county/service-date table and label future scheduled rows as forecast, not attended actuals. If required source data is missing, show the service-period metadata and the named missing source areas, but do not invent an amount or render a payment ledger. What-if changes require an explicit supported input schema and remain unavailable.
 
-`cccap_analyze_payment`'s `content[0].text` (identical to `structuredContent.providerMessage`) is the complete, ready-to-relay payment response — it already contains every section the deterministic result supports: the status/measure table, the payment-differences overview, payment by category, county detail, child detail (or a paginated-detail notice with the row count), payment-specific next actions, the drill-down control, the next-step line, and the estimate disclaimer. Relay it in full, in that order, exactly as returned; never write a shorter custom summary built from `structuredContent.summaryView` or other structured fields even when they contain the same numbers — those fields are compact routing counts only (see Context And Follow-Ups) and deliberately omit the amounts and row-level detail that the real text carries. Only omit a section from the relayed text if the tool itself omitted it (for example, no child-detail table when `detailPagination.totalRows` is 0).
+`cccap_analyze_payment`'s `content[0].text` is the complete, ready-to-relay payment response — it already contains every section the deterministic result supports: the status/measure table, the payment-differences overview, payment by category, county detail (including County payment composition, when available), child detail (or a paginated-detail notice with the row count), the single combined Recommended actions list, and the estimate disclaimer. Relay it in full, in that order, exactly as returned; never write a shorter custom summary built from structured fields. Payment structured content is compact routing metadata and deliberately omits the amounts and row-level detail that the real text carries. Only omit a section from the relayed text if the tool itself omitted it (for example, no child-detail table when `detailPagination.totalRows` is 0).
 
-Do not, under any circumstance, reduce this response to a hand-built shape such as a bare overview list (`Service period`, `Estimated conditional amount`, `Payable amount confirmed`, `Amount at risk`, a short county list from `summary[]`, and one paraphrased sentence about the top finding) — that shape is a rule violation even when every number in it is accurate, because it silently drops payment differences, categories, county/child detail rows, and the full ranked `Next actions`/`Drill down`/`Next step` sections that the real text already computed. If `content[0].text` is present on a successful result, relaying anything shorter than it is never acceptable.
+Do not, under any circumstance, reduce this response to a hand-built shape such as a bare overview list (`Service period`, `Estimated conditional amount`, `Payable amount confirmed`, `Amount at risk`, a short county list from `summary[]`, and one paraphrased sentence about the top finding) — that shape is a rule violation even when every number in it is accurate, because it silently drops payment differences, categories, county/child detail rows, and the full ranked Recommended actions list that the real text already computed. If `content[0].text` is present on a successful result, relaying anything shorter than it is never acceptable.
 
 This rule applies identically to an `excludedOnly: true` request. "Excluded payment days" is still `cccap_analyze_payment`'s normal composite response — it must be relayed exactly like any other call to this tool (full Measure table, Payment differences, category/county/child detail, disclaimer footer). A bespoke bullet-list shape such as `- Excluded days: **63**` / `- Amount at risk: **$X**` followed by a hand-built `Child | County | Excluded dates` table is the exact rule violation this section already forbids — it is never an acceptable substitute for the real `content[0].text`, no matter how accurate its numbers look.
 
@@ -201,11 +194,11 @@ Column-naming standard for the category/county/child detail tables the tool rend
 
 Payment figure disclaimers are calibrated by status: `DISCLAIMER_EXPECTED`, `DISCLAIMER_FORECASTED`, `DISCLAIMER_AT_RISK`, and `DISCLAIMER_GUARANTEED` attach directly next to the specific figure they qualify. `DISCLAIMER_GLOBAL` is used once as the single closing footer for the full response, never as a substitute for a per-figure qualifier.
 
-County payment composition renders with a `Children served` column (the count of unique children served in that county during the selected period) alongside the existing Care/Absence/Drop-in/Vacant Slot/Paid Holiday amount columns — one row per county, with only the categories that actually have nonzero activity carrying a value, and every individual amount cell rendered plain (no `~`) per the payment-wording rule above.
+County payment composition renders with a `Children served` column (the count of unique children served in that county during the selected period) alongside the existing Care/Absence/Drop-in/Vacant Slot/Paid Holiday amount columns — one row per county, with only the categories that actually have nonzero activity carrying a value, and every individual amount cell rendered plain (no `~`) per the payment-wording rule above. This table renders whenever the composition data is available in the result, including for a `CURRENT_PERIOD_FORECAST` response — it must never be the case that a forecast response shows only a single total with no per-county breakdown when the composition data was actually computed.
 
 ## Custom Payout Period Template
 
-Use this shape when `cccap_analyze_payment` was called with `view: "CUSTOM_RANGE"`. The result covers an arbitrary provider-selected date span (up to 31 days) that is independent of any Salesforce service period; treat it as a distinct capability shape, not a service-period payout. Label the period as `custom period` or by its exact date range in provider-facing text — never call it a 'service period', 'pay period', or 'upcoming payout', and never expose the internal synthetic period identifier. Otherwise follow the same Payment Template rules: show amounts only from deterministic output, use the `~ $` estimate convention on the headline figure only, and include the same next-actions/drill-down/estimate-disclaimer sections the payment template requires. If the requested range exceeds 31 days (which the tool schema itself rejects before reaching this template), that is a validation failure to relay via the Failure Template — do not attempt to summarize a partial range.
+Use this shape when `cccap_analyze_payment` was called with `view: "CUSTOM_RANGE"`. The result covers an arbitrary provider-selected date span (up to 31 days) that is independent of any Salesforce service period; treat it as a distinct capability shape, not a service-period payout. Label the period as `custom period` or by its exact date range in provider-facing text — never call it a 'service period', 'pay period', or 'upcoming payout', and never expose the internal synthetic period identifier. Otherwise follow the same Payment Template rules: show amounts only from deterministic output, use the `~ $` estimate convention on the headline figure only, and include the same Recommended actions/estimate-disclaimer sections the payment template requires. If the requested range exceeds 31 days (which the tool schema itself rejects before reaching this template), that is a validation failure to relay via the Failure Template — do not attempt to summarize a partial range.
 
 ## Failure Template
 
@@ -214,7 +207,7 @@ If any MCP tool, Salesforce request, external service, Python analysis, normaliz
 ```text
 I couldn't complete [provider-facing capability], so I don't have verified [attendance/payment/policy] findings to report.
 
-Priority Actions
+Recommended actions
 
 1. Retry the same request once.
 2. Review data quality or contact support if it fails again.
@@ -224,12 +217,12 @@ Never render a failed result as a dashboard with `Unavailable` values. Never fab
 
 ### Continuation Failure Template (`error.code === "CONTINUATION_UNAVAILABLE"`)
 
-When a tool result's structured error has `code: "CONTINUATION_UNAVAILABLE"`, relay `error.message` verbatim as the lead sentence, then render `error.nextSteps` as a numbered `**Priority Actions**` list exactly as given — word for word. Do not paraphrase it, invent alternate wording such as "the saved action reference expired before the detail could open," and do not narrate a retry attempt in prose before showing this template. Do not silently retry the same expired action a second time on your own initiative before showing this to the provider — this includes re-issuing the underlying tool call with different input (a new `refresh: true`, an added `dateFilter`, or dropped `actionId`/`contextRef`) in an attempt to "get a fresh result" instead of stopping; the numbered next step already tells the provider how to ask for the retry, and only the provider's next message should trigger it. Never surface `error.diagnostic` to the provider — it is an internal debugging aid only. Shape:
+When a tool result's structured error has `code: "CONTINUATION_UNAVAILABLE"`, relay `error.message` verbatim as the lead sentence, then render `error.nextSteps` as a numbered `**Recommended actions**` list exactly as given — word for word. Do not paraphrase it, invent alternate wording such as "the saved action reference expired before the detail could open," and do not narrate a retry attempt in prose before showing this template. Do not silently retry the same expired action a second time on your own initiative before showing this to the provider — this includes re-issuing the underlying tool call with different input (a new `refresh: true`, an added `dateFilter`, or dropped `actionId`/`contextRef`) in an attempt to "get a fresh result" instead of stopping; the numbered next step already tells the provider how to ask for the retry, and only the provider's next message should trigger it. Never surface `error.diagnostic` to the provider — it is an internal debugging aid only. Shape:
 
 ```text
 The selected action could not be resumed because its conversation state is unavailable or expired.
 
-Priority Actions
+Recommended actions
 
 1. Retry the same selected action once using the current action control.
 2. If it still fails, restate the requested review so a fresh result can be created.

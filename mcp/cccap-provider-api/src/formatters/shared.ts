@@ -28,9 +28,6 @@ export const DISCLAIMER_AT_RISK =
 export const DISCLAIMER_GUARANTEED =
   "*Paid per your county contract regardless of occupancy or attendance.*";
 
-/** @deprecated Use DISCLAIMER_GLOBAL. */
-export const PAYMENT_DISCLAIMER = DISCLAIMER_GLOBAL;
-
 export function result(data: unknown): ToolResult {
   const structuredContent =
     data && typeof data === "object" && !Array.isArray(data)
@@ -110,9 +107,13 @@ export function withAtRiskAmount(potentialImpact: unknown, riskAmountEstimate: u
 }
 
 function moneyDisplay(value: unknown): string {
+  if (typeof value === "number" && !Number.isFinite(value)) return "Unavailable from the current source";
+  if (typeof value === "string" && (value.trim() === "" || !Number.isFinite(Number(value)))) {
+    return "Unavailable from the current source";
+  }
   const numeric = typeof value === "number"
     ? value
-    : typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))
+    : typeof value === "string"
       ? Number(value)
       : undefined;
   return numeric === undefined ? tableValue(value) : numeric.toFixed(2);
@@ -148,65 +149,96 @@ export function amountWithUnit(amount: unknown, count: unknown, unit: "Days" | "
   return `${money} (${numericCount} ${unit})`;
 }
 
-export function renderCountyComposition(rows: Record<string, unknown>[]): string[] {
+export const PAYMENT_AMOUNT_LEGEND = "> Payment amounts: Net payment is the current estimate excluding unresolved risk. Conditional at-risk is the amount that may be added or lost when attendance issues are resolved. Maximum estimated payout = net payment + scheduled forecast + conditional at-risk. Vacant-slot payments are included once in net payment when applicable.";
+
+export function renderCountyComposition(rows: Record<string, unknown>[], options: { settled?: boolean } = {}): string[] {
   const component = (row: Record<string, unknown>, key: string): Record<string, unknown> =>
-    recordValue(row[key]) ?? {};
-  const componentHasValue = (key: string, countKey: string): boolean => rows.some((row) => {
-    const value = component(row, key);
-    return [value.amount, value[countKey]].some((candidate) => {
-      const numeric = typeof candidate === "number" ? candidate : Number(candidate);
-      return Number.isFinite(numeric) ? numeric !== 0 : typeof candidate === "string" && candidate.trim() !== "";
-    });
-  });
-  const hasChildrenServed = rows.some((row) => row.children_served !== undefined && row.children_served !== null);
+    recordValue(row[key]) ?? (key === "attendance_based" || key === "authorized_based"
+      ? { amount: row[`${key}_amount`] }
+      : {});
+  const countyRiskAmount = (row: Record<string, unknown>): unknown => {
+    const direct = row.amount_at_risk ?? row.at_risk_amount ?? row.conditional_amount;
+    if (direct !== undefined) return direct;
+    const components = ["care", "absence", "drop_in", "vacant_slots", "paid_holidays"]
+      .map((key) => component(row, key).conditional_amount)
+      .filter((value) => value !== undefined && value !== null);
+    return components.length > 0
+      ? components.reduce((total: number, value) => total + (Number(value) || 0), 0)
+      : undefined;
+  };
   const headers = [
     "County",
-    ...(hasChildrenServed ? ["Children served"] : []),
-    ...(componentHasValue("care", "hours") ? ["Care Amount"] : []),
-    ...(componentHasValue("absence", "days") ? ["Absence Amount"] : []),
-    ...(componentHasValue("drop_in", "hours") ? ["Drop-in Amount"] : []),
-    ...(componentHasValue("vacant_slots", "days") ? ["Vacant Slot Amount"] : []),
-    ...(componentHasValue("paid_holidays", "days") ? ["Paid Holiday Amount"] : []),
-    "Potential total",
+    "Children served",
+    "Attendance-based amount",
+    "Paid absences",
+    "Drop-in amount",
+    "Paid Holiday Amount",
+    "Vacant Slot Amount",
+    "Conditional at-risk",
+    options.settled ? "Total amount" : "Maximum estimated payout",
   ];
   const separator = headers.map((header) => header === "County" ? "---" : "---:");
+  const sumComponent = (key: string): number => rows.reduce((total, row) => {
+    const amount = Number(component(row, key).amount);
+    return Number.isFinite(amount) ? total + amount : total;
+  }, 0);
+  const sumRisk = rows.reduce((total, row) => {
+    const amount = Number(countyRiskAmount(row));
+    return Number.isFinite(amount) ? total + amount : total;
+  }, 0);
+  const sumPotential = rows.reduce((total, row) => {
+    const amount = Number(row.estimated_total ?? row.potential_total);
+    return Number.isFinite(amount) ? total + amount : total;
+  }, 0);
   const renderedRows = rows.map((row) => {
-    const care = component(row, "care");
+    const attendanceBased = component(row, "attendance_based");
     const absence = component(row, "absence");
     const dropIn = component(row, "drop_in");
-    const vacantSlots = component(row, "vacant_slots");
     const paidHolidays = component(row, "paid_holidays");
+    const vacantSlots = component(row, "vacant_slots");
     const values = [
       tableValue(row.county),
-      ...(hasChildrenServed ? [tableValue(row.children_served)] : []),
-      ...(componentHasValue("care", "hours") ? [amountWithUnit(care.amount, care.hours, "Hours")] : []),
-      ...(componentHasValue("absence", "days") ? [amountWithUnit(absence.amount, absence.days, "Days")] : []),
-      ...(componentHasValue("drop_in", "hours") ? [amountWithUnit(dropIn.amount, dropIn.hours, "Hours")] : []),
-      ...(componentHasValue("vacant_slots", "days") ? [amountWithUnit(vacantSlots.amount, vacantSlots.days, "Days")] : []),
-      ...(componentHasValue("paid_holidays", "days") ? [amountWithUnit(paidHolidays.amount, paidHolidays.days, "Days")] : []),
-      plainMoney(row.potential_total),
+      tableValue(row.children_served),
+      amountWithUnit(attendanceBased.amount, attendanceBased.days ?? attendanceBased.hours, attendanceBased.days !== undefined ? "Days" : "Hours"),
+      amountWithUnit(absence.amount, absence.days, "Days"),
+      amountWithUnit(dropIn.amount, dropIn.hours, "Hours"),
+      amountWithUnit(paidHolidays.amount, paidHolidays.days ?? paidHolidays.hours, paidHolidays.days !== undefined ? "Days" : "Hours"),
+      amountWithUnit(vacantSlots.amount, vacantSlots.days, "Days"),
+      plainMoney(countyRiskAmount(row)),
+      plainMoney(row.potential_total ?? row.estimated_total),
     ];
-    return values.join(" | ");
+    return values
+      .map((value) => value === "Unavailable from the current source" ? "N/A" : value)
+      .join(" | ");
   });
+  const totalValues = [
+    "Total",
+    "N/A",
+    plainMoney(sumComponent("attendance_based")),
+    plainMoney(sumComponent("absence")),
+    plainMoney(sumComponent("drop_in")),
+    plainMoney(sumComponent("paid_holidays")),
+    plainMoney(sumComponent("vacant_slots")),
+    plainMoney(options.settled ? 0 : sumRisk),
+    plainMoney(sumPotential),
+  ];
+  // A settled/released (Paid) period has definite actual amounts, not
+  // potential/conditional ones - the "potential amounts" disambiguation is
+  // actively wrong there, not just unnecessary, so it's dropped rather than
+  // shown alongside a settled figure.
   return [
     "",
-    "County payment composition (potential amounts)",
-    "> Potential amounts include calculated and conditional amounts; the payable amount remains shown in the summary above.",
+    options.settled ? "**County payment composition**" : "**County payment composition (potential amounts)**",
+    ...(options.settled ? [] : []),
     `| ${headers.join(" | ")} |`,
     `| ${separator.join(" | ")} |`,
     ...renderedRows.map((row) => `| ${row} |`),
+    `| ${totalValues.join(" | ")} |`,
   ];
 }
 
 export function isSalesforceRecordId(value: string): boolean {
   return /^[A-Za-z0-9]{15}(?:[A-Za-z0-9]{3})?$/.test(value);
-}
-
-function authorizationDates(value: unknown): string {
-  if (!Array.isArray(value) || value.length === 0) {
-    return "Unavailable from the current source";
-  }
-  return value.map(tableValue).join(", ");
 }
 
 function authorizationNames(value: unknown): string {
@@ -269,12 +301,64 @@ export function attendanceScopeLabel(scope: unknown): string {
 }
 
 export function hasAbsenceLimitConcern(child: Record<string, unknown>): boolean {
+  // Kept in sync with the identical local copy in attendance-formatter.ts -
+  // includes UNAVAILABLE/CONFLICT alongside EXCEEDED/APPROACHING so a child
+  // whose absence-limit status could not be resolved is still treated as an
+  // absence-limit concern needing review, not silently dropped.
   return Array.isArray(child.risk_codes) && child.risk_codes.some((code) =>
-    code === "ABSENCE_LIMIT_EXCEEDED" || code === "ABSENCE_LIMIT_APPROACHING",
+    code === "ABSENCE_LIMIT_EXCEEDED"
+    || code === "ABSENCE_LIMIT_APPROACHING"
+    || code === "ABSENCE_LIMIT_UNAVAILABLE"
+    || code === "ABSENCE_LIMIT_CONFLICT",
   );
 }
+const MAX_NEXT_ACTIONS = 2;
+
+// Single source of truth for action ordering/capping - used identically by
+// renderActionSections (the rendered "N." text) and actionControls (the
+// structured array the calling agent resolves "position N" against). These
+// two previously diverged: renderActionSections capped "next-actions" to
+// MAX_NEXT_ACTIONS and reordered into [next-actions, drill-down,
+// available-views, return], but actionControls mapped over the raw,
+// uncapped, original-declaration-order actions - so whenever a response had
+// more than MAX_NEXT_ACTIONS next-actions candidates, the rendered "3." and
+// actionControls[2] pointed at two different actions. Routing both through
+// this one function makes that divergence structurally impossible.
+export function orderedActionList(actions: Record<string, unknown>[]): Record<string, unknown>[] {
+  const uniqueActions = [...new Map(actions.map((action) => [String(action.actionId), action])).values()];
+  // Cap to the two highest-priority next actions so the response names the
+  // one or two things that actually matter instead of listing every
+  // candidate action.
+  const nextActions = uniqueActions
+    .filter((action) => action.section === "next-actions")
+    .slice(0, MAX_NEXT_ACTIONS);
+  const drillDown = uniqueActions.filter((action) => action.section === "drill-down");
+  const availableViews = uniqueActions.filter((action) => action.section === "available-options" || action.section === "available-views");
+  // Dedicated "return" bucket: a navigation-back action (return to
+  // attendance summary, return to payment summary) must never be dropped by
+  // the next-actions cap and must always render LAST, after every other
+  // action - it was previously either tagged "next-actions" (and could be
+  // capped away by MAX_NEXT_ACTIONS before it rendered) or tagged
+  // "navigation" (a section this function never read at all, so it silently
+  // never appeared in the text list).
+  const returnActions = uniqueActions.filter((action) => action.section === "return");
+  // Combined into one simple numbered list - priority next-actions first,
+  // then drill-downs, then available views, then return-navigation last -
+  // replacing the previous four separate sections (Priority Actions / Drill
+  // down / Available views / Next step). A single list is inherently
+  // unambiguous to number: the earlier "numbers reserved for exactly one
+  // section" rule existed only to prevent two competing numbered surfaces in
+  // the same response, which cannot happen once every action lives in one
+  // combined list.
+  return [...nextActions, ...drillDown, ...availableViews, ...returnActions];
+}
+
+// Any action dropped here by orderedActionList's cap is now also absent
+// from actionControls, matching renderActionSections's text exactly - an
+// action never shown to the provider as a numbered option is no longer
+// separately resolvable/selectable either.
 export function actionControls(actions: Record<string, unknown>[]): Record<string, unknown>[] {
-  return actions.map((action) => ({
+  return orderedActionList(actions).map((action) => ({
     type: "button",
     actionId: action.actionId,
     label: action.label,
@@ -290,45 +374,81 @@ export function actionControls(actions: Record<string, unknown>[]): Record<strin
     ...(action.view ? { view: action.view } : {}),
   }));
 }
-const MAX_NEXT_ACTIONS = 2;
 
 export function renderActionSections(message: string, actions: Record<string, unknown>[]): string {
-  const base = message.replace(/\n\*\*Priority Actions\*\*[\s\S]*$/, "");
-  const uniqueActions = [...new Map(actions.map((action) => [String(action.actionId), action])).values()];
-  // Cap to the two highest-priority next actions so the response names the
-  // one or two things that actually matter instead of listing every
-  // candidate action; numbered (not bulleted) to match the drill-down
-  // action-list convention and avoid the list reading as an open-ended pile.
-  const nextActions = uniqueActions
-    .filter((action) => action.section === "next-actions")
-    .slice(0, MAX_NEXT_ACTIONS);
-  const drillDown = uniqueActions.filter((action) => action.section === "drill-down");
-  const availableViews = uniqueActions.filter((action) => action.section === "available-options" || action.section === "available-views");
-  // Numbers are reserved exclusively for the Priority Actions list per the
-  // carepay-conversation-templates skill contract ("never use numbering
-  // across separate action sections because repeated numbers are
-  // ambiguous"). Drill down and Available views use unnumbered bullets so
-  // there is never a second, competing numbered surface in one response -
-  // a provider selects those by name/label, not by index.
-  const lines = [base, "", "**Priority Actions**"];
-  lines.push(...(nextActions.length > 0
-    ? nextActions.map((action, index) => `${index + 1}. ${String(action.label)}`)
-    : ["No urgent action identified from the current verified result."]));
-  if (drillDown.length > 0) {
-    lines.push("", "**Drill down**", ...drillDown.map((action) => `- ${String(action.label)}`));
-  }
-  if (availableViews.length > 0) {
-    lines.push("", "**Available views**", ...availableViews.map((action) => `- ${String(action.label)}`));
-  }
-  const nextStep = nextActions.length > 0
-    ? "Choose one of the priority reviews above to continue this result."
-    : drillDown.length > 0
-      ? "Choose a drill-down above to inspect the verified records in this result."
-      : availableViews.length > 0
-        ? "Choose an available view above to continue with the same verified scope."
-        : "Ask about the specific child, county, date, or payment detail you want reviewed next.";
-  lines.push("", "**Next step**", nextStep);
+  const base = message
+    .replace(/\n\*\*Priority Actions\*\*[\s\S]*$/, "")
+    .replace(/\n\*\*Recommended actions\*\*[\s\S]*$/, "");
+  const combined = orderedActionList(actions);
+  const lines = [base, "", "**Recommended actions**"];
+  lines.push(...(combined.length > 0
+    ? combined.map((action, index) => `${index + 1}. ${String(action.label)}`)
+    : ["No urgent action identified from the current verified result. Ask about the specific child, county, date, or payment detail you want reviewed next."]));
   return lines.join("\n");
+}
+
+// Human-facing label for a riskFocus enum value, for the scope-clarification
+// prompt below - kept intentionally small and local rather than importing
+// from attendance-formatter.ts, to avoid a circular import between the two
+// formatter files.
+function riskFocusLabel(riskFocus: string): string {
+  if (riskFocus === "ABSENCE_LIMITS") return "absence-limit risk";
+  if (riskFocus === "PARENT_CONFIRMATIONS") return "pending parent confirmations";
+  if (riskFocus === "INCOMPLETE_ATTENDANCE") return "incomplete attendance records";
+  return "this risk area";
+}
+
+/**
+ * Renders a short clarifying question instead of running an analysis, for
+ * the case where a freeform riskFocus request's inherited scope granularity
+ * doesn't match the scope the provider's risk figures actually came from
+ * (see scopeGranularity in conversation-context.ts) - e.g. the original
+ * month-wide snapshot introduced these numbers, but the conversation has
+ * since narrowed to one service period via a payout drill-down. Offers
+ * exactly the two live options rather than silently picking one.
+ */
+export function formatScopeClarification(
+  riskFocus: string,
+  periodScope: { dateFrom: string; dateTo: string },
+): ToolResult {
+  const focusLabel = riskFocusLabel(riskFocus);
+  const periodLabel = `${shortDateLabel(periodScope.dateFrom) ?? periodScope.dateFrom}-${shortDateLabel(periodScope.dateTo) ?? periodScope.dateTo}`;
+  const message = [
+    `**Which scope do you want for ${focusLabel}?**`,
+    "The conversation has since narrowed to a specific service period, but the risk figures you were originally shown came from the current month - these can be different numbers.",
+  ].join("\n");
+  const actions: Record<string, unknown>[] = [
+    {
+      actionId: "clarify-scope-month",
+      capability: "attendance-risk-analysis",
+      tool: "cccap_analyze_payment_risk",
+      label: "Use the current month (matches the original snapshot)",
+      reason: "Recompute this review against the same month-wide scope the earlier figures came from.",
+      priority: "high",
+      section: "next-actions",
+      source: "current-result",
+      input: { dateFilter: "THIS_MONTH", riskFocus },
+    },
+    {
+      actionId: "clarify-scope-period",
+      capability: "attendance-risk-analysis",
+      tool: "cccap_analyze_payment_risk",
+      label: `Use just the current period (${periodLabel})`,
+      reason: "Keep the review scoped to the service period currently under discussion.",
+      priority: "high",
+      section: "next-actions",
+      source: "current-result",
+      input: { dateFilter: "DATE_RANGE", dateFrom: periodScope.dateFrom, dateTo: periodScope.dateTo, riskFocus },
+    },
+  ];
+  return {
+    content: [{ type: "text" as const, text: renderActionSections(message, actions) }],
+    structuredContent: {
+      capability: "attendance-risk-analysis",
+      scopeClarification: true,
+      actionIntents: actions,
+    },
+  };
 }
 
 export function countyPaymentSummary(rows: Record<string, unknown>[]): Record<string, unknown>[] {

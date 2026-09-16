@@ -14,15 +14,16 @@ export function formatPeriodComparisonResult(data: unknown): ToolResult {
   const oneLabel = `${shortDateLabel(one.serviceBeginDate) ?? tableValue(one.serviceBeginDate)}-${shortDateLabel(one.serviceEndDate) ?? tableValue(one.serviceEndDate)}`;
   const twoLabel = `${shortDateLabel(two.serviceBeginDate) ?? tableValue(two.serviceBeginDate)}-${shortDateLabel(two.serviceEndDate) ?? tableValue(two.serviceEndDate)}`;
   const lines = [lead, `Comparing: ${oneLabel} vs ${twoLabel}.`];
+  lines.push("", `| Measure | ${oneLabel} | ${twoLabel} |`, "| --- | ---: | ---: |", `| Net payment | ${estimatedMoney(one.baseAmount)} | ${estimatedMoney(two.baseAmount)} |`, `| Scheduled forecast | ${estimatedMoney(one.scheduledForecastAmount)} | ${estimatedMoney(two.scheduledForecastAmount)} |`, `| Conditional at-risk | ${estimatedMoney(one.amountAtRisk)} | ${estimatedMoney(two.amountAtRisk)} |`, `| Maximum estimated payout | ${estimatedMoney(one.potentialTotal)} | ${estimatedMoney(two.potentialTotal)} |`);
   if (notable.length > 0) {
     lines.push("", "**Notable changes**", ...notable.slice(0, 3).map((row) => `- ${tableValue((row as PeriodComparisonCategoryDelta).label)}: ${estimatedMoney(Math.abs(Number((row as PeriodComparisonCategoryDelta).deltaAmount)))} ${Number((row as PeriodComparisonCategoryDelta).deltaAmount) >= 0 ? "higher" : "lower"} (${(row as PeriodComparisonCategoryDelta).deltaPct ?? "no baseline"}).`));
   }
   const renderTable = (title: string, rows: unknown[]) => {
     if (!rows.length) return;
-    lines.push("", title, `| Category | ${oneLabel} Expected amount | ${twoLabel} Expected amount | Delta | Delta % |`, "| --- | ---: | ---: | ---: | ---: |", ...rows.map((raw) => { const row = raw as PeriodComparisonCategoryDelta; return `| ${tableValue(row.label)} | ${estimatedMoney(row.periodOneAmount)} | ${estimatedMoney(row.periodTwoAmount)} | ${estimatedMoney(row.deltaAmount)} | ${row.deltaPct === null ? "—" : `${row.deltaPct}%`} |`; }));
+    lines.push("", title, `| Category | ${oneLabel} Net payment | ${twoLabel} Net payment | Delta | Delta % |`, "| --- | ---: | ---: | ---: | ---: |", ...rows.map((raw) => { const row = raw as PeriodComparisonCategoryDelta; return `| ${tableValue(row.label)} | ${estimatedMoney(row.periodOneAmount)} | ${estimatedMoney(row.periodTwoAmount)} | ${estimatedMoney(row.deltaAmount)} | ${row.deltaPct === null ? "—" : `${row.deltaPct}%`} |`; }));
   };
   renderTable("Payment by category:", Array.isArray(value.byCategory) ? value.byCategory : []);
   renderTable("County detail:", Array.isArray(value.byCounty) ? value.byCounty : []);
-  const message = renderActionSections(`${lines.join("\n")}\n\nExpected amount is the payable estimate; At-risk amount is not included where no baseline is available.\n\n${DISCLAIMER_GLOBAL}`, []);
+  const message = renderActionSections(`${lines.join("\n")}\n\nConditional at-risk is not included where no baseline is available.\n\n${DISCLAIMER_GLOBAL}`, []);
   return { content: [{ type: "text", text: message }], structuredContent: { capability: "payment-comparison", periodOne: one, periodTwo: two, netDeltaAmount: value.netDeltaAmount, flaggedDeltas: notable, sourceRetrievedAt: value.sourceRetrievedAt } };
 }

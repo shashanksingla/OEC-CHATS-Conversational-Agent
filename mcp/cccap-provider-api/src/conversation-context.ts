@@ -1,25 +1,12 @@
 import { randomBytes } from "node:crypto";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
 
 export type ContinuationPlan = {
   tool: "cccap_analyze_payment_risk" | "cccap_analyze_payment";
   input: Record<string, unknown>;
-  compatibilityKey?: string;
-  provenance?: { capability: string; scope?: unknown };
 };
-
-export type ResolvedContinuation = ContinuationPlan & {
-  result?: unknown;
-  resultTool?: ContinuationPlan["tool"];
-  graph?: ConversationResultGraph;
-};
-
-export type ConversationActionState =
-  | "OFFERED"
-  | "SELECTED"
-  | "COMPLETED"
-  | "SUPERSEDED"
-  | "HIDDEN_BY_SCOPE"
-  | "EXPIRED";
 
 export type ConversationResultGraph = {
   parentContextRef?: string;
@@ -32,34 +19,27 @@ export type ConversationResultGraph = {
   severity?: string;
   sourceRetrievedAt?: string;
   ruleVersion?: string;
-  actionStates?: Record<string, ConversationActionState>;
 };
 
-export type ContinuationAction = {
-  actionId: string;
-  metadata: Record<string, unknown>;
-  plan: ContinuationPlan;
+type StoredAction = {
+  providerKey: string;
+  tool: ContinuationPlan["tool"];
+  input: Record<string, unknown>;
+  ruleVersion?: string;
+  expiresAt: number;
+  lastUsed: number;
 };
 
-type ContextRecord = {
+type CacheRecord = {
   providerKey: string;
   capability: string;
   ruleVersion?: string;
-  result?: unknown;
-  resultTool?: ContinuationPlan["tool"];
-  expiresAt: number;
-  actions: Map<string, ContinuationPlan>;
-  bytes: number;
-  lastUsed: number;
-  compatibilityKey: string;
+  result: unknown;
+  resultTool: ContinuationPlan["tool"];
   graph?: ConversationResultGraph;
-};
-
-type SessionActionRecord = ContinuationAction & {
-  contextRef: string;
   expiresAt: number;
   lastUsed: number;
-  state: ConversationActionState;
+  bytes: number;
 };
 
 export type ConversationContextOptions = {
@@ -67,233 +47,284 @@ export type ConversationContextOptions = {
   ttlMs?: number;
   maxEntries?: number;
   maxBytes?: number;
+  // Where the action reference map is persisted so it survives a process
+  // restart. This is the actual fix for CONTINUATION_UNAVAILABLE-on-restart:
+  // durability comes from writing the (short-referenced) action map to
+  // disk, NOT from making the client-visible credential self-describing.
+  // A self-describing signed token was tried first and reverted - it made
+  // the credential long enough that a client forced to retype it verbatim
+  // (rather than pass it through programmatically) could garble it in
+  // transcription, which is a worse failure mode than the restart problem
+  // this was meant to fix.
+  persistPath?: string;
 };
 
+const DEFAULT_PERSIST_PATH = join(tmpdir(), "cccap-continuation-store.json");
+
+/**
+ * Two independent concerns, kept separate on purpose:
+ *  - Action references (this.actions): SHORT, opaque, random tokens
+ *    (~22 chars) that a client must be able to reproduce exactly when
+ *    invoking a follow-up tool call. Persisted to disk so they survive a
+ *    server restart - the actual scope/filters live server-side, never in
+ *    the token itself.
+ *  - Result cache (this.cache): a pure best-effort optimization, kept
+ *    in-memory only. Losing it (restart, eviction) never errors - it just
+ *    costs one extra deterministic re-evaluation on the next request.
+ */
+// A date scope classified only by how broad a window it covers - not the
+// full DateScope shape from client.ts, just the fields needed to detect a
+// granularity mismatch (see scopeGranularity below).
+export type ClassifiableScope = { dateFilter?: unknown; dateFrom?: unknown; dateTo?: unknown };
+export type ScopeGranularity = "MONTH" | "PERIOD" | "OTHER";
+
+// Classifies a date scope by breadth, so a freeform follow-up request can be
+// checked against the scope the provider's risk figures actually came from,
+// instead of silently inheriting whatever narrower scope the conversation
+// has since drifted to (e.g. a month-wide risk snapshot followed by a 7-day
+// payout drill-down, then a freeform "review absence risk" ask that never
+// restates a date range). MONTH covers the standing risk-snapshot filters;
+// PERIOD covers an explicit bounded range (a service period or custom
+// range); anything else (TODAY, an unset scope) is OTHER and never
+// participates in the mismatch check - only a genuine MONTH-vs-PERIOD
+// disagreement is "materially ambiguous" enough to ask about.
+export function scopeGranularity(scope: ClassifiableScope | undefined): ScopeGranularity {
+  if (!scope) return "OTHER";
+  if (scope.dateFilter === "THIS_MONTH" || scope.dateFilter === "LAST_MONTH" || scope.dateFilter === "LAST_N_MONTHS") return "MONTH";
+  if (scope.dateFilter === "DATE_RANGE" && typeof scope.dateFrom === "string" && typeof scope.dateTo === "string") return "PERIOD";
+  return "OTHER";
+}
+
 export class ConversationContextStore {
-  private readonly contexts = new Map<string, ContextRecord>();
-  private readonly sessionActions = new Map<string, Map<string, SessionActionRecord>>();
+  private readonly actions = new Map<string, StoredAction>();
+  private readonly cache = new Map<string, CacheRecord>();
+  // Best-effort, in-memory only, per-provider record of the scope the most
+  // recent MONTH-wide risk snapshot ran against - used solely for the
+  // scope-clarification check above. Never a correctness dependency: losing
+  // it (restart, eviction) just means one fewer opportunity to ask the
+  // clarifying question, never a wrong or missing analysis result.
+  private readonly lastSnapshotScope = new Map<string, ClassifiableScope>();
   private readonly now: () => number;
   private readonly ttlMs: number;
   private readonly maxEntries: number;
   private readonly maxBytes: number;
+  private readonly persistPath: string;
 
   constructor(options: ConversationContextOptions = {}) {
     this.now = options.now ?? Date.now;
     this.ttlMs = options.ttlMs ?? 15 * 60 * 1000;
     this.maxEntries = options.maxEntries ?? 100;
-    this.maxBytes = options.maxBytes ?? 1_000_000;
+    this.maxBytes = options.maxBytes ?? 10_000_000;
+    this.persistPath = options.persistPath ?? process.env.CCCAP_CONTINUATION_STORE_PATH ?? DEFAULT_PERSIST_PATH;
+    this.loadFromDisk();
   }
 
-  create(
+  /**
+   * Issues a short, opaque action reference and persists it. This is the
+   * only thing the client ever sees or has to reproduce - never the actual
+   * scope/filters.
+   */
+  createActionToken(
+    providerKey: string,
+    tool: ContinuationPlan["tool"],
+    input: Record<string, unknown>,
+    ruleVersion?: string,
+  ): string {
+    this.evictActions();
+    const token = randomBytes(16).toString("base64url");
+    const now = this.now();
+    this.actions.set(token, { providerKey, tool, input, ...(ruleVersion ? { ruleVersion } : {}), expiresAt: now + this.ttlMs, lastUsed: now });
+    this.saveToDisk();
+    return token;
+  }
+
+  /**
+   * Resolves a short action reference back to its stored scope/filters.
+   * Binds to the requesting provider and the expected tool, and extends
+   * the entry's TTL on a hit (sliding window, same as the original store).
+   */
+  resolveActionToken(
+    token: string | undefined,
+    providerKey: string,
+    tool: ContinuationPlan["tool"],
+  ): { input: Record<string, unknown>; ruleVersion?: string } | undefined {
+    if (!token) return undefined;
+    this.evictActions();
+    const action = this.actions.get(token);
+    if (!action || action.providerKey !== providerKey || action.tool !== tool || action.expiresAt <= this.now()) return undefined;
+    const resolvedAt = this.now();
+    action.lastUsed = resolvedAt;
+    action.expiresAt = resolvedAt + this.ttlMs;
+    this.saveToDisk();
+    return { input: action.input, ...(action.ruleVersion ? { ruleVersion: action.ruleVersion } : {}) };
+  }
+
+  /**
+   * Caches a full raw result for best-effort reuse by a later "return to
+   * the unscoped view" request - keyed on the stable date-scope portion of
+   * a request via `cacheKeyFor`, not on any reference. In-memory only:
+   * losing it (restart, eviction) never errors, it just means the next
+   * request re-runs the full deterministic, read-only evaluation.
+   */
+  cacheResult(
+    key: string,
     providerKey: string,
     capability: string,
-    actions: ContinuationPlan[],
-    result?: unknown,
-    resultTool?: ContinuationPlan["tool"],
+    result: unknown,
+    resultTool: ContinuationPlan["tool"],
     ruleVersion?: string,
-    actionMetadata: Record<string, unknown>[] = [],
     graph?: ConversationResultGraph,
-  ): {
-    contextRef: string;
-    actionRefs: string[];
-  } {
-    this.evict();
-    const contextRef = this.reference();
-    const actionRefs = actions.map(() => this.reference());
-    const actionMap = new Map(actionRefs.map((actionRef, index) => {
-      const action = actions[index]!;
-      return [actionRef, {
-        ...action,
-        compatibilityKey: compatibilityKeyFor(action.tool, ruleVersion, [action]),
-      }];
-    }));
-    const compatibilityKey = compatibilityKeyFor(capability, ruleVersion, actions);
-    const fullBytes = Buffer.byteLength(JSON.stringify({ providerKey, capability, ruleVersion, actions, result, compatibilityKey }), "utf8");
-    const storedResult = fullBytes <= this.maxBytes ? result : undefined;
-    const bytes = Buffer.byteLength(JSON.stringify({ providerKey, capability, ruleVersion, actions, storedResult, compatibilityKey }), "utf8");
+  ): void {
+    this.evictCache();
+    const bytes = Buffer.byteLength(JSON.stringify({ providerKey, capability, result, ruleVersion }), "utf8");
+    if (bytes > this.maxBytes) return;
     const now = this.now();
-    const providerActions = this.sessionActions.get(providerKey) ?? new Map<string, SessionActionRecord>();
-    for (const [index, action] of actionMetadata.entries()) {
-      const plan = actions[index];
-      if (!plan || typeof action.actionId !== "string") continue;
-      providerActions.set(action.actionId, {
-        actionId: action.actionId,
-        metadata: action,
-        plan,
-        contextRef,
-        expiresAt: now + this.ttlMs,
-        lastUsed: now,
-        state: "OFFERED",
-      });
-    }
-    this.sessionActions.set(providerKey, providerActions);
-    this.contexts.set(contextRef, {
+    this.cache.set(key, {
       providerKey,
       capability,
-      ...(resultTool ? { resultTool } : {}),
-      ...(storedResult !== undefined ? { result: storedResult } : {}),
+      result,
+      resultTool,
       ...(ruleVersion ? { ruleVersion } : {}),
-      expiresAt: now + this.ttlMs,
-      actions: actionMap,
-      bytes,
-      lastUsed: now,
-      compatibilityKey,
       ...(graph ? { graph } : {}),
+      expiresAt: now + this.ttlMs,
+      lastUsed: now,
+      bytes,
     });
-    this.evict();
-    return { contextRef, actionRefs };
+    this.evictCache();
   }
 
-  getInheritedActions(providerKey: string, currentActions: Record<string, unknown>[]): ContinuationAction[] {
-    this.evict();
-    const currentIds = new Set(currentActions.map((action) => action.actionId));
-    const actions = this.sessionActions.get(providerKey);
-    if (!actions) return [];
-    return [...actions.values()]
-      .filter((action) => !currentIds.has(action.actionId) && this.contextIsLive(action.contextRef))
-      .filter((action) => action.state === "OFFERED")
-      .map((action) => {
-        action.lastUsed = this.now();
-        return { ...action, plan: publicPlan(action.plan) };
-      });
-  }
-
-  resolve(providerKey: string, contextRef: string | undefined, actionRef: string | undefined, capability: string, ruleVersion?: string, requestedInput?: Record<string, unknown>): ResolvedContinuation | undefined {
-    if (!contextRef || !actionRef) return undefined;
-    const context = this.contexts.get(contextRef);
-    if (!context || context.providerKey !== providerKey || context.capability !== capability || context.expiresAt <= this.now() || (ruleVersion && context.ruleVersion && context.ruleVersion !== ruleVersion)) {
-      this.contexts.delete(contextRef);
-      return undefined;
-    }
-    const plan = context.actions.get(actionRef);
-    if (!plan || (requestedInput && !isCompatibleInput(requestedInput, plan.input))) return undefined;
-    if (plan.compatibilityKey && plan.compatibilityKey !== compatibilityKeyFor(plan.tool, ruleVersion, [plan])) return undefined;
-    context.lastUsed = this.now();
+  getCachedResult(key: string, providerKey: string): {
+    result: unknown;
+    resultTool: ContinuationPlan["tool"];
+    ruleVersion?: string;
+    graph?: ConversationResultGraph;
+  } | undefined {
+    this.evictCache();
+    const record = this.cache.get(key);
+    if (!record || record.providerKey !== providerKey || record.expiresAt <= this.now()) return undefined;
+    const resolvedAt = this.now();
+    record.lastUsed = resolvedAt;
+    record.expiresAt = resolvedAt + this.ttlMs;
     return {
-      ...publicPlan(plan),
-      ...(context.result !== undefined ? { result: context.result } : {}),
-      ...(context.resultTool ? { resultTool: context.resultTool } : {}),
-      ...(context.graph ? { graph: context.graph } : {}),
+      result: record.result,
+      resultTool: record.resultTool,
+      ...(record.ruleVersion ? { ruleVersion: record.ruleVersion } : {}),
+      ...(record.graph ? { graph: record.graph } : {}),
     };
   }
 
-  resolveAction(providerKey: string, actionId: string | undefined, tool: ContinuationPlan["tool"], requestedInput?: Record<string, unknown>): ResolvedContinuation | undefined {
-    if (!actionId) return undefined;
-    this.evict();
-    const action = this.sessionActions.get(providerKey)?.get(actionId);
-    if (!action || action.plan.tool !== tool || action.expiresAt <= this.now()) return undefined;
-    if (requestedInput && !isCompatibleInput(requestedInput, action.plan.input)) return undefined;
-    const context = this.contexts.get(action.contextRef);
-    if (!context || context.providerKey !== providerKey || context.expiresAt <= this.now()) {
-      action.state = "EXPIRED";
-      return undefined;
-    }
-    action.lastUsed = this.now();
-    context.lastUsed = this.now();
-    action.state = "SELECTED";
-    return {
-      ...publicPlan(action.plan),
-      ...(context.result !== undefined ? { result: context.result } : {}),
-      ...(context.resultTool ? { resultTool: context.resultTool } : {}),
-      ...(context.graph ? { graph: context.graph } : {}),
-    };
+  /** Records the scope a MONTH-granularity risk snapshot just ran against, for the scope-clarification check in server.ts. Best-effort/in-memory only - see the field comment above. */
+  setLastSnapshotScope(providerKey: string, scope: ClassifiableScope): void {
+    this.lastSnapshotScope.set(providerKey, scope);
   }
 
-  private evict(): void {
-    const now = this.now();
-    for (const [reference, context] of this.contexts) {
-      if (context.expiresAt <= now) this.contexts.delete(reference);
-    }
-    for (const [providerKey, actions] of this.sessionActions) {
-      for (const [actionId, action] of actions) {
-        if (action.expiresAt <= now) actions.delete(actionId);
-      }
-      if (actions.size === 0) this.sessionActions.delete(providerKey);
-    }
-    while (this.contexts.size > this.maxEntries || this.totalBytes() > this.maxBytes) {
-      const oldest = [...this.contexts.entries()].sort((left, right) => left[1].lastUsed - right[1].lastUsed)[0];
-      if (!oldest) return;
-      this.contexts.delete(oldest[0]);
-      const actions = this.sessionActions.get(oldest[1].providerKey);
-      if (actions) {
-        for (const [actionId, action] of actions) {
-          if (action.contextRef === oldest[0]) actions.delete(actionId);
+  /** Returns the last MONTH-granularity snapshot scope recorded for this provider, or undefined if none ran yet this process lifetime. */
+  getLastSnapshotScope(providerKey: string): ClassifiableScope | undefined {
+    return this.lastSnapshotScope.get(providerKey);
+  }
+
+  private loadFromDisk(): void {
+    try {
+      const raw = readFileSync(this.persistPath, "utf8");
+      const parsed = JSON.parse(raw) as { actions?: Record<string, StoredAction> };
+      if (parsed.actions) {
+        const now = this.now();
+        for (const [token, action] of Object.entries(parsed.actions)) {
+          if (action && typeof action === "object" && action.expiresAt > now) this.actions.set(token, action);
         }
-        if (actions.size === 0) this.sessionActions.delete(oldest[1].providerKey);
       }
+    } catch {
+      // No existing store yet, or it's unreadable/corrupt - start fresh.
+      // Persistence is a durability optimization, not a correctness
+      // requirement: a fresh, empty store is always a valid starting state.
     }
   }
 
-  private totalBytes(): number {
-    const contextBytes = [...this.contexts.values()].reduce((total, context) => total + context.bytes, 0);
-    const actionBytes = [...this.sessionActions.values()].reduce(
-      (total, actions) => total + [...actions.values()].reduce(
-        (actionTotal, action) => actionTotal + Buffer.byteLength(JSON.stringify({
-          actionId: action.actionId,
-          metadata: action.metadata,
-          contextRef: action.contextRef,
-        }), "utf8"),
-        0,
-      ),
-      0,
-    );
-    return contextBytes + actionBytes;
+  private saveToDisk(): void {
+    try {
+      mkdirSync(dirname(this.persistPath), { recursive: true });
+      writeFileSync(this.persistPath, JSON.stringify({ actions: Object.fromEntries(this.actions) }), "utf8");
+    } catch {
+      // Fail soft - action resolution still works for the rest of this
+      // process's lifetime via the in-memory Map even if disk persistence
+      // fails (read-only filesystem, permissions, out of disk space, etc.).
+    }
   }
 
-  private contextIsLive(contextRef: string): boolean {
-    const context = this.contexts.get(contextRef);
-    if (!context || context.expiresAt <= this.now()) return false;
-    return true;
+  private evictActions(): void {
+    const now = this.now();
+    for (const [token, action] of this.actions) {
+      if (action.expiresAt <= now) this.actions.delete(token);
+    }
+    while (this.actions.size > this.maxEntries) {
+      const oldest = [...this.actions.entries()].sort((left, right) => left[1].lastUsed - right[1].lastUsed)[0];
+      if (!oldest) return;
+      this.actions.delete(oldest[0]);
+    }
   }
 
-  private reference(): string {
-    return randomBytes(24).toString("base64url");
+  private evictCache(): void {
+    const now = this.now();
+    for (const [key, record] of this.cache) {
+      if (record.expiresAt <= now) this.cache.delete(key);
+    }
+    while (this.cache.size > this.maxEntries || this.totalCacheBytes() > this.maxBytes) {
+      const oldest = [...this.cache.entries()].sort((left, right) => left[1].lastUsed - right[1].lastUsed)[0];
+      if (!oldest) return;
+      this.cache.delete(oldest[0]);
+    }
+  }
+
+  private totalCacheBytes(): number {
+    return [...this.cache.values()].reduce((total, record) => total + record.bytes, 0);
   }
 }
 
-function normalizeInput(input: Record<string, unknown>): string {
-  return stableJson(Object.fromEntries(Object.entries(input).filter(([key]) => key !== "contextRef" && key !== "actionRef" && key !== "refresh")));
+export function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
 }
 
-// Pagination-only fields a caller may add on top of a stored action/continuation
-// without that being treated as an incompatible/scope-widening request. Any key
-// NOT in this set must already be present in the stored plan input with an
-// identical value; only these keys may appear as new additions. This is what
-// lets a provider narrow detailPage/detailPageSize on an existing action
-// reference without the reference being rejected as expired/incompatible.
+/**
+ * Cache key covers only the DATE-SCOPE portion of a request - the part
+ * that determines whether "return to the unscoped view" can reuse an
+ * already-fetched full result without a Salesforce re-fetch. childNames/
+ * riskFocus/countyNames/detailPage/grouping/filters are deliberately
+ * excluded: those are exactly the fields a narrowing follow-up changes,
+ * and this cache is keyed on what stays the SAME across such a narrowing.
+ */
+export function cacheKeyFor(providerKey: string, tool: string, scope: Record<string, unknown>): string {
+  return stableJson({
+    providerKey,
+    tool,
+    dateFilter: scope.dateFilter,
+    dateFrom: scope.dateFrom,
+    dateTo: scope.dateTo,
+    view: scope.view,
+  });
+}
+
+// Same additive-narrowing rule the store has always enforced: every key
+// already present in the resolved action's input must keep its exact
+// value; a caller may only ADD detailPage/detailPageSize on top. Anything
+// else is scope-widening and is rejected.
 const ADDITIVE_REFINEMENT_KEYS = new Set(["detailPage", "detailPageSize"]);
+const TRANSPORT_ONLY_KEYS = new Set(["actionId", "actionToken", "refresh"]);
 
-// Compatible means: every key already present in the stored plan input keeps
-// its exact value (no scope override), and any extra key the caller adds is
-// limited to ADDITIVE_REFINEMENT_KEYS. This is deliberately looser than exact
-// equality (which rejected a valid actionRef merely because the caller added
-// detailPageSize) while still failing closed against a caller trying to widen
-// scope by adding an unrelated field.
-function isCompatibleInput(requestedInput: Record<string, unknown>, planInput: Record<string, unknown>): boolean {
-  const requested = Object.fromEntries(
-    Object.entries(requestedInput).filter(([key]) => key !== "contextRef" && key !== "actionRef" && key !== "refresh" && key !== "actionId"),
-  );
-  for (const [key, value] of Object.entries(requested)) {
-    if (key in planInput) {
-      if (stableJson(value) !== stableJson(planInput[key])) return false;
+export function isCompatibleWithStoredInput(requestedInput: Record<string, unknown>, storedInput: Record<string, unknown>): boolean {
+  for (const [key, value] of Object.entries(requestedInput)) {
+    if (TRANSPORT_ONLY_KEYS.has(key)) continue;
+    if (key in storedInput) {
+      if (stableJson(value) !== stableJson(storedInput[key])) return false;
     } else if (!ADDITIVE_REFINEMENT_KEYS.has(key)) {
       return false;
     }
   }
   return true;
-}
-
-function compatibilityKeyFor(capability: string, ruleVersion: string | undefined, actions: ContinuationPlan[]): string {
-  return stableJson({ capability, ruleVersion: ruleVersion ?? null, plans: actions.map((action) => ({ tool: action.tool, input: normalizeInput(action.input), provenance: action.provenance ?? null })) });
-}
-
-function stableJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
-  if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right)).map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`).join(",")}}`;
-  return JSON.stringify(value) ?? "null";
-}
-
-function publicPlan(plan: ContinuationPlan): ContinuationPlan {
-  const { compatibilityKey: _compatibilityKey, ...visiblePlan } = plan;
-  return visiblePlan;
 }

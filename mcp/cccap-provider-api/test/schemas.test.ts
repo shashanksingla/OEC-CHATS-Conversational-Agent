@@ -98,8 +98,6 @@ test("payment views provide their own date selector", () => {
   );
 });
 
-test("payment detail paging accepts bounded positive values", () => {
-  assert.equal(paymentAnalysisSchema.safeParse({ view: "NEXT_PAYOUT", detailPage: 2, detailPageSize: 100 }).success, true);
-  assert.equal(paymentAnalysisSchema.safeParse({ view: "NEXT_PAYOUT", detailPageSize: 101 }).success, false);
-  assert.equal(paymentAnalysisSchema.safeParse({ view: "NEXT_PAYOUT", detailPage: 0 }).success, false);
+test("payment view no longer accepts removed detail-paging fields", () => {
+  assert.equal(paymentAnalysisSchema.safeParse({ view: "NEXT_PAYOUT", detailPage: 2, detailPageSize: 100 }).success, false);
 });

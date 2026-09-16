@@ -6,10 +6,11 @@ import {
   getAttendanceRiskAnalysis,
   getAttendanceRiskSnapshot,
   getCurrentMonthAttendanceSnapshot,
-} from "./attendance-snapshot.js";
-import { comparePaymentPeriods, getPaymentAnalysis, getServicePeriodLedger, getUpcomingPayoutDetail } from "./payment-orchestration.js";
+} from "./attendance-engine.js";
+import { comparePaymentPeriods, getLastPayoutDetail, getPaymentAnalysis, getServicePeriodLedger, getUpcomingPayoutDetail } from "./payment-orchestration.js";
 import { CccapClient } from "./client.js";
-import { ConversationContextStore, type ConversationResultGraph, type ContinuationPlan } from "./conversation-context.js";
+import { ConversationContextStore, cacheKeyFor, isCompatibleWithStoredInput, scopeGranularity, type ConversationResultGraph, type ContinuationPlan } from "./conversation-context.js";
+import { conversationLogger as defaultConversationLogger } from "./conversation-logger.js";
 import { DialogueStateStore } from "./dialogue-state.js";
 import {
   normalizeAuthorizations,
@@ -37,6 +38,8 @@ import {
   servicePeriodSchema,
 } from "./schemas.js";
 import {
+  formatScopeClarification,
+  orderedActionList,
   readOnlyAnnotations,
   recordValue,
   result,
@@ -44,14 +47,13 @@ import {
 } from './formatters/shared.js';
 import { formatCasesResult } from './formatters/cases-formatter.js';
 import { formatAuthorizationsResult } from './formatters/authorizations-formatter.js';
-import { snapshotResult } from './formatters/snapshot-formatter.js';
-import { formatAttendanceRiskResult } from './formatters/attendance-formatter.js';
-import { formatPaymentResult, formatServicePeriodLedgerResult } from './formatters/payment-formatter.js';
+import { snapshotResult, formatAttendanceRiskResult } from './formatters/attendance-formatter.js';
+import { formatPayoutResult } from './formatters/payment-formatter.js';
 import { formatCountyPolicyResult } from './formatters/county-policy-formatter.js';
 import { formatPeriodComparisonResult } from './formatters/comparison-formatter.js';
 
 export { formatAttendanceRiskResult } from './formatters/attendance-formatter.js';
-export { formatPaymentResult, formatServicePeriodLedgerResult } from './formatters/payment-formatter.js';
+export { formatPayoutResult } from './formatters/payment-formatter.js';
 export { formatCasesResult } from './formatters/cases-formatter.js';
 export { formatAuthorizationsResult } from './formatters/authorizations-formatter.js';
 export { formatCountyPolicyResult } from './formatters/county-policy-formatter.js';
@@ -80,75 +82,37 @@ function contextualize(
       : Array.isArray(structuredContentBase.actionControls)
         ? structuredContentBase.actionControls.map(recordValue).filter((action): action is Record<string, unknown> => Boolean(action))
         : [];
-  // Inherited actions let a later turn still reach an older offered action
-  // (e.g. "you can still review attendance from here"), but they must not
-  // flood every subsequent response: exclude anything from the SAME domain
-  // capability as the current result (the current result's own actions
-  // already cover that domain) and cap the carryover to one supplementary
-  // cross-capability action so the response does not repeat a growing pile
-  // of stale buttons turn after turn.
-  const currentCapability = typeof structuredContentBase.capability === "string"
-    ? structuredContentBase.capability
-    : undefined;
-  const inheritedActions = store.getInheritedActions(providerKey, actions)
-    .map((action) => action.metadata)
-    .filter((action) => action.capability !== currentCapability)
-    .slice(0, 1);
-  const combinedActions = [...actions, ...inheritedActions];
-  if (combinedActions.length === 0) return value;
-  const plans: ContinuationPlan[] = combinedActions.flatMap((action) => {
-    const tool = action.tool;
-    const input = recordValue(action.input);
-    return (tool === "cccap_analyze_payment_risk" || tool === "cccap_analyze_payment") && input
-      ? [{ tool, input }]
-      : [];
-  });
-  if (plans.length === 0) return value;
-  const ruleVersion = typeof structuredContentBase.ruleVersion === "string"
-    ? structuredContentBase.ruleVersion
-    : undefined;
-  const planActions = combinedActions.filter((action) => {
+  if (actions.length === 0) return contextualizedValue;
+  const hasPlanActions = actions.some((action) => {
     const input = recordValue(action.input);
     return Boolean(input) && (action.tool === "cccap_analyze_payment_risk" || action.tool === "cccap_analyze_payment");
   });
+  if (!hasPlanActions) return contextualizedValue;
+  const currentCapability = typeof structuredContentBase.capability === "string"
+    ? structuredContentBase.capability
+    : undefined;
+  const ruleVersion = typeof structuredContentBase.ruleVersion === "string"
+    ? structuredContentBase.ruleVersion
+    : undefined;
   const viewState = recordValue(structuredContentBase.viewState);
   const situation = recordValue(structuredContentBase.situation);
   const resultRecord = recordValue(result);
-  const graph: ConversationResultGraph = {
-    ...(typeof structuredContentBase.parentContextRef === "string"
-      ? { parentContextRef: structuredContentBase.parentContextRef }
-      : {}),
-    ...(typeof structuredContentBase.intent === "string"
-      ? { currentIntent: structuredContentBase.intent }
-      : { currentIntent: currentCapability ?? capability }),
-    ...(structuredContentBase.scope !== undefined
-      ? { scope: structuredContentBase.scope }
-      : viewState?.scope !== undefined ? { scope: viewState.scope } : {}),
-    ...(resultRecord?.servicePeriod !== undefined ? { selectedServicePeriod: resultRecord.servicePeriod } : {}),
-    ...(viewState?.parentViewId !== undefined ? { parentView: viewState.parentViewId } : {}),
-    ...(viewState ? { currentView: viewState } : {}),
-    ...(Array.isArray(structuredContentBase.responseSections)
-      ? { availableEvidence: structuredContentBase.responseSections.filter((section): section is string => typeof section === "string") }
-      : {}),
-    ...(typeof situation?.severity === "string" ? { severity: situation.severity } : {}),
-    ...(typeof structuredContentBase.sourceRetrievedAt === "string"
-      ? { sourceRetrievedAt: structuredContentBase.sourceRetrievedAt }
-      : {}),
-    ...(ruleVersion ? { ruleVersion } : {}),
-  };
-  store.create(
-    providerKey,
-    capability,
-    plans,
-    result,
-    resultTool,
-    ruleVersion,
-    planActions,
-    graph,
-  );
-  const actionControls = combinedActions.map((action) => {
+  // Best-effort result cache: keyed only on the stable date-scope portion
+  // (cacheKeyFor), never on a random reference, so a later "return to the
+  // unscoped view" can skip a Salesforce re-fetch. Losing this cache
+  // (restart, eviction) is never an error - it just costs one extra
+  // deterministic re-evaluation on the next request.
+  const scopeForCacheKey = recordValue(structuredContentBase.scope) ?? recordValue(viewState?.scope) ?? {};
+  const cacheKey = cacheKeyFor(providerKey, resultTool, scopeForCacheKey);
+  store.cacheResult(cacheKey, providerKey, capability, result, resultTool, ruleVersion);
+  // Continuation VALIDITY is a short, opaque action reference (see
+  // conversation-context.ts) persisted to disk so it survives process
+  // restarts - the client only ever has to reproduce a ~22-character
+  // random string, never a long self-describing blob.
+  const actionControls = orderedActionList(actions).map((action) => {
     const input = recordValue(action.input);
     if (!input || (action.tool !== "cccap_analyze_payment_risk" && action.tool !== "cccap_analyze_payment")) return action;
+    const actionToken = store.createActionToken(providerKey, action.tool as ContinuationPlan["tool"], input, ruleVersion);
     return {
       type: "button",
       actionId: action.actionId,
@@ -161,18 +125,75 @@ function contextualize(
       ...(action.sourceViewId ? { sourceViewId: action.sourceViewId } : {}),
       ...(action.targetViewId ? { targetViewId: action.targetViewId } : {}),
       ...(action.lockedView ? { lockedView: action.lockedView } : {}),
-      input: { actionId: action.actionId },
+      input: { actionId: action.actionId, actionToken },
     };
   });
-  const { actionIntents: _actionIntents, filters: _filters, responseContext: _responseContext, ...structuredContent } = structuredContentBase;
+  const graph: ConversationResultGraph = {
+    ...(typeof structuredContentBase.intent === "string"
+      ? { currentIntent: structuredContentBase.intent }
+      : { currentIntent: currentCapability ?? capability }),
+    ...(structuredContentBase.scope !== undefined
+      ? { scope: structuredContentBase.scope }
+      : viewState?.scope !== undefined ? { scope: viewState.scope } : {}),
+    ...(resultRecord?.servicePeriod !== undefined ? { selectedServicePeriod: resultRecord.servicePeriod } : {}),
+    ...(viewState?.parentViewId !== undefined ? { parentView: viewState.parentViewId } : {}),
+    // Keep a compact current-view pointer for hosts that render navigation
+    // from resultGraph rather than the top-level viewState. The object is
+    // already scope-compacted by viewState(), so this is bounded metadata,
+    // not a second copy of provider rows.
+    ...(Array.isArray(structuredContentBase.responseSections)
+      ? { availableEvidence: structuredContentBase.responseSections.filter((section): section is string => typeof section === "string") }
+      : {}),
+    ...(typeof situation?.severity === "string" ? { severity: situation.severity } : {}),
+    ...(typeof structuredContentBase.sourceRetrievedAt === "string"
+      ? { sourceRetrievedAt: structuredContentBase.sourceRetrievedAt }
+      : {}),
+    ...(viewState ? { currentView: viewState } : {}),
+    ...(ruleVersion ? { ruleVersion } : {}),
+  };
+  const isPaymentCapability = currentCapability === "payment-analysis"
+    || currentCapability === "service-period-payout-ledger";
+  const {
+    actionIntents: _actionIntents,
+    filters: _filters,
+    responseContext: _responseContext,
+    providerMessage: _providerMessage,
+    summary: _summary,
+    summaryView: _summaryView,
+    periods: _periods,
+    selectedPeriod: _selectedPeriod,
+    daysUntilPayout: _daysUntilPayout,
+    paymentDisclaimers: _paymentDisclaimers,
+    responseSections: _responseSections,
+    ...structuredContentWithoutRouting
+  } = structuredContentBase;
+  // providerMessage is the documented structuredContent fallback (see
+  // carepay-advisor.agent.md section 2: "If content[0].text is absent, use
+  // structuredContent.providerMessage as the fallback") and must survive
+  // this routing-field strip for EVERY capability, payment included. It was
+  // previously destructured out above and only ever restored on the
+  // non-payment branch below, so every payment-analysis/service-period-
+  // payout-ledger result that reached this hasPlanActions branch (i.e.
+  // virtually all of them, since every payment action carries
+  // tool: "cccap_analyze_payment") silently lost its fallback field even
+  // though content[0].text still carried the text - leaving no working
+  // fallback whenever a client failed to read content[0].text directly.
+  const structuredContent = isPaymentCapability
+    ? {
+        ...structuredContentWithoutRouting,
+        ...(_providerMessage !== undefined ? { providerMessage: _providerMessage } : {}),
+      }
+    : {
+        ...structuredContentWithoutRouting,
+        ...(_summary !== undefined ? { summary: _summary } : {}),
+        ...(_summaryView !== undefined ? { summaryView: _summaryView } : {}),
+        ...(_providerMessage !== undefined ? { providerMessage: _providerMessage } : {}),
+      };
   return {
     ...contextualizedValue,
     structuredContent: {
       ...structuredContent,
-      resultGraph: {
-        ...graph,
-        actionStates: Object.fromEntries(combinedActions.map((action) => [action.actionId, "OFFERED"])),
-      },
+      resultGraph: graph,
       actionControls,
     },
   };
@@ -211,7 +232,14 @@ function attachDialogueState(
 
 function toolError(capability: string, error: unknown): ToolResult {
   const message = error instanceof Error ? error.message : "";
-  const paymentFailure = capability === "payment analysis";
+  // "payment payout ledger" covers NEXT_PAYOUT/LAST_PAYOUT/PAYOUT_LEDGER
+  // (getServicePeriodLedger issues the exact same getPaymentAnalysis calls
+  // internally as a direct "payment analysis" request) - previously
+  // excluded here, so a ledger-view failure fell through to the generic
+  // PROVIDER_DATA_UNAVAILABLE fallback below and lost every diagnostic
+  // detail a direct payment-analysis call of the same underlying failure
+  // would have surfaced.
+  const paymentFailure = capability === "payment analysis" || capability === "payment payout ledger";
   const paymentDiagnostic = paymentFailure && message.length > 0
     ? message
       .replace(/[a-zA-Z0-9]{15,18}/g, "[redacted-id]")
@@ -219,7 +247,27 @@ function toolError(capability: string, error: unknown): ToolResult {
     : undefined;
   const continuationFailure = message === "Continuation reference is unavailable or expired";
   const filterFailure = message.startsWith("Requested ") && message.includes("filter did not match");
-  const paymentSource = paymentFailure && message.includes("Service period")
+  // Granular fiscal-schedule-match reasons (authorization-fiscal-schedule-
+  // matcher.ts) checked BEFORE the generic "Authorization fiscal schedule
+  // mapping" substring match below, so a specific reason=NO_MATCH_* etc.
+  // gets a specific plain-language description instead of the blanket
+  // "authorization-to-fiscal-schedule mapping" - the thrown error message
+  // already embeds "reason=<value>" verbatim from payment-canonical-adapter.ts.
+  const fiscalMatchSource = !paymentFailure ? undefined
+    : message.includes("reason=NO_MATCH_COUNTY")
+      ? "no fiscal rate schedule exists for this authorization's county"
+      : message.includes("reason=NO_MATCH_RATE_TYPE")
+        ? "this authorization's rate type has no matching fiscal schedule in its county"
+        : message.includes("reason=NO_MATCH_DATE")
+          ? "no fiscal schedule covers this authorization's service dates for its county/rate type"
+          : message.includes("reason=AMBIGUOUS_MATCH")
+            ? "multiple equally-current fiscal schedules matched for this authorization (ambiguous)"
+            : message.includes("reason=MISSING_SCHEDULE_RATE_TYPE")
+              ? "the schedule's rate type could not be determined"
+              : undefined;
+  const paymentSource = fiscalMatchSource
+    ? fiscalMatchSource
+    : paymentFailure && message.includes("Service period")
     ? "service-period dates"
     : paymentFailure && message.includes("Authorization fiscal schedule mapping")
       ? "authorization-to-fiscal-schedule mapping"
@@ -269,59 +317,36 @@ function toolError(capability: string, error: unknown): ToolResult {
         "Retry the next-payout view after the missing or ambiguous data is corrected",
       ]
     : ["Retry the same request once", "Review data quality if the problem continues"];
+  const errorCode = continuationFailure
+    ? "CONTINUATION_UNAVAILABLE"
+    : filterFailure
+      ? "REQUEST_SCOPE_NOT_FOUND"
+      : paymentFailure
+        ? "PAYMENT_DATA_INCOMPLETE"
+        : "PROVIDER_DATA_UNAVAILABLE";
+  const errorPayload = {
+    code: errorCode,
+    capability,
+    message: userMessage,
+    nextSteps,
+    ...(paymentDiagnostic ? { diagnostic: paymentDiagnostic } : {}),
+  };
   return {
     isError: true,
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify({
-          error: {
-            code: continuationFailure
-              ? "CONTINUATION_UNAVAILABLE"
-              : filterFailure
-                ? "REQUEST_SCOPE_NOT_FOUND"
-                : paymentFailure
-                  ? "PAYMENT_DATA_INCOMPLETE"
-                  : "PROVIDER_DATA_UNAVAILABLE",
-            capability,
-            message: userMessage,
-            nextSteps,
-            ...(paymentDiagnostic ? { diagnostic: paymentDiagnostic } : {}),
-          },
-        }),
+        text: JSON.stringify({ error: errorPayload }),
       },
     ],
-  };
-}
-
-function paymentClarification(request: {
-  grouping?: string;
-  childNames?: string[];
-  authNames?: string[];
-  countyNames?: string[];
-}): ToolResult | undefined {
-  const filterKinds = [request.childNames, request.authNames, request.countyNames]
-    .filter((value) => Array.isArray(value) && value.length > 0).length;
-  const missingGrouping = !request.grouping && filterKinds > 1;
-  const missingScope = request.grouping === "CHILD" && (!request.childNames || request.childNames.length === 0)
-    ? "childNames"
-    : request.grouping === "COUNTY" && (!request.countyNames || request.countyNames.length === 0)
-      ? "countyNames"
-      : undefined;
-  if (!missingGrouping && !missingScope) return undefined;
-  const question = missingScope
-    ? `Which ${missingScope === "childNames" ? "child" : "county"} should this payment summary be grouped by? Provide ${missingScope}.`
-    : "Which grouping should this filtered payment summary use: CHILD, COUNTY, CATEGORY, or SERVICE_PERIOD?";
-  return {
-    content: [{ type: "text" as const, text: question }],
+    // Mirrors the JSON string above into structuredContent so the skill
+    // template's literal `error.code`/`error.message`/`error.nextSteps`
+    // reads are actually true, instead of requiring the model to parse a
+    // JSON string out of content[0].text (see carepay-conversation-
+    // templates/SKILL.md's Continuation Failure Template). content[0].text
+    // is kept unchanged for any caller still parsing the string form.
     structuredContent: {
-      capability: "payment-analysis",
-      status: "CLARIFICATION_REQUIRED",
-      clarificationRequired: true,
-      clarificationQuestion: question,
-      availableGroupings: ["SERVICE_PERIOD", "COUNTY", "CHILD", "CATEGORY"],
-      scope: request,
-      responseSections: ["clarification"],
+      error: errorPayload,
     },
   };
 }
@@ -344,7 +369,61 @@ export function createServer(
   contextStore = new ConversationContextStore(),
   providerKey = providerDisplayName,
   dialogueStore = new DialogueStateStore(),
+  conversationLogger = defaultConversationLogger,
 ): McpServer {
+  const withConversationLogging = <T extends Record<string, unknown>>(
+    toolName: string,
+    handler: (input: T) => Promise<ToolResult>,
+  ) => async (input: T): Promise<ToolResult> => {
+    // providerUtterance is debug-only metadata (the provider's exact chat
+    // message/selection for this turn) - stripped out here, BEFORE the real
+    // handler ever runs, so it can never reach Salesforce/Python calls or
+    // get echoed back in a response. handlerInput (not input) is what every
+    // downstream handler/business-logic call actually receives.
+    const { providerUtterance, ...handlerInput } = input as T & { providerUtterance?: string };
+    const startedAt = Date.now();
+    const result = await handler(handlerInput as T);
+    const providerResponseText = result.content?.find((item) => item.type === "text")?.text;
+    let error: { code: string; message: string; diagnostic?: string } | undefined;
+    if (result.isError) {
+      const structuredError = recordValue(recordValue(result.structuredContent)?.error);
+      if (structuredError && typeof structuredError.code === "string" && typeof structuredError.message === "string") {
+        error = {
+          code: structuredError.code,
+          message: structuredError.message,
+          ...(typeof structuredError.diagnostic === "string" ? { diagnostic: structuredError.diagnostic } : {}),
+        };
+      } else if (typeof providerResponseText === "string") {
+        try {
+          const parsed = recordValue(recordValue(JSON.parse(providerResponseText))?.error);
+          if (parsed && typeof parsed.code === "string" && typeof parsed.message === "string") {
+            error = {
+              code: parsed.code,
+              message: parsed.message,
+              ...(typeof parsed.diagnostic === "string" ? { diagnostic: parsed.diagnostic } : {}),
+            };
+          }
+        } catch {
+          // Logging must not alter or reject a tool response that has invalid error JSON.
+        }
+      }
+    }
+    conversationLogger.logToolCall({
+      tool: toolName,
+      // handlerInput (not the original input) - providerUtterance was
+      // already stripped above and must not reappear here; it's passed
+      // separately below as its own field.
+      input: handlerInput,
+      status: result.isError ? "error" : "success",
+      durationMs: Date.now() - startedAt,
+      ...(typeof providerUtterance === "string" ? { providerUtterance } : {}),
+      ...(typeof providerResponseText === "string" ? { providerResponseText } : {}),
+      ...(error ? { error } : {}),
+    });
+    return result;
+  };
+  conversationLogger.startSession(providerKey);
+
   const server = new McpServer({
     name: "cccap-provider-api",
     version: "1.0.0",
@@ -359,7 +438,7 @@ export function createServer(
       inputSchema: dateScopeSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) =>
+    withConversationLogging("cccap_get_attendance_risk_snapshot", async (input) =>
       execute(
         "attendance-risk snapshot",
         () =>
@@ -377,7 +456,7 @@ export function createServer(
           recordValue(data)?.scope,
           typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt as string : undefined,
         ),
-      ),
+      )),
   );
 
   server.registerTool(
@@ -389,7 +468,7 @@ export function createServer(
       inputSchema: {},
       annotations: readOnlyAnnotations,
     },
-    async () =>
+    withConversationLogging("cccap_get_current_month_risk_snapshot", async () =>
       execute(
         "current payment-risk snapshot",
         () =>
@@ -398,15 +477,23 @@ export function createServer(
             providerDisplayName,
             new Date().toISOString().slice(0, 10),
           ),
-        (data) => attachDialogueState(
-          contextualize(snapshotResult(data, true), contextStore, providerKey, "continuation", data, "cccap_analyze_payment_risk"),
-          dialogueStore,
-          providerKey,
-          "attendance-risk-analysis",
-          recordValue(data)?.scope,
-          typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt as string : undefined,
-        ),
-      ),
+        (data) => {
+          // Records that THIS provider's most recent risk figures came from
+          // a MONTH-wide scope, so a later freeform riskFocus request that
+          // has since drifted to a narrower PERIOD scope can be caught by
+          // the scope-clarification check in cccap_analyze_payment_risk
+          // below, instead of silently reusing the narrower scope.
+          contextStore.setLastSnapshotScope(providerKey, { dateFilter: "THIS_MONTH" });
+          return attachDialogueState(
+            contextualize(snapshotResult(data, true), contextStore, providerKey, "continuation", data, "cccap_analyze_payment_risk"),
+            dialogueStore,
+            providerKey,
+            "attendance-risk-analysis",
+            recordValue(data)?.scope,
+            typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt as string : undefined,
+          );
+        },
+      )),
   );
 
   server.registerTool(
@@ -418,11 +505,11 @@ export function createServer(
       inputSchema: attendanceDataSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) =>
+    withConversationLogging("cccap_get_attendance_analysis", async (input) =>
       execute(
         "attendance detail analysis",
         () => getAttendanceDataAnalysis(client, input),
-      ),
+      )),
   );
 
   server.registerTool(
@@ -434,17 +521,35 @@ export function createServer(
       inputSchema: attendanceAnalysisSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => {
-      const hasContinuation = Boolean(input.actionId || input.contextRef || input.actionRef);
-      const directContinuationInput = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "actionId" && key !== "contextRef" && key !== "actionRef" && key !== "refresh"));
-      const continuation = contextStore.resolve(providerKey, input.contextRef, input.actionRef, "continuation", undefined, Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
-      const actionContinuation = contextStore.resolveAction(providerKey, input.actionId, "cccap_analyze_payment_risk", Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
-      const resolvedContinuation = continuation ?? actionContinuation;
-      const request = resolvedContinuation?.tool === "cccap_analyze_payment_risk"
-        ? resolvedContinuation.input as typeof input
-        : input;
-      if (hasContinuation && (!resolvedContinuation || resolvedContinuation.tool !== "cccap_analyze_payment_risk")) {
+    withConversationLogging("cccap_analyze_payment_risk", async (input) => {
+      const hasContinuation = Boolean(input.actionId || input.actionToken);
+      // Short opaque action reference, persisted to disk (conversation-context.ts)
+      // so it survives process restarts - resolveActionToken already binds
+      // to providerKey/tool and enforces TTL internally.
+      const resolvedAction = contextStore.resolveActionToken(input.actionToken, providerKey, "cccap_analyze_payment_risk");
+      if (hasContinuation && !resolvedAction) {
         return toolError("attendance-risk analysis", new Error("Continuation reference is unavailable or expired"));
+      }
+      const directContinuationInput = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "actionId" && key !== "actionToken" && key !== "refresh"));
+      if (resolvedAction && Object.keys(directContinuationInput).length > 0 && !isCompatibleWithStoredInput(directContinuationInput, resolvedAction.input)) {
+        return toolError("attendance-risk analysis", new Error("Continuation reference is unavailable or expired"));
+      }
+      const request = (resolvedAction ? { ...resolvedAction.input, ...directContinuationInput } : input) as typeof input;
+      // Scope-clarification backstop: a freeform riskFocus request (no
+      // continuation, no explicit dateFilter/dateFrom/dateTo in this raw
+      // input) may still carry a dateFrom/dateTo the caller silently
+      // reused from an earlier, narrower turn. When the provider's risk
+      // figures actually came from a MONTH-wide snapshot earlier this
+      // session and the active request has since drifted to a PERIOD-
+      // granularity scope, ask which one is meant instead of guessing -
+      // never fires when the caller explicitly restated dateFilter in
+      // this exact request, when it's a real continuation, or when no
+      // month snapshot ran yet this session.
+      if (!hasContinuation && request.riskFocus) {
+        const lastSnapshotScope = contextStore.getLastSnapshotScope(providerKey);
+        if (lastSnapshotScope && scopeGranularity(lastSnapshotScope) === "MONTH" && scopeGranularity(request) === "PERIOD") {
+          return formatScopeClarification(request.riskFocus, { dateFrom: request.dateFrom as string, dateTo: request.dateTo as string });
+        }
       }
       if (input.refresh) client.clearReadCache();
       const isNarrowedAttendanceContinuation = Boolean(
@@ -453,10 +558,19 @@ export function createServer(
         request.countyNames?.length ||
         request.riskFocus,
       );
-      if (!input.refresh && !isNarrowedAttendanceContinuation && continuation?.resultTool === "cccap_analyze_payment_risk" && continuation.result) {
-        const cachedResult = recordValue(continuation.result);
+      // Best-effort result cache: keyed only on the stable date-scope
+      // portion (cacheKeyFor), so a "return to the unscoped view" can reuse
+      // an already-fetched full result without a Salesforce re-fetch. A
+      // cache miss (restart, eviction) falls straight through to a fresh
+      // evaluation below - never an error.
+      const cacheKey = cacheKeyFor(providerKey, "cccap_analyze_payment_risk", request);
+      const cached = !input.refresh && !isNarrowedAttendanceContinuation
+        ? contextStore.getCachedResult(cacheKey, providerKey)
+        : undefined;
+      if (cached && cached.resultTool === "cccap_analyze_payment_risk") {
+        const cachedResult = recordValue(cached.result);
         if (cachedResult) {
-          const continuationResult = { ...cachedResult, scope: request, riskFocus: request.riskFocus, countyNames: request.countyNames };
+          const continuationResult = { ...cachedResult, scope: request, riskFocus: request.riskFocus, countyNames: request.countyNames, detailPage: request.detailPage, detailPageSize: request.detailPageSize };
           return attachDialogueState(
             contextualize(
               formatAttendanceRiskResult(continuationResult, true),
@@ -486,6 +600,8 @@ export function createServer(
             request.authNames,
             request.riskFocus,
             request.countyNames,
+            request.detailPage,
+            request.detailPageSize,
           ),
         (data) => attachDialogueState(
           contextualize(formatAttendanceRiskResult(data, true), contextStore, providerKey, "continuation", data, "cccap_analyze_payment_risk"),
@@ -496,7 +612,7 @@ export function createServer(
           typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt as string : undefined,
         ),
       );
-    },
+    }),
   );
 
   server.registerTool(
@@ -508,10 +624,10 @@ export function createServer(
       inputSchema: dateScopeSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute(
+    withConversationLogging("cccap_initialize_provider", async (input) => execute(
       "provider initialization",
       async () => normalizeProviderInitialization(await client.initialize(input)),
-    ),
+    )),
   );
 
   server.registerTool(
@@ -523,11 +639,11 @@ export function createServer(
       inputSchema: caseSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute(
+    withConversationLogging("cccap_get_cases", async (input) => execute(
       "cases and children retrieval",
       async () => normalizeCases(await client.getCases(input)),
       (data) => formatCasesResult(data, (countyId) => client.getCountyName(countyId)),
-    ),
+    )),
   );
 
   server.registerTool(
@@ -539,11 +655,11 @@ export function createServer(
       inputSchema: authorizationSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute(
+    withConversationLogging("cccap_get_authorizations", async (input) => execute(
       "authorizations retrieval",
       async () => normalizeAuthorizations(await client.getAuthorizations(input)),
       (data) => formatAuthorizationsResult(data, (countyId) => client.getCountyName(countyId)),
-    ),
+    )),
   );
 
   server.registerTool(
@@ -555,7 +671,7 @@ export function createServer(
       inputSchema: countySchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => {
+    withConversationLogging("cccap_get_county_rate_plans", async (input) => {
       const scope = input.dateFilter || input.dateFrom || input.dateTo
         ? input
         : { ...input, dateFilter: "THIS_MONTH" as const };
@@ -567,7 +683,7 @@ export function createServer(
         },
         formatCountyPolicyResult,
       );
-    },
+    }),
   );
 
   server.registerTool(
@@ -579,10 +695,10 @@ export function createServer(
       inputSchema: servicePeriodSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute(
+    withConversationLogging("cccap_get_service_periods", async (input) => execute(
       "service-period retrieval",
       async () => normalizeServicePeriods(await client.getServicePeriods(input)),
-    ),
+    )),
   );
 
   server.registerTool(
@@ -594,10 +710,10 @@ export function createServer(
       inputSchema: schedulesSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute(
+    withConversationLogging("cccap_get_schedules", async (input) => execute(
       "schedule and attendance retrieval",
       async () => normalizeSchedules(await client.getSchedules(input)),
-    ),
+    )),
   );
 
   server.registerTool(
@@ -609,10 +725,10 @@ export function createServer(
       inputSchema: fiscalRatesSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute(
+    withConversationLogging("cccap_get_fiscal_rates", async (input) => execute(
       "fiscal-rate retrieval",
       async () => normalizeFiscalRates(await client.getFiscalRates(input)),
-    ),
+    )),
   );
 
   server.registerTool(
@@ -624,10 +740,10 @@ export function createServer(
       inputSchema: dateScopeSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute(
+    withConversationLogging("cccap_get_holidays", async (input) => execute(
       "holiday-calendar retrieval",
       async () => normalizeHolidays(await client.getHolidayList(input)),
-    ),
+    )),
   );
 
   server.registerTool(
@@ -638,36 +754,47 @@ export function createServer(
       inputSchema: paymentAnalysisSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => {
-      const hasContinuation = Boolean(input.actionId || input.contextRef || input.actionRef);
-      const directContinuationInput = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "actionId" && key !== "contextRef" && key !== "actionRef" && key !== "refresh"));
-      const continuation = contextStore.resolve(providerKey, input.contextRef, input.actionRef, "continuation", undefined, Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
-      const actionContinuation = contextStore.resolveAction(providerKey, input.actionId, "cccap_analyze_payment", Object.keys(directContinuationInput).length > 0 ? directContinuationInput : undefined);
-      const resolvedContinuation = continuation ?? actionContinuation;
-      const request = resolvedContinuation?.tool === "cccap_analyze_payment"
-        ? resolvedContinuation.input as typeof input
-        : input;
-      if (hasContinuation && (!resolvedContinuation || resolvedContinuation.tool !== "cccap_analyze_payment")) {
+    withConversationLogging("cccap_analyze_payment", async (input) => {
+      const hasContinuation = Boolean(input.actionId || input.actionToken);
+      // Short opaque action reference, persisted to disk - see the matching
+      // comment in cccap_analyze_payment_risk above.
+      const resolvedAction = contextStore.resolveActionToken(input.actionToken, providerKey, "cccap_analyze_payment");
+      if (hasContinuation && !resolvedAction) {
         return toolError("payment analysis", new Error("Continuation reference is unavailable or expired"));
       }
-      const clarification = paymentClarification({
-        ...(request.grouping ? { grouping: request.grouping } : {}),
-        ...(request.childNames ? { childNames: request.childNames } : {}),
-        ...(request.authNames ? { authNames: request.authNames } : {}),
-        ...(request.countyNames ? { countyNames: request.countyNames } : {}),
-      });
-      if (clarification) return clarification;
+      const directContinuationInput = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "actionId" && key !== "actionToken" && key !== "refresh"));
+      if (resolvedAction && Object.keys(directContinuationInput).length > 0 && !isCompatibleWithStoredInput(directContinuationInput, resolvedAction.input)) {
+        return toolError("payment analysis", new Error("Continuation reference is unavailable or expired"));
+      }
+      const resolvedRequest = (resolvedAction ? { ...resolvedAction.input, ...directContinuationInput } : input) as typeof input;
+      // CURRENT_PERIOD_FORECAST is the current, correctly-named view for
+      // "the service period containing today"; CURRENT_WEEK_FORECAST is
+      // kept only as an accepted input alias so existing callers do not
+      // break. Normalize here, once, so every downstream orchestration and
+      // formatter call site keeps using the single existing internal name,
+      // and so `request.view`'s type never carries the alias past this point.
+      const normalizedView = resolvedRequest.view === "CURRENT_PERIOD_FORECAST" ? "CURRENT_WEEK_FORECAST" : resolvedRequest.view;
+      const request = { ...resolvedRequest, view: normalizedView };
       if (input.refresh) client.clearReadCache();
-      const requestsDetailPage = request.detailDepth === "DETAIL" || request.detailPage !== undefined || request.detailPageSize !== undefined;
-      if (!input.refresh && !requestsDetailPage && continuation?.resultTool === "cccap_analyze_payment" && continuation.result) {
-        const cachedResult = recordValue(continuation.result);
+      // NEXT_PAYOUT/LAST_PAYOUT/PAYOUT_LEDGER all render through the ledger
+      // formatter (single or multi-period), never the payment-summary
+      // formatter - keep the cached-continuation branch and the routing
+      // below in sync on this.
+      const usesLedgerFormatter = request.view === "NEXT_PAYOUT" || request.view === "LAST_PAYOUT" || request.view === "PAYOUT_LEDGER";
+      // Best-effort result cache - see the matching comment in
+      // cccap_analyze_payment_risk above. A miss falls straight through to
+      // a fresh evaluation, never an error.
+      const cacheKey = cacheKeyFor(providerKey, "cccap_analyze_payment", request);
+      const cached = !input.refresh
+        ? contextStore.getCachedResult(cacheKey, providerKey)
+        : undefined;
+      if (cached && cached.resultTool === "cccap_analyze_payment") {
+        const cachedResult = recordValue(cached.result);
         if (cachedResult) {
           const continuationResult = { ...cachedResult, filters: request };
           return attachDialogueState(
             contextualize(
-              request.view === "NEXT_PAYOUT"
-                ? formatServicePeriodLedgerResult(continuationResult)
-                : formatPaymentResult(continuationResult),
+              formatPayoutResult(continuationResult),
               contextStore,
               providerKey,
               "continuation",
@@ -682,11 +809,58 @@ export function createServer(
           );
         }
       }
+      // NEXT_PAYOUT resolves to a single upcoming period by default - a
+      // plain "upcoming payment" request must never silently expand to the
+      // multi-period ledger. PAYOUT_LEDGER is the only view that returns
+      // multiple periods, and only when the provider explicitly names a
+      // month/range. LAST_PAYOUT resolves to the single most recently
+      // released period; it is a distinct capability from NEXT_PAYOUT, not
+      // a fallback when no upcoming period exists.
+      const asOfDateForLedger = new Date().toISOString().slice(0, 10);
+      const runNextPayout = () => execute(
+        "payment payout ledger",
+        () => getUpcomingPayoutDetail(client, request, asOfDateForLedger, {
+          ...(request.childNames ? { childNames: request.childNames } : {}),
+          ...(request.authNames ? { authNames: request.authNames } : {}),
+          ...(request.countyNames ? { countyNames: request.countyNames } : {}),
+        }),
+        (data) => attachDialogueState(
+          contextualize(formatPayoutResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
+          dialogueStore,
+          providerKey,
+          "payment-analysis",
+          recordValue(data)?.scope ?? request,
+          typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt as string : undefined,
+        ),
+      );
+      const runLastPayout = () => execute(
+        "payment payout ledger",
+        () => getLastPayoutDetail(client, request, asOfDateForLedger, {
+          ...(request.childNames ? { childNames: request.childNames } : {}),
+          ...(request.authNames ? { authNames: request.authNames } : {}),
+          ...(request.countyNames ? { countyNames: request.countyNames } : {}),
+        }),
+        (data) => attachDialogueState(
+          contextualize(formatPayoutResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
+          dialogueStore,
+          providerKey,
+          "payment-analysis",
+          recordValue(data)?.scope ?? request,
+          typeof recordValue(data)?.sourceRetrievedAt === "string" ? recordValue(data)?.sourceRetrievedAt as string : undefined,
+        ),
+      );
       const runPayoutLedger = () => execute(
         "payment payout ledger",
-        () => getServicePeriodLedger(client, request, new Date().toISOString().slice(0, 10)),
+        () => getServicePeriodLedger(client, request, asOfDateForLedger, {
+          ...(request.periodCount ? { periodCount: request.periodCount } : {}),
+          filters: {
+            ...(request.childNames ? { childNames: request.childNames } : {}),
+            ...(request.authNames ? { authNames: request.authNames } : {}),
+            ...(request.countyNames ? { countyNames: request.countyNames } : {}),
+          },
+        }),
         (data) => attachDialogueState(
-          contextualize(formatServicePeriodLedgerResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
+          contextualize(formatPayoutResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
           dialogueStore,
           providerKey,
           "payment-analysis",
@@ -695,6 +869,12 @@ export function createServer(
         ),
       );
       if (request.view === "NEXT_PAYOUT") {
+        return runNextPayout();
+      }
+      if (request.view === "LAST_PAYOUT") {
+        return runLastPayout();
+      }
+      if (request.view === "PAYOUT_LEDGER") {
         return runPayoutLedger();
       }
       const runPaymentAnalysis = () => execute(
@@ -703,14 +883,9 @@ export function createServer(
           ...(request.childNames ? { childNames: request.childNames } : {}),
           ...(request.authNames ? { authNames: request.authNames } : {}),
           ...(request.countyNames ? { countyNames: request.countyNames } : {}),
-          ...(request.grouping ? { grouping: request.grouping } : {}),
-          ...(request.detailDepth ? { detailDepth: request.detailDepth } : {}),
-          ...(request.detailPage ? { detailPage: request.detailPage } : {}),
-          ...(request.detailPageSize ? { detailPageSize: request.detailPageSize } : {}),
-          ...(request.excludedOnly ? { excludedOnly: true } : {}),
         }),
         (data) => attachDialogueState(
-          contextualize(formatPaymentResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
+          contextualize(formatPayoutResult(data), contextStore, providerKey, "continuation", data, "cccap_analyze_payment"),
           dialogueStore,
           providerKey,
           "payment-analysis",
@@ -724,7 +899,7 @@ export function createServer(
         return runPaymentAnalysis();
       }
       return paymentResult;
-    },
+    }),
   );
 
   server.registerTool(
@@ -735,11 +910,11 @@ export function createServer(
       inputSchema: paymentComparisonSchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute(
+    withConversationLogging("cccap_compare_payment_periods", async (input) => execute(
       "payment comparison",
       () => comparePaymentPeriods(client, input.periodOne, input.periodTwo, new Date().toISOString().slice(0, 10), input.significantDeltaThresholdPct === undefined ? {} : { significantDeltaThresholdPct: input.significantDeltaThresholdPct }),
       formatPeriodComparisonResult,
-    ),
+    )),
   );
 
   server.registerTool(
@@ -753,13 +928,13 @@ export function createServer(
       }).shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute(
+    withConversationLogging("cccap_get_service_period_payout_ledger", async (input) => execute(
       "service-period payout ledger",
       () => input.upcomingOnly
         ? getUpcomingPayoutDetail(client, input, new Date().toISOString().slice(0, 10))
         : getServicePeriodLedger(client, input, new Date().toISOString().slice(0, 10), input.periodCount === undefined ? {} : { periodCount: input.periodCount }),
-      formatServicePeriodLedgerResult,
-    ),
+      formatPayoutResult,
+    )),
   );
 
   server.registerTool(
@@ -771,10 +946,10 @@ export function createServer(
       inputSchema: paymentHistorySchema.shape,
       annotations: readOnlyAnnotations,
     },
-    async (input) => execute(
+    withConversationLogging("cccap_get_payment_history", async (input) => execute(
       "payment-history retrieval",
       async () => normalizePaymentHistory(await client.getPaymentHistory(input)),
-    ),
+    )),
   );
 
   return server;

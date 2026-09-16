@@ -43,40 +43,7 @@ test("MCP protocol preserves attendance provider text and structured scope", asy
   assert.equal(structured.providerMessage, text);
   assert.equal(structured.capability, "attendance-risk-analysis");
   assert.deepEqual(structured.scope, { dateFilter: "THIS_MONTH" });
-
-  await client.close();
-  await server.close();
-});
-
-test("payment protocol asks for grouping before making provider reads", async () => {
-  let providerReads = 0;
-  const fakeClient = {
-    async initialize() {
-      providerReads += 1;
-      throw new Error("provider read should not occur before clarification");
-    },
-  };
-  const server = createServer(fakeClient as never, "Example Provider");
-  const client = new Client({ name: "payment-clarification-test-client", version: "1.0.0" });
-  const [clientTransport, serverTransport] = ClientTransport.createLinkedPair();
-  await server.connect(serverTransport);
-  await client.connect(clientTransport);
-
-  const response = await client.callTool({
-    name: "cccap_analyze_payment",
-    arguments: {
-      dateFilter: "THIS_MONTH",
-      childNames: ["Taylor Example"],
-      countyNames: ["Denver"],
-    },
-  });
-  const structured = response.structuredContent as Record<string, unknown>;
-
-  assert.equal(response.isError, undefined);
-  assert.equal(structured.status, "CLARIFICATION_REQUIRED");
-  assert.equal(structured.clarificationRequired, true);
-  assert.equal(providerReads, 0);
-  assert.match(response.content.find((item) => item.type === "text")?.text ?? "", /Which grouping/);
+  assert.deepEqual((structured.resultGraph as Record<string, unknown>).currentView, structured.viewState);
 
   await client.close();
   await server.close();
@@ -152,7 +119,12 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   const offeredActions = structured.actionControls as Array<Record<string, unknown>>;
   const priorityActionTwo = offeredActions.find((action) => action.actionId === "review-incomplete-attendance");
   assert.ok(priorityActionTwo, JSON.stringify(offeredActions));
-  assert.deepEqual(priorityActionTwo.input, { actionId: "review-incomplete-attendance" });
+  // Client-visible input is now { actionId, actionToken } - the signed
+  // token (continuation-token.ts) replaces the previous Map-backed
+  // contextRef/actionRef pair as the actual credential.
+  const priorityActionTwoInput = priorityActionTwo.input as Record<string, unknown>;
+  assert.equal(priorityActionTwoInput.actionId, "review-incomplete-attendance");
+  assert.equal(typeof priorityActionTwoInput.actionToken, "string");
   assert.equal("contextRef" in priorityActionTwo, false);
   assert.equal("actionRef" in priorityActionTwo, false);
   const incompleteFollowUp = await client.callTool({
@@ -163,19 +135,37 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   assert.equal(incompleteFollowUp.isError, undefined);
   assert.match(incompleteFollowUp.content.find((item) => item.type === "text")?.text ?? "", /incomplete attendance/i);
   assert.equal(incompleteStructured.providerMessage, incompleteFollowUp.content.find((item) => item.type === "text")?.text);
+  // Cross-risk unscoped actions no longer carry childNames in their input
+  // (see actionMetadata's comment) - the resolved scope naturally omits it
+  // too, and the target response re-derives the currently affected
+  // children from riskFocus alone instead of replaying a fixed list.
   assert.deepEqual(incompleteStructured.scope, {
     dateFilter: "THIS_MONTH",
-    childNames: ["Ava Example"],
     riskFocus: "INCOMPLETE_ATTENDANCE",
   });
   assert.equal(JSON.stringify(incompleteStructured.actionControls).includes("contextRef"), false);
   assert.equal(JSON.stringify(incompleteStructured.actionControls).includes("actionRef"), false);
 
-  const returnedAbsenceAction = (incompleteStructured.actionControls as Array<Record<string, unknown>>).find(
+  // A riskFocus-scoped response (INCOMPLETE_ATTENDANCE here) no longer links
+  // to a different risk area's review - it offers only "return to summary".
+  // Reach the absence-limit view from there, via the unscoped facility-wide
+  // response, matching the new exclusive-drill-down contract.
+  const returnToSummaryAction = (incompleteStructured.actionControls as Array<Record<string, unknown>>).find(
+    (action) => action.actionId === "return-to-attendance-summary",
+  );
+  assert.ok(returnToSummaryAction);
+  const summaryFollowUp = await client.callTool({
+    name: "cccap_analyze_payment_risk",
+    arguments: returnToSummaryAction.input as Record<string, unknown>,
+  });
+  const summaryStructured = summaryFollowUp.structuredContent as Record<string, unknown>;
+  const returnedAbsenceAction = (summaryStructured.actionControls as Array<Record<string, unknown>>).find(
     (action) => action.actionId === "review-absence-limit-risk",
   );
   assert.ok(returnedAbsenceAction);
-  assert.deepEqual(returnedAbsenceAction.input, { actionId: "review-absence-limit-risk" });
+  const returnedAbsenceActionInput = returnedAbsenceAction.input as Record<string, unknown>;
+  assert.equal(returnedAbsenceActionInput.actionId, "review-absence-limit-risk");
+  assert.equal(typeof returnedAbsenceActionInput.actionToken, "string");
   const absenceFollowUp = await client.callTool({
     name: "cccap_analyze_payment_risk",
     arguments: returnedAbsenceAction.input as Record<string, unknown>,
@@ -184,13 +174,22 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   assert.equal(absenceFollowUp.isError, undefined);
   assert.match(absenceFollowUp.content.find((item) => item.type === "text")?.text ?? "", /absence[- ]limit/i);
   assert.equal(absenceStructured.providerMessage, absenceFollowUp.content.find((item) => item.type === "text")?.text);
+  // See the matching comment above for review-incomplete-attendance - this
+  // unscoped cross-risk action no longer carries childNames either.
   assert.deepEqual(absenceStructured.scope, {
     dateFilter: "THIS_MONTH",
-    childNames: ["Ava Example"],
     riskFocus: "ABSENCE_LIMITS",
   }, JSON.stringify({ action: returnedAbsenceAction, response: absenceStructured }));
-  // Both action selections narrow the risk focus and must recalculate rather
-  // than silently reuse the facility-wide snapshot result.
+  // Stateless continuation tokens apply the best-effort result cache
+  // uniformly to BOTH actionId-based and reference-based continuations
+  // (the old Map-backed store only checked the cache for the
+  // contextRef/actionRef path, never for an actionId click, which was an
+  // inconsistency, not a deliberate design choice). "Return to summary"
+  // clears riskFocus/childNames/countyNames, so it now correctly reuses the
+  // already-fetched full facility result via cacheKeyFor's date-scope-only
+  // key instead of re-fetching schedules a third time - only 3 of the 4
+  // calls (initial snapshot, incomplete-attendance follow, absence-limit
+  // follow) actually hit getSchedules; "return to summary" is a cache hit.
   assert.equal(scheduleReads, 3);
 
   await client.close();

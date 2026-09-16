@@ -20,17 +20,38 @@ CURRENCY_QUANTUM = Decimal("0.01")
 # Mirrors evaluate_attendance_risks.py's CONFIRMATION_WINDOW_DAYS. Duplicated
 # rather than shared because the two scripts have no common import path; keep
 # both constants in sync if the window rule ever changes.
-CONFIRMATION_WINDOW_DAYS = 5
+CONFIRMATION_WINDOW_DAYS = 9
 
 
 def compute_payout_date(service_period_end: date) -> date:
-    """Return the payout date, eleven days after the period's Sunday end.
+    """Return the payout date, twelve days after the period's Sunday end.
 
-    For a Sunday period end, +11 days is Thursday (the documented invariant).
+    For a Sunday period end, +12 days is Friday - the true payment release
+    date, confirmed against real T_SERV_PERIOD__c sample data
+    (DTE_BATCH_FILE_PMT__c/release is one day after
+    DTE_BATCH_PRCS_PMT__c/processing). This is a last-resort formula only -
+    resolve_payout_date() below prefers the real Apex-sourced release date
+    threaded through payload["service_period"]["payout_date"] whenever one
+    is present.
     """
-    payout_date = service_period_end + timedelta(days=11)
-    # Sunday (6) + 11 modulo 7 = Thursday (3).
+    payout_date = service_period_end + timedelta(days=12)
+    # Sunday (6) + 12 modulo 7 = Friday (4).
     return payout_date
+
+
+def resolve_payout_date(payload: dict[str, Any], period_end: date) -> date:
+    """Prefer the real Apex-sourced release date; fall back to the formula.
+
+    payload["service_period"]["payout_date"] carries the actual
+    DTE_BATCH_FILE_PMT__c value (or Apex's own ISO-week fallback) whenever a
+    resolved service-period record reached this call - only a synthetic
+    CUSTOM_RANGE payload with no matching T_SERV_PERIOD__c record omits it,
+    in which case compute_payout_date() is the only option.
+    """
+    service_period = payload.get("service_period")
+    raw_payout_date = service_period.get("payout_date") if isinstance(service_period, dict) else None
+    resolved = _date_value(raw_payout_date) if isinstance(raw_payout_date, str) else None
+    return resolved if resolved else compute_payout_date(period_end)
 
 
 def _settlement_fields(
@@ -52,7 +73,7 @@ def _settlement_fields(
     for this period, it is authoritative; if not, the calculated net_total
     is used as the best available figure, explicitly flagged as such.
     """
-    if as_of_date < compute_payout_date(period_end):
+    if as_of_date < resolve_payout_date(payload, period_end):
         return {"is_settled": False}
     service_period = payload.get("service_period")
     service_period_id = service_period.get("id") if isinstance(service_period, dict) else None
@@ -115,76 +136,6 @@ def _month_key(value: date) -> str:
     return value.strftime("%Y-%m")
 
 
-def _month_allowed(value: Any, service_date: date) -> bool:
-    if not isinstance(value, str) or not value.strip():
-        return True
-    month = service_date.month
-    tokens = {token.strip().upper() for token in value.replace(";", ",").split(",") if token.strip()}
-    return str(month) not in tokens and service_date.strftime("%B").upper() not in tokens
-
-
-def _frequency_charge_key(
-    frequency: Any,
-    month: str,
-    authorization_start: date | None = None,
-) -> str | None:
-    normalized = str(frequency or "").strip().upper()
-    if normalized in {"ANN", "ANNUAL", "YEARLY"}:
-        if not authorization_start:
-            return None
-        month_date = _date_value(f"{month}-01")
-        if not month_date or month_date < authorization_start.replace(day=1):
-            return None
-        year_bucket = (
-            (month_date.year - authorization_start.year) * 12
-            + month_date.month - authorization_start.month
-        ) // 12
-        return f"ANN:{year_bucket}"
-    if normalized in {"MTH", "MONTH", "MONTHLY", "ONE", "ONE_TIME", "ONETIME"}:
-        return month
-    return None
-
-
-def _frequency_applies(
-    frequency: Any,
-    month: str,
-    charged_months: set[str],
-    authorization_start: date | None = None,
-) -> bool:
-    charge_key = _frequency_charge_key(frequency, month, authorization_start)
-    return charge_key is not None and charge_key not in charged_months
-
-
-def _art_fee_amount(schedule: dict[str, Any], fee_type: str) -> Decimal | None:
-    prefix = fee_type.lower()
-    authorization_amount = _hours(schedule.get(f"{prefix}_authorization_amount"))
-    base_amount = _hours(schedule.get(f"{prefix}_amount"))
-    provider_cap = _hours(schedule.get(f"{prefix}_provider_cap"))
-    county_cap = _hours(schedule.get(f"{prefix}_county_cap"))
-    if base_amount is None and authorization_amount is None:
-        return None
-    if provider_cap is not None and provider_cap <= 0:
-        return None
-    if county_cap is not None and county_cap <= 0:
-        return None
-    candidates = [value for value in (authorization_amount, provider_cap, county_cap) if value is not None and value > 0]
-    if not candidates:
-        return base_amount if base_amount and base_amount > 0 else None
-    return min(candidates)
-
-
-def _authorization_month_in_scope(schedule: dict[str, Any], month_date: date) -> bool:
-    month_end = (month_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-    start = _date_value(schedule.get("authorization_effective_start"))
-    end = _date_value(schedule.get("authorization_effective_end"))
-    return (start is None or start <= month_end) and (end is None or end >= month_date)
-
-
-def _authorization_is_authorized(schedule: dict[str, Any]) -> bool:
-    status = str(schedule.get("authorization_status") or "").strip().upper()
-    return status in {"2", "AUTHORIZED", "APPROVED"}
-
-
 def _weekday_allowed(value: Any, service_date: date) -> bool:
     if value is None or str(value).strip() == "":
         return True
@@ -198,27 +149,6 @@ def _weekday_allowed(value: Any, service_date: date) -> bool:
         service_date.strftime("%a").upper(),
     }
     return bool(names & aliases)
-
-
-def _county_holiday_allowed(
-    value: Any,
-    service_date: date,
-    holiday_name: Any = None,
-    holiday_date: Any = None,
-    observed_holiday_date: Any = None,
-) -> bool:
-    if value is None or str(value).strip() == "":
-        return True
-    date_values = {service_date.isoformat().upper(), service_date.strftime("%m/%d").upper()}
-    for candidate in (holiday_date, observed_holiday_date):
-        parsed = _date_value(candidate)
-        if parsed:
-            date_values.update({parsed.isoformat().upper(), parsed.strftime("%m/%d").upper()})
-    raw_tokens = value if isinstance(value, list) else str(value).replace(";", ",").split(",")
-    tokens = {str(token).strip().upper() for token in raw_tokens if str(token).strip()}
-    return bool(tokens & date_values) or (
-        isinstance(holiday_name, str) and holiday_name.strip().upper() in tokens
-    )
 
 
 def _matches_county_holiday_list(
@@ -298,132 +228,6 @@ def _holiday_paid_on_paired_date(
     )
 
 
-def _scheduled_fee_totals(payload: dict[str, Any], attendance_days: list[dict[str, Any]]) -> tuple[Decimal, Decimal, Decimal, Decimal]:
-    schedules = payload.get("fee_schedules")
-    if not isinstance(schedules, list):
-        return Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0")
-    history = [item for item in payload.get("fee_history", []) if isinstance(item, dict)]
-    fee_totals = {"activity": Decimal("0"), "registration": Decimal("0"), "transportation": Decimal("0")}
-    qualifying_months_by_authorization: dict[str, set[str]] = defaultdict(set)
-    for day in attendance_days:
-        service_date = _date_value(day.get("service_date"))
-        if (
-            isinstance(day.get("authorization_id"), str)
-            and service_date
-            and day.get("classification") == "ATTENDED"
-            and day.get("payment_type") == "REGULAR"
-            and day.get("payable") is True
-            and day.get("conditional") is False
-        ):
-            qualifying_months_by_authorization[day["authorization_id"]].add(_month_key(service_date))
-    for schedule in schedules:
-        if not isinstance(schedule, dict) or not isinstance(schedule.get("authorization_id"), str):
-            continue
-        if not _authorization_is_authorized(schedule):
-            continue
-        months = sorted(qualifying_months_by_authorization.get(schedule["authorization_id"], set()))
-        scheduled_months: dict[str, set[str]] = defaultdict(set)
-        for month in months:
-            month_date = _date_value(f"{month}-01")
-            if not month_date:
-                continue
-            if not _authorization_month_in_scope(schedule, month_date):
-                continue
-            for fee_type, frequency_key, months_key in (
-                ("activity", "activity_frequency", "activity_months"),
-                ("registration", "registration_frequency", "registration_months"),
-                ("transportation", "transportation_frequency", "transportation_months"),
-            ):
-                amount = _art_fee_amount(schedule, fee_type)
-                if amount is None or not _month_allowed(schedule.get(months_key), month_date):
-                    continue
-                if _frequency_applies(
-                    schedule.get(frequency_key),
-                    month,
-                    scheduled_months[fee_type],
-                    _date_value(schedule.get("authorization_effective_start")),
-                ):
-                    fee_totals[fee_type] += amount
-                    charge_key = _frequency_charge_key(
-                        schedule.get(frequency_key),
-                        month,
-                        _date_value(schedule.get("authorization_effective_start")),
-                    )
-                    if charge_key is not None:
-                        scheduled_months[fee_type].add(charge_key)
-    paid_totals = {
-        fee_type: sum(
-            (_signed_amount(item.get(f"{fee_type}_paid")) or Decimal("0")
-             for item in history if item.get("deleted") is not True),
-            Decimal("0"),
-        )
-        for fee_type in ("activity", "registration", "transportation")
-    }
-    return (
-        Decimal("0"),
-        max(fee_totals["activity"] - paid_totals["activity"], Decimal("0")),
-        max(fee_totals["registration"] - paid_totals["registration"], Decimal("0")),
-        max(fee_totals["transportation"] - paid_totals["transportation"], Decimal("0")),
-    )
-
-
-def _art_earned_total(payload: dict[str, Any], attendance_days: list[dict[str, Any]]) -> Decimal:
-    schedules = payload.get("fee_schedules")
-    if not isinstance(schedules, list):
-        return Decimal("0")
-    qualifying_months_by_authorization: dict[str, set[str]] = defaultdict(set)
-    for day in attendance_days:
-        service_date = _date_value(day.get("service_date"))
-        if (
-            isinstance(day.get("authorization_id"), str)
-            and service_date
-            and day.get("classification") == "ATTENDED"
-            and day.get("payment_type") == "REGULAR"
-            and day.get("payable") is True
-            and day.get("conditional") is False
-        ):
-            qualifying_months_by_authorization[day["authorization_id"]].add(_month_key(service_date))
-    earned = Decimal("0")
-    for schedule in schedules:
-        if not isinstance(schedule, dict):
-            continue
-        if not _authorization_is_authorized(schedule):
-            continue
-        authorization_id = schedule.get("authorization_id")
-        if not isinstance(authorization_id, str):
-            continue
-        charged_months: dict[str, set[str]] = defaultdict(set)
-        for month in sorted(qualifying_months_by_authorization.get(authorization_id, set())):
-            month_date = _date_value(f"{month}-01")
-            if not month_date:
-                continue
-            if not _authorization_month_in_scope(schedule, month_date):
-                continue
-            for fee_type, frequency_key, months_key in (
-                ("activity", "activity_frequency", "activity_months"),
-                ("registration", "registration_frequency", "registration_months"),
-                ("transportation", "transportation_frequency", "transportation_months"),
-            ):
-                amount = _art_fee_amount(schedule, fee_type)
-                if amount is None or not _month_allowed(schedule.get(months_key), month_date):
-                    continue
-                if _frequency_applies(
-                    schedule.get(frequency_key),
-                    month,
-                    charged_months[fee_type],
-                    _date_value(schedule.get("authorization_effective_start")),
-                ):
-                    earned += amount
-                    charge_key = _frequency_charge_key(
-                        schedule.get(frequency_key),
-                        month,
-                        _date_value(schedule.get("authorization_effective_start")),
-                    )
-                    if charge_key is not None:
-                        charged_months[fee_type].add(charge_key)
-    return earned
-
-
 def _vacant_slot_fee_totals(payload: dict[str, Any]) -> tuple[Decimal, list[dict[str, Any]]]:
     schedules = payload.get("vacant_slot_schedules")
     period = payload.get("service_period")
@@ -472,197 +276,58 @@ def _vacant_slot_fee_totals(payload: dict[str, Any]) -> tuple[Decimal, list[dict
     return total, rows
 
 
-def _copay_total(payload: dict[str, Any], attendance_days: list[dict[str, Any]]) -> tuple[Decimal, set[str]]:
-    copays = payload.get("authorization_copays")
-    if not isinstance(copays, list):
-        return Decimal("0"), set()
-    total = Decimal("0")
-    missing_authorizations: set[str] = set()
-    for day in attendance_days:
-        if day.get("payable") is not True or day.get("category") != "REGULAR":
-            continue
-        authorization_id = day.get("authorization_id")
-        service_date = _date_value(day.get("service_date"))
-        if not isinstance(authorization_id, str) or not service_date:
-            continue
-        matching = []
-        for copay in copays:
-            if not isinstance(copay, dict) or copay.get("authorization_id") != authorization_id:
-                continue
-            start = _date_value(copay.get("effective_start"))
-            end = _date_value(copay.get("effective_end")) if copay.get("effective_end") else None
-            if start and start <= service_date and (not end or end >= service_date):
-                matching.append(copay)
-        if len(matching) > 1:
-            raise ValueError("ambiguous_authorization_copay")
-        if not matching:
-            missing_authorizations.add(authorization_id)
-            continue
-        total += _hours(matching[0].get("amount")) or Decimal("0")
-    return total, missing_authorizations
+def _resolve_rate(
+    rates: dict[tuple[str, str, str], Decimal],
+    authorization_id: str,
+    paid_tier: str,
+    rate_type_code: str | None,
+) -> Decimal | None:
+    """Joins a schedule day to its fiscal rate by (authorization_id,
+    paid_tier, rate_type_code) - the day's own scheduled rate type
+    (regular/overnight/weekend/etc) matched against the fiscal rate row's
+    own rate type, care unit (already encoded in paid_tier), and age group
+    (already filtered upstream before a rate row ever reaches here). An
+    authorization's schedule days can each carry a different rate type
+    across one period, so this is a real per-day join, not a per-
+    authorization constant - shared by both the exclusion check and the
+    category/composition amount calculation so they never disagree.
+    """
+    key_rate_type = str(rate_type_code or "")
+    rate = rates.get((authorization_id, paid_tier, key_rate_type))
+    if rate is not None:
+        return rate
+    return rates.get((authorization_id, "NO_PAYMENT", key_rate_type))
 
 
-def _build_payment_summary_view(
-    attendance_days: list[dict[str, Any]],
-    rates: dict[tuple[str, str], Decimal],
+def _render_summary_view(
+    categories: dict[str, dict[str, Any]],
+    counties: dict[str, dict[str, Any]],
+    county_composition: dict[str, dict[str, Any]],
+    children: dict[str, dict[str, Any]],
+    actions: dict[str, dict[str, Any]],
     vacant_slot_days: list[dict[str, Any]],
     gross_total: Decimal,
     net_total: Decimal,
-    copay: Decimal,
     conditional_total: Decimal,
     excluded_days: int,
+    distinct_children_served: set[str],
+    paid_days: int,
+    forecasted_total: Decimal = Decimal("0"),
+    at_risk_total: Decimal | None = None,
 ) -> dict[str, Any]:
-    category_labels = {
-        "REGULAR": "Regular care",
-        "HOLIDAY": "Holiday",
-        "ABSENCE": "Paid absence",
-        "ENROLLMENT": "Enrollment absence",
-        "DROP_IN": "Drop-in",
-        "FORECAST": "Scheduled forecast",
-    }
-    categories: dict[str, dict[str, Any]] = {}
-    counties: dict[str, dict[str, Any]] = {}
-    county_composition: dict[str, dict[str, Any]] = {}
-    children: dict[str, dict[str, Any]] = {}
-    actions: dict[str, dict[str, Any]] = {}
-
-    def bucket(store: dict[str, dict[str, Any]], key: str, label: str) -> dict[str, Any]:
-        return store.setdefault(key, {
-            "label": label,
-            "days": 0,
-            "hours": Decimal("0"),
-            "amount": Decimal("0"),
-            "conditional_amount": Decimal("0"),
-            "excluded_days": 0,
-            # Tracked so the per-child rollup can show which authorization(s)
-            # a child's days rolled up from - a child name alone does not
-            # uniquely identify a child if duplicate names exist.
-            "authorization_names": set(),
-        })
-
-    def composition_bucket(county_key: str, county_label: str) -> dict[str, Any]:
-        # Absence and paid_holidays additionally track "days" (not just
-        # hours), because the county-composition table displays day counts
-        # for those two categories instead of hours per the column redesign.
-        county = county_composition.setdefault(county_key, {
-            "county": county_label,
-            "children_served": set(),
-            "care": {"hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
-            "absence": {"days": 0, "hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
-            "drop_in": {"hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
-            "vacant_slots": {"days": 0, "amount": Decimal("0")},
-            "paid_holidays": {"days": 0, "hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
-        })
-        if county["county"] == "Unavailable from the current source" and county_label != county["county"]:
-            county["county"] = county_label
-        return county
-
-    def add_attendance_component(
-        county: dict[str, Any],
-        component: str,
-        hours: Decimal,
-        amount: Decimal,
-        conditional: bool,
-    ) -> None:
-        if component not in county:
-            return
-        item = county[component]
-        if "days" in item:
-            item["days"] += 1
-        item["hours"] += hours
-        item["amount"] += amount
-        item["conditional_amount" if conditional else "confirmed_amount"] += amount
-
-    def add_action(action_id: str, label: str, reason: str, impact: Decimal, priority: str = "medium") -> None:
-        current = actions.get(action_id)
-        if current is None:
-            actions[action_id] = {
-                "action_id": action_id,
-                "label": label,
-                "reason": reason,
-                "priority": priority,
-                "amount_at_risk": impact,
-                "days": 1,
-            }
-        else:
-            current["amount_at_risk"] += impact
-            current["days"] += 1
-
-    for day in attendance_days:
-        if (
-            day.get("classification") == "CARE_NOT_OFFERED"
-            and (_hours(day.get("authorized_hours")) or Decimal("0")) == 0
-            and (_hours(day.get("unit_hours")) or Decimal("0")) == 0
-            and day.get("payable") is False
-        ):
-            continue
-        payment_type = str(day.get("category") or day.get("payment_type") or "NONE")
-        label = category_labels.get(payment_type, "Not paid")
-        paid_tier = day.get("paid_tier")
-        rate = rates.get((str(day.get("authorization_id")), str(paid_tier)))
-        if rate is None:
-            rate = rates.get((str(day.get("authorization_id")), "NO_PAYMENT"))
-        hours = _hours(day.get("unit_hours")) or Decimal("0")
-        amount = rate * hours if rate is not None else Decimal("0")
-        is_risk = day.get("conditional") is True or any(
-            flag in day.get("flags", [])
-            for flag in ("DROP_IN_LIMIT_EXCEEDED", "ABSENCE_LIMIT_EXCEEDED", "FISCAL_RATE_UNAVAILABLE")
-        )
-        county_key = str(day.get("county_id") or "UNKNOWN")
-        county_label = day.get("county_name") or "Unavailable from the current source"
-        child_key = str(day.get("child_name") or day.get("authorization_id") or "UNKNOWN")
-        child_label = day.get("child_name") or "Unavailable from the current source"
-        component = {
-            "REGULAR": "care",
-            "ABSENCE": "absence",
-            "ENROLLMENT": "absence",
-            "DROP_IN": "drop_in",
-            "HOLIDAY": "paid_holidays",
-        }.get(payment_type)
-        if component:
-            county = composition_bucket(county_key, str(county_label))
-            add_attendance_component(county, component, hours, amount, bool(day.get("conditional")))
-            if child_key != "UNKNOWN":
-                county["children_served"].add(child_key)
-        for store, key, item_label in (
-            (categories, payment_type, label),
-            (counties, county_key, county_label),
-            (children, child_key, child_label),
-        ):
-            item = bucket(store, key, item_label)
-            item["days"] += 1
-            authorization_name = day.get("authorization_name")
-            if isinstance(authorization_name, str) and authorization_name:
-                item["authorization_names"].add(authorization_name)
-            if day.get("payable") is True and not day.get("payment_excluded") and rate is not None:
-                # "Hours" now only counts hours tied to money actually paid or
-                # at-risk (matching the amount/conditional_amount gate below) -
-                # previously it summed every iterated day's hours including
-                # excluded ones, overstating the hours behind the shown total.
-                item["hours"] += hours
-                if is_risk:
-                    item["conditional_amount"] += amount
-                else:
-                    item["amount"] += amount
-            elif day.get("classification") not in {"NO_CARE", "CARE_NOT_OFFERED"}:
-                item["excluded_days"] += 1
-
-        if "FISCAL_RATE_UNAVAILABLE" in day.get("flags", []):
-            add_action("missing-fiscal-rate", "Review unmatched fiscal rates", "A payable day has no matching fiscal rate.", amount, "high")
-        if "ABSENCE_LIMIT_EXCEEDED" in day.get("flags", []):
-            add_action("review-absence-limit", "Review absence-limit days", "An absence exceeded the available county allowance.", amount, "high")
-        if "DROP_IN_LIMIT_EXCEEDED" in day.get("flags", []):
-            add_action("review-drop-in-limit", "Review drop-in-limit days", "A drop-in day exceeded the available allowance.", amount, "high")
-        if "PARENT_CONFIRMATION_PENDING" in day.get("flags", []):
-            add_action("confirm-pending-attendance", "Review pending confirmations", "Confirmation is still pending and may affect the payable amount.", amount, "high")
-        if "HOLIDAY_NOT_IN_COUNTY_PLAN" in day.get("flags", []):
-            add_action("review-holiday-plan", "Review the county holiday plan", "The date was not found in the active county holiday plan.", amount, "medium")
-
-    for vacant_slot in vacant_slot_days:
-        county_key = str(vacant_slot.get("county_id") or "UNKNOWN")
-        county = composition_bucket(county_key, str(vacant_slot.get("county_name") or "Unavailable from the current source"))
-        county["vacant_slots"]["days"] += 1
-        county["vacant_slots"]["amount"] += _hours(vacant_slot.get("amount")) or Decimal("0")
+    # Single-pass consolidation (2026-09-15): this function used to iterate
+    # attendance_days itself (a second/third full pass, after the main
+    # financial loop and the summary_groups loop had already each iterated
+    # it once) and independently re-derive its own per-day risk/rate state.
+    # That duplication was the confirmed root cause of a real cross-table
+    # amount mismatch (category/composition tables disagreeing with the
+    # headline totals - see 2026-09-15 memory). categories/counties/
+    # county_composition/children/actions are now accumulated exactly once,
+    # inline in evaluate_provider_risk_and_payment's own single per-day loop,
+    # and this function only renders the already-built dicts - it performs
+    # no attendance-day classification of its own.
+    if at_risk_total is None:
+        at_risk_total = conditional_total
 
     def render_bucket(item: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -672,17 +337,20 @@ def _build_payment_summary_view(
             "amount": _money(item["amount"]),
             "conditional_amount": _money(item["conditional_amount"]),
             "excluded_days": item["excluded_days"],
+            "excluded_reasons": sorted(item.get("excluded_reasons", set())),
             "authorization_names": sorted(item.get("authorization_names", set())),
+            "children_served": len(item.get("children_served", set())),
         }
 
     def render_composition(item: dict[str, Any]) -> dict[str, Any]:
         rendered: dict[str, Any] = {"county": item["county"], "children_served": len(item.get("children_served", set()))}
-        for component in ("care", "absence", "drop_in", "paid_holidays"):
+        for component in ("care", "absence", "enrollment_absence", "drop_in", "paid_holidays"):
             source = item[component]
+            conditional_amount = source["conditional_amount"]
             rendered[component] = {
                 **({"days": source["days"]} if "days" in source else {}),
                 "hours": _money(source["hours"]),
-                "amount": _money(source["amount"]),
+                "amount": _money(source["amount"] - conditional_amount),
                 "confirmed_amount": _money(source["confirmed_amount"]),
                 "conditional_amount": _money(source["conditional_amount"]),
             }
@@ -691,22 +359,42 @@ def _build_payment_summary_view(
             "days": vacant_slots["days"],
             "amount": _money(vacant_slots["amount"]),
         }
+        rendered["attendance_based_amount"] = _money(item["attendance_based_amount"])
+        rendered["authorized_based_amount"] = _money(item["authorized_based_amount"])
+        component_at_risk = sum(
+            item[component]["conditional_amount"]
+            for component in ("care", "absence", "enrollment_absence", "drop_in", "paid_holidays")
+        )
+        rendered["amount_at_risk"] = _money(component_at_risk)
         rendered["potential_total"] = _money(
             sum(
                 _hours(rendered[component]["amount"]) or Decimal("0")
-                for component in ("care", "absence", "drop_in", "paid_holidays")
-            ) + (_hours(rendered["vacant_slots"]["amount"]) or Decimal("0")),
+                for component in ("care", "absence", "enrollment_absence", "drop_in", "paid_holidays")
+            )
+            + component_at_risk
+            + (_hours(rendered["vacant_slots"]["amount"]) or Decimal("0")),
         )
+        rendered["estimated_total"] = rendered["potential_total"]
         return rendered
 
     return {
         "overview": {
             "gross_amount": _money(gross_total),
             "net_amount": _money(net_total),
-            "parent_copay": _money(copay),
             "amount_at_risk": _money(conditional_total),
+            "children_served": len(distinct_children_served),
+            "base_amount": _money(net_total),
+            "scheduled_forecast_amount": _money(forecasted_total),
+            "potential_total": _money(net_total + forecasted_total + at_risk_total + sum(
+                (_signed_amount(slot.get("amount")) or Decimal("0"))
+                for slot in vacant_slot_days
+            )),
+            "estimated_total": _money(net_total + forecasted_total + at_risk_total + sum(
+                (_signed_amount(slot.get("amount")) or Decimal("0"))
+                for slot in vacant_slot_days
+            )),
             "excluded_days": excluded_days,
-            "paid_days": sum(1 for day in attendance_days if day.get("payable") is True and not day.get("payment_excluded")),
+            "paid_days": paid_days,
             "review_items": len(actions),
         },
         "categories": [render_bucket(item) for item in sorted(categories.values(), key=lambda value: value["label"])],
@@ -857,7 +545,12 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
         county_id = authorization.get("county_id")
         flags: list[str] = []
         occupied_slot_contract = attendance_day.get("occupied_slot_contract") is True
-        scheduled_forecast = attendance_day.get("forecast_basis") == "SCHEDULED"
+        as_of_date = _date_value(payload.get("as_of_date"))
+        scheduled_forecast = (
+            attendance_day.get("forecast_basis") == "SCHEDULED"
+            and as_of_date is not None
+            and service_date > as_of_date
+        )
         unit_hours = Decimal("0")
         payment_type = "NONE"
         # Classification-time holiday check: match against THIS authorization's
@@ -880,7 +573,6 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
             attendance_day.get("holiday_date"),
             attendance_day.get("observed_holiday_date"),
         )
-        as_of_date = _date_value(payload.get("as_of_date"))
         if scheduled_forecast:
             classification = "SCHEDULED_FORECAST"
             payable = True
@@ -917,6 +609,14 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
                 payable = False
                 paid_tier = _tier_for_hours(attended_hours)
                 unit_hours = attended_hours
+                # Must still carry the real category (not the "NONE"/"Not
+                # paid" default) so this at-risk amount lands in the
+                # "Drop-ins" row/component instead of silently disappearing
+                # from the category and county-composition tables (it was
+                # still counted in the headline at_risk_total, just invisible
+                # in the breakdown tables - the exact cross-table mismatch
+                # this fix addresses).
+                payment_type = "DROP_IN"
                 flags.append("DROP_IN_LIMIT_EXCEEDED")
             else:
                 payable = True
@@ -983,7 +683,7 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
             info_code = "4"
             flags.append("AS_OF_DATE_UNAVAILABLE")
         elif (as_of_date - service_date).days < CONFIRMATION_WINDOW_DAYS:
-            # Not a holiday, attended_hours == 0, still within the 5-day
+            # Not a holiday, attended_hours == 0, still within the 9-day
             # confirmation window - too soon to resolve as Absence. The
             # existing parent_confirmation field already distinguishes the
             # two real-world cases here: "PENDING" means a check-in/check-out
@@ -998,8 +698,19 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
             else:
                 classification = "INCOMPLETE_ATTENDANCE_RECORD"
                 flags.append("MISSING_ATTENDANCE_TRANSACTION")
-            payable = False
-            paid_tier = None
+            # Keep unresolved days eligible for pricing, but conditional, so
+            # their scheduled value can contribute to risk without entering
+            # the base payable total. Must carry a real category ("REGULAR" -
+            # this is unconfirmed attended care, not an absence) instead of
+            # the "NONE"/"Not paid" default: same reasoning as the
+            # DROP_IN_LIMIT_EXCEEDED/ABSENCE_LIMIT_EXCEEDED fixes above - an
+            # uncategorized amount is invisible in the category and county-
+            # composition tables even though it is already counted in the
+            # headline amount_at_risk total, producing a cross-table mismatch.
+            payable = True
+            paid_tier = _tier_for_hours(authorized_hours)
+            unit_hours = authorized_hours
+            payment_type = "REGULAR"
             info_code = "PENDING"
             conditional = True
         else:
@@ -1034,6 +745,13 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
             else:
                 payable = False
                 unit_hours = authorized_hours
+                # Same reasoning as DROP_IN_LIMIT_EXCEEDED above: carry the
+                # real category so this at-risk amount surfaces under "Paid
+                # absence" in the category/composition tables instead of
+                # falling into the "NONE"/"Not paid" bucket, which is
+                # invisible in both breakdown tables even though it is
+                # already counted in the headline amount_at_risk total.
+                payment_type = "ABSENCE"
                 flags.append("ABSENCE_LIMIT_EXCEEDED")
             info_code = "13" if classification == "ENROLLMENT_ABSENCE" else "4"
 
@@ -1054,7 +772,7 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
         # and DROP_IN, which genuinely depend on a real-time confirmed
         # attendance record. `conditional` is already set directly above for
         # PENDING_CONFIRMATION/INCOMPLETE_ATTENDANCE_RECORD.
-        if classification in {"SCHEDULED_FORECAST", "ATTENDED", "DROP_IN"}:
+        if classification in {"ATTENDED", "DROP_IN"}:
             confirmation = attendance_day.get("parent_confirmation")
             conditional = confirmation == "PENDING"
             if conditional:
@@ -1063,8 +781,21 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
                 classification = "BLOCKED"
                 payable = False
                 flags.append("PARENT_CONFIRMATION_UNAVAILABLE")
+        elif classification == "SCHEDULED_FORECAST":
+            # A future authorized schedule is a forecast, not a payment risk.
+            # There is no attendance confirmation to resolve until the service
+            # date occurs, so parent confirmation must not move it into risk.
+            conditional = False
         else:
             conditional = classification in {"PENDING_CONFIRMATION", "INCOMPLETE_ATTENDANCE_RECORD"}
+
+        # Keep actual attendance hours for reporting, but value unresolved
+        # confirmations against the authorized scheduled hours for risk.
+        risk_hours = authorized_hours if conditional and classification in {
+            "ATTENDED",
+            "PENDING_CONFIRMATION",
+            "INCOMPLETE_ATTENDANCE_RECORD",
+        } else unit_hours
 
         county = county_counts[str(county_id)]
         if conditional:
@@ -1094,9 +825,11 @@ def evaluate_attendance(payload: dict[str, Any]) -> dict[str, Any]:
             # this engine's exclusion logic themselves.
             "payment_excluded": False,
             "unit_hours": _money(unit_hours),
+            "risk_hours": _money(risk_hours),
             "category": category,
             "payment_type": category if category == "REGULAR" and classification == "ATTENDED" else payment_class,
             "info_code": info_code,
+            **({"rate_type_code": attendance_day["rate_type_code"]} if isinstance(attendance_day.get("rate_type_code"), str) else {}),
             "occupied_slot_contract": occupied_slot_contract,
             "slot_contract_present": attendance_day.get("slot_contract_present") is True,
             "conditional": conditional,
@@ -1167,36 +900,50 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         ),
         None,
     )
-    rates: dict[tuple[str, str], Decimal] = {}
+    # The unique join between a schedule day and its fiscal rate is the
+    # day's own rate type (regular/overnight/weekend/etc) + age group +
+    # care unit (care unit is already what paid_tier encodes, derived from
+    # finalized/calculated hours) - matched against the fiscal rate row's
+    # own rate type + age group + care unit. An authorization's schedule
+    # days can each be scheduled under a DIFFERENT rate type across one
+    # service period (live-confirmed: one authorization's 7 days in a
+    # week used 5 different rate types), so fiscal_rates can legitimately
+    # contain several rows for the same (authorization_id, paid_tier) -
+    # one per rate type. Age group is already filtered upstream (TS layer)
+    # to the authorization's list of acceptable codes, not narrowed to a
+    # single exact value - two rows can still legitimately share
+    # (authorization_id, paid_tier, rate_type_code) while differing only
+    # in age_group_code. That is a genuine remaining data-quality/
+    # precision gap, not grounds to hard-block the entire computation:
+    # deterministically keep the first candidate seen (stable since
+    # fiscal_rates ordering is stable) rather than crash the whole
+    # request over an upstream age-group ambiguity, consistent with the
+    # "one ambiguous/bad row never kills the whole batch" resilience
+    # pattern applied elsewhere in this pipeline.
+    rates: dict[tuple[str, str, str], Decimal] = {}
     for rate in payload["fiscal_rates"]:
         if not isinstance(rate, dict):
             return _blocked(["fiscal_rate_record"], attendance)
         authorization_id = rate.get("authorization_id")
         paid_tier = rate.get("paid_tier")
         amount = _hours(rate.get("amount"))
+        rate_type_code = str(rate.get("rate_type_code") or "")
         if not isinstance(authorization_id, str) or not isinstance(paid_tier, str) or amount is None:
             return _blocked(["fiscal_rate_record"], attendance)
-        rate_key = (authorization_id, paid_tier)
+        rate_key = (authorization_id, paid_tier, rate_type_code)
         if rate_key in rates:
-            return _blocked(["ambiguous_fiscal_rate"], attendance)
+            continue
         rates[rate_key] = Decimal("0") if paid_tier == "NO_PAYMENT" else amount
+
     excluded_authorizations: set[str] = set()
+    unavailable_rate_days: set[tuple[str, str]] = set()
     for day in attendance["days"]:
         if not day["payable"]:
             continue
         authorization_id = day["authorization_id"]
-        if (
-            (authorization_id, day["paid_tier"]) not in rates
-            and (authorization_id, "NO_PAYMENT") not in rates
-        ):
+        if _resolve_rate(rates, authorization_id, day["paid_tier"], day.get("rate_type_code")) is None:
             excluded_authorizations.add(authorization_id)
-    copay, missing_copay_authorizations = _copay_total(payload, attendance["days"])
-    if missing_copay_authorizations:
-        for day in attendance["days"]:
-            if day.get("authorization_id") in missing_copay_authorizations:
-                day["payable"] = False
-                day["payment_excluded"] = True
-                day["flags"] = sorted({*day["flags"], "COPAY_UNAVAILABLE"})
+            unavailable_rate_days.add((authorization_id, str(day.get("service_date"))))
     total = Decimal("0")
     conditional_total = Decimal("0")
     # Expected/Forecasted/At-risk is an additive breakdown alongside the
@@ -1213,6 +960,102 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
     child_payment_impact: dict[str, Decimal] = defaultdict(Decimal)
     # Total matched payment by child, including non-risk days.
     child_payment_total: dict[str, Decimal] = defaultdict(Decimal)
+
+    # Single-pass consolidation (2026-09-15): categories/counties/
+    # county_composition/children/actions/summary_groups/distinct_children_served/
+    # paid_days used to be built by THREE separate full passes over
+    # attendance["days"] (this financial loop, a dedicated summary_groups loop,
+    # and _build_payment_summary_view's own loop) - each independently
+    # re-deriving per-day rate/hours/risk state. That duplication was the
+    # confirmed root cause of a real cross-table amount mismatch (category/
+    # composition tables disagreeing with the headline totals). Folded into
+    # this single loop so every downstream table is built from exactly the
+    # same per-day computation, once - see _render_summary_view below.
+    category_labels = {
+        "REGULAR": "Regular care",
+        "HOLIDAY": "Holiday",
+        "ABSENCE": "Paid absence",
+        "ENROLLMENT": "Enrollment absence",
+        "DROP_IN": "Drop-in",
+        "FORECAST": "Scheduled forecast",
+    }
+    categories: dict[str, dict[str, Any]] = {}
+    counties: dict[str, dict[str, Any]] = {}
+    county_composition: dict[str, dict[str, Any]] = {}
+    children: dict[str, dict[str, Any]] = {}
+    actions: dict[str, dict[str, Any]] = {}
+    summary_groups: dict[tuple[str, str, str], dict[str, Any]] = {}
+    distinct_children_served: set[str] = set()
+    paid_days = 0
+
+    def bucket(store: dict[str, dict[str, Any]], key: str, label: str) -> dict[str, Any]:
+        return store.setdefault(key, {
+            "label": label,
+            "days": 0,
+            "hours": Decimal("0"),
+            "amount": Decimal("0"),
+            "conditional_amount": Decimal("0"),
+            "excluded_days": 0,
+            "excluded_reasons": set(),
+            "children_served": set(),
+            # Tracked so the per-child rollup can show which authorization(s)
+            # a child's days rolled up from - a child name alone does not
+            # uniquely identify a child if duplicate names exist.
+            "authorization_names": set(),
+        })
+
+    def composition_bucket(county_key: str, county_label: str) -> dict[str, Any]:
+        # Absence and paid_holidays additionally track "days" (not just
+        # hours), because the county-composition table displays day counts
+        # for those two categories instead of hours per the column redesign.
+        county = county_composition.setdefault(county_key, {
+            "county": county_label,
+            "children_served": set(),
+            "attendance_based_amount": Decimal("0"),
+            "authorized_based_amount": Decimal("0"),
+            "amount_at_risk": Decimal("0"),
+            "care": {"hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
+            "absence": {"days": 0, "hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
+            "enrollment_absence": {"days": 0, "hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
+            "drop_in": {"hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
+            "vacant_slots": {"days": 0, "amount": Decimal("0")},
+            "paid_holidays": {"days": 0, "hours": Decimal("0"), "amount": Decimal("0"), "confirmed_amount": Decimal("0"), "conditional_amount": Decimal("0")},
+        })
+        if county["county"] == "Unavailable from the current source" and county_label != county["county"]:
+            county["county"] = county_label
+        return county
+
+    def add_attendance_component(
+        county: dict[str, Any],
+        component: str,
+        hours: Decimal,
+        amount: Decimal,
+        conditional: bool,
+    ) -> None:
+        if component not in county:
+            return
+        item = county[component]
+        if "days" in item:
+            item["days"] += 1
+        item["hours"] += hours
+        item["amount"] += amount
+        item["conditional_amount" if conditional else "confirmed_amount"] += amount
+
+    def add_action(action_id: str, label: str, reason: str, impact: Decimal, priority: str = "medium") -> None:
+        current = actions.get(action_id)
+        if current is None:
+            actions[action_id] = {
+                "action_id": action_id,
+                "label": label,
+                "reason": reason,
+                "priority": priority,
+                "amount_at_risk": impact,
+                "days": 1,
+            }
+        else:
+            current["amount_at_risk"] += impact
+            current["days"] += 1
+
     for day in attendance["days"]:
         if (
             day.get("classification") == "CARE_NOT_OFFERED"
@@ -1221,35 +1064,35 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             and day.get("payable") is False
         ):
             continue
-        rate = rates.get((day["authorization_id"], day["paid_tier"]))
-        if rate is None:
-            rate = rates.get((day["authorization_id"], "NO_PAYMENT"))
+        # Same per-day rate/rate-type join reused everywhere below (headline
+        # totals, category/composition rendering, and summary grouping) - a
+        # single resolution per day, not three independent ones.
+        rate = _resolve_rate(rates, day["authorization_id"], day["paid_tier"], day.get("rate_type_code"))
         unit_hours = _hours(day.get("unit_hours")) or Decimal("0")
         risk_day = day["conditional"] or any(
             flag in day["flags"]
-            for flag in ("DROP_IN_LIMIT_EXCEEDED", "ABSENCE_LIMIT_EXCEEDED")
+            for flag in ("DROP_IN_LIMIT_EXCEEDED", "ABSENCE_LIMIT_EXCEEDED", "FISCAL_RATE_UNAVAILABLE")
         )
+        risk_hours = _hours(day.get("risk_hours")) or unit_hours
+        amount_hours = risk_hours if risk_day else unit_hours
         if (
             isinstance(day.get("child_name"), str)
             and rate is not None
             and risk_day
         ):
-            child_payment_impact[day["child_name"]] += rate * unit_hours
+            child_payment_impact[day["child_name"]] += rate * amount_hours
         if isinstance(day.get("child_name"), str) and rate is not None:
-            child_payment_total[day["child_name"]] += rate * unit_hours
+            child_payment_total[day["child_name"]] += rate * amount_hours
+        if day.get("child_name"):
+            distinct_children_served.add(str(day.get("child_name")))
         if rate is not None and risk_day:
-            conditional_total += rate * unit_hours
+            conditional_total += rate * amount_hours
 
-        # Expected = confirmation window elapsed (optimistic: elapsed alone is
-        # enough, regardless of source parent_confirmation status), unless the
-        # day is excluded or limit-exceeded. Forecasted = still within the
-        # window or a future scheduled date. At-risk = excluded (unmatched
-        # rate/authorization) or limit-exceeded (absence/drop-in), which
-        # folds in what would otherwise be a separate "probable" bucket.
-        service_date_value = _date_value(day.get("service_date"))
+        # Base/estimated payable is every resolved attendance, absence, or
+        # drop-in amount, including resolved rows still inside the window.
+        # Scheduled forecast is future authorized schedule only. At-risk is
+        # unresolved, excluded, over-limit, or unmatched-rate payment only.
         is_future_day = day.get("forecast_basis") == "SCHEDULED"
-        days_elapsed = (as_of_date - service_date_value).days if service_date_value else 0
-        within_window = (not is_future_day) and days_elapsed < CONFIRMATION_WINDOW_DAYS
         limit_exceeded = any(
             flag in day.get("flags", [])
             for flag in ("DROP_IN_LIMIT_EXCEEDED", "ABSENCE_LIMIT_EXCEEDED")
@@ -1259,8 +1102,9 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         # "excluded" (that label is reserved for a window that has actually
         # closed unconfirmed, or a definitively over-limit/unmatched day).
         still_pending = day.get("classification") in {"PENDING_CONFIRMATION", "INCOMPLETE_ATTENDANCE_RECORD"}
-        will_be_excluded = (not day["payable"] and not still_pending) or day["authorization_id"] in excluded_authorizations
-        classified_amount = (rate * unit_hours) if rate is not None else Decimal("0")
+        rate_unavailable = (day["authorization_id"], str(day.get("service_date"))) in unavailable_rate_days
+        will_be_excluded = (not day["payable"] and not still_pending) or rate_unavailable
+        classified_amount = (rate * amount_hours) if rate is not None else Decimal("0")
         if day.get("payment_type") == "GUARANTEED":
             guaranteed_total += classified_amount
         expected_holiday = day.get("service_date") in {str(value)[:10] for value in payload.get("holiday_dates", []) if isinstance(value, str)}
@@ -1269,9 +1113,9 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             mismatch_amount = classified_amount
             holiday_classification_mismatches.append({**day, "amount_incorrectly_at_risk": _money(mismatch_amount), "risk_code": "HOLIDAY_CLASSIFICATION_MISMATCH"})
             total_amount_incorrectly_at_risk += mismatch_amount
-        if will_be_excluded:
+        if will_be_excluded or still_pending or risk_day:
             amount_class = "AT_RISK"
-        elif is_future_day or within_window:
+        elif is_future_day:
             amount_class = "FORECASTED"
         elif limit_exceeded:
             amount_class = "AT_RISK"
@@ -1285,96 +1129,162 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         else:
             at_risk_total += classified_amount
 
+        # Resolve payment_excluded/excluded_days/total via if/elif/else
+        # instead of the early `continue` this used to have - the category/
+        # composition/summary-group accumulation further below needs
+        # day["payment_excluded"] already finalized for THIS day, in this
+        # same iteration, which an early continue would have skipped past.
         if still_pending:
-            # Not yet resolved - never counted as paid or excluded while the
-            # confirmation window remains open.
-            continue
-        if not day["payable"] or day["authorization_id"] in excluded_authorizations:
+            pass  # Not yet resolved - never counted as paid or excluded while the confirmation window remains open.
+        elif not day["payable"] or rate_unavailable:
             excluded_days += 1
             day["payment_excluded"] = True
-            if day["authorization_id"] in excluded_authorizations:
+            if rate_unavailable:
                 day["flags"] = sorted({*day["flags"], "FISCAL_RATE_UNAVAILABLE"})
-            continue
-        rate = rates.get((day["authorization_id"], day["paid_tier"]))
-        if rate is None:
-            rate = rates.get((day["authorization_id"], "NO_PAYMENT"))
-        if rate is None:
-            excluded_days += 1
-            day["payment_excluded"] = True
-            continue
-        unit_hours = _hours(day.get("unit_hours")) or Decimal("0")
-        if risk_day:
-            continue
-        total += rate * unit_hours
-    slot_fee, activity_fee, registration_fee, transportation_fee = _scheduled_fee_totals(
-        payload,
-        attendance["days"],
-    )
-    art_earned = _art_earned_total(payload, attendance["days"])
-    vacant_slot_fee, vacant_slot_days = _vacant_slot_fee_totals(payload)
-    # Vacant slots have no parent/child confirmation concept, so the
-    # Expected/Forecasted split is purely date-based: past the confirmation
-    # window is Expected, future or still within the window is Forecasted.
-    for slot_day in vacant_slot_days:
-        slot_date_value = _date_value(slot_day.get("service_date"))
-        slot_amount = _signed_amount(slot_day.get("amount")) or Decimal("0")
-        if slot_date_value:
-            slot_days_elapsed = (as_of_date - slot_date_value).days
-            slot_within_window = slot_date_value > as_of_date or slot_days_elapsed < CONFIRMATION_WINDOW_DAYS
         else:
-            slot_within_window = True
-        if slot_within_window:
-            slot_day["amount_class"] = "FORECASTED"
-            forecasted_total += slot_amount
-        else:
-            slot_day["amount_class"] = "EXPECTED"
-            expected_total += slot_amount
-    if missing_copay_authorizations:
-        copay = Decimal("0")
-    scheduled_fees = vacant_slot_fee + activity_fee + registration_fee + transportation_fee
-    gross_total = total + scheduled_fees
-    net_total = max(gross_total - copay, Decimal("0"))
-    payment_status = "CONDITIONAL" if conditional_total else "EXPECTED"
-    if missing_copay_authorizations:
-        payment_status = "BLOCKED"
-    elif duplicate:
-        payment_status = "SUBMITTED"
-    summary_groups: dict[tuple[str, str, str], dict[str, Any]] = {}
-    for day in attendance["days"]:
-        if (
-            not day["payable"]
-            or day.get("payment_excluded")
+            recheck_rate = _resolve_rate(rates, day["authorization_id"], day["paid_tier"], day.get("rate_type_code"))
+            if recheck_rate is None:
+                excluded_days += 1
+                day["payment_excluded"] = True
+            elif amount_class == "EXPECTED":
+                total += recheck_rate * unit_hours
+
+        # ---- summary_groups accumulation (replaces the old separate loop) ----
+        if day["payable"] and not day.get("payment_excluded"):
+            paid_days += 1
+            group_rate = _resolve_rate(rates, day["authorization_id"], day["paid_tier"], day.get("rate_type_code"))
+            if group_rate is not None:
+                county_id = day.get("county_id", "")
+                paid_tier = day.get("paid_tier") or "NO_PAYMENT"
+                basis = "SCHEDULED" if day.get("forecast_basis") == "SCHEDULED" else "ACTUAL"
+                group_key = (county_id, paid_tier, basis)
+                group = summary_groups.setdefault(group_key, {"county_id": county_id, "county_name": day.get("county_name"), "rates": set(), "paid_tier": paid_tier, "basis": basis, "children_served": set(), "hours": Decimal("0"), "amount": Decimal("0"), "conditional_amount": Decimal("0")})
+                group["rates"].add(_money(group_rate))
+                group_hours = _hours(day.get("unit_hours")) or Decimal("0")
+                group_amount = group_rate * group_hours
+                group["children_served"].add(day.get("child_name") or day["authorization_id"])
+                group["hours"] += group_hours
+                if day["conditional"]:
+                    group["conditional_amount"] += group_amount
+                else:
+                    group["amount"] += group_amount
+
+        # ---- category/county/child/composition accumulation (replaces the
+        # old separate _build_payment_summary_view pass) ----
+        payment_type = str(day.get("category") or day.get("payment_type") or "NONE")
+        label = category_labels.get(payment_type, "Not paid")
+        is_risk = amount_class == "AT_RISK"
+        # amount_hours/classified_amount above already reflect the risk_hours
+        # override for a risk day - reused directly instead of recomputing.
+        summary_hours = amount_hours
+        summary_amount = classified_amount
+        county_key = str(day.get("county_id") or "UNKNOWN")
+        county_label = day.get("county_name") or "Unavailable from the current source"
+        child_key = str(day.get("child_name") or day.get("authorization_id") or "UNKNOWN")
+        child_label = day.get("child_name") or "Unavailable from the current source"
+        component = {
+            "REGULAR": "care",
+            "FORECAST": "care",
+            "ABSENCE": "absence",
+            "ENROLLMENT": "absence",
+            "DROP_IN": "drop_in",
+            "HOLIDAY": "paid_holidays",
+        }.get(payment_type)
+        if payment_type == "ENROLLMENT":
+            component = "enrollment_absence"
+        county = composition_bucket(county_key, str(county_label))
+        if component:
+            add_attendance_component(county, component, summary_hours, summary_amount, is_risk)
+        if child_key != "UNKNOWN":
+            county["children_served"].add(child_key)
+        if is_risk and rate is not None:
+            county["amount_at_risk"] += summary_amount
+        elif day.get("payable") is True and not day.get("payment_excluded") and rate is not None and payment_type in {"REGULAR", "FORECAST", "DROP_IN"}:
+            county["attendance_based_amount"] += summary_amount
+        for store, key, item_label in (
+            (categories, payment_type, label),
+            (counties, county_key, county_label),
+            (children, child_key, child_label),
         ):
-            continue
-        rate = rates.get((day["authorization_id"], day["paid_tier"]))
-        if rate is None:
-            rate = rates.get((day["authorization_id"], "NO_PAYMENT"))
-        if rate is None:
-            continue
-        county_id = day.get("county_id", "")
-        paid_tier = day.get("paid_tier") or "NO_PAYMENT"
-        basis = "SCHEDULED" if day.get("forecast_basis") == "SCHEDULED" else "ACTUAL"
-        key = (county_id, paid_tier, basis)
-        group = summary_groups.setdefault(key, {"county_id": county_id, "county_name": day.get("county_name"), "rates": set(), "paid_tier": paid_tier, "basis": basis, "children_served": set(), "hours": Decimal("0"), "amount": Decimal("0"), "conditional_amount": Decimal("0")})
-        group["rates"].add(_money(rate))
-        unit_hours = _hours(day.get("unit_hours")) or Decimal("0")
-        amount = rate * unit_hours
-        group["children_served"].add(day.get("child_name") or day["authorization_id"])
-        group["hours"] += unit_hours
-        if day["conditional"]:
-            group["conditional_amount"] += amount
-        else:
-            group["amount"] += amount
+            item = bucket(store, key, item_label)
+            item["days"] += 1
+            authorization_name = day.get("authorization_name")
+            if isinstance(authorization_name, str) and authorization_name:
+                item["authorization_names"].add(authorization_name)
+            if child_key != "UNKNOWN":
+                item["children_served"].add(child_key)
+            if is_risk and rate is not None:
+                # Risk remains part of the canonical potential total even when
+                # the source row is not currently payable. Keep it in the same
+                # category as the source day so category, county, and overview
+                # totals all expose the same amount exactly once.
+                item["hours"] += summary_hours
+                item["conditional_amount"] += summary_amount
+            elif day.get("payable") is True and not day.get("payment_excluded") and rate is not None:
+                # Hours only count money represented by this row, not excluded
+                # rows with no payable amount.
+                item["hours"] += summary_hours
+                item["amount"] += summary_amount
+            elif day.get("classification") not in {"NO_CARE", "CARE_NOT_OFFERED"}:
+                item["excluded_days"] += 1
+                for flag in day.get("flags", []):
+                    if flag in {"PARENT_CONFIRMATION_PENDING", "PARENT_CONFIRMATION_UNAVAILABLE"}:
+                        item["excluded_reasons"].add("pending confirmation")
+                    elif flag == "ABSENCE_LIMIT_EXCEEDED":
+                        item["excluded_reasons"].add("absence limit exceeded")
+                    elif flag == "DROP_IN_LIMIT_EXCEEDED":
+                        item["excluded_reasons"].add("drop-in limit exceeded")
+                    elif flag == "FISCAL_RATE_UNAVAILABLE":
+                        item["excluded_reasons"].add("fiscal rate unavailable")
+
+        if "FISCAL_RATE_UNAVAILABLE" in day.get("flags", []):
+            add_action("missing-fiscal-rate", "Review unmatched fiscal rates", "A payable day has no matching fiscal rate.", summary_amount, "high")
+        if "ABSENCE_LIMIT_EXCEEDED" in day.get("flags", []):
+            add_action("review-absence-limit", "Review absence-limit days", "An absence exceeded the available county allowance.", summary_amount, "high")
+        if "DROP_IN_LIMIT_EXCEEDED" in day.get("flags", []):
+            add_action("review-drop-in-limit", "Review drop-in-limit days", "A drop-in day exceeded the available allowance.", summary_amount, "high")
+        if "PARENT_CONFIRMATION_PENDING" in day.get("flags", []):
+            add_action("confirm-pending-attendance", "Review pending confirmations", "Confirmation is still pending and may affect the payable amount.", summary_amount, "high")
+        if "HOLIDAY_NOT_IN_COUNTY_PLAN" in day.get("flags", []):
+            add_action("review-holiday-plan", "Review the county holiday plan", "The date was not found in the active county holiday plan.", summary_amount, "medium")
+
+    vacant_slot_fee, vacant_slot_days = _vacant_slot_fee_totals(payload)
+    # Vacant slots have no parent/child confirmation concept. Keep them out of
+    # base/forecast child amounts and include them only in potential_total.
+    # (slot_within_window/slot_date_value/slot_amount were computed here in
+    # the old code but never actually used anywhere - dropped as dead code.)
+    for slot_day in vacant_slot_days:
+        slot_day["amount_class"] = "VACANT_SLOT"
+        slot_county_key = str(slot_day.get("county_id") or "UNKNOWN")
+        slot_county = composition_bucket(slot_county_key, str(slot_day.get("county_name") or "Unavailable from the current source"))
+        slot_county["vacant_slots"]["days"] += 1
+        slot_county["vacant_slots"]["amount"] += _hours(slot_day.get("amount")) or Decimal("0")
+    scheduled_fees = vacant_slot_fee
+    base_total = total
+    potential_total = base_total + forecasted_total + at_risk_total + scheduled_fees
+    estimated_total = base_total + forecasted_total + scheduled_fees
+    gross_total = base_total
+    net_total = base_total
+    conditional_total = at_risk_total
+    payment_status = "CONDITIONAL" if at_risk_total else "EXPECTED"
+    if duplicate:
+        payment_status = "SUBMITTED"
     payment_summary = [{**{"county_id": group["county_id"]}, **({"county_name": group["county_name"]} if isinstance(group["county_name"], str) and group["county_name"] else {}), "paid_tier": group["paid_tier"], "rate": next(iter(group["rates"])) if len(group["rates"]) == 1 else "Multiple", "rates": sorted(group["rates"]), "basis": group["basis"], "children_served": len(group["children_served"]), "hours": _money(group["hours"]), "amount": _money(group["amount"]), "conditional_amount": _money(group["conditional_amount"])} for group in sorted(summary_groups.values(), key=lambda value: (value["county_id"], value["paid_tier"], value["basis"]))]
-    summary_view = _build_payment_summary_view(
-        attendance["days"],
-        rates,
+    summary_view = _render_summary_view(
+        categories,
+        counties,
+        county_composition,
+        children,
+        actions,
         vacant_slot_days,
         gross_total,
         net_total,
-        copay,
         conditional_total,
         excluded_days,
+        distinct_children_served,
+        paid_days,
+        forecasted_total=forecasted_total,
+        at_risk_total=at_risk_total,
     )
     return {
         "status": "ok",
@@ -1395,6 +1305,8 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         "payment": {
             "status": payment_status,
             "amount": _money(net_total),
+            "base_amount": _money(base_total),
+            "scheduled_forecast_amount": _money(forecasted_total),
             "gross_amount": _money(gross_total),
             "amount_at_risk": _money(conditional_total),
             # Provider-facing three-way breakdown: Expected (window elapsed),
@@ -1404,20 +1316,14 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             "guaranteed_amount": _money(guaranteed_total),
             "holiday_classification_mismatches": holiday_classification_mismatches,
             "total_amount_incorrectly_at_risk": _money(total_amount_incorrectly_at_risk),
-            "payout_date": compute_payout_date(period_end).isoformat(),
+            "payout_date": resolve_payout_date(payload, period_end).isoformat(),
             "excluded_days": excluded_days,
             "excluded_authorizations": len(excluded_authorizations),
             "slot_fee": _money(vacant_slot_fee),
             "vacant_slot_fee": _money(vacant_slot_fee),
             "vacant_slot_days": vacant_slot_days,
-            "activity_fee": _money(activity_fee),
-            "registration_fee": _money(registration_fee),
-            "transportation_fee": _money(transportation_fee),
-            "art_earned": _money(art_earned),
-            "art_paid": "0.00",
-            "art_pending": _money(art_earned),
-            "parent_copay": _money(copay),
-            "missing_copay_authorizations": sorted(missing_copay_authorizations),
+            "potential_total": _money(potential_total),
+            "estimated_total": _money(estimated_total),
             **({"existing_status": duplicate["status"]} if duplicate else {}),
             "summary": payment_summary,
             "summary_view": summary_view,
