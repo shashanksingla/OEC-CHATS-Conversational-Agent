@@ -45,14 +45,16 @@ Use these skills as the detailed source of truth:
 
 ## 3. First turn
 
-For a greeting-only message:
+The greeting is attached automatically, server-side, to whichever tool's response is the first one this conversation — it is not something the agent needs to decide to add or word. This applies no matter which tool fires first, including a direct request like a payout question. Do not manually prepend a greeting, do not skip a tool call to "just greet," and do not re-greet later in the same conversation (a later "hi" will not carry the greeting again, by design — treat it as a normal message).
 
-1. Call `cccapprovider/cccap_get_current_month_risk_snapshot` once with `{}`.
+For a greeting-only message (no specific request):
+
+1. Call `cccapprovider/cccap_get_current_month_risk_snapshot` once with `{}` — this is the default, helpful thing to show when the provider hasn't asked for anything specific, not a mechanism for producing the greeting itself.
 2. Continue after the tool returns; a tool call is not an assistant response.
-3. Relay the first non-empty provider text from `content[0].text`, or the fallback field described above.
+3. Relay the first non-empty provider text from `content[0].text` verbatim (it already includes the greeting), or the fallback field described above.
 4. Use the failure template only when the call has `isError` and no provider text.
 
-Do not require a greeting before handling a real request. For a direct first-turn request, call the matching composite capability immediately. If the first message is a non-greeting request, include a brief one-time greeting only when the tool has just resolved the provider identity.
+For a direct first-turn request (e.g. a payout question), call the matching composite capability immediately — do not require a greeting-only turn first. Its response will already carry the greeting prepended to `content[0].text`. Relay that combined text exactly as returned, per the character-for-character rule in Section 2 — the presence of the greeting does not change or loosen the verbatim-relay requirement, and it is never a reason to condense, re-summarize, or drop the table(s), disclaimers, or Recommended actions that follow it.
 
 ## 4. Payment routing
 

@@ -188,7 +188,7 @@ export function normalizeScheduleAttendance(
     const parentStatuses = new Set(
       scheduleTransactions
         .map((transaction) => transaction.status)
-        .filter((status): status is string => typeof status === "string"),
+        .filter((status): status is string => status === "PARENT_PENDING" || status === "PARENT_APPROVED"),
     );
     const scheduleParentConfirmation = directParentConfirmation(
       schedule.parent_confirmation
@@ -197,11 +197,11 @@ export function normalizeScheduleAttendance(
       ?? schedule.Parent_Confirmation_Status__c
       ?? schedule.parent_confirmation_status,
     );
-    if (scheduleParentConfirmation) {
+    if (scheduleParentConfirmation === "CONFIRMED" || scheduleParentConfirmation === "PENDING") {
       parentStatuses.add(
         scheduleParentConfirmation === "CONFIRMED"
           ? "PARENT_APPROVED"
-          : `PARENT_${scheduleParentConfirmation}`,
+          : "PARENT_PENDING",
       );
     }
     const authorization = asRecord(schedule.Authorization__r);

@@ -8,7 +8,7 @@ import {
 } from "./attendance/attendance.js";
 import { comparePaymentPeriods, getLastPayoutDetail, getPaymentAnalysis, getServicePeriodLedger, getUpcomingPayoutDetail } from "./payment/payment-orchestration.js";
 import { CccapClient } from "./shared/transport.js";
-import { ConversationContextStore, additiveRefinementsOnly, cacheKeyFor, scopeGranularity, type ConversationResultGraph, type ContinuationPlan, DialogueStateStore, conversationLogger as defaultConversationLogger } from "./shared/conversation.js";
+import { ConversationContextStore, additiveRefinementsOnly, cacheKeyFor, scopeGranularity, type ConversationResultGraph, type ContinuationPlan, DialogueStateStore, conversationLogger as defaultConversationLogger, ConversationSessionStore, conversationSessionStore as defaultConversationSessionStore } from "./shared/conversation.js";
 import {
   normalizeAuthorizations,
   normalizeCases,
@@ -311,16 +311,58 @@ function toolError(capability: string, error: unknown): ToolResult {
   };
 }
 
-async function execute(
-  capability: string,
-  operation: () => Promise<unknown>,
-  formatResult: (data: unknown) => ToolResult = result,
-): Promise<ToolResult> {
-  try {
-    return formatResult(await operation());
-  } catch (error) {
-    return toolError(capability, error);
+// Drops next-actions this provider has already been shown once this conversation from the
+// "Recommended actions" list - re-surfacing only if the provider explicitly asks about that
+// topic again (a different, direct code path than this passive/automatic list). A no-op for
+// any result shape without a `situation.rankedActions` array (most tool results).
+function filterSurfacedActions(data: unknown, providerKey: string, sessionStore: ConversationSessionStore): unknown {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return data;
+  const situation = (data as Record<string, unknown>).situation;
+  if (!situation || typeof situation !== "object" || Array.isArray(situation)) return data;
+  const rankedActions = (situation as Record<string, unknown>).rankedActions;
+  if (!Array.isArray(rankedActions)) return data;
+  const unsurfaced = rankedActions.filter((action) => {
+    const actionId = action && typeof action === "object" ? (action as Record<string, unknown>).action_id : undefined;
+    return typeof actionId !== "string" || !sessionStore.hasSurfacedAction(providerKey, actionId);
+  });
+  for (const action of unsurfaced) {
+    const actionId = (action as Record<string, unknown>).action_id;
+    if (typeof actionId === "string") sessionStore.markActionSurfaced(providerKey, actionId);
   }
+  const topAction = unsurfaced[0] as Record<string, unknown> | undefined;
+  const { topPriorityActionId: _dropped, ...situationRest } = situation as Record<string, unknown>;
+  return {
+    ...data,
+    situation: {
+      ...situationRest,
+      activeRiskCount: unsurfaced.length,
+      ...(typeof topAction?.action_id === "string" ? { topPriorityActionId: topAction.action_id } : {}),
+      rankedActions: unsurfaced,
+    },
+  };
+}
+
+// Prepends a short, one-time-per-conversation greeting line to whichever tool's response
+// happens to run first - greeting is a cross-cutting session concern, not tied to any
+// specific tool (unlike the old prose-only convention of routing bare "hi" messages to the
+// monthly snapshot). Only the first text content block is touched; structuredContent (the
+// programmatic payload) is left untouched since the greeting is a display-only addition.
+function withGreeting(toolResult: ToolResult, providerDisplayName: string): ToolResult {
+  const original = toolResult.content[0];
+  if (!original || typeof original.text !== "string") return toolResult;
+  const greeting = `Hi${providerDisplayName ? ` ${providerDisplayName}` : ""}! I'm your CCCAP Provider Assist - here to help with attendance, payments, and payouts.`;
+  const greetedText = `${greeting}\n\n${original.text}`;
+  // structuredContent.providerMessage mirrors content[0].text verbatim (see server.ts's own
+  // invariant checked by protocol.test.ts) - keep both in sync rather than only updating the
+  // display text, or callers that read the structured field would see the pre-greeting text.
+  const structuredContent = toolResult.structuredContent && toolResult.structuredContent.providerMessage === original.text
+    ? { ...toolResult.structuredContent, providerMessage: greetedText }
+    : toolResult.structuredContent;
+  return {
+    ...toolResult,
+    content: [{ type: "text", text: greetedText }],
+    ...(structuredContent ? { structuredContent } : {}),
+  };
 }
 
 export function createServer(
@@ -330,7 +372,24 @@ export function createServer(
   providerKey = providerDisplayName,
   dialogueStore = new DialogueStateStore(),
   conversationLogger = defaultConversationLogger,
+  sessionStore: ConversationSessionStore = defaultConversationSessionStore,
 ): McpServer {
+  // Closure (not a module-level function) so it captures providerKey/sessionStore without
+  // changing any of its ~19 call sites below - filterSurfacedActions is applied uniformly
+  // and is a no-op for any result shape without a situation.rankedActions array.
+  const execute = async (
+    capability: string,
+    operation: () => Promise<unknown>,
+    formatResult: (data: unknown) => ToolResult = result,
+  ): Promise<ToolResult> => {
+    try {
+      const data = await operation();
+      return formatResult(filterSurfacedActions(data, providerKey, sessionStore));
+    } catch (error) {
+      return toolError(capability, error);
+    }
+  };
+
   const withConversationLogging = <T extends Record<string, unknown>>(
     toolName: string,
     handler: (input: T) => Promise<ToolResult>,
@@ -338,7 +397,16 @@ export function createServer(
     // Strip debug-only providerUtterance before handlers run so it cannot reach integrations or responses.
     const { providerUtterance, ...handlerInput } = input as T & { providerUtterance?: string };
     const startedAt = Date.now();
-    const result = await handler(handlerInput as T);
+    let result = await handler(handlerInput as T);
+    // Greeting is attached to the FIRST successful response of the conversation regardless
+    // of which tool it is - this is what lets a session that starts with "next payout" or
+    // any other direct request still receive a greeting, and what prevents a later "hi"
+    // from re-triggering it (the flag persists for the life of this server process, i.e.
+    // the whole conversation - see ConversationSessionStore).
+    if (!result.isError && !sessionStore.hasGreeted(providerKey)) {
+      sessionStore.markGreeted(providerKey);
+      result = withGreeting(result, providerDisplayName);
+    }
     const providerResponseText = result.content?.find((item) => item.type === "text")?.text;
     let error: { code: string; message: string; diagnostic?: string } | undefined;
     if (result.isError) {

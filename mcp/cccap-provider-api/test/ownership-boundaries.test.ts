@@ -273,6 +273,39 @@ test("schedule normalizer accepts explicit parent confirmation fields", () => {
   assert.equal(normalized.schedules[0]?.absence_parent_approved, true);
 });
 
+test("schedule normalizer ignores rejected transactions when an approved transaction exists", () => {
+  const normalized = normalizeScheduleAttendance([
+    {
+      Id: "schedule-1",
+      Authorization__c: "auth-1",
+      CI_Authorization_Date__c: "2026-09-08",
+      Attendance__r: {
+        records: [
+          { Id: "transaction-rejected", Status__c: "PARENT_REJECTED" },
+          { Id: "transaction-approved", Status__c: "PARENT_APPROVED" },
+        ],
+      },
+    },
+  ], "denver", 5);
+
+  assert.equal(normalized.schedules[0]?.parent_confirmation, "CONFIRMED");
+});
+
+test("schedule normalizer leaves rejected-only transactions without a confirmation", () => {
+  const normalized = normalizeScheduleAttendance([
+    {
+      Id: "schedule-1",
+      Authorization__c: "auth-1",
+      CI_Authorization_Date__c: "2026-09-08",
+      Attendance__r: {
+        records: [{ Id: "transaction-rejected", Status__c: "PARENT_REJECTED" }],
+      },
+    },
+  ], "denver", 5);
+
+  assert.equal(normalized.schedules[0]?.parent_confirmation, undefined);
+});
+
 test("schedule county falls back to the joined authorization county", () => {
   const normalized = normalizeScheduleAttendance(
     [{

@@ -223,6 +223,10 @@ export interface CanonicalAttendanceDay {
   observed_holiday_date?: string;
   // Preserve the rate type for each day because one authorization may use several.
   rate_type_code?: string;
+  // Schedule's own Type__c (CCCAP_AUTHORIZED / CCCAP_NOT_AUTHORIZED / CARE_NOT_OFFERED) - the
+  // explicit primary signal for CARE_NOT_OFFERED/drop-in classification, kept string-permissive
+  // so an unrecognized value never throws (Python treats anything else as the authorized path).
+  authorization_type?: string;
 }
 
 function requiredNonNegativeNumber(value: unknown, label: string): number {
@@ -276,11 +280,16 @@ function findAuthorizationForSchedule(
       (typeof reference === "string" && reference.length > 0) || typeof reference === "number",
     )
     .map(String);
-  return authorizations.find((authorization) => references.some((reference) =>
-    authorization.Id === reference
-      || authorization.Name === reference
-      || authorization.IDN_EXTNL__c === reference,
-  ));
+  return authorizations.find((authorization) => [
+    authorization.Id,
+    authorization.Name,
+    authorization.IDN_EXTNL__c,
+  ]
+    .filter((reference): reference is string | number =>
+      (typeof reference === "string" && reference.length > 0) || typeof reference === "number",
+    )
+    .map(String)
+    .some((reference) => references.includes(reference)));
 }
 
 export function deriveAttendanceEnrichment(
@@ -407,7 +416,7 @@ export function normalizeAttendanceDays(
       isForecast &&
       typeof options.asOfDate === "string" &&
       serviceDate > options.asOfDate;
-    const parentConfirmation = isFutureForecast || (isForecast && schedule.parent_confirmation === undefined)
+    const parentConfirmation = isFutureForecast || schedule.parent_confirmation === undefined
       ? "PENDING"
       : schedule.parent_confirmation;
     if (parentConfirmation !== "CONFIRMED" && parentConfirmation !== "PENDING") {
@@ -477,6 +486,11 @@ export function normalizeAttendanceDays(
         : {}),
       ...(typeof schedule.rate_type_code === "string" && schedule.rate_type_code.length > 0
         ? { rate_type_code: schedule.rate_type_code }
+        : {}),
+      // Explicit primary signal for CARE_NOT_OFFERED/drop-in classification (schedule's own
+      // Type__c); the boolean care_not_offered/authorized_hours==0 inference remains as fallback.
+      ...(typeof schedule.authorization_type === "string" && schedule.authorization_type.length > 0
+        ? { authorization_type: schedule.authorization_type }
         : {}),
       // Fiscal age-group code derived from this specific day's own service_date, not the
       // authorization's service-period start date - a child's fiscal age band (there are 8,

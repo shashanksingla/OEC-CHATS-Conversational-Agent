@@ -4,6 +4,12 @@
 // 15min/100 entries). ConversationContextStore = action-token issuance/resolution, result
 // cache, scope-granularity classification, multi-hop loop-guard signatures (disk-persisted).
 // ConversationLogger = per-turn telemetry/audit log (file-based, redacted).
+// ConversationSessionStore = greeting-shown + already-surfaced-action tracking, scoped to
+// the CONVERSATION (the MCP server process lifetime), not to a rolling TTL - deliberately
+// separate from DialogueStateStore, which resets on a 15-minute idle window for a different
+// purpose (scope/capability freshness diffing). A session boundary here means "this MCP
+// server process started", which happens once per conversation per the current architecture
+// (index.ts spins up one server per session) - no eviction logic is needed or wanted.
 
 import { randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -414,6 +420,24 @@ export class ConversationLogger {
     this.append(`> [fiscal-schedule-mismatch] ${detail}\n`);
   }
 
+  // Records a per-day fiscal-rate join miss surfaced by provider_risk_payment_engine.py's
+  // fiscal_rate_gaps (the schedule matched, but no fiscal rate row had the exact
+  // paid_tier/rate_type_code/age_group_code the day requested). Distinct from
+  // logFiscalScheduleMismatch above, which fires earlier at schedule selection; this fires
+  // at the rate-row join itself, so it's the more precise signal for "rate not yet available
+  // for these dates" when the schedule match succeeded but the row-level join still failed.
+  logFiscalRateGap(entry: {
+    authorizationId: string;
+    serviceDate: unknown;
+    requestedPaidTier: unknown;
+    requestedRateTypeCode: unknown;
+    requestedAgeGroupCode: unknown;
+    availablePaidTierRateTypeAgeGroupTriples?: unknown;
+  }): void {
+    const detail = this.truncate(JSON.stringify(this.redactObject(entry)));
+    this.append(`> [fiscal-rate-gap] ${detail}\n`);
+  }
+
   logToolCall(entry: {
     tool: string;
     input: Record<string, unknown>;
@@ -471,6 +495,38 @@ export class ConversationLogger {
     return value.length > 4000 ? `${value.slice(0, 4000)}\n[...truncated]` : value;
   }
 }
+
+// Tracks two session-scoped (not TTL-scoped) concerns per provider, both intentionally
+// living for the lifetime of the MCP server process rather than a rolling idle window:
+// 1. Whether a greeting has already been attached to a response this conversation.
+// 2. Which recommended-action IDs have already been surfaced this conversation, so a
+//    resolved-but-still-flagged item isn't repeated on every turn - it only reappears if
+//    the provider explicitly asks about that topic again (a different code path: a direct,
+//    scoped request, not the passive "Recommended actions" list this store gates).
+export class ConversationSessionStore {
+  private readonly greetedProviders = new Set<string>();
+  private readonly surfacedActionsByProvider = new Map<string, Set<string>>();
+
+  hasGreeted(providerKey: string): boolean {
+    return this.greetedProviders.has(providerKey);
+  }
+
+  markGreeted(providerKey: string): void {
+    this.greetedProviders.add(providerKey);
+  }
+
+  hasSurfacedAction(providerKey: string, actionId: string): boolean {
+    return this.surfacedActionsByProvider.get(providerKey)?.has(actionId) ?? false;
+  }
+
+  markActionSurfaced(providerKey: string, actionId: string): void {
+    const surfaced = this.surfacedActionsByProvider.get(providerKey) ?? new Set<string>();
+    surfaced.add(actionId);
+    this.surfacedActionsByProvider.set(providerKey, surfaced);
+  }
+}
+
+export const conversationSessionStore = new ConversationSessionStore();
 
 export const conversationLogger = new ConversationLogger();
 // ===== end conversation-logger.ts =====

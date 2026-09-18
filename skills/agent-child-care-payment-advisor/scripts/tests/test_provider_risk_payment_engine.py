@@ -283,6 +283,58 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         self.assertFalse(day["payable"])
         self.assertEqual(result["payment"]["amount"], "0.00")
 
+    def test_authorization_type_care_not_offered_wins_even_with_attendance(self) -> None:
+        # CARE_NOT_OFFERED always wins, no exceptions - even if a schedule row somehow still
+        # carries attendance transactions, the explicit authorization_type signal takes priority.
+        payload = self._complete_input()
+        payload["attendance_days"][0].update({
+            "authorization_type": "CARE_NOT_OFFERED",
+            "authorized_hours": 0,
+            "attended_hours": 4,
+        })
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        day = result["attendance"]["days"][0]
+        self.assertEqual(day["classification"], "CARE_NOT_OFFERED")
+        self.assertFalse(day["payable"])
+        self.assertEqual(result["payment"]["amount"], "0.00")
+
+    def test_authorization_type_not_authorized_with_attendance_is_drop_in(self) -> None:
+        # Explicit CCCAP_NOT_AUTHORIZED + a real attendance transaction is a genuine drop-in,
+        # counted against the county drop-in limit - same rules as the pre-existing
+        # authorized_hours==0 inference, just triggered by the explicit schedule signal now.
+        payload = self._complete_input()
+        payload["authorizations"][0]["drop_in_limit"] = 5
+        payload["attendance_days"][0].update({
+            "authorization_type": "CCCAP_NOT_AUTHORIZED",
+            "authorized_hours": 0,
+            "attended_hours": 4,
+        })
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        day = result["attendance"]["days"][0]
+        self.assertEqual(day["classification"], "DROP_IN")
+        self.assertTrue(day["payable"])
+
+    def test_authorization_type_not_authorized_without_attendance_is_no_care(self) -> None:
+        # Explicit CCCAP_NOT_AUTHORIZED with no attendance transaction is excluded entirely -
+        # nothing to risk, nothing to pay.
+        payload = self._complete_input()
+        payload["attendance_days"][0].update({
+            "authorization_type": "CCCAP_NOT_AUTHORIZED",
+            "authorized_hours": 0,
+            "attended_hours": 0,
+        })
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        day = result["attendance"]["days"][0]
+        self.assertEqual(day["classification"], "NO_CARE")
+        self.assertFalse(day["payable"])
+        self.assertEqual(result["payment"]["amount"], "0.00")
+
     def test_closed_facility_zero_hour_day_is_omitted_from_payment_counts(self) -> None:
         payload = self._complete_input()
         payload["attendance_days"].append({

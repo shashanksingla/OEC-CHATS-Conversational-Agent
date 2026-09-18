@@ -26,6 +26,8 @@ ABSENCE_LIMIT_APPROACHING_THRESHOLD_DAYS = 2
 # here so a wording change only needs to happen once.
 UNAVAILABLE_FROM_SOURCE = "Unavailable from the current source"
 
+from decimal import Decimal
+
 
 def aggregate_by(
     records,
@@ -33,6 +35,7 @@ def aggregate_by(
     sum_fields=(),
     collect_fields=(),
     label_fn=None,
+    count_field="count",
 ):
     """Generic groupby reducer, replacing hand-written per-dimension accumulator
     blocks in both provider_risk_payment_engine.py and evaluate_attendance_risks.py.
@@ -42,12 +45,18 @@ def aggregate_by(
       matching record (missing/non-numeric values are treated as 0, matching
       the existing accumulator behavior of never raising on a partial record)
     - collects the distinct values of each field named in `collect_fields`
-      into a set (skipping None/missing)
-    - always includes `count` (number of matching records)
+      into a set (skipping None/missing); if a record's field value is itself
+      a list or set, every item in it is unioned into the group's set instead
+      of the list/set being added as one opaque value - this lets one record
+      contribute multiple distinct values to a collected field (e.g. a single
+      day carrying more than one exclusion reason)
+    - always includes a count of matching records, under the key named by
+      `count_field` (default "count"; pass e.g. "days" or "children" to get
+      that name directly instead of renaming the result afterward)
     - if `label_fn` is given, calls it once per group with the first matching
       record to set a `label` field (e.g. a county or category display name)
 
-    Returns {key: {"count": int, <sum_field>: number, <collect_field>: set(), ...}}.
+    Returns {key: {<count_field>: int, <sum_field>: number, <collect_field>: set(), ...}}.
 
     This intentionally does NOT try to cover every existing accumulator shape
     (e.g. the payment engine's `composition_bucket`, which nests per-category
@@ -63,7 +72,7 @@ def aggregate_by(
         key = key_fn(record)
         group = groups.get(key)
         if group is None:
-            group = {"count": 0}
+            group = {count_field: 0}
             for field in sum_fields:
                 group[field] = 0
             for field in collect_fields:
@@ -71,13 +80,15 @@ def aggregate_by(
             if label_fn is not None:
                 group["label"] = label_fn(record)
             groups[key] = group
-        group["count"] += 1
+        group[count_field] += 1
         for field in sum_fields:
             value = record.get(field)
-            if isinstance(value, (int, float)) and not isinstance(value, bool):
+            if isinstance(value, (int, float, Decimal)) and not isinstance(value, bool):
                 group[field] += value
         for field in collect_fields:
             value = record.get(field)
-            if value is not None:
+            if isinstance(value, (list, set)):
+                group[field].update(item for item in value if item is not None)
+            elif value is not None:
                 group[field].add(value)
     return groups

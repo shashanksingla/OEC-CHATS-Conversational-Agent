@@ -134,6 +134,19 @@ function exclusionReason(day) {
         return 'approval status unavailable';
     return 'excluded';
 }
+function amountWithHours(value, hours, estimated = false) {
+    const amount = estimated ? estimatedMoney(value) : plainMoney(value);
+    const numericHours = Number(hours);
+    return Number.isFinite(numericHours) && numericHours > 0
+        ? `${amount} (${numericHours.toFixed(2)}H)`
+        : amount;
+}
+function categoryHoursForAmount(rows, field) {
+    const values = rows
+        .filter((row) => Number(row[field]) > 0 && Number(row.hours) > 0)
+        .map((row) => Number(row.hours));
+    return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) : undefined;
+}
 export function paymentActionMetadata(paymentResult, payment, status, 
 // Cross-capability, dollar/urgency-scored candidates from situation.rankedActions - see the
 // matching comment on attendance-formatter.ts's actionMetadata for the full rationale. This
@@ -344,6 +357,9 @@ function formatPaymentAnalysisResult(data) {
     const scheduledForecastAtRisk = scheduledForecastCategory
         ? numericField(scheduledForecastCategory, ["conditional_amount"])
         : undefined;
+    const netPaymentHours = categoryHoursForAmount(summaryCategories, "amount");
+    const scheduledForecastHours = categoryHoursForAmount(summaryCategories, "scheduled_forecast");
+    const conditionalAtRiskHours = categoryHoursForAmount(summaryCategories, "conditional_amount");
     const baseAmount = numericField(payment, ["base_amount", "amount"]);
     const estimatedTotal = estimatedPaymentTotal(payment, baseAmount, scheduledForecastAmount);
     const engineAmountAtRisk = numericField(payment, ["amount_at_risk", "at_risk_amount"]);
@@ -465,15 +481,18 @@ function formatPaymentAnalysisResult(data) {
             // ledger path). Scheduled forecast is only surfaced here when nonzero
             // and not settled - NEXT_PAYOUT-style responses (forecast always 0)
             // render with no added row, so this is not a regression for that path.
-            lines.push(`| Net payment | ${plainMoney(displayedNetPayment)} |`);
+            lines.push(`| Net payment | ${amountWithHours(displayedNetPayment, netPaymentHours)} |`);
             if (!isSettled && scheduledForecastValue > 0) {
-                lines.push(`| Scheduled forecast | ${plainMoney(scheduledForecastValue)} |`);
+                lines.push(`| Scheduled forecast | ${amountWithHours(scheduledForecastValue, scheduledForecastHours)} |`);
             }
-            lines.push(`| Conditional at-risk | ${plainMoney(isSettled ? 0 : atRiskValue)} |`);
+            lines.push(`| Conditional at-risk | ${amountWithHours(isSettled ? 0 : atRiskValue, isSettled ? undefined : conditionalAtRiskHours)} |`);
             // #9.4 fix: "~" now only appears when this total is genuinely
             // incomplete (unavailable/incomplete rate data excluded real days
             // from it) - previously appeared unconditionally on every response.
-            lines.push(`| Maximum estimated payout | ${estimatedMoney(estimatedTotal, hasIncompleteRateData)} |`);
+            const maximumHours = [netPaymentHours, scheduledForecastHours, conditionalAtRiskHours]
+                .filter((hours) => hours !== undefined)
+                .reduce((sum, hours) => sum + hours, 0);
+            lines.push(`| Maximum estimated payout | ${amountWithHours(estimatedTotal, maximumHours || undefined, hasIncompleteRateData)} |`);
         }
         if (!isSettled && displayedNetPayment === 0 && (atRiskValue > 0 || scheduledForecastValue > 0)) {
             lines.push("", `This shows ${plainMoney(0)} net because the payable amount is still conditional or not yet scheduled to occur, not denied - an estimated ${plainMoney(scheduledForecastValue + atRiskValue)} remains possible once scheduled care occurs and the pending confirmations below are completed. This is an estimate and will change as confirmations are completed.`, atRiskDisclaimer(attendance.find((day) => typeof day.confirm_by_date === "string")?.confirm_by_date ?? payment.confirm_by_date ?? paymentResult.confirm_by_date));
@@ -1436,6 +1455,7 @@ const COUNTY_CATEGORY_KEYS = ["enrollment_absence", "absence", "paid_holidays", 
 export function renderCountyCategoryTable(rows, estimatedTotal, childrenServed) {
     const nestedOf = (row, key) => row[key] && typeof row[key] === "object" && !Array.isArray(row[key]) ? row[key] : {};
     const component = (row, key) => money(nestedOf(row, key).amount);
+    const componentHours = (row, key) => money(nestedOf(row, key).hours);
     // Scheduled forecast per county is read from each category's own nested
     // `scheduled_forecast` field, when the source provides it (mirrors the
     // category-level split already used by the Measure table/Payment-by-
@@ -1444,6 +1464,13 @@ export function renderCountyCategoryTable(rows, estimatedTotal, childrenServed) 
     // NEXT_PAYOUT-style responses exactly, so this is not a regression there.
     const scheduledForecastComponent = (row, key) => money(nestedOf(row, key).scheduled_forecast);
     const countyScheduledForecast = (row) => COUNTY_CATEGORY_KEYS.reduce((sum, key) => sum + scheduledForecastComponent(row, key), 0);
+    const countyHoursFor = (row, field) => {
+        const hours = COUNTY_CATEGORY_KEYS.reduce((sum, key) => {
+            const category = nestedOf(row, key);
+            return sum + (Number(category[field]) > 0 ? componentHours(row, key) : 0);
+        }, 0);
+        return hours > 0 ? hours : undefined;
+    };
     const risk = (row) => money(row.amount_at_risk ?? row.at_risk_amount ?? row.conditional_amount);
     const total = (row) => money(row.potential_total ?? row.total_amount)
         || COUNTY_CATEGORY_KEYS.reduce((sum, key) => sum + component(row, key), 0) + risk(row);
@@ -1455,10 +1482,15 @@ export function renderCountyCategoryTable(rows, estimatedTotal, childrenServed) 
         ? ["County", "Children served", "Net payment", "Scheduled forecast", "Conditional at-risk", "Maximum estimated payout"]
         : ["County", "Children served", "Net payment", "Conditional at-risk", "Maximum estimated payout"];
     const rendered = rows.map((row) => {
-        const cells = [tableValue(row.county), tableValue(row.children_served), plainMoney(netPayment(row))];
+        const netHours = countyHoursFor(row, "amount");
+        const forecastHours = countyHoursFor(row, "scheduled_forecast");
+        const riskHours = countyHoursFor(row, "conditional_amount");
+        const cells = [tableValue(row.county), tableValue(row.children_served), amountWithHours(netPayment(row), netHours)];
         if (anyForecast)
-            cells.push(plainMoney(countyScheduledForecast(row)));
-        cells.push(plainMoney(risk(row)), plainMoney(total(row)));
+            cells.push(amountWithHours(countyScheduledForecast(row), forecastHours));
+        cells.push(amountWithHours(risk(row), riskHours), amountWithHours(total(row), [netHours, forecastHours, riskHours]
+            .filter((hours) => hours !== undefined)
+            .reduce((sum, hours) => sum + hours, 0) || undefined));
         return cells;
     });
     const totalChildrenServed = childrenServed !== undefined ? String(Number(childrenServed) || 0) : String(rows.reduce((sum, row) => sum + money(row.children_served), 0));
@@ -1466,9 +1498,12 @@ export function renderCountyCategoryTable(rows, estimatedTotal, childrenServed) 
     const totalForecast = rows.reduce((sum, row) => sum + countyScheduledForecast(row), 0);
     const totalRisk = rows.reduce((sum, row) => sum + risk(row), 0);
     const totalMax = estimatedTotal !== undefined ? Number(estimatedTotal) : rows.reduce((sum, row) => sum + total(row), 0);
+    const totalNetHours = rows.map((row) => countyHoursFor(row, "amount")).filter((hours) => hours !== undefined).reduce((sum, hours) => sum + hours, 0);
+    const totalForecastHours = rows.map((row) => countyHoursFor(row, "scheduled_forecast")).filter((hours) => hours !== undefined).reduce((sum, hours) => sum + hours, 0);
+    const totalRiskHours = rows.map((row) => countyHoursFor(row, "conditional_amount")).filter((hours) => hours !== undefined).reduce((sum, hours) => sum + hours, 0);
     const totalRow = anyForecast
-        ? ["Total", totalChildrenServed, plainMoney(totalNet), plainMoney(totalForecast), plainMoney(totalRisk), plainMoney(totalMax)]
-        : ["Total", totalChildrenServed, plainMoney(totalNet), plainMoney(totalRisk), plainMoney(totalMax)];
+        ? ["Total", totalChildrenServed, amountWithHours(totalNet, totalNetHours || undefined), amountWithHours(totalForecast, totalForecastHours || undefined), amountWithHours(totalRisk, totalRiskHours || undefined), amountWithHours(totalMax, totalNetHours + totalForecastHours + totalRiskHours || undefined)]
+        : ["Total", totalChildrenServed, amountWithHours(totalNet, totalNetHours || undefined), amountWithHours(totalRisk, totalRiskHours || undefined), amountWithHours(totalMax, totalNetHours + totalRiskHours || undefined)];
     return [
         "",
         "County payment composition",

@@ -172,16 +172,16 @@ export function normalizeScheduleAttendance(schedules, defaultCountyId, provider
             .sort();
         const parentStatuses = new Set(scheduleTransactions
             .map((transaction) => transaction.status)
-            .filter((status) => typeof status === "string"));
+            .filter((status) => status === "PARENT_PENDING" || status === "PARENT_APPROVED"));
         const scheduleParentConfirmation = directParentConfirmation(schedule.parent_confirmation
             ?? schedule.parentConfirmation
             ?? schedule.Parent_Confirmation__c
             ?? schedule.Parent_Confirmation_Status__c
             ?? schedule.parent_confirmation_status);
-        if (scheduleParentConfirmation) {
+        if (scheduleParentConfirmation === "CONFIRMED" || scheduleParentConfirmation === "PENDING") {
             parentStatuses.add(scheduleParentConfirmation === "CONFIRMED"
                 ? "PARENT_APPROVED"
-                : `PARENT_${scheduleParentConfirmation}`);
+                : "PARENT_PENDING");
         }
         const authorization = asRecord(schedule.Authorization__r);
         const authorizationReference = schedule.CI_Authorization_Id__c

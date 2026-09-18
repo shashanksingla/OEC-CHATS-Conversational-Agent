@@ -99,7 +99,7 @@ Use a short parenthetical gloss the first time a non-obvious term or abbreviatio
 
 ## Greeting Snapshot Template
 
-For a greeting-only message, the entrypoint executes `cccap_get_current_month_risk_snapshot`; this skill must not invoke it again. Use its successful plain-text result verbatim. It includes today's scheduled and checked-in child counts plus current-month payment-readiness risks. Do not rewrite it, replace it with a generic welcome, or render a second greeting. If a successful result must be rendered from structured fields, use this shape and only verified values:
+The greeting line itself is attached server-side to the first tool response of the conversation, whichever tool that is — it is already present verbatim in `content[0].text` and must never be added, reworded, or duplicated by this skill. For a greeting-only message (no specific request), the entrypoint executes `cccap_get_current_month_risk_snapshot` as the default helpful response; this skill must not invoke it again. Use its successful plain-text result verbatim, including the leading greeting line already in it. It includes today's scheduled and checked-in child counts plus current-month payment-readiness risks. Do not rewrite it, replace it with a generic welcome, or render a second greeting. If a successful result must be rendered from structured fields, use this shape and only verified values:
 
 ```text
 Greetings for the day, [providerDisplayName]. Here's where things stand at [facilityName].

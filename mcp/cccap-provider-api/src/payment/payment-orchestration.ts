@@ -13,6 +13,7 @@ import {
 } from "./payment-engine.js";
 import { normalizeProviderContext } from "../shared/normalizers.js";
 import { buildSituationEnvelope } from "../shared/situation-envelope.js";
+import { conversationLogger } from "../shared/conversation.js";
 
 const execFileAsync = promisify(execFile);
 const paymentEvaluatorPath = fileURLToPath(new URL(
@@ -471,6 +472,25 @@ export async function getPaymentAnalysis(
     const evaluated = JSON.parse(stdout) as { status?: string; result?: unknown; error?: string };
     if (evaluated.status !== "ok" || !evaluated.result) throw new Error(evaluated.error || "Payment evaluation failed");
     const result = evaluated.result as RecordValue;
+    // Surface provider_risk_payment_engine.py's fiscal_rate_gaps (per-day rate-join misses,
+    // computed at _resolve_rate but previously discarded before reaching any log) so a live
+    // "rate not yet available for these dates" run leaves a traceable record of exactly which
+    // (paid_tier, rate_type_code, age_group_code) was requested vs. available.
+    const paymentResult = record(result.payment, "Evaluated payment").fiscal_rate_gaps;
+    if (Array.isArray(paymentResult)) {
+      for (const gap of paymentResult) {
+        const gapRecord = record(gap, "fiscal_rate_gaps entry");
+        if (typeof gapRecord.authorization_id !== "string") continue;
+        conversationLogger.logFiscalRateGap({
+          authorizationId: gapRecord.authorization_id,
+          serviceDate: gapRecord.service_date,
+          requestedPaidTier: gapRecord.requested_paid_tier,
+          requestedRateTypeCode: gapRecord.requested_rate_type_code,
+          requestedAgeGroupCode: gapRecord.requested_age_group_code,
+          availablePaidTierRateTypeAgeGroupTriples: gapRecord.available_paid_tier_rate_type_age_group_triples,
+        });
+      }
+    }
     const attendance = record(result.attendance, "Evaluated attendance");
     const allDays = Array.isArray(attendance.days) ? attendance.days : [];
     const displayableDays = allDays.filter((value) => {

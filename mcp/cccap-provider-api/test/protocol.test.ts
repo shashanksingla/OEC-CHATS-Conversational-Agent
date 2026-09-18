@@ -119,6 +119,10 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   const offeredActions = structured.actionControls as Array<Record<string, unknown>>;
   const priorityActionTwo = offeredActions.find((action) => action.actionId === "review-incomplete-attendance");
   assert.ok(priorityActionTwo, JSON.stringify(offeredActions));
+  // Captured now (before it's surfaced-and-suppressed below) so the later follow-up call still
+  // has a valid action to invoke even once it stops reappearing in the passive action list.
+  const priorityActionOne = offeredActions.find((action) => action.actionId === "review-approaching-absence-limit");
+  assert.ok(priorityActionOne, JSON.stringify(offeredActions));
   // Signed action tokens replace the previous contextRef/actionRef credentials.
   const priorityActionTwoInput = priorityActionTwo.input as Record<string, unknown>;
   assert.equal(priorityActionTwoInput.actionId, "review-incomplete-attendance");
@@ -151,16 +155,16 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
     arguments: returnToSummaryAction.input as Record<string, unknown>,
   });
   const summaryStructured = summaryFollowUp.structuredContent as Record<string, unknown>;
+  // Once a recommended action has been surfaced to the provider this conversation, it does not
+  // reappear on a later render of the same view - it only reappears if the provider explicitly
+  // asks about that topic again (a direct request, which is exactly what the next call below is).
   const returnedAbsenceAction = (summaryStructured.actionControls as Array<Record<string, unknown>>).find(
     (action) => action.actionId === "review-approaching-absence-limit",
   );
-  assert.ok(returnedAbsenceAction);
-  const returnedAbsenceActionInput = returnedAbsenceAction.input as Record<string, unknown>;
-  assert.equal(returnedAbsenceActionInput.actionId, "review-approaching-absence-limit");
-  assert.equal(typeof returnedAbsenceActionInput.actionToken, "string");
+  assert.equal(returnedAbsenceAction, undefined, JSON.stringify(summaryStructured.actionControls));
   const absenceFollowUp = await client.callTool({
     name: "cccap_analyze_payment_risk",
-    arguments: returnedAbsenceAction.input as Record<string, unknown>,
+    arguments: priorityActionOne.input as Record<string, unknown>,
   });
   const absenceStructured = absenceFollowUp.structuredContent as Record<string, unknown>;
   assert.equal(absenceFollowUp.isError, undefined);

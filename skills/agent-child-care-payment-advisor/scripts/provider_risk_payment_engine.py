@@ -13,7 +13,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any
 
-from _shared import CONFIRMATION_WINDOW_DAYS
+from _shared import CONFIRMATION_WINDOW_DAYS, aggregate_by
 
 RULE_VERSION = "provider-risk-payment-v3"
 PAID_PAYMENT_STATUSES = {"PAID", "REQUESTED"}
@@ -50,6 +50,24 @@ def resolve_payout_date(payload: dict[str, Any], period_end: date) -> date:
     return resolved if resolved else compute_payout_date(period_end)
 
 
+def _actual_payment_total(payload: dict[str, Any], service_period_id: Any) -> Decimal | None:
+    """Sums existing_sub_payments rows already on file for this service period, or None if
+    none exist yet. Shared by _settlement_fields (additive is_settled signal) and the
+    settlement short-circuit in evaluate_provider_risk_and_payment (skips recomputation
+    entirely once this is authoritative) - one source of truth for "is there a real record"."""
+    actual_entries = [
+        row
+        for row in payload.get("existing_sub_payments", [])
+        if isinstance(row, dict)
+        and row.get("service_period_id") == service_period_id
+        and isinstance(row.get("amount"), (int, float))
+        and not isinstance(row.get("amount"), bool)
+    ]
+    if not actual_entries:
+        return None
+    return sum((Decimal(str(row["amount"])) for row in actual_entries), Decimal("0"))
+
+
 def _settlement_fields(
     payload: dict[str, Any],
     period_end: date,
@@ -66,23 +84,22 @@ def _settlement_fields(
     period's payout_date, the period is treated as settled REGARDLESS of
     whether existing_sub_payments actually confirms a PAID status yet - the
     payout date alone is the trigger. If an actual paid amount is on record
-    for this period, it is authoritative; if not, the calculated net_total
-    is used as the best available figure, explicitly flagged as such.
+    for this period, it is authoritative and permanent (never reconciled
+    against attendance data afterward, even if that data changes later); if
+    not, the calculated net_total is used as the best available figure,
+    explicitly flagged as such. NOTE: when an actual record already exists,
+    evaluate_provider_risk_and_payment short-circuits before this function
+    is even reached for that period (see the settlement check there) - this
+    function's ACTUAL_PAYMENT_RECORD branch only remains reachable for
+    callers (e.g. ledger comparisons across many periods) that still pass a
+    fully-computed net_total in for periods this function alone evaluates.
     """
     if as_of_date < resolve_payout_date(payload, period_end):
         return {"is_settled": False}
     service_period = payload.get("service_period")
     service_period_id = service_period.get("id") if isinstance(service_period, dict) else None
-    actual_entries = [
-        row
-        for row in payload.get("existing_sub_payments", [])
-        if isinstance(row, dict)
-        and row.get("service_period_id") == service_period_id
-        and isinstance(row.get("amount"), (int, float))
-        and not isinstance(row.get("amount"), bool)
-    ]
-    if actual_entries:
-        actual_total = sum((Decimal(str(row["amount"])) for row in actual_entries), Decimal("0"))
+    actual_total = _actual_payment_total(payload, service_period_id)
+    if actual_total is not None:
         return {
             "is_settled": True,
             "settled_amount": _money(actual_total),
@@ -92,6 +109,65 @@ def _settlement_fields(
         "is_settled": True,
         "settled_amount": _money(net_total),
         "settlement_source": "CALCULATED_NO_PAYMENT_RECORD_YET",
+    }
+
+
+def _settled_result(
+    payload: dict[str, Any],
+    attendance: dict[str, Any],
+    period_end: date,
+    actual_total: Decimal,
+    duplicate: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Payment result for a period whose payout date has passed AND whose actual payment
+    record is already on file - see the settlement short-circuit in
+    evaluate_provider_risk_and_payment for why this skips fiscal-rate matching and per-day
+    pricing entirely. Category/county/child/composition views render empty (via the same
+    _render_summary_view used by the full computation path, so the output shape is identical,
+    just with zeroed/empty aggregates) rather than reconstructed, because no day-wise
+    actual-payment source is available yet - see settlement_source below."""
+    zero = Decimal("0")
+    empty_summary_view = _render_summary_view(
+        {}, {}, {}, {}, {}, [], actual_total, actual_total, zero, 0, set(), 0,
+        forecasted_total=zero, at_risk_total=zero,
+    )
+    return {
+        "status": "ok",
+        "rule_version": RULE_VERSION,
+        "calculation_mode": payload.get("calculation_mode", "STATUS"),
+        "source_readiness": "COMPLETE",
+        "attendance": attendance,
+        "holiday_classification_mismatches": [],
+        "total_amount_incorrectly_at_risk": _money(zero),
+        "child_payment_impacts": [],
+        "payment": {
+            "status": "PAID",
+            "amount": _money(actual_total),
+            "base_amount": _money(actual_total),
+            "scheduled_forecast_amount": _money(zero),
+            "gross_amount": _money(actual_total),
+            "amount_at_risk": _money(zero),
+            "expected_amount": _money(actual_total),
+            "forecasted_amount": _money(zero),
+            "at_risk_amount": _money(zero),
+            "guaranteed_amount": _money(zero),
+            "holiday_classification_mismatches": [],
+            "total_amount_incorrectly_at_risk": _money(zero),
+            "payout_date": resolve_payout_date(payload, period_end).isoformat(),
+            "excluded_days": 0,
+            "excluded_authorizations": 0,
+            "slot_fee": _money(zero),
+            "vacant_slot_fee": _money(zero),
+            "vacant_slot_days": [],
+            "potential_total": _money(actual_total),
+            "estimated_total": _money(actual_total),
+            **({"existing_status": duplicate["status"]} if duplicate else {}),
+            "summary": [],
+            "summary_view": empty_summary_view,
+            "is_settled": True,
+            "settled_amount": _money(actual_total),
+            "settlement_source": "ACTUAL_PAYMENT_RECORD",
+        },
     }
 
 
@@ -547,6 +623,11 @@ def _classify_attendance_day(
         attendance_day.get("holiday_date"),
         attendance_day.get("observed_holiday_date"),
     )
+    # Schedule's own Type__c (CCCAP_AUTHORIZED / CCCAP_NOT_AUTHORIZED / CARE_NOT_OFFERED) - the
+    # explicit primary signal for the two branches below. Absent for older fixtures/data, so
+    # every branch below OR's it with the pre-existing inference (care_not_offered boolean /
+    # authorized_hours == 0) to keep prior behavior identical when it's not present.
+    authorization_type = attendance_day.get("authorization_type")
     if attendance_day.get("parent_confirmation") == "REJECTED":
         # A parent-rejected attendance record is an explicit non-payment decision.
         # Keep the day in the detail response, but exclude it from every financial total.
@@ -555,7 +636,69 @@ def _classify_attendance_day(
         paid_tier = None
         info_code = "REJECTED"
         flags.append("PARENT_CONFIRMATION_REJECTED")
-    elif scheduled_forecast:
+    elif (
+        authorization_type == "CARE_NOT_OFFERED"
+        or attendance_day.get("care_not_offered") is True
+        or provider_closed
+    ) and not county_holiday_match:
+        # CARE_NOT_OFFERED always wins, no exceptions - checked ahead of scheduled_forecast and
+        # the not-authorized/drop-in branch below so a closure or holiday-adjacent non-offering
+        # is excluded outright, even if a schedule row somehow still carries hours or attendance.
+        classification = "CARE_NOT_OFFERED"
+        payable = False
+        paid_tier = None
+        info_code = "14"
+        if provider_closed:
+            flags.append("PROVIDER_CLOSED")
+    elif authorization_type == "CCCAP_NOT_AUTHORIZED" or (authorized_hours == 0 and attended_hours > 0):
+        # Explicit CCCAP_NOT_AUTHORIZED (or the pre-existing implicit authorized_hours==0
+        # fallback, for data that doesn't carry authorization_type) - the schedule was never
+        # authorized, so CI_Authorization_Hours__c is always 0 here; attended_hours (sourced from
+        # Hours__c/actual transactions) is the only signal that distinguishes a genuine drop-in
+        # (kid attended anyway, counts against the county drop-in limit) from no care at all.
+        if attended_hours > 0:
+            classification = "DROP_IN"
+            if authorization_id not in drop_in_counts:
+                drop_in_counts[authorization_id] = _history_count(history, authorization_id, service_date, {"3", "10"})
+            drop_in_allowed = policy.get("allow_drop_in_days")
+            drop_in_limit = authorization.get("drop_in_limit")
+            if drop_in_limit is None:
+                drop_in_limit = policy.get("max_drop_in_days_per_month")
+            if not isinstance(drop_in_limit, int) or isinstance(drop_in_limit, bool) or drop_in_limit < 0:
+                payable = False
+                paid_tier = None
+                flags.append("DROP_IN_LIMIT_UNAVAILABLE")
+            elif drop_in_allowed is False:
+                payable = False
+                paid_tier = None
+                flags.append("DROP_IN_NOT_ALLOWED")
+            elif drop_in_counts[authorization_id] >= drop_in_limit:
+                payable = False
+                paid_tier = _tier_for_hours(attended_hours)
+                unit_hours = attended_hours
+                # Preserve the drop-in category so at-risk amounts appear in breakdowns.
+                payment_type = "DROP_IN"
+                flags.append("DROP_IN_LIMIT_EXCEEDED")
+            else:
+                payable = True
+                paid_tier = _tier_for_hours(attended_hours)
+                unit_hours = attended_hours
+                payment_type = "DROP_IN"
+            info_code = "3"
+        else:
+            # Not authorized and no attendance transaction either - excluded, nothing to risk.
+            classification = "NO_CARE"
+            payable = False
+            paid_tier = None
+            info_code = "NONE"
+    elif scheduled_forecast and authorized_hours > 0:
+        # Gated on authorized_hours > 0: a future day with zero scheduled hours (a closure or
+        # CCCAP_NOT_AUTHORIZED day, not an actual care schedule) is not a real forecast - forcing
+        # payable=True here left paid_tier=_tier_for_hours(0)=None, which can never match a real
+        # fiscal-rate row's paid_tier and always surfaced as "rate not yet available for these
+        # dates" (confirmed via the logged fiscal_rate_gaps: every gap on 0-hour future days had
+        # requestedPaidTier=null). Falling through instead lets the CARE_NOT_OFFERED/CCCAP_NOT_
+        # AUTHORIZED branches above and the NO_CARE branch below classify it properly.
         classification = "SCHEDULED_FORECAST"
         payable = True
         paid_tier = _tier_for_hours(authorized_hours)
@@ -563,43 +706,6 @@ def _classify_attendance_day(
         payment_type = "FORECAST"
         info_code = "FORECAST"
         flags.append("SCHEDULED_FUTURE_DAY")
-    elif (attendance_day.get("care_not_offered") is True or provider_closed) and not county_holiday_match:
-        classification = "CARE_NOT_OFFERED"
-        payable = False
-        paid_tier = None
-        info_code = "14"
-        if provider_closed:
-            flags.append("PROVIDER_CLOSED")
-    elif attended_hours > 0 and authorized_hours == 0:
-        # Genuine drop-in: attended without any authorized hours that day.
-        classification = "DROP_IN"
-        if authorization_id not in drop_in_counts:
-            drop_in_counts[authorization_id] = _history_count(history, authorization_id, service_date, {"3", "10"})
-        drop_in_allowed = policy.get("allow_drop_in_days")
-        drop_in_limit = authorization.get("drop_in_limit")
-        if drop_in_limit is None:
-            drop_in_limit = policy.get("max_drop_in_days_per_month")
-        if not isinstance(drop_in_limit, int) or isinstance(drop_in_limit, bool) or drop_in_limit < 0:
-            payable = False
-            paid_tier = None
-            flags.append("DROP_IN_LIMIT_UNAVAILABLE")
-        elif drop_in_allowed is False:
-            payable = False
-            paid_tier = None
-            flags.append("DROP_IN_NOT_ALLOWED")
-        elif drop_in_counts[authorization_id] >= drop_in_limit:
-            payable = False
-            paid_tier = _tier_for_hours(attended_hours)
-            unit_hours = attended_hours
-            # Preserve the drop-in category so at-risk amounts appear in breakdowns.
-            payment_type = "DROP_IN"
-            flags.append("DROP_IN_LIMIT_EXCEEDED")
-        else:
-            payable = True
-            paid_tier = _tier_for_hours(attended_hours)
-            unit_hours = attended_hours
-            payment_type = "DROP_IN"
-        info_code = "3"
     elif attended_hours > 0 and not county_holiday_match:
         classification = "ATTENDED"
         payable = True
@@ -894,6 +1000,16 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         ),
         None,
     )
+    # Settlement short-circuit: once the payout date has passed AND an actual payment record
+    # already exists for this period, that record is permanently authoritative (locked design -
+    # never recompute or reconcile against attendance data afterward, even retroactively). Skip
+    # fiscal-rate matching and per-day pricing entirely for this branch - the class of computation
+    # a settled period no longer needs, and the one where a data gap like an unmatched fiscal rate
+    # can no longer change the real amount anyway. Day/category/county/child breakdowns render
+    # empty rather than reconstructed, because no day-wise actual-payment source is available yet.
+    actual_total = _actual_payment_total(payload, period["id"])
+    if as_of_date >= resolve_payout_date(payload, period_end) and actual_total is not None:
+        return _settled_result(payload, attendance, period_end, actual_total, duplicate)
     # Match each day by rate type, age group, and care unit - all three are genuine per-day
     # joins now (the authorization is a service contract spanning many schedule days; each
     # day is its own care event, and a child can age into a new fiscal band partway through
@@ -977,28 +1093,16 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         "DROP_IN": "Drop-in",
         "FORECAST": "Scheduled forecast",
     }
-    categories: dict[str, dict[str, Any]] = {}
-    counties: dict[str, dict[str, Any]] = {}
     county_composition: dict[str, dict[str, Any]] = {}
-    children: dict[str, dict[str, Any]] = {}
     actions: dict[str, dict[str, Any]] = {}
     summary_groups: dict[tuple[str, str, str], dict[str, Any]] = {}
     distinct_children_served: set[str] = set()
     paid_days = 0
-
-    def bucket(store: dict[str, dict[str, Any]], key: str, label: str) -> dict[str, Any]:
-        return store.setdefault(key, {
-            "label": label,
-            "days": 0,
-            "hours": Decimal("0"),
-            "amount": Decimal("0"),
-            "conditional_amount": Decimal("0"),
-            "excluded_days": 0,
-            "excluded_reasons": set(),
-            "children_served": set(),
-            # Preserve authorization names because child names may not be unique.
-            "authorization_names": set(),
-        })
+    # One row per day, rendered into categories/counties/children below via aggregate_by -
+    # replaces the old bucket() closure and its 3-way "for store, key, item_label" loop.
+    # All three views share the exact same per-day contribution fields; only the grouping
+    # key/label differ, which is why one row list can serve all three renders.
+    view_rows: list[dict[str, Any]] = []
 
     def composition_bucket(county_key: str, county_label: str) -> dict[str, Any]:
         # Track days for categories whose composition view displays day counts.
@@ -1071,9 +1175,15 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         # Reuse one per-day rate join across all financial views.
         rate = _resolve_rate(rates, day["authorization_id"], day["paid_tier"], day.get("rate_type_code"), day.get("fiscal_age_group_code"))
         unit_hours = _hours(day.get("unit_hours")) or Decimal("0")
+        # FISCAL_RATE_UNAVAILABLE is deliberately not checked here: that flag is only
+        # added to day["flags"] later in this same iteration (once rate_unavailable is
+        # known below), so it can never be true at this point - checking it was a no-op.
+        # rate_unavailable-driven risk is already captured via will_be_excluded further
+        # down, and every dollar figure risk_day feeds is separately gated on
+        # `rate is not None`, which is always None on a rate-unavailable day anyway.
         risk_day = day["conditional"] or any(
             flag in day["flags"]
-            for flag in ("DROP_IN_LIMIT_EXCEEDED", "ABSENCE_LIMIT_EXCEEDED", "FISCAL_RATE_UNAVAILABLE")
+            for flag in ("DROP_IN_LIMIT_EXCEEDED", "ABSENCE_LIMIT_EXCEEDED")
         )
         risk_hours = _hours(day.get("risk_hours")) or unit_hours
         amount_hours = risk_hours if risk_day else unit_hours
@@ -1134,26 +1244,28 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             if rate_unavailable:
                 day["flags"] = sorted({*day["flags"], "FISCAL_RATE_UNAVAILABLE"})
         else:
-            recheck_rate = _resolve_rate(rates, day["authorization_id"], day["paid_tier"], day.get("rate_type_code"), day.get("fiscal_age_group_code"))
-            if recheck_rate is None:
+            # `rate` was already resolved from the same (rates, authorization_id, paid_tier,
+            # rate_type_code, fiscal_age_group_code) inputs at the top of this iteration, and
+            # `rates` is never mutated inside this loop - re-resolving here is guaranteed to
+            # return the identical value, so reuse it instead of calling _resolve_rate again.
+            if rate is None:
                 excluded_days += 1
                 day["payment_excluded"] = True
             elif amount_class == "EXPECTED":
-                total += recheck_rate * unit_hours
+                total += rate * unit_hours
 
         # ---- summary_groups accumulation (replaces the old separate loop) ----
         if day["payable"] and not day.get("payment_excluded"):
             paid_days += 1
-            group_rate = _resolve_rate(rates, day["authorization_id"], day["paid_tier"], day.get("rate_type_code"), day.get("fiscal_age_group_code"))
-            if group_rate is not None:
+            if rate is not None:
                 county_id = day.get("county_id", "")
                 paid_tier = day.get("paid_tier") or "NO_PAYMENT"
                 basis = "SCHEDULED" if day.get("forecast_basis") == "SCHEDULED" else "ACTUAL"
                 group_key = (county_id, paid_tier, basis)
                 group = summary_groups.setdefault(group_key, {"county_id": county_id, "county_name": day.get("county_name"), "rates": set(), "paid_tier": paid_tier, "basis": basis, "children_served": set(), "hours": Decimal("0"), "amount": Decimal("0"), "conditional_amount": Decimal("0")})
-                group["rates"].add(_money(group_rate))
+                group["rates"].add(_money(rate))
                 group_hours = _hours(day.get("unit_hours")) or Decimal("0")
-                group_amount = group_rate * group_hours
+                group_amount = rate * group_hours
                 group["children_served"].add(day.get("child_name") or day["authorization_id"])
                 group["hours"] += group_hours
                 if day["conditional"]:
@@ -1191,38 +1303,50 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             county["amount_at_risk"] += summary_amount
         elif day.get("payable") is True and not day.get("payment_excluded") and rate is not None and payment_type in {"REGULAR", "FORECAST", "DROP_IN"}:
             county["attendance_based_amount"] += summary_amount
-        for store, key, item_label in (
-            (categories, payment_type, label),
-            (counties, county_key, county_label),
-            (children, child_key, child_label),
-        ):
-            item = bucket(store, key, item_label)
-            item["days"] += 1
-            authorization_name = day.get("authorization_name")
-            if isinstance(authorization_name, str) and authorization_name:
-                item["authorization_names"].add(authorization_name)
-            if child_key != "UNKNOWN":
-                item["children_served"].add(child_key)
-            if is_risk and rate is not None:
-                # Keep at-risk amounts in their source category across every view.
-                item["hours"] += summary_hours
-                item["conditional_amount"] += summary_amount
-            elif day.get("payable") is True and not day.get("payment_excluded") and rate is not None:
-                # Count hours only when this row represents payable money.
-                item["hours"] += summary_hours
-                item["amount"] += summary_amount
-            elif day.get("classification") not in {"NO_CARE", "CARE_NOT_OFFERED"}:
-                item["excluded_days"] += 1
-                for flag in day.get("flags", []):
-                    if flag in {"PARENT_CONFIRMATION_PENDING", "PARENT_CONFIRMATION_UNAVAILABLE"}:
-                        item["excluded_reasons"].add("pending confirmation")
-                    elif flag == "ABSENCE_LIMIT_EXCEEDED":
-                        item["excluded_reasons"].add("absence limit exceeded")
-                    elif flag == "DROP_IN_LIMIT_EXCEEDED":
-                        item["excluded_reasons"].add("drop-in limit exceeded")
-                    elif flag == "FISCAL_RATE_UNAVAILABLE":
-                        # Use provider-facing wording rather than internal fiscal-rate terminology.
-                        item["excluded_reasons"].add("rate not yet available for these dates")
+
+        # categories/counties/children (rendered below via aggregate_by, after this loop)
+        # share this exact per-day contribution shape - only their grouping key/label differ.
+        authorization_name = day.get("authorization_name")
+        row_hours = Decimal("0")
+        row_amount = Decimal("0")
+        row_conditional_amount = Decimal("0")
+        row_excluded_days = 0
+        row_excluded_reasons: list[str] = []
+        if is_risk and rate is not None:
+            # Keep at-risk amounts in their source category across every view.
+            row_hours = summary_hours
+            row_conditional_amount = summary_amount
+        elif day.get("payable") is True and not day.get("payment_excluded") and rate is not None:
+            # Count hours only when this row represents payable money.
+            row_hours = summary_hours
+            row_amount = summary_amount
+        elif day.get("classification") not in {"NO_CARE", "CARE_NOT_OFFERED"}:
+            row_excluded_days = 1
+            for flag in day.get("flags", []):
+                if flag in {"PARENT_CONFIRMATION_PENDING", "PARENT_CONFIRMATION_UNAVAILABLE"}:
+                    row_excluded_reasons.append("pending confirmation")
+                elif flag == "ABSENCE_LIMIT_EXCEEDED":
+                    row_excluded_reasons.append("absence limit exceeded")
+                elif flag == "DROP_IN_LIMIT_EXCEEDED":
+                    row_excluded_reasons.append("drop-in limit exceeded")
+                elif flag == "FISCAL_RATE_UNAVAILABLE":
+                    # Use provider-facing wording rather than internal fiscal-rate terminology.
+                    row_excluded_reasons.append("rate not yet available for these dates")
+        view_rows.append({
+            "category_key": payment_type,
+            "category_label": label,
+            "county_key": county_key,
+            "county_label": county_label,
+            "child_key": child_key,
+            "child_label": child_label,
+            "hours": row_hours,
+            "amount": row_amount,
+            "conditional_amount": row_conditional_amount,
+            "excluded_days": row_excluded_days,
+            "authorization_names": authorization_name if isinstance(authorization_name, str) and authorization_name else None,
+            "children_served": child_key if child_key != "UNKNOWN" else None,
+            "excluded_reasons": row_excluded_reasons,
+        })
 
         if "FISCAL_RATE_UNAVAILABLE" in day.get("flags", []):
             add_action("missing-fiscal-rate", "Review unmatched fiscal rates", "A payable day has no matching fiscal rate.", summary_amount, "high")
@@ -1232,6 +1356,24 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             add_action("review-drop-in-limit", "Review drop-in-limit days", "A drop-in day exceeded the available allowance.", summary_amount, "high")
         if "PARENT_CONFIRMATION_PENDING" in day.get("flags", []):
             add_action("confirm-pending-attendance", "Review pending confirmations", "Confirmation is still pending and may affect the payable amount.", summary_amount, "high")
+
+    # Render categories/counties/children from the collected rows - each view groups the
+    # same rows by a different key/label pair, sharing one generic reducer instead of three
+    # copies of hand-rolled get-or-create-then-sum/collect logic.
+    _AGGREGATE_SUM_FIELDS = ("hours", "amount", "conditional_amount", "excluded_days")
+    _AGGREGATE_COLLECT_FIELDS = ("authorization_names", "children_served", "excluded_reasons")
+    categories = aggregate_by(
+        view_rows, key_fn=lambda row: row["category_key"], label_fn=lambda row: row["category_label"],
+        sum_fields=_AGGREGATE_SUM_FIELDS, collect_fields=_AGGREGATE_COLLECT_FIELDS, count_field="days",
+    )
+    counties = aggregate_by(
+        view_rows, key_fn=lambda row: row["county_key"], label_fn=lambda row: row["county_label"],
+        sum_fields=_AGGREGATE_SUM_FIELDS, collect_fields=_AGGREGATE_COLLECT_FIELDS, count_field="days",
+    )
+    children = aggregate_by(
+        view_rows, key_fn=lambda row: row["child_key"], label_fn=lambda row: row["child_label"],
+        sum_fields=_AGGREGATE_SUM_FIELDS, collect_fields=_AGGREGATE_COLLECT_FIELDS, count_field="days",
+    )
 
     vacant_slot_fee, vacant_slot_days = _vacant_slot_fee_totals(payload)
     # Vacant slots have no confirmation concept; include them only in potential_total.

@@ -666,6 +666,29 @@ test("forecast attendance defaults missing confirmation to pending", () => {
   );
 });
 
+test("actual attendance defaults missing confirmation to pending without changing Hours__c", () => {
+  const attendanceDay = normalizeAttendanceDays(
+    [{
+      authorization_id: "auth-1",
+      work_date: "2026-09-01",
+      ci_authorization_hours: 5,
+      raw_hours: 4,
+      absence_parent_approved: false,
+    }],
+    {
+      "auth-1": {
+        age_band: "OVER_36_MONTHS",
+        occupied_slot_contract: false,
+        care_not_offered: false,
+        observed_holiday: false,
+      },
+    },
+  )[0];
+
+  assert.equal(attendanceDay?.parent_confirmation, "PENDING");
+  assert.equal(attendanceDay?.attended_hours, 4);
+});
+
 test("forecast attendance defaults missing actual hours to zero", () => {
   assert.equal(
     normalizeAttendanceDays(
@@ -809,6 +832,33 @@ test("derives age band, occupied slot, and observed holiday enrichment from sour
       },
     },
   );
+});
+
+test("matches schedule authorization references across Salesforce numeric and string IDs", () => {
+  const enrichment = deriveAttendanceEnrichment(
+    [{
+      authorization_id: "963390",
+      CI_Authorization_Id__c: "963390",
+      work_date: "2026-09-14",
+      care_not_offered: false,
+    }],
+    {
+      authorizations: [{
+        Id: 963390,
+        Name: "963390",
+        IDN_CLIENT__r: { DTE_DOB__c: "2024-01-01" },
+      }],
+      encumbrances: [{
+        idn_auth__c: "963390",
+        dte_care__c: "2026-09-14",
+        cde_status_encmbr__c: "5",
+      }],
+      slotContracts: [],
+    },
+    { holidayList: [] },
+  );
+
+  assert.equal(enrichment["963390"]?.date_of_birth, "2024-01-01");
 });
 
 test("derives age band from child DOB and care date", () => {
@@ -1575,7 +1625,7 @@ test("initial payment summary renders county composition columns", () => {
   assert.match(text, /County payment composition/);
   // County composition shows only aggregate payment measures; categories are covered separately.
   assert.match(text, /\| County \| Children served \| Net payment \| Conditional at-risk \| Maximum estimated payout \|/);
-  assert.match(text, /\| Denver \| Unavailable from the current source \| \$558\.00 \| \$0\.00 \| \$558\.00 \|/);
+  assert.match(text, /\| Denver \| Unavailable from the current source \| \$558\.00 \(60\.00H\) \| \$0\.00 \| \$558\.00 \(60\.00H\) \|/);
   assert.match(text, /\| Total \|/);
 });
 
@@ -1587,8 +1637,8 @@ test("category tables omit payment measures that are absent from the requested s
       amount: "90.00",
       summary_view: {
         categories: [
-          { label: "Not paid", days: 2, amount: "0.00" },
-          { label: "Care", days: 5, amount: "90.00" },
+          { label: "Not paid", days: 2, hours: "0.00", amount: "0.00" },
+          { label: "Care", days: 5, hours: "27.00", amount: "90.00" },
         ],
       },
     },
@@ -1598,6 +1648,7 @@ test("category tables omit payment measures that are absent from the requested s
   // The category table labels the count as child-days.
   assert.match(text, /\| Category \| Children served \| Child-days \| Care hours \| Net payment \| Scheduled forecast \| Conditional at-risk \| Unavailable days \(reason\) \| Maximum estimated payout \|/);
   assert.doesNotMatch(text, /Not paid/);
+  assert.match(text, /\| Regular care \| .* \| 5 \| 27 \| \$90\.00 \(27\.00H\) \|/);
   assert.match(text, /\| Total \|/);
 });
 
@@ -1654,7 +1705,7 @@ test("county composition omits component columns with no verified values", () =>
   const text = result.content[0].text;
   // County composition remains limited to aggregate payment measures.
   assert.match(text, /\| County \| Children served \| Net payment \| Conditional at-risk \| Maximum estimated payout \|/);
-  assert.match(text, /\| Denver \| Unavailable from the current source \| \$90\.00 \| \$0\.00 \| \$90\.00 \|/);
+  assert.match(text, /\| Denver \| Unavailable from the current source \| \$90\.00 \(10\.00H\) \| \$0\.00 \| \$90\.00 \(10\.00H\) \|/);
   assert.match(text, /\| Total \|/);
 });
 

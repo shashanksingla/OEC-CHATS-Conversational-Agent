@@ -11,7 +11,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
-from _shared import ABSENCE_LIMIT_APPROACHING_THRESHOLD_DAYS, CONFIRMATION_WINDOW_DAYS
+from _shared import ABSENCE_LIMIT_APPROACHING_THRESHOLD_DAYS, CONFIRMATION_WINDOW_DAYS, aggregate_by
 
 
 class AttendanceRiskError(ValueError):
@@ -308,26 +308,43 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
     crossed_children = [
         child for child in child_results if "ABSENCE_LIMIT_EXCEEDED" in child["risk_codes"]
     ]
-    county_aggregates: dict[str, dict[str, Any]] = {}
-    for child in child_results:
-        county = child["county"]
-        if county is None:
-            county = "Unavailable from the current source"
-        aggregate = county_aggregates.setdefault(
-            county,
-            {"county": county, "children": 0, "children_over_limit_count": 0, "approved_limit": None, "conflicting_limits": False},
-        )
-        aggregate["children"] += 1
-        if "ABSENCE_LIMIT_EXCEEDED" in child["risk_codes"]:
-            aggregate["children_over_limit_count"] += 1
-        # Report a county limit only when all children agree; mismatches remain explicit.
-        child_limit = child.get("absence_limit")
-        if child_limit is not None and not aggregate["conflicting_limits"]:
-            if aggregate["approved_limit"] is None:
-                aggregate["approved_limit"] = child_limit
-            elif aggregate["approved_limit"] != child_limit:
-                aggregate["conflicting_limits"] = True
-                aggregate["approved_limit"] = None
+    # Grouped via the shared aggregate_by reducer (children count + over-limit sum are a
+    # plain groupby; approved_limit/conflicting_limits are a consensus rule layered on top
+    # of the collected distinct absence_limit values, so they're resolved in a post-processing
+    # pass below rather than expressed as a sum_field).
+    county_rows = [
+        {
+            "county_key": child["county"] if child["county"] is not None else "Unavailable from the current source",
+            "over_limit": 1 if "ABSENCE_LIMIT_EXCEEDED" in child["risk_codes"] else 0,
+            # aggregate_by's collect_fields already skips None values, matching the
+            # original's "only report a limit when it's actually known" guard.
+            "absence_limit": child.get("absence_limit"),
+        }
+        for child in child_results
+    ]
+    county_aggregates: dict[str, dict[str, Any]] = aggregate_by(
+        county_rows,
+        key_fn=lambda row: row["county_key"],
+        sum_fields=("over_limit",),
+        collect_fields=("absence_limit",),
+        label_fn=lambda row: row["county_key"],
+        count_field="children",
+    )
+    for aggregate in county_aggregates.values():
+        aggregate["county"] = aggregate.pop("label")
+        aggregate["children_over_limit_count"] = aggregate.pop("over_limit")
+        # Report a county limit only when every child that has one agrees; mismatches
+        # remain an explicit conflict rather than silently picking a side.
+        distinct_limits = aggregate.pop("absence_limit")
+        if len(distinct_limits) == 1:
+            aggregate["approved_limit"] = next(iter(distinct_limits))
+            aggregate["conflicting_limits"] = False
+        elif len(distinct_limits) == 0:
+            aggregate["approved_limit"] = None
+            aggregate["conflicting_limits"] = False
+        else:
+            aggregate["approved_limit"] = None
+            aggregate["conflicting_limits"] = True
 
     def county_count(children: list[dict[str, Any]]) -> int:
         return len({child["county"] for child in children if child["county"] not in (None, "Multiple")})
