@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ConversationContextStore, cacheKeyFor } from "../src/conversation-context.js";
+import { ConversationContextStore, additiveRefinementsOnly, cacheKeyFor } from "../src/shared/conversation.js";
+
+// Stored action input is authoritative; only explicit pagination refinements may be merged from caller input.
+test("additiveRefinementsOnly keeps only detailPage/detailPageSize, dropping stale echoed filters", () => {
+  const input = { riskFocus: "ABSENCE_LIMITS", providerUtterance: "1", childNames: ["Ava"], detailPage: 2, detailPageSize: 10 };
+  assert.deepEqual(additiveRefinementsOnly(input), { detailPage: 2, detailPageSize: 10 });
+});
+
+test("additiveRefinementsOnly returns an empty object when the caller sends no additive keys", () => {
+  assert.deepEqual(additiveRefinementsOnly({ riskFocus: "ABSENCE_LIMITS" }), {});
+});
 
 test("cached results are provider-bound and expire", () => {
   let now = 0;
@@ -38,7 +48,7 @@ test("cached result reuse extends the entry's TTL (sliding window)", () => {
 
   now = 9;
   assert.ok(store.getCachedResult(key, "provider-a"));
-  now = 15; // would have expired at 10 under a fixed deadline, but the read at now=9 extended it to 19
+  now = 15; // The read at now=9 extends the sliding TTL beyond the original deadline.
   assert.ok(store.getCachedResult(key, "provider-a"));
   now = 30;
   assert.equal(store.getCachedResult(key, "provider-a"), undefined);

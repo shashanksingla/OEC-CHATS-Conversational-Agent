@@ -10,10 +10,10 @@ import {
   livePaymentReadiness,
   normalizePaymentStatus,
   normalizeScheduleAttendance,
-} from "../src/attendance-engine.js";
+} from "../src/attendance/attendance.js";
 import {
   formatCountyPolicyResult,
-  formatAttendanceRiskResult,
+  formatAttendanceResult,
   formatPayoutResult,
 } from "../src/server.js";
 import {
@@ -24,7 +24,7 @@ import {
   normalizeExistingSubPayments,
   normalizeQualityTier,
   normalizeServicePeriod,
-} from "../src/payment-engine.js";
+} from "../src/payment/payment-engine.js";
 
 test("live payment readiness blocks amounts until canonical sources are available", () => {
   assert.deepEqual(livePaymentReadiness(), {
@@ -48,11 +48,8 @@ test("live payment readiness blocks amounts until canonical sources are availabl
 });
 
 test("attendance analysis returns affected child drill-down rows", () => {
-  // County-summary-first: an unscoped request no longer renders child rows -
-  // this test is specifically about the drill-down shape, so it scopes to
-  // the named child (the same narrowing the "Show affected children" action
-  // would apply) to reach that shape.
-  const result = formatAttendanceRiskResult({
+  // Child scope is required to exercise the child drill-down shape.
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH", childNames: ["Taylor Example"] },
     attendanceRisk: {
       pending_confirmation_days: 2,
@@ -76,17 +73,13 @@ test("attendance analysis returns affected child drill-down rows", () => {
   const text = result.content[0].text;
     assert.match(text, /Current-month attendance review found 1 child\(ren\) needing attention\./);
   assert.match(text, /2 pending parent confirmation day\(s\) affect 1 child\(ren\)\./);
-  // Column-hygiene fix: Outside window/Over limit/Est. risk are dropped when
-  // every displayed row lacks a value for them (this fixture only has a
-  // Pending count).
+  // Empty-value columns are omitted from the displayed table.
   assert.match(text, /\| Child \| Authorization \| County \| Pending \|/);
   assert.match(text, /\| Taylor Example \| Unavailable from the current source \| Unavailable from the current source \| 2 \|/);
-  assert.match(text, /Review pending confirmations — 2 days/);
+  // Suppressed: single-child scope already shows this table (was a dead-end loop).
+  assert.doesNotMatch(text, /Review pending confirmations — 2 days/);
   assert.match(text, /\*\*Recommended actions\*\*/);
-  // Already childNames-scoped (the drill-down shape itself), so the
-  // facility-wide overview/county/available-views sections correctly do not
-  // render here - those are for the unscoped county-summary-first response,
-  // covered by other tests.
+  // Child-scoped drill-downs omit facility-wide overview sections.
   assert.doesNotMatch(text, /Attendance overview:/);
   assert.doesNotMatch(text, /Attendance by county:/);
   const structuredSummary = result.structuredContent?.attendanceSummary as Record<string, unknown>;
@@ -96,15 +89,15 @@ test("attendance analysis returns affected child drill-down rows", () => {
   assert.equal(result.structuredContent?.viewControls, undefined);
   assert.equal(result.structuredContent?.actionIntents, undefined);
   assert.equal(result.structuredContent?.affectedChildNames, undefined);
-  // This test now deliberately scopes the request by childNames (the
-  // drill-down shape itself), so childNames legitimately appears in the
-  // echoed scope - the no-childNames-leakage assertion moved to a test that
-  // actually exercises the unscoped county-summary-first path.
+  // The echoed scope legitimately retains the childNames used for this drill-down.
   assert.doesNotMatch(text, /View next payout details/);
 });
 
 test("attendance analysis prioritizes absence and incomplete attendance review", () => {
-  const result = formatAttendanceRiskResult({
+  // Risk-driven "next-actions" now come from situation.rankedActions (the deterministic
+  // ranking engine), not from formatter-internal logic - this fixture supplies the ranked
+  // list a real orchestration call would have already computed for this exact scenario.
+  const result = formatAttendanceResult({
     attendanceRisk: {
       pending_confirmation_days: 0,
       risk_child_count: 2,
@@ -130,6 +123,12 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
         },
       ],
     },
+    situation: {
+      rankedActions: [
+        { action_id: "review-absence-limit-risk", label: "Review absence-limit risk — 1 children", category: "payment_impact", priority_score: 3000, tool: "cccap_analyze_payment_risk", input: { riskFocus: "ABSENCE_LIMITS" } },
+        { action_id: "review-incomplete-attendance", label: "Review incomplete attendance — 1 records", category: "source_recovery", priority_score: 0, tool: "cccap_analyze_payment_risk", input: { riskFocus: "INCOMPLETE_ATTENDANCE" } },
+      ],
+    },
   });
 
   const text = result.content[0].text;
@@ -137,14 +136,12 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
   assert.match(text, /1 child\(ren\) have incomplete attendance records \(one of check-in\/check-out missing\)\./);
   assert.match(text, /Review absence-limit risk — 1 children/);
   assert.match(text, /Review incomplete attendance — 1 records/);
-  // "This is not a payment-total table." was removed entirely from every
-  // attendance county table per explicit follow-up request - it no longer
-  // renders anywhere in this file.
+
   assert.doesNotMatch(text, /This is not a payment-total table/);
   assert.doesNotMatch(text, /View next payout details/);
   assert.doesNotMatch(text, /Review and complete the pending parent confirmations/);
 
-  const countyPolicyResult = formatAttendanceRiskResult({
+  const countyPolicyResult = formatAttendanceResult({
     attendanceRisk: {
       pending_confirmation_days: 0,
       children: [
@@ -160,12 +157,17 @@ test("attendance analysis prioritizes absence and incomplete attendance review",
         },
       ],
     },
+    situation: {
+      rankedActions: [
+        { action_id: "review-absence-limit-risk", label: "Review absence-limit risk — 1 children", category: "payment_impact", priority_score: 3000, tool: "cccap_analyze_payment_risk", input: { riskFocus: "ABSENCE_LIMITS" } },
+      ],
+    },
   });
   assert.match(countyPolicyResult.content[0].text, /Review absence-limit risk — 1 children/);
 });
 
 test("attendance analysis does not label unavailable absence limits as concerns", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     attendanceRisk: {
       pending_confirmation_days: 0,
       absence_days: 1,
@@ -187,7 +189,7 @@ test("attendance analysis does not label unavailable absence limits as concerns"
 });
 
 test("attendance analysis fails closed when aggregate totals contradict child details", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "LAST_MONTH" },
     attendanceRisk: {
       pending_confirmation_days: 4,
@@ -210,7 +212,7 @@ test("attendance analysis fails closed when aggregate totals contradict child de
 });
 
 test("attendance analysis preserves structured action scope for follow-ups", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "LAST_MONTH" },
     attendanceRisk: {
       pending_confirmation_days: 2,
@@ -234,7 +236,7 @@ test("attendance analysis preserves structured action scope for follow-ups", () 
 });
 
 test("attendance continuation filters cached child details to the requested names", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH", childNames: ["Target Child"] },
     riskFocus: "ABSENCE_LIMITS",
     attendanceRisk: {
@@ -269,7 +271,7 @@ test("attendance continuation filters cached child details to the requested name
 });
 
 test("attendance analysis focuses pending-confirmation follow-ups", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH" },
     riskFocus: "PARENT_CONFIRMATIONS",
     attendanceRisk: {
@@ -299,7 +301,7 @@ test("attendance analysis focuses pending-confirmation follow-ups", () => {
 });
 
 test("attendance analysis focuses absence-limit follow-ups", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH" },
     riskFocus: "ABSENCE_LIMITS",
     attendanceRisk: {
@@ -329,7 +331,7 @@ test("attendance analysis focuses absence-limit follow-ups", () => {
 });
 
 test("attendance absence follow-up points to child-level attendance retrieval", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH" },
     attendanceRisk: {
       pending_confirmation_days: 0,
@@ -372,6 +374,7 @@ test("normalizes nested getSchedules attendance records into the Python contract
     {
       Id: "schedule-1",
       Type__c: "CCCAP_AUTHORIZED",
+      Schedule_Type__c: "FTPT",
       Contact_Name__c: "YELLOWFOUR BALLOON",
       Authorization__c: "auth-1",
       Authorization__r: {
@@ -435,14 +438,14 @@ test("normalizes nested getSchedules attendance records into the Python contract
 
   assert.equal(normalized.schedules[0]?.schedule_id, "schedule-1");
   assert.equal(normalized.schedules[0]?.authorization_id, "auth-1");
+  assert.equal(normalized.schedules[0]?.authorization_type, "CCCAP_AUTHORIZED");
+  assert.equal(normalized.schedules[0]?.schedule_type, "FTPT");
   assert.equal(normalized.schedules[0]?.authorization_name, undefined);
   assert.equal(normalized.schedules[0]?.county_id, "county-1");
   assert.equal(normalized.schedules[0]?.county_name, "Denver County");
   assert.equal(normalized.schedules[0]?.quality_tier, 5);
   assert.equal(normalized.schedules[0]?.rate_type_code, "1");
-  // No explicit Authorization_Status__c/authorization_status/expr0 value was
-  // returned for this schedule, so auth_status must fail closed to undefined
-  // rather than defaulting to APPROVED because Type__c is CCCAP_AUTHORIZED.
+  // Missing authorization status must remain undefined rather than defaulting to APPROVED.
   assert.equal(normalized.schedules[0]?.auth_status, undefined);
   assert.equal(normalized.schedules[0]?.parent_confirmation, "CONFIRMED");
   assert.equal(normalized.schedules[0]?.absence_parent_approved, true);
@@ -795,6 +798,7 @@ test("derives age band, occupied slot, and observed holiday enrichment from sour
     {
       "auth-1": {
         age_band: "ZERO_TO_36_MONTHS",
+        date_of_birth: "2024-09-02",
         slot_contract_present: true,
         occupied_slot_contract: true,
         care_not_offered: true,
@@ -961,7 +965,8 @@ test("current week forecast renders actual and scheduled attendance basis split"
     },
   });
   const text = result.content[0].text;
-  assert.match(text, /\| Net payment \| ~ \$293\.50 \|/);
+  // Complete totals do not receive an approximation marker.
+  assert.match(text, /\| Net payment \| \$293\.50 \|/);
   assert.match(text, /\| Conditional at-risk \| \$1206\.00 \|/);
   assert.match(text, /Actual \(checked in\): 5\.00 hours\. Scheduled \(projected\): 5\.00 hours\./);
   assert.match(text, /Attendance type \| Basis \| Scheduled hours/);
@@ -1025,6 +1030,49 @@ test("payment results show scheduled forecast rows for child drill-down", () => 
   assert.match(result.content[0].text, /9th Sep'26 \| Scheduled \(forecast\) \| 5\.00/);
   assert.match(result.content[0].text, /\| Scheduled forecast \|/);
   assert.equal(result.structuredContent?.calculationMode, "CURRENT_WEEK_FORECAST");
+});
+
+// Net payment excludes scheduled forecast, which appears as a separate row when nonzero.
+test("current week forecast keeps Net payment separate from Scheduled forecast (C1 fix)", () => {
+  const result = formatPayoutResult({
+    paymentView: "CURRENT_WEEK_FORECAST",
+    status: "ok",
+    payment: {
+      status: "CONDITIONAL",
+      amount: "293.50",
+      amount_at_risk: "630.00",
+      summary_view: {
+        categories: [
+          { label: "Scheduled forecast", amount: "5728.00", conditional_amount: "630.00" },
+        ],
+      },
+    },
+  });
+  const text = result.content[0].text;
+  assert.match(text, /\| Net payment \| \$293\.50 \|/);
+  assert.match(text, /\| Scheduled forecast \| \$5728\.00 \|/);
+  assert.match(text, /\| Conditional at-risk \| \$630\.00 \|/);
+  // Complete totals do not receive an approximation marker.
+  assert.match(text, /\| Maximum estimated payout \| \$6651\.50 \|/);
+  // Visible rows must reconcile to the maximum estimated payout.
+  assert.doesNotMatch(text, /\| Net payment \| \$6021\.50 \|/);
+});
+
+// Zero scheduled forecast preserves the standard payout summary without a forecast row.
+test("upcoming payout summary adds no Scheduled forecast row when forecast is zero (C1 non-regression)", () => {
+  const result = formatPayoutResult({
+    paymentView: "NEXT_PAYOUT",
+    status: "ok",
+    payment: {
+      status: "CONDITIONAL",
+      amount: "7324.20",
+      amount_at_risk: "324.00",
+    },
+  });
+  const text = result.content[0].text;
+  assert.match(text, /\| Net payment \| \$7324\.20 \|/);
+  assert.match(text, /\| Conditional at-risk \| \$324\.00 \|/);
+  assert.doesNotMatch(text, /\| Scheduled forecast \| \$/);
 });
 
 test("payment results keep initial summary to the measure table, categories, and composition", () => {
@@ -1143,12 +1191,9 @@ test("payment detail omits zero-value NO_CARE rows", () => {
 });
 
 test("a named child-list with no riskFocus shows a complete, unpaginated view of just those children", () => {
-  // Spec: "Ensure the child-level drill-down provides a complete view of the
-  // selected children" - a request already scoped to exactly these 11
-  // children by name is not a facility-wide drill-down that needs capping;
-  // every one of the explicitly named children renders.
+  // Explicitly named children receive a complete, uncapped drill-down.
   const childNames = Array.from({ length: 11 }, (_, index) => `Child ${index + 1}`);
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH", childNames },
     attendanceRisk: {
       pending_confirmation_days: 11,
@@ -1171,12 +1216,9 @@ test("a named child-list with no riskFocus shows a complete, unpaginated view of
 });
 
 test("attendance detail caps the provider-facing table and reports the remainder for a riskFocus-scoped county narrowing", () => {
-  // The real capping/pagination behavior this test name describes still
-  // applies to a riskFocus-scoped, non-child-list request (here, a county
-  // narrowing under PARENT_CONFIRMATIONS reaches the generic isNarrowedToDetail
-  // child table, capped to 7, since it isn't the child-scoped-multi-risk path).
+  // County-narrowed risk views use the capped generic child table.
   const countyNames = ["Denver"];
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH" },
     riskFocus: "PARENT_CONFIRMATIONS",
     countyNames,
@@ -1194,9 +1236,7 @@ test("attendance detail caps the provider-facing table and reports the remainder
   });
 
   const text = result.content[0].text;
-  // PARENT_CONFIRMATIONS is exclusive-by-design (see D in the redesign plan):
-  // an unscoped-by-child request always renders the county-first, top-4-
-  // children shape rather than the generic capped table.
+  // Unscoped parent-confirmation views use the county-first top-four shape.
   assert.match(text, /Top children by pending confirmations:/);
   assert.match(text, /Showing the top 4 of 11 affected children by pending confirmations/);
 });
@@ -1355,10 +1395,7 @@ test("payment drill-down targets the highest-impact child", () => {
     ] },
   });
 
-  // Item 4: a cross-capability "open-attendance-risk-for-child" action now
-  // rides alongside the payment child-detail action, so a provider can jump
-  // to the same child's 3-table attendance-risk breakdown, not just their
-  // payment amounts.
+  // Payment drill-downs also offer attendance-risk detail for the same child.
   assert.deepEqual(result.structuredContent?.actionIntents, [{
     actionId: "open-payment-detail",
     capability: "payment-analysis",
@@ -1419,11 +1456,7 @@ test("payment drill-down ranks maximum total amount when amount at risk is zero"
   const action = (result.structuredContent?.actionIntents as Record<string, unknown>[])
     .find((candidate) => candidate.label === "Open highest-impact child payment detail");
   assert.deepEqual((action?.input as Record<string, unknown>)?.childNames, ["High total"]);
-  // total_amount is a genuine dollar figure (tier 2 of the 3-tier ranking), so
-  // this is still a real dollar-ranked result — the hours-fallback caveat is
-  // reserved for highestImpactRankedByDollars === false (tier 3) only, per
-  // payment-formatter.ts. Asserting the caveat's ABSENCE here is the correct
-  // regression check: it must never render for a genuine dollar ranking.
+  // A genuine dollar ranking must not display the scheduled-hours fallback caveat.
   assert.doesNotMatch(
     result.content[0].text,
     /A verified dollar amount at risk isn't available for this scope yet/,
@@ -1451,7 +1484,7 @@ test("payment drill-down uses the scheduled-hours fallback action without a doll
 });
 
 test("attendance formatter reports unmatched child filters", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH" },
     riskFocus: "ABSENCE_LIMITS",
     attendanceRisk: {
@@ -1464,9 +1497,8 @@ test("attendance formatter reports unmatched child filters", () => {
 });
 
 test("incomplete attendance action returns child-level detail rows", () => {
-  // County-summary-first: scope to the named child (the drill-down shape)
-  // so the day-level detail table renders instead of the county-only view.
-  const result = formatAttendanceRiskResult({
+  // Child scope is required to render day-level detail.
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH", childNames: ["Incomplete Example"] },
     riskFocus: "INCOMPLETE_ATTENDANCE",
     attendanceRisk: {
@@ -1494,8 +1526,7 @@ test("incomplete attendance action returns child-level detail rows", () => {
 
   const text = result.content[0].text;
   assert.match(text, /Incomplete Example/);
-  // Column-hygiene fix: this fixture has no Pending/Outside window/Over
-  // limit/Est. risk value on any displayed row, so all four are dropped.
+  // Empty-value columns are omitted from the displayed table.
   assert.match(text, /\| Child \| Authorization \| County \|/);
   assert.doesNotMatch(text, /Pending Example/);
 });
@@ -1512,12 +1543,7 @@ test("payment summary does not inline child rollup rows before detail is request
   });
 
   const text = result.content[0].text;
-  // The old "Detail available: N rows" text-only fallback was removed as
-  // dead code - attendance.days is never actually empty with a nonzero
-  // totalRows on the real runtime path (the orchestration always
-  // populates a small preview). With no attendance.days here at all
-  // (this fixture provides none), neither the preview nor the full
-  // detail table renders - only confirming the child rollup stays hidden.
+  // Child rollups remain hidden when no attendance detail rows are provided.
   assert.doesNotMatch(text, /Taylor Example/);
   assert.doesNotMatch(text, /Detail by child and service date:/);
 });
@@ -1547,8 +1573,9 @@ test("initial payment summary renders county composition columns", () => {
 
   const text = result.content[0].text;
   assert.match(text, /County payment composition/);
-  assert.match(text, /County \| Children served \| Enrollment absence \| Paid absence \| Paid holidays \| Drop-ins \| Regular care \| Vacant slots \| Conditional at-risk \| Maximum estimated payout/);
-  assert.match(text, /\| Denver \| Unavailable from the current source \| \$0\.00 \| \$72\.00 \| \$72\.00 \| \$36\.00 \| \$360\.00 \| \$18\.00 \| \$0\.00 \| \$558\.00 \|/);
+  // County composition shows only aggregate payment measures; categories are covered separately.
+  assert.match(text, /\| County \| Children served \| Net payment \| Conditional at-risk \| Maximum estimated payout \|/);
+  assert.match(text, /\| Denver \| Unavailable from the current source \| \$558\.00 \| \$0\.00 \| \$558\.00 \|/);
   assert.match(text, /\| Total \|/);
 });
 
@@ -1568,7 +1595,8 @@ test("category tables omit payment measures that are absent from the requested s
   });
 
   const text = result.content[0].text;
-  assert.match(text, /\| Category \| Children served \| Days \| Care hours \| Net payment \| Scheduled forecast \| Conditional at-risk \| Unavailable days \(reason\) \| Maximum estimated payout \|/);
+  // The category table labels the count as child-days.
+  assert.match(text, /\| Category \| Children served \| Child-days \| Care hours \| Net payment \| Scheduled forecast \| Conditional at-risk \| Unavailable days \(reason\) \| Maximum estimated payout \|/);
   assert.doesNotMatch(text, /Not paid/);
   assert.match(text, /\| Total \|/);
 });
@@ -1624,8 +1652,9 @@ test("county composition omits component columns with no verified values", () =>
   });
 
   const text = result.content[0].text;
-  assert.match(text, /\| County \| Children served \| Enrollment absence \| Paid absence \| Paid holidays \| Drop-ins \| Regular care \| Vacant slots \| Conditional at-risk \| Maximum estimated payout \|/);
-  assert.match(text, /\| Denver \| Unavailable from the current source \| \$0\.00 \| \$0\.00 \| \$0\.00 \| \$0\.00 \| \$90\.00 \| \$0\.00 \| \$0\.00 \| \$90\.00 \|/);
+  // County composition remains limited to aggregate payment measures.
+  assert.match(text, /\| County \| Children served \| Net payment \| Conditional at-risk \| Maximum estimated payout \|/);
+  assert.match(text, /\| Denver \| Unavailable from the current source \| \$90\.00 \| \$0\.00 \| \$90\.00 \|/);
   assert.match(text, /\| Total \|/);
 });
 
@@ -1641,11 +1670,7 @@ test("service period ledger formatter translates statuses and renders each payou
   assert.equal(result.structuredContent?.providerMessage, result.content[0].text);
   const actionControls = result.structuredContent?.actionControls as Array<Record<string, unknown>>;
   const drillDownInput = (actionControls[0]?.input ?? {}) as Record<string, unknown>;
-  // Drill-down from a ledger row now routes through CUSTOM_RANGE (FORECAST
-  // mode), not STATUS - the ledger's own per-period figure for this exact
-  // date range was already computed via CUSTOM_RANGE, and STATUS mode's
-  // stricter fail-closed handling could block on a period the ledger already
-  // showed a complete breakdown for (see payment-formatter.ts ledgerInput).
+  // Ledger drill-down uses CUSTOM_RANGE to preserve the period's computed breakdown.
   assert.deepEqual(drillDownInput, {
     view: "CUSTOM_RANGE",
     dateFilter: "DATE_RANGE",
@@ -1660,7 +1685,9 @@ test("service period payout formatter renders countdown and verified-data absenc
   assert.match(payoutText, /Upcoming payout in 9 days/);
   assert.match(payoutText, /Payment by category:/);
   assert.match(payoutText, /Net payment/);
-  assert.match(payoutText, /Payment amounts:/);
+  // Item E (chat_09_17_3 review): PAYMENT_AMOUNT_LEGEND split into one blockquote line per term,
+  // no single "Payment amounts:" prefix line remains.
+  assert.match(payoutText, /Net payment: the current estimate excluding unresolved risk\./);
   assert.match(formatPayoutResult({ entry: undefined, daysUntilPayout: undefined, sourceRetrievedAt: "2026-09-01T00:00:00Z" }).content[0].text, /No upcoming payout is currently identified from verified data/);
 });
 
@@ -1732,5 +1759,6 @@ test("payment drill-down preserves service-period identity and reconciles risk t
   assert.doesNotMatch(text, /Custom period/);
   assert.match(text, /\| Net payment \| \$7324\.20 \|/);
   assert.match(text, /\| Conditional at-risk \| \$324\.00 \|/);
-  assert.match(text, /\| Maximum estimated payout \| ~ \$7648\.20 \|/);
+  // Complete totals do not receive an approximation marker.
+  assert.match(text, /\| Maximum estimated payout \| \$7648\.20 \|/);
 });

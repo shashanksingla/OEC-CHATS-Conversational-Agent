@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { assertPaymentEnginePayload, normalizePaymentStatus } from "../src/payment-engine.js";
+import { assertPaymentEnginePayload, normalizePaymentStatus } from "../src/payment/payment-engine.js";
 
 const validPayload = {
   rule_version: "provider-risk-payment-v3",

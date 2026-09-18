@@ -111,17 +111,15 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   assert.equal(structured.availableViews, undefined);
   assert.equal(structured.viewControls, undefined);
   assert.equal(structured.actionIntents, undefined);
-  // Next actions are now numbered (capped to the top 2) rather than bulleted,
-  // matching the drill-down action-list convention and avoiding an
-  // open-ended pile of bullets across turns.
-  assert.match(text ?? "", /\n1\. Review absence-limit risk — 1 children/);
+  // Next actions are numbered and capped at two for consistent drill-down responses.
+  // This fixture's absence usage is within the county tier (approaching, not crossed), so the
+  // ranking engine's more precise "review-approaching-absence-limit" candidate applies here.
+  assert.match(text ?? "", /\n1\. Review approaching absence limits — 1 children/);
 
   const offeredActions = structured.actionControls as Array<Record<string, unknown>>;
   const priorityActionTwo = offeredActions.find((action) => action.actionId === "review-incomplete-attendance");
   assert.ok(priorityActionTwo, JSON.stringify(offeredActions));
-  // Client-visible input is now { actionId, actionToken } - the signed
-  // token (continuation-token.ts) replaces the previous Map-backed
-  // contextRef/actionRef pair as the actual credential.
+  // Signed action tokens replace the previous contextRef/actionRef credentials.
   const priorityActionTwoInput = priorityActionTwo.input as Record<string, unknown>;
   assert.equal(priorityActionTwoInput.actionId, "review-incomplete-attendance");
   assert.equal(typeof priorityActionTwoInput.actionToken, "string");
@@ -135,10 +133,7 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   assert.equal(incompleteFollowUp.isError, undefined);
   assert.match(incompleteFollowUp.content.find((item) => item.type === "text")?.text ?? "", /incomplete attendance/i);
   assert.equal(incompleteStructured.providerMessage, incompleteFollowUp.content.find((item) => item.type === "text")?.text);
-  // Cross-risk unscoped actions no longer carry childNames in their input
-  // (see actionMetadata's comment) - the resolved scope naturally omits it
-  // too, and the target response re-derives the currently affected
-  // children from riskFocus alone instead of replaying a fixed list.
+  // Unscoped cross-risk actions re-derive affected children from riskFocus.
   assert.deepEqual(incompleteStructured.scope, {
     dateFilter: "THIS_MONTH",
     riskFocus: "INCOMPLETE_ATTENDANCE",
@@ -146,10 +141,7 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   assert.equal(JSON.stringify(incompleteStructured.actionControls).includes("contextRef"), false);
   assert.equal(JSON.stringify(incompleteStructured.actionControls).includes("actionRef"), false);
 
-  // A riskFocus-scoped response (INCOMPLETE_ATTENDANCE here) no longer links
-  // to a different risk area's review - it offers only "return to summary".
-  // Reach the absence-limit view from there, via the unscoped facility-wide
-  // response, matching the new exclusive-drill-down contract.
+  // Risk-focused responses offer only a return to summary, preserving exclusive drill-down.
   const returnToSummaryAction = (incompleteStructured.actionControls as Array<Record<string, unknown>>).find(
     (action) => action.actionId === "return-to-attendance-summary",
   );
@@ -160,11 +152,11 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   });
   const summaryStructured = summaryFollowUp.structuredContent as Record<string, unknown>;
   const returnedAbsenceAction = (summaryStructured.actionControls as Array<Record<string, unknown>>).find(
-    (action) => action.actionId === "review-absence-limit-risk",
+    (action) => action.actionId === "review-approaching-absence-limit",
   );
   assert.ok(returnedAbsenceAction);
   const returnedAbsenceActionInput = returnedAbsenceAction.input as Record<string, unknown>;
-  assert.equal(returnedAbsenceActionInput.actionId, "review-absence-limit-risk");
+  assert.equal(returnedAbsenceActionInput.actionId, "review-approaching-absence-limit");
   assert.equal(typeof returnedAbsenceActionInput.actionToken, "string");
   const absenceFollowUp = await client.callTool({
     name: "cccap_analyze_payment_risk",
@@ -174,22 +166,12 @@ test("current-month snapshot counts five-day-old unconfirmed absences toward cou
   assert.equal(absenceFollowUp.isError, undefined);
   assert.match(absenceFollowUp.content.find((item) => item.type === "text")?.text ?? "", /absence[- ]limit/i);
   assert.equal(absenceStructured.providerMessage, absenceFollowUp.content.find((item) => item.type === "text")?.text);
-  // See the matching comment above for review-incomplete-attendance - this
-  // unscoped cross-risk action no longer carries childNames either.
+  // Unscoped cross-risk actions do not carry childNames.
   assert.deepEqual(absenceStructured.scope, {
     dateFilter: "THIS_MONTH",
     riskFocus: "ABSENCE_LIMITS",
   }, JSON.stringify({ action: returnedAbsenceAction, response: absenceStructured }));
-  // Stateless continuation tokens apply the best-effort result cache
-  // uniformly to BOTH actionId-based and reference-based continuations
-  // (the old Map-backed store only checked the cache for the
-  // contextRef/actionRef path, never for an actionId click, which was an
-  // inconsistency, not a deliberate design choice). "Return to summary"
-  // clears riskFocus/childNames/countyNames, so it now correctly reuses the
-  // already-fetched full facility result via cacheKeyFor's date-scope-only
-  // key instead of re-fetching schedules a third time - only 3 of the 4
-  // calls (initial snapshot, incomplete-attendance follow, absence-limit
-  // follow) actually hit getSchedules; "return to summary" is a cache hit.
+  // Continuation caching applies uniformly, so return-to-summary reuses the facility result.
   assert.equal(scheduleReads, 3);
 
   await client.close();

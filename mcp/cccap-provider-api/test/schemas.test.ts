@@ -9,7 +9,6 @@ test("composite schemas reject partial continuation references", () => {
 });
 
 import {
-  attendanceDataSchema,
   dateScopeSchema,
   paymentHistorySchema,
   servicePeriodSchema,
@@ -57,18 +56,6 @@ test("service period requests require one supported selector", () => {
   assert.equal(
     servicePeriodSchema.safeParse({ paymentAfter: "TODAY", limitOne: true })
       .success,
-    true,
-  );
-});
-
-test("attendance data requests require a valid date filter", () => {
-  assert.equal(attendanceDataSchema.safeParse({}).success, false);
-  assert.equal(
-    attendanceDataSchema.safeParse({ dateFilter: "DATE_RANGE" }).success,
-    false,
-  );
-  assert.equal(
-    attendanceDataSchema.safeParse({ dateFilter: "THIS_MONTH" }).success,
     true,
   );
 });

@@ -1,0 +1,473 @@
+// Merged: formatters/shared.ts + view-state.ts (view-state.ts is exclusively consumed by
+// attendance-formatter.ts and payment-formatter.ts, never by server.ts directly).
+
+export const readOnlyAnnotations = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+};
+
+export type ToolResult = {
+  content: [{ type: "text"; text: string }];
+  structuredContent?: Record<string, unknown>;
+  isError?: boolean;
+};
+
+export const MAX_DISPLAY_CHILDREN = 10;
+export const MAX_SUMMARY_ROWS = 7;
+export const DISCLAIMER_GLOBAL =
+  "⚠️ *Figures reflect the system's current data and are not an official payment notice. " +
+  "Actual payments are subject to state and county verification, review, and may differ from these calculated estimates.*";
+
+export const DISCLAIMER_EXPECTED =
+  "*Expected, based on current system data — may still change if the county issues a correction.*";
+export const DISCLAIMER_FORECASTED =
+  "*Forecasted from scheduled and partial attendance data — may change as the period completes.*";
+export const DISCLAIMER_AT_RISK =
+  "*Could be reduced or excluded if unresolved before {deadline}.*";
+export const DISCLAIMER_GUARANTEED =
+  "*Paid per your county contract regardless of occupancy or attendance.*";
+
+export function result(data: unknown): ToolResult {
+  const structuredContent =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : undefined;
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(data) }],
+    ...(structuredContent ? { structuredContent } : {}),
+  };
+}
+export function compactActionControls(actions: Record<string, unknown>[]): Record<string, unknown>[] {
+  return actionControls(actions).map((action) => {
+    const input = recordValue(action.input);
+    return {
+      ...action,
+      ...(input ? {
+        input: Object.fromEntries(
+          Object.entries(input).filter(([key]) => key !== "childNames"),
+        ),
+      } : {}),
+    };
+  });
+}
+export function recordValue(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+export function tableValue(value: unknown): string {
+  if (typeof value === "string" && value.trim()) {
+    const normalized = value.replace(/[\r\n|]/g, " ").trim();
+    return isSalesforceRecordId(normalized)
+      ? "Unavailable from the current source"
+      : normalized;
+  }
+  if (typeof value === "number") {
+    return String(value);
+  }
+  return "Unavailable from the current source";
+}
+
+export const ATTENDANCE_TYPE_LABELS: Record<string, string> = {
+  ATTENDED: "Attended",
+  ABSENCE: "Absence (paid)",
+  ENROLLMENT_ABSENCE: "Enrollment absence",
+  HOLIDAY: "Holiday",
+  DROP_IN: "Drop-in",
+  SCHEDULED_FORECAST: "Scheduled (forecast)",
+  CARE_NOT_OFFERED: "Care not offered",
+  NO_CARE: "No care scheduled",
+  BLOCKED: "Unavailable from the current source",
+  PENDING_CONFIRMATION: "Pending parent confirmation",
+  INCOMPLETE_ATTENDANCE_RECORD: "Missing check-in/check-out",
+  VACANT_SLOT: "Vacant slot",
+};
+
+export function humanizeAttendanceType(value: unknown): string {
+  if (typeof value !== "string") return "Unavailable from the current source";
+  return ATTENDANCE_TYPE_LABELS[value] ?? tableValue(value);
+}
+
+function moneyDisplay(value: unknown): string {
+  if (typeof value === "number" && !Number.isFinite(value)) return "Unavailable from the current source";
+  if (typeof value === "string" && (value.trim() === "" || !Number.isFinite(Number(value)))) {
+    return "Unavailable from the current source";
+  }
+  const numeric = typeof value === "number"
+    ? value
+    : typeof value === "string"
+      ? Number(value)
+      : undefined;
+  return numeric === undefined ? tableValue(value) : numeric.toFixed(2);
+}
+
+export function estimatedMoney(value: unknown, isUncertain = true): string {
+  const display = moneyDisplay(value);
+  if (display === "Unavailable from the current source") return display;
+  const withDollarSign = "$" + display;
+  return isUncertain ? "~ " + withDollarSign : withDollarSign;
+}
+
+export function plainMoney(value: unknown): string {
+  const display = moneyDisplay(value);
+  return display === "Unavailable from the current source" ? display : `$${display}`;
+}
+
+export const PAYMENT_AMOUNT_LEGEND = [
+  "> Net payment: the current estimate excluding unresolved risk.",
+  "> Scheduled forecast: the projected amount for future scheduled days that have not yet occurred.",
+  "> Conditional at-risk: the amount that may be added or lost when attendance issues are resolved.",
+  "> Maximum estimated payout = net payment + scheduled forecast + conditional at-risk.",
+  "> Vacant-slot payments are included once in net payment when applicable.",
+].join("\n");
+
+export function isSalesforceRecordId(value: string): boolean {
+  return /^[A-Za-z0-9]{15}(?:[A-Za-z0-9]{3})?$/.test(value);
+}
+
+export function numericValue(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function ordinalSuffix(day: number): string {
+  if (day % 100 >= 11 && day % 100 <= 13) return "th";
+  switch (day % 10) {
+    case 1: return "st";
+    case 2: return "nd";
+    case 3: return "rd";
+    default: return "th";
+  }
+}
+
+export function shortDateLabel(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const datePart = value.trim().match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (!datePart) return undefined;
+  const parsed = new Date(`${datePart}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  const day = parsed.getUTCDate();
+  const month = parsed.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+  const year = String(parsed.getUTCFullYear()).slice(-2);
+  return `${day}${ordinalSuffix(day)} ${month}'${year}`;
+}
+
+export function overLimitDays(absenceDays: unknown, absenceLimit: unknown): string {
+  const days = numericValue(absenceDays);
+  const limit = typeof absenceLimit === "number" ? absenceLimit : undefined;
+  if (limit === undefined) return "—";
+  return String(Math.max(0, days - limit));
+}
+
+export function attendanceScopeLabel(scope: unknown): string {
+  const dateFilter = recordValue(scope)?.dateFilter;
+  if (dateFilter === "LAST_MONTH") return "Last-month";
+  if (dateFilter === "THIS_MONTH") return "Current-month";
+  if (dateFilter === "DATE_RANGE") return "Date-range";
+  if (dateFilter === "TODAY") return "Today";
+  return "Attendance-risk";
+}
+
+export function hasAbsenceLimitConcern(child: Record<string, unknown>): boolean {
+  return Array.isArray(child.risk_codes) && child.risk_codes.some((code) =>
+    code === "ABSENCE_LIMIT_EXCEEDED"
+    || code === "ABSENCE_LIMIT_APPROACHING"
+    || code === "ABSENCE_LIMIT_UNAVAILABLE"
+    || code === "ABSENCE_LIMIT_CONFLICT",
+  );
+}
+const MAX_NEXT_ACTIONS = 2;
+
+function targetSignature(action: Record<string, unknown>): string | undefined {
+  if (typeof action.targetViewId !== "string") return undefined;
+  const input = action.input && typeof action.input === "object" && !Array.isArray(action.input)
+    ? action.input as Record<string, unknown>
+    : {};
+  const scopeKeys = ["childNames", "riskFocus", "countyNames", "authNames", "view"] as const;
+  return JSON.stringify([action.targetViewId, ...scopeKeys.map((key) => input[key])]);
+}
+
+export function orderedActionList(actions: Record<string, unknown>[]): Record<string, unknown>[] {
+  const uniqueActions = [...new Map(actions.map((action) => [String(action.actionId), action])).values()];
+  const seenTargets = new Set<string>();
+  const deduplicatedActions = uniqueActions.filter((action) => {
+    const signature = targetSignature(action);
+    if (signature === undefined) return true;
+    if (seenTargets.has(signature)) return false;
+    seenTargets.add(signature);
+    return true;
+  });
+  const nextActions = deduplicatedActions
+    .filter((action) => action.section === "next-actions")
+    .sort((left, right) => (typeof right.priority === "number" ? right.priority : -Infinity) - (typeof left.priority === "number" ? left.priority : -Infinity))
+    .slice(0, MAX_NEXT_ACTIONS);
+  const drillDown = uniqueActions.filter((action) => action.section === "drill-down");
+  const availableViews = uniqueActions.filter((action) => action.section === "available-options" || action.section === "available-views");
+  const returnActions = uniqueActions.filter((action) => action.section === "return");
+  return [...nextActions, ...drillDown, ...availableViews, ...returnActions];
+}
+
+export function actionControls(actions: Record<string, unknown>[]): Record<string, unknown>[] {
+  return orderedActionList(actions).map((action) => ({
+    type: "button",
+    actionId: action.actionId,
+    label: action.label,
+    ...(action.reason ? { reason: action.reason } : {}),
+    ...(action.priority ? { priority: action.priority } : {}),
+    ...(action.source ? { source: action.source } : {}),
+    section: action.section,
+    capability: action.capability,
+    ...(action.tool ? { tool: action.tool } : {}),
+    ...(action.input ? { input: action.input } : {}),
+    ...(action.scope ? { scope: action.scope } : {}),
+    ...(action.riskFocus ? { riskFocus: action.riskFocus } : {}),
+    ...(action.view ? { view: action.view } : {}),
+  }));
+}
+
+export function renderActionSections(message: string, actions: Record<string, unknown>[]): string {
+  const base = message
+    .replace(/\n\*\*Priority Actions\*\*[\s\S]*$/, "")
+    .replace(/\n\*\*Recommended actions\*\*[\s\S]*$/, "");
+  const combined = orderedActionList(actions);
+  const lines = [base, "", "**Recommended actions**"];
+  lines.push(...(combined.length > 0
+    ? combined.map((action, index) => `${index + 1}. ${String(action.label)}`)
+    : ["No urgent action identified from the current verified result. Ask about the specific child, county, date, or payment detail you want reviewed next."]));
+  return lines.join("\n");
+}
+
+function riskFocusLabel(riskFocus: string): string {
+  if (riskFocus === "ABSENCE_LIMITS") return "absence-limit risk";
+  if (riskFocus === "PARENT_CONFIRMATIONS") return "pending parent confirmations";
+  if (riskFocus === "INCOMPLETE_ATTENDANCE") return "incomplete attendance records";
+  return "this risk area";
+}
+
+export function formatScopeClarification(
+  riskFocus: string,
+  periodScope: { dateFrom: string; dateTo: string },
+  biasHint: "MONTH" | "PERIOD" = "MONTH",
+): ToolResult {
+  const focusLabel = riskFocusLabel(riskFocus);
+  const periodLabel = `${shortDateLabel(periodScope.dateFrom) ?? periodScope.dateFrom}-${shortDateLabel(periodScope.dateTo) ?? periodScope.dateTo}`;
+  const message = [
+    `**Which scope do you want for ${focusLabel}?**`,
+    biasHint === "PERIOD"
+      ? `Did you mean the current service period (${periodLabel}), matching your last question? The risk figures you were originally shown came from the current month - these can be different numbers.`
+      : "The conversation has since narrowed to a specific service period, but the risk figures you were originally shown came from the current month - these can be different numbers.",
+  ].join("\n");
+  const monthAction: Record<string, unknown> = {
+    actionId: "clarify-scope-month",
+    capability: "attendance-risk-analysis",
+    tool: "cccap_analyze_payment_risk",
+    label: "Use the current month (matches the original snapshot)",
+    reason: "Recompute this review against the same month-wide scope the earlier figures came from.",
+    priority: "high",
+    section: "next-actions",
+    source: "current-result",
+    input: { dateFilter: "THIS_MONTH", riskFocus },
+  };
+  const periodAction: Record<string, unknown> = {
+    actionId: "clarify-scope-period",
+    capability: "attendance-risk-analysis",
+    tool: "cccap_analyze_payment_risk",
+    label: `Use just the current period (${periodLabel})`,
+    reason: "Keep the review scoped to the service period currently under discussion.",
+    priority: "high",
+    section: "next-actions",
+    source: "current-result",
+    input: { dateFilter: "DATE_RANGE", dateFrom: periodScope.dateFrom, dateTo: periodScope.dateTo, riskFocus },
+  };
+  const actions: Record<string, unknown>[] = biasHint === "PERIOD" ? [periodAction, monthAction] : [monthAction, periodAction];
+  return {
+    content: [{ type: "text" as const, text: renderActionSections(message, actions) }],
+    structuredContent: {
+      capability: "attendance-risk-analysis",
+      scopeClarification: true,
+      actionIntents: actions,
+    },
+  };
+}
+
+export function countyPaymentSummary(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  const byCounty = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    const county = typeof row.county_name === "string" && row.county_name.length > 0
+      ? row.county_name
+      : "Unavailable from the current source";
+    const current = byCounty.get(county) ?? {
+      county_name: county,
+      children_served: 0,
+      hours: 0,
+      amount: 0,
+      conditional_amount: 0,
+    };
+    current.children_served = Number(current.children_served) + Number(row.children_served ?? 0);
+    current.hours = Number(current.hours) + Number(row.hours ?? 0);
+    current.amount = Number(current.amount) + Number(row.amount ?? 0);
+    current.conditional_amount = Number(current.conditional_amount) + Number(row.conditional_amount ?? 0);
+    byCounty.set(county, current);
+  }
+  return [...byCounty.values()];
+}
+export function careUnitLabel(value: unknown): string {
+  switch (value) {
+    case "PART_TIME": return "Part-time care";
+    case "FULL_TIME": return "Full-time care";
+    case "FULL_TIME_PLUS_PART_TIME": return "Full-time + part-time care";
+    case "FULL_TIME_PLUS_FULL_TIME": return "Full-time + full-time care";
+    case "NO_PAYMENT": return "No payable care unit";
+    default: return tableValue(value);
+  }
+}
+
+// ===== begin view-state.ts =====
+export type ProviderViewId =
+  | "COMBINED_SUMMARY"
+  | "ATTENDANCE_RISK_SUMMARY"
+  | "ATTENDANCE_DATE_DETAIL"
+  | "ATTENDANCE_COUNTY_ROLLUP"
+  | "NEXT_UPCOMING_PAYOUT"
+  | "LAST_PAYOUT"
+  | "PAYOUT_LEDGER"
+  | "PAYMENT_CATEGORY_ROLLUP"
+  | "PAYMENT_COUNTY_ROLLUP"
+  | "VACANT_SLOT_ROLLUP"
+  | "SUB_PAYMENT_SUMMARY"
+  | "SUB_PAYMENT_DETAIL"
+  | "CURRENT_SERVICE_PERIOD_FORECAST";
+
+export type ProviderTableId =
+  | "attendance-risk"
+  | "attendance-date-detail"
+  | "attendance-county-rollup"
+  | "payout-summary"
+  | "last-payout-summary"
+  | "payout-ledger"
+  | "payment-category-rollup"
+  | "payment-county-rollup"
+  | "vacant-slot-rollup"
+  | "sub-payment-summary"
+  | "sub-payment-detail"
+  | "forecast-date-detail";
+
+export interface ProviderViewState {
+  viewId: ProviderViewId;
+  tableId?: ProviderTableId;
+  tableTitle?: string;
+  tableDescription?: string;
+  parentViewId?: ProviderViewId;
+  scope?: unknown;
+  filters?: Record<string, unknown>;
+  sourceRetrievedAt?: string;
+  ruleVersion?: string;
+  page?: number;
+  pageSize?: number;
+  totalRows?: number;
+}
+
+// Compact large childNames arrays for display while retaining the full server-side continuation input.
+function compactScopeForDisplay(scope: unknown): unknown {
+  if (!scope || typeof scope !== "object" || Array.isArray(scope)) return scope;
+  const record = scope as Record<string, unknown>;
+  if (!Array.isArray(record.childNames) || record.childNames.length <= 3) return scope;
+  const { childNames, ...rest } = record;
+  return { ...rest, childNamesCount: childNames.length };
+}
+
+export function viewState(state: ProviderViewState): ProviderViewState {
+  return Object.fromEntries(
+    Object.entries({ ...state, scope: compactScopeForDisplay(state.scope) }).filter(([, value]) => value !== undefined),
+  ) as unknown as ProviderViewState;
+}
+
+export function actionViewMetadata(
+  action: Record<string, unknown>,
+  currentView: ProviderViewState,
+): Record<string, unknown> {
+  const input = action.input && typeof action.input === "object" && !Array.isArray(action.input)
+    ? action.input as Record<string, unknown>
+    : undefined;
+  return {
+    ...action,
+    sourceViewId: currentView.viewId,
+    ...(input?.viewId ? { targetViewId: input.viewId } : { targetViewId: targetViewForAction(action.actionId) }),
+    lockedView: currentView,
+  };
+}
+
+export function isNoOpAction(action: Record<string, unknown>, currentView: ProviderViewState): boolean {
+  const input = action.input && typeof action.input === "object" && !Array.isArray(action.input)
+    ? action.input as Record<string, unknown>
+    : undefined;
+  const scope = currentView.scope && typeof currentView.scope === "object" && !Array.isArray(currentView.scope)
+    ? currentView.scope as Record<string, unknown>
+    : undefined;
+  if (!input || !scope) return false;
+  const scopeKeys = ["childNames", "riskFocus", "countyNames", "authNames", "detailPage", "detailPageSize", "view"] as const;
+  const inputKeys = Object.keys(input).filter((key) => (scopeKeys as readonly string[]).includes(key));
+  if (inputKeys.length === 0) return false;
+  const scopeMatches = scopeKeys.every((key) => input[key] === undefined || JSON.stringify(input[key]) === JSON.stringify(scope[key]));
+  if (!scopeMatches) return false;
+  if (typeof action.targetViewId === "string" && action.targetViewId !== currentView.viewId) return false;
+  return true;
+}
+
+// Multi-hop loop guard: drops a candidate action whose {tool, input} matches one of the last
+// few states already rendered for this provider (recorded via conversation.ts's recordRenderedState).
+export function isRecentlyRenderedAction(action: Record<string, unknown>, recentSignatures: Set<string> | undefined): boolean {
+  if (!recentSignatures || recentSignatures.size === 0) return false;
+  if (typeof action.tool !== "string") return false;
+  const input = action.input && typeof action.input === "object" && !Array.isArray(action.input)
+    ? action.input as Record<string, unknown>
+    : {};
+  return recentSignatures.has(viewStateStableJson({ tool: action.tool, input }));
+}
+
+// Local stable-JSON serializer (duplicate-free: this file has no dependency on conversation.ts,
+// keeping formatters independent of conversation-state internals).
+function viewStateStableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(viewStateStableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${viewStateStableJson(entry)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+function targetViewForAction(actionId: unknown): ProviderViewId | undefined {
+  if (typeof actionId !== "string") return undefined;
+  if (actionId.startsWith("attendance-view-")) {
+    const viewId = actionId.slice("attendance-view-".length);
+    if (viewId === "ATTENDANCE_DATE_DETAIL" || viewId === "ATTENDANCE_COUNTY_ROLLUP") return viewId;
+  }
+  if (
+    actionId === "show-affected-children"
+    || actionId === "next-attendance-detail-page"
+    || actionId === "open-attendance-detail"
+    || actionId === "open-attendance-risk-for-child"
+  ) {
+    return "ATTENDANCE_DATE_DETAIL";
+  }
+  if (actionId.startsWith("open-service-period-") || actionId === "review-service-period-payout-ledger") {
+    return "SUB_PAYMENT_DETAIL";
+  }
+  if (actionId.includes("absence") || actionId.includes("confirmation") || actionId.includes("incomplete")) {
+    return "ATTENDANCE_DATE_DETAIL";
+  }
+  if (actionId.includes("payment-county")) return "PAYMENT_COUNTY_ROLLUP";
+  if (actionId.includes("vacant-slot")) return "VACANT_SLOT_ROLLUP";
+  if (actionId.includes("sub-payment")) return "SUB_PAYMENT_SUMMARY";
+  if (actionId.includes("county")) return "ATTENDANCE_COUNTY_ROLLUP";
+  if (actionId.includes("payout")) return "NEXT_UPCOMING_PAYOUT";
+  if (actionId.includes("forecast")) return "CURRENT_SERVICE_PERIOD_FORECAST";
+  if (actionId.includes("payment-detail")) return "SUB_PAYMENT_DETAIL";
+  if (actionId.includes("payment-summary")) return "PAYMENT_CATEGORY_ROLLUP";
+  return undefined;
+}
+// ===== end view-state.ts =====

@@ -5,7 +5,7 @@ import {
   filterPaymentSchedules,
   scopeAuthorizationDataToSchedules,
   scopeScheduleData,
-} from "../src/payment-orchestration.js";
+} from "../src/payment/payment-orchestration.js";
 
 test("scopes schedules and authorization mappings to the selected service period", () => {
   const scoped = scopeScheduleData({

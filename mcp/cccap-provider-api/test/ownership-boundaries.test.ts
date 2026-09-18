@@ -3,16 +3,15 @@ import test from "node:test";
 
 import {
   normalizeAttendanceRiskSchedules,
-} from "../src/attendance-engine.js";
+} from "../src/attendance/attendance.js";
 import {
   normalizePaymentSourceBundle,
   deriveFiscalAgeGroupCodes,
   normalizeFiscalRatesForPayment,
   normalizePaymentStatus,
-} from "../src/payment-engine.js";
-import { getPaymentAnalysis, getUpcomingPayoutDetail } from "../src/payment-orchestration.js";
-import { normalizeQualityTier } from "../src/provider-policy.js";
-import { normalizeScheduleAttendance } from "../src/schedule-normalizer.js";
+} from "../src/payment/payment-engine.js";
+import { getPaymentAnalysis, getUpcomingPayoutDetail } from "../src/payment/payment-orchestration.js";
+import { normalizeQualityTier, normalizeScheduleAttendance } from "../src/shared/normalizers.js";
 import {
   normalizeAuthorizations,
   normalizeCases,
@@ -23,7 +22,7 @@ import {
   normalizeProviderInitialization,
   normalizeSchedules,
   normalizeServicePeriods,
-} from "../src/read-model-adapters.js";
+} from "../src/shared/normalizers.js";
 
 test("provider policy maps quality levels without provider-type drift", () => {
   assert.equal(normalizeQualityTier("Level 5", "EXE"), 5);
@@ -207,6 +206,10 @@ test("payment adapter produces canonical input from source-shaped records", () =
           fiscalScheduleId: "fiscal-1",
           rateTypeCode: "1",
           careUnitCode: "3",
+          // DOB 2024-01-01 is 32 months old at service date 2026-09-01, fiscal age-group "6"
+          // (deriveFiscalAgeGroupCodes: months < 36) - must match the day's own derived
+          // fiscal_age_group_code now that age-group matching is per-day, not per-authorization.
+          ageGroupCode: "6",
           paidTier: "PART_TIME",
           fiscalAgreementAmount: 45,
           providerAmount: 45,
@@ -503,6 +506,8 @@ test("payment orchestration runs the canonical payload through the evaluator", a
             fiscalScheduleId: "fiscal-1",
             rateTypeCode: "1",
             careUnitCode: "3",
+            // DOB 2024-01-01 is 32 months old at service date 2026-09-01, fiscal age-group "6".
+            ageGroupCode: "6",
             paidTier: "PART_TIME",
             fiscalAgreementAmount: 45,
             providerAmount: 45,
@@ -529,18 +534,13 @@ test("payment orchestration runs the canonical payload through the evaluator", a
   ) as Record<string, unknown>;
   const payment = result.payment as Record<string, unknown>;
 
-  // scheduleRateTypes now collects every rate type an authorization's
-  // schedule days actually use (not just the last one seen) - see
-  // payment-orchestration.ts's scheduleRateTypes construction.
+  // Verify all rate types used by an authorization's schedule days are collected.
   assert.deepEqual(authorizationRequest?.scheduleRateTypes, { "auth-1": ["1"] });
   assert.equal(paymentHistoryCalls, 1);
   assert.equal(result.paymentView, "STATUS");
   assert.equal(result.source_readiness, "COMPLETE");
   assert.equal(payment.status, "EXPECTED");
-  // A summary (non-detailPage) request now includes a small preview (up to
-  // 3 rows, not the full page) instead of an empty days array, so the
-  // formatter can show a compact preview table instead of a bare row-count
-  // hint. With only 1 total row available, the preview is that 1 row.
+  // Summary responses include a preview of attendance rows for compact rendering.
   assert.equal(((result.attendance as Record<string, unknown>).days as unknown[]).length, 1);
   assert.deepEqual(result.detailPagination, { page: 0, pageSize: 3, totalRows: 1, hasMore: false });
 });
@@ -580,7 +580,7 @@ test("payment orchestration filters payment analysis by authorization name", asy
         { Id: "schedule-2", Authorization__c: "auth-2", authorization_id: "auth-2", authorization_name: "AUTH-TWO", CI_Authorization_Id__c: "AUTH-TWO", Contact_Name__c: "Child Two", CI_Authorization_Rate_Type__c: "1", CI_Authorization_Date__c: "2026-09-01", CI_Authorization_Hours__c: 5, Hours__c: 5, Care_Not_Offered__c: false, Attendance__r: { records: [{ Record_Type_Name__c: "Check-In", Status__c: "PARENT_APPROVED" }] } },
       ] };
     },
-    async getFiscalRates() { return { normalizedFiscalRates: { fiscalRates: [{ fiscalScheduleId: "fiscal-1", rateTypeCode: "1", careUnitCode: "2", paidTier: "PART_TIME", fiscalAgreementAmount: 9, sourceId: "rate-1" }], fiscalRateFees: [{ fiscalScheduleId: "fiscal-1" }] } }; },
+    async getFiscalRates() { return { normalizedFiscalRates: { fiscalRates: [{ fiscalScheduleId: "fiscal-1", rateTypeCode: "1", careUnitCode: "2", ageGroupCode: "6", paidTier: "PART_TIME", fiscalAgreementAmount: 9, sourceId: "rate-1" }], fiscalRateFees: [{ fiscalScheduleId: "fiscal-1" }] } }; },
     async getHolidayList() { return { holidayList: [] }; },
     async getPaymentHistory() { return { subPayments: [] }; },
   } as unknown as Parameters<typeof getPaymentAnalysis>[0];

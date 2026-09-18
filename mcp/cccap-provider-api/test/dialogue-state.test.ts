@@ -1,14 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DialogueStateStore, hasShownGlossary, markGlossaryShown } from "../src/dialogue-state.js";
-
-test("glossary state is tracked per provider", () => {
-  const providerKey = `glossary-test-${Date.now()}`;
-  assert.equal(hasShownGlossary(providerKey), false);
-  markGlossaryShown(providerKey);
-  assert.equal(hasShownGlossary(providerKey), true);
-});
+import { DialogueStateStore } from "../src/shared/conversation.js";
 
 test("first turn for a provider always reports scope and capability changed", () => {
   const store = new DialogueStateStore();
@@ -70,7 +63,7 @@ test("bounded entry count evicts the oldest provider state", () => {
   now = 2;
   store.recordAndDiff("provider-c", "attendance-risk-analysis", {}, "t2");
   now = 3;
-  // provider-a should have been evicted as the oldest once the third entry was added.
+  // The oldest provider entry should be evicted when the third entry is added.
   const diff = store.recordAndDiff("provider-a", "attendance-risk-analysis", {}, "t3");
   assert.equal(diff.scopeChanged, true);
   assert.equal(diff.sinceLastTurn, undefined);

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { selectFiscalScheduleForAuthorization } from "../src/payment-engine.js";
+import { selectFiscalScheduleForAuthorization } from "../src/payment/payment-engine.js";
 
 const authorization = {
   Id: "auth-1",
@@ -41,11 +41,7 @@ test("matches the latest effective schedule for the authorization rate type", ()
 });
 
 test("matches when the authorization's schedule days used multiple different rate types (e.g. regular and weekend under the same authorization)", () => {
-  // Live-confirmed real scenario: one authorization's schedule days across
-  // a single week used 5 different rate types. Only one of them needs to
-  // be covered by a candidate schedule for the authorization-level match
-  // to succeed - every rate type must be checked, not just the first/last
-  // one collected.
+  // Verify authorization matching checks all schedule rate types, not only the first or last collected.
   assert.deepEqual(
     selectFiscalScheduleForAuthorization(
       authorization,
@@ -58,10 +54,7 @@ test("matches when the authorization's schedule days used multiple different rat
 });
 
 test("fails closed with a rate-type-specific reason when the county matches but none of the requested rate types do", () => {
-  // Schedules exist for county-1 (the authorization's county), but none
-  // carry rate type "19" - this must report NO_MATCH_RATE_TYPE, not the
-  // old blanket NO_MATCH, since the step-by-step matcher already confirmed
-  // the county step passed before the rate-type step failed.
+  // Verify a county match followed by a rate-type failure reports NO_MATCH_RATE_TYPE.
   assert.deepEqual(
     selectFiscalScheduleForAuthorization(
       authorization,
@@ -98,13 +91,7 @@ test("fails closed with a county-specific reason when no schedule exists for the
 });
 
 test("fails closed with a date-specific reason when county and rate type match but no schedule covers the care date", () => {
-  // A careDate before the authorization's own validity window would trip
-  // the earlier authorization-date guard instead (reason: "NO_MATCH",
-  // unchanged - that check is unrelated to fiscal-schedule matching). Use
-  // only the bounded schedule-old row (ends 2026-06-30) and a careDate
-  // after that end but still within the authorization's 2026-01-01 to
-  // 2026-12-31 validity window, so county and rate type both match and
-  // only the date-range step fails.
+  // Keep the care date within authorization validity so only the fiscal schedule date-range check fails.
   assert.deepEqual(
     selectFiscalScheduleForAuthorization(
       authorization,

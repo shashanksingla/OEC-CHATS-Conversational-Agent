@@ -11,8 +11,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
-
-CONFIRMATION_WINDOW_DAYS = 9
+from _shared import ABSENCE_LIMIT_APPROACHING_THRESHOLD_DAYS, CONFIRMATION_WINDOW_DAYS
 
 
 class AttendanceRiskError(ValueError):
@@ -35,10 +34,7 @@ def _non_negative_integer(value: Any, field: str) -> int:
 
 
 def _optional_hours(value: Any) -> float:
-    # Backs the "Potential Loss (Care Hours)" estimate only - this is a
-    # best-effort figure, not a payable amount, so a missing/invalid hours
-    # value fails soft to 0 rather than raising (unlike the strict day-count
-    # fields above, which are required for the core risk classification).
+    # This estimate fails soft to zero because it is not a payable amount.
     if isinstance(value, bool):
         return 0.0
     if isinstance(value, (int, float)) and value >= 0:
@@ -75,11 +71,7 @@ def _county_name(schedule: dict[str, Any]) -> str | None:
 
 
 def _rate_estimate(schedule: dict[str, Any]) -> float | None:
-    # Best-effort daily rate, attached per schedule row by the MCP orchestration
-    # layer (attendance-snapshot.ts) from an independent fiscal-rate fetch. This
-    # is an estimate for payment-risk sizing only, never a payable amount: a
-    # missing or non-numeric value means no estimate is available for that row,
-    # and callers must not treat that absence as a zero-dollar risk.
+    # Best-effort fiscal-rate estimate is for payment-risk sizing only; missing values are unavailable, not zero-dollar risk.
     value = schedule.get("daily_rate_estimate")
     if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
         return None
@@ -121,12 +113,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "absence_days": 0,
             "pending_confirmation_days": 0,
             "incomplete_attendance_days": 0,
-            # Scheduled-hours accumulators backing the "Potential Loss (Care
-            # Hours)" figure - a best-effort estimate, not a payment amount.
-            # Read from CI_Authorization_Hours__c, the same naming convention
-            # as CI_Authorization_Date__c above; missing/invalid values are
-            # treated as 0 hours (fail-soft) since this is an estimate, not
-            # a payable calculation.
+            # Scheduled hours are fail-soft because potential loss is only an estimate.
             "pending_confirmation_hours": 0.0,
             "incomplete_attendance_hours": 0.0,
             "absence_hours": 0.0,
@@ -266,7 +253,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             child["absence_limit"] is not None
             and child["absence_days"] > 0
             and child["absence_days"] <= child["absence_limit"]
-            and child["absence_limit"] - child["absence_days"] <= 2
+            and child["absence_limit"] - child["absence_days"] <= ABSENCE_LIMIT_APPROACHING_THRESHOLD_DAYS
         ):
             risk_codes.append("ABSENCE_LIMIT_APPROACHING")
         counties = sorted(child.pop("counties"))
@@ -284,41 +271,18 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             earliest_pending_date = date.fromisoformat(pending_confirmation_dates[0])
             deadline_date = earliest_pending_date + timedelta(days=CONFIRMATION_WINDOW_DAYS)
             next_confirmation_deadline = deadline_date.isoformat()
-            confirmation_days_remaining = (deadline_date - as_of_date).days
+            # Clamp remaining days at zero because the source date can lag a viewer's local day.
+            confirmation_days_remaining = max(0, (deadline_date - as_of_date).days)
         conflicting_absence_limits = sorted(child.pop("conflicting_absence_limits", set()))
         absence_risk_amount_available = child.pop("absence_risk_amount_available")
         absence_risk_amount_estimate = child.pop("absence_risk_amount_estimate")
-        note = ""
-        potential_impact = ""
-        if conflicting_absence_limits:
-            note = "Conflicting absence limits were returned for this child across authorizations or counties."
-            potential_impact = "Absence-limit payment impact cannot be verified until the authorization data is corrected."
-        elif child["pending_confirmation_days"]:
-            note = f"{child['pending_confirmation_days']} pending parent confirmation day(s) require review."
-            potential_impact = "Payment remains conditional until confirmation is completed."
-            if child["absence_days"]:
-                note += f" {child['absence_days']} absence day(s) are outside the confirmation window."
-        if (
-            child["absence_limit"] is not None
-            and child["absence_days"] > child["absence_limit"]
-        ):
-            excess_days = child["absence_days"] - child["absence_limit"]
-            absence_note = f"{child['absence_days']} absence day(s) exceed the county limit."
-            absence_impact = f"Up to {excess_days} absence day(s) may be excluded from reimbursement."
-            note = f"{note} {absence_note}" if child["pending_confirmation_days"] else absence_note
-            potential_impact = f"{potential_impact} {absence_impact}" if child["pending_confirmation_days"] else absence_impact
-        elif child["absence_limit"] is not None and child["absence_days"] >= child["absence_limit"] - 2:
-            days_until_exceeded = child["absence_limit"] - child["absence_days"] + 1
-            note = f"{child['absence_days']} absence days are within the county limit threshold."
-            potential_impact = (
-                f"The county limit may be exceeded after {days_until_exceeded} more absence day(s)."
-            )
-        elif child["absence_days"]:
-            note = f"{child['absence_days']} absence day(s) require review."
-            potential_impact = "Payment may remain conditional until attendance is confirmed."
-        else:
-            note = f"{child['scheduled_days']} scheduled day(s) reviewed with no current category risk."
-            potential_impact = "No direct payment impact was calculated from the returned attendance data."
+        # Provider-facing note/potential_impact prose used to be generated here and passed
+        # through to the TypeScript layer, but the audited read-sites confirmed neither
+        # string's CONTENT ever reached a rendered response or structuredContent (only a
+        # presence/non-empty check on potential_impact was live, and this function always
+        # produced a non-empty string for every child) - so the facts below (risk_codes,
+        # absence_days, absence_limit, pending_confirmation_days) are the complete contract;
+        # any future provider-facing sentence is TypeScript's responsibility to render from them.
         child_results.append({
             "child_name": child_name,
             **child,
@@ -329,10 +293,8 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "pending_confirmation_dates": pending_confirmation_dates,
             "incomplete_attendance_records": incomplete_attendance_records,
             "conflicting_absence_limits": conflicting_absence_limits,
-            "note": note,
             "next_confirmation_deadline": next_confirmation_deadline,
             "confirmation_days_remaining": confirmation_days_remaining,
-            "potential_impact": potential_impact,
             "risk_codes": risk_codes,
             "risk_amount_estimate": absence_risk_amount_estimate if absence_risk_amount_available else None,
         })
@@ -358,11 +320,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         aggregate["children"] += 1
         if "ABSENCE_LIMIT_EXCEEDED" in child["risk_codes"]:
             aggregate["children_over_limit_count"] += 1
-        # The approved limit is a per-child value driven by county policy and
-        # quality tier; within one county it is normally constant. Report it
-        # only when every child in the county actually shares the same
-        # value - a genuine mismatch surfaces as conflicting_limits rather
-        # than silently picking one child's limit.
+        # Report a county limit only when all children agree; mismatches remain explicit.
         child_limit = child.get("absence_limit")
         if child_limit is not None and not aggregate["conflicting_limits"]:
             if aggregate["approved_limit"] is None:
@@ -375,8 +333,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
         return len({child["county"] for child in children if child["county"] not in (None, "Multiple")})
 
     def _category_risk_amount_estimate(children: list[dict[str, Any]]) -> float | None:
-        # Sum only children with an available rate estimate; if none of the
-        # affected children have one, report None rather than a misleading $0.
+        # Omit the estimate when no affected child has a fiscal rate.
         available = [
             child["risk_amount_estimate"]
             for child in children
@@ -439,9 +396,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "pending_parent_confirmations": {
                 "days": sum(child["pending_confirmation_days"] for child in pending_children),
                 "children": len(pending_children),
-                # Potential Loss (Care Hours): all scheduled hours for days
-                # that could still be confirmed within the window - every
-                # such day counts, since none has been resolved either way.
+                # All unresolved days remain potential loss until confirmed.
                 "potential_loss_hours": round(
                     sum(child["pending_confirmation_hours"] for child in pending_children), 2,
                 ),
@@ -461,9 +416,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
             "crossed_absence_limits": {
                 "children": len(crossed_children),
                 "counties": county_count(crossed_children),
-                # Potential Loss (Care Hours): only the hours for absence
-                # days actually OVER the county limit are at risk, not every
-                # absence day - prorated from each child's total absence
+                # Only hours over the county limit are at risk.
                 "potential_loss_hours": round(
                     sum(
                         child["absence_hours"] * (
@@ -489,9 +442,7 @@ def evaluate(snapshot: dict[str, Any]) -> dict[str, Any]:
                 "children": sum(
                     bool(child["incomplete_attendance_days"]) for child in child_results
                 ),
-                # Potential Loss (Care Hours): all scheduled hours for days
-                # with no check-in/check-out logged at all - every such day
-                # counts, since none has been resolved either way.
+                # All days lacking attendance records remain potential loss.
                 "potential_loss_hours": round(
                     sum(
                         child["incomplete_attendance_hours"] for child in child_results

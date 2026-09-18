@@ -42,21 +42,6 @@ try {
     throw new Error("Greeting did not return the provider-ready snapshot");
   }
 
-  const attendanceText = await callTool("cccap_get_attendance_analysis", {
-    dateFilter: "THIS_MONTH",
-  });
-  const attendance = JSON.parse(attendanceText);
-  if (
-    !attendance ||
-    typeof attendance !== "object" ||
-    !("rule_version" in attendance) ||
-    !Array.isArray(attendance.children) ||
-    !Array.isArray(attendance.counties) ||
-    !Array.isArray(attendance.data_quality_blockers)
-  ) {
-    throw new Error("Attendance detail did not return the expected analysis contract");
-  }
-
   const confirmationReview = await callTool("cccap_analyze_payment_risk", {
     dateFilter: "THIS_MONTH",
   });
@@ -79,7 +64,6 @@ try {
   console.log(
     JSON.stringify({
       greeting: "ok",
-      attendanceDetail: "ok",
       confirmationReview: "ok",
       nextPayout: "ok",
     }),

@@ -1,8 +1,8 @@
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 
-import { CccapClient } from "./client.js";
+import { CccapClient, requestApexViaSf, resolveAuthenticatedUserId } from "./shared/transport.js";
 import { createServer } from "./server.js";
-import { requestApexViaSf, resolveAuthenticatedUserId } from "./sf-cli.js";
+import { conversationLogger } from "./shared/conversation.js";
 
 function requiredEnvironment(name: string): string {
   const value = process.env[name]?.trim();
@@ -20,6 +20,7 @@ async function main(): Promise<void> {
     targetOrg,
     providerUserId,
     requestApex: requestApexViaSf,
+    onFiscalMatchUnresolved: (entry) => conversationLogger.logFiscalScheduleMismatch(entry),
   });
   const server = createServer(client, providerDisplayName, undefined, providerUserId);
   await server.connect(new StdioServerTransport());

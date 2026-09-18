@@ -19,12 +19,7 @@ SPEC.loader.exec_module(provider_risk_payment_engine)
 
 class ProviderRiskPaymentEngineTests(unittest.TestCase):
     def test_payment_summary_handles_vacant_slots_without_attendance_rows(self) -> None:
-        # _build_payment_summary_view was renamed to _render_summary_view and
-        # no longer iterates attendance days itself (2026-09-15 single-pass
-        # consolidation) - it now only renders already-accumulated
-        # categories/counties/county_composition/children/actions dicts, so
-        # this test passes empty dicts (no attendance data) plus the
-        # vacant-slot-only inputs it's actually verifying.
+        # _render_summary_view renders accumulated data, so this isolates vacant-slot inputs.
         summary = provider_risk_payment_engine._render_summary_view(
             {},
             {},
@@ -211,9 +206,7 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         self.assertIn("ABSENCE_LIMIT_EXCEEDED", result["attendance"]["days"][2]["flags"])
 
     def test_absence_parent_approved_field_no_longer_gates_payability(self) -> None:
-        # v3 redesign: absence determination is holiday-list + confirmation-
-        # window driven, not gated by absence_parent_approved/age-band. The
-        # field may still be present on input but must have no effect.
+        # Absence payability is driven by holiday and confirmation rules, not this legacy field.
         payload = self._complete_input()
         payload["attendance_days"][0].update({
             "attended_hours": 0,
@@ -229,8 +222,7 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         self.assertEqual(result["payment"]["amount"], "45.00")
 
     def test_missing_absence_approval_field_no_longer_blocks_absence(self) -> None:
-        # v3 redesign: absence_parent_approved is no longer read at all, so
-        # its absence must not block classification/payability.
+        # The legacy approval field is ignored, so omitting it must not block absence payability.
         payload = self._complete_input()
         payload["attendance_days"][0]["attended_hours"] = 0
         del payload["attendance_days"][0]["absence_parent_approved"]
@@ -347,8 +339,7 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
             "occupied_slot_contract": True,
             "attended_hours": 0,
         })
-        # v3 redesign: classification requires a match against this county's
-        # specific paid-holiday list, not the generic observed_holiday flag.
+        # Holiday classification requires a match against the county-specific paid-holiday list.
         payload["county_policies"][0]["allow_paid_holidays"] = True
         payload["county_policies"][0]["county_holiday_list"] = ["2026-09-02"]
 
@@ -457,10 +448,7 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
         self.assertEqual(result["payment"]["amount"], "45.00")
 
     def test_date_not_on_county_holiday_list_falls_through_to_absence(self) -> None:
-        # v3 redesign: classification matches the county-specific holiday
-        # list directly; a date absent from that list is never classified
-        # HOLIDAY (no "holiday-but-unpayable" state) - it falls straight
-        # through to Absence.
+        # A date absent from the county holiday list falls through to absence.
         payload = self._complete_input()
         payload["attendance_days"][0].update({
             "observed_holiday": True,
@@ -529,6 +517,61 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "ok")
         self.assertEqual(result["payment"]["amount"], "0.00")
+
+    def test_day_matches_only_the_fiscal_rate_for_its_own_age_group(self) -> None:
+        # Regression test for the fiscal-age-group matching fix: the authorization is a
+        # service contract spanning many schedule days, and a child's fiscal age group
+        # (there are 8 six-month-wide bands) is a genuine per-day fact derived from that
+        # day's own service_date, not a single value fixed for the whole authorization.
+        # Two rate rows exist for the same (authorization, paid_tier) with different age
+        # groups; only the day whose fiscal_age_group_code matches should resolve a rate.
+        payload = self._complete_input()
+        payload["attendance_days"][0]["fiscal_age_group_code"] = "6"
+        payload["fiscal_rates"] = [
+            {
+                "authorization_id": "auth-1",
+                "paid_tier": "PART_TIME",
+                "age_group_code": "6",
+                "amount": "9.00",
+            },
+            {
+                "authorization_id": "auth-1",
+                "paid_tier": "PART_TIME",
+                "age_group_code": "7",
+                "amount": "12.00",
+            },
+        ]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["status"], "ok")
+        # 5 authorized hours at the age-group-6 rate ($9.00), not the age-group-7 rate ($12.00).
+        self.assertEqual(result["payment"]["amount"], "45.00")
+
+    def test_day_with_no_matching_age_group_rate_reports_a_specific_gap(self) -> None:
+        # Same setup as above, but the day's age group ("5") matches neither published rate -
+        # the day should be excluded with a diagnostic identifying exactly which combination
+        # is missing, not just an opaque count.
+        payload = self._complete_input()
+        payload["attendance_days"][0]["fiscal_age_group_code"] = "5"
+        payload["fiscal_rates"] = [
+            {
+                "authorization_id": "auth-1",
+                "paid_tier": "PART_TIME",
+                "age_group_code": "6",
+                "amount": "9.00",
+            },
+        ]
+
+        result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
+
+        self.assertEqual(result["status"], "ok")
+        gaps = result["payment"].get("fiscal_rate_gaps", result.get("fiscal_rate_gaps"))
+        self.assertTrue(gaps, "expected a reported fiscal-rate gap for the mismatched age group")
+        self.assertEqual(gaps[0]["requested_age_group_code"], "5")
+        # rate_type_code was omitted from the fixture's fiscal_rates row, so it normalizes to
+        # an empty string (matching _resolve_rate's str(x or "") convention), not the word "None".
+        self.assertIn("PART_TIME//6", gaps[0]["available_paid_tier_rate_type_age_group_triples"])
         self.assertEqual(result["payment"]["excluded_authorizations"], 1)
         self.assertEqual(result["payment"]["excluded_days"], 1)
 
@@ -661,9 +704,7 @@ class ProviderRiskPaymentEngineTests(unittest.TestCase):
 
         result = provider_risk_payment_engine.evaluate_provider_risk_and_payment(payload)
 
-        # Two attended days at $9/hr x 5hrs = $90 base, plus 5 Wednesdays across
-        # the full September service period at $4.00/day (days_of_month cap of
-        # 5 is not exceeded) = $20 vacant-slot fee. No copay deduction anymore.
+        # Verifies two attended-day payments plus the capped September vacant-slot fee.
         self.assertEqual(result["payment"]["vacant_slot_fee"], "20.00")
         self.assertEqual(result["payment"]["gross_amount"], "90.00")
         self.assertEqual(result["payment"]["amount"], "90.00")

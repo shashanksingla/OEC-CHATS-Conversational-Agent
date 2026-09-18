@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { formatAttendanceRiskResult } from "../src/server.js";
+import { formatAttendanceResult } from "../src/server.js";
 
 const baseAttendanceRisk = {
   pending_confirmation_days: 5,
@@ -25,7 +25,7 @@ const baseAttendanceRisk = {
 };
 
 test("countyNames narrows the returned child rows to the named counties", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH" },
     countyNames: ["Denver"],
     attendanceRisk: baseAttendanceRisk,
@@ -37,7 +37,7 @@ test("countyNames narrows the returned child rows to the named counties", () => 
 });
 
 test("countyNames matching is case-insensitive and trims whitespace", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH" },
     countyNames: [" denver "],
     attendanceRisk: baseAttendanceRisk,
@@ -47,7 +47,7 @@ test("countyNames matching is case-insensitive and trims whitespace", () => {
 });
 
 test("a county with no affected children is named as unmatched rather than treated as unsupported", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH" },
     countyNames: ["Jefferson"],
     attendanceRisk: baseAttendanceRisk,
@@ -57,7 +57,7 @@ test("a county with no affected children is named as unmatched rather than treat
 });
 
 test("countyNames combines with riskFocus without widening scope", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH" },
     riskFocus: "PARENT_CONFIRMATIONS",
     countyNames: ["Denver"],
@@ -70,14 +70,12 @@ test("countyNames combines with riskFocus without widening scope", () => {
 });
 
 test("omitting countyNames returns every county unfiltered", () => {
-  const result = formatAttendanceRiskResult({
+  const result = formatAttendanceResult({
     scope: { dateFilter: "THIS_MONTH" },
     attendanceRisk: baseAttendanceRisk,
   });
 
-  // County-summary-first: an unscoped request (no childNames/countyNames)
-  // now renders the county rollup only, not child-level rows - verify both
-  // counties are represented there instead of checking child-row text.
+  // Unscoped requests render county rollups rather than child-level rows.
   const text = result.content[0].text;
   assert.match(text, /\| Adams \|/);
   assert.match(text, /\| Denver \|/);

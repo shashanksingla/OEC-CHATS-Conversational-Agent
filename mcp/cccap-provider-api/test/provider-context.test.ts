@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeProviderContext } from "../src/provider-context.js";
+import { normalizeProviderContext } from "../src/shared/normalizers.js";
 
 const baseInitialization = {
   providers: [{

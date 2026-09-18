@@ -23,11 +23,11 @@ The model chooses intent and explains verified output. It does not choose provid
 | Module | Owns | Must not own |
 | --- | --- | --- |
 | `agent-child-care-payment-advisor` | Agent lifecycle, safety boundary, skill loading, final handoff | Domain calculations, source joins, duplicate response templates |
-| `carepay-intent-routing` | User outcome, entity/time scope, freshness, narrow tool selection | Data retrieval, calculations, provider-facing formatting |
-| `carepay-payment-risk-readiness` | Attendance, parent-confirmation, absence-limit, and payment-risk dollar-exposure meaning and follow-up routing | Common failure wording, source field mapping, payout calculation |
-| `carepay-payment-readiness` | Payment status, payout timing, forecast meaning, unsupported scenario handling | Money/date calculations, source joins, common failure wording |
-| `carepay-data-quality` | Naming a source gap and selecting a legitimate recovery view | Repairing data, inventing fallback values, recalculating results |
-| `carepay-conversation-templates` | Provider-safe response shape, tables, next views, failure envelope | Deciding what the data means or selecting tools |
+| `provider-assist-intent-routing` | User outcome, entity/time scope, freshness, narrow tool selection | Data retrieval, calculations, provider-facing formatting |
+| `provider-assist-attendance-risk-readiness` | Attendance, parent-confirmation, absence-limit, and payment-risk dollar-exposure meaning and follow-up routing | Common failure wording, source field mapping, payout calculation |
+| `provider-assist-payout-readiness` | Payment status, payout timing, forecast meaning, unsupported scenario handling | Money/date calculations, source joins, common failure wording |
+| `provider-assist-data-quality` | Naming a source gap and selecting a legitimate recovery view | Repairing data, inventing fallback values, recalculating results |
+| `provider-assist-conversation-templates` | Provider-safe response shape, tables, next views, failure envelope | Deciding what the data means or selecting tools |
 
 ## MCP Module Ownership
 
@@ -67,10 +67,10 @@ When a new source field is needed, update the source mapping contract, add or up
 
 ## Change Routing
 
-- New provider intent or follow-up: update `carepay-intent-routing`.
+- New provider intent or follow-up: update `provider-assist-intent-routing`.
 - New attendance/payment meaning: update the corresponding capability skill and evaluator contract.
 - New source field or relationship: update `references/schema-mapping.json` and the owning normalizer.
-- New response shape or failure behavior: update `carepay-conversation-templates` and the MCP formatter.
+- New response shape or failure behavior: update `provider-assist-conversation-templates` and the MCP formatter.
 - New deterministic rule: update the Python evaluator and `rule-governance.md`.
 
 Do not add the same rule to multiple skills. Link to the owning module instead.

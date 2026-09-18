@@ -5,7 +5,7 @@ Provider Assist is a stateless, read-only child care provider payment-risk agent
 ## Current Build
 
 - Provider-facing persona and six routed experiences are defined in `SKILL.md`.
-- Reusable LLM behavior is split into specialized skill files: `carepay-conversation-templates`, `carepay-attendance-readiness`, `carepay-payment-readiness`, and `carepay-data-quality`.
+- Reusable LLM behavior is split into specialized skill files: `provider-assist-conversation-templates`, `provider-assist-attendance-risk-readiness`, `provider-assist-payout-readiness`, and `provider-assist-data-quality`.
 - The Denver baseline covers absence limits, daily rates, parent copay, confirmation status, expected payout, amount at risk, and excluded amount.
 - Unit, baseline-quality, and trigger cases are included.
 - No operational record can be changed.

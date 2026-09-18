@@ -5,7 +5,7 @@ import {
   requestApexViaSf,
   resolveAuthenticatedUserId,
   type RunSfCommand,
-} from "../src/sf-cli.js";
+} from "../src/shared/transport.js";
 
 test("Salesforce CLI sends an authenticated Apex request through a JSON body file", async () => {
   const calls: Array<{ command: string; args: string[]; input: string }> = [];

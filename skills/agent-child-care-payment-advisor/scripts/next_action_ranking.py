@@ -5,7 +5,7 @@
 """Deterministic next-action ranking for Provider Assist conversational responses.
 
 This module codifies the ranking rule previously expressed only in prose in
-`skills/carepay-conversation-templates/SKILL.md` ("Actions are ranked by
+`skills/provider-assist-conversation-templates/SKILL.md` ("Actions are ranked by
 payment impact, then urgency and source-data recovery"). It takes the same
 canonical evaluator output already produced by `evaluate_attendance_risks.py`
 or `provider_risk_payment_engine.py` and returns a deterministic, numerically
@@ -51,6 +51,17 @@ def _days_remaining(value: Any, default: int = 30) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) else default
 
 
+def _magnitude(dollar_amount: float, hours_fallback: Any) -> float:
+    """Severity input for rank_score. A category with no verified dollar figure must not be
+    hardcoded to 0 (a category with a genuine dollar figure - however tiny - would always
+    outrank it regardless of true relative severity). Falls back to the category's own
+    already-computed hours-at-risk figure (same value shown in the provider-facing "At-Risk
+    Hours" table) so every candidate is scored on one comparable magnitude."""
+    if dollar_amount > 0:
+        return dollar_amount
+    return _amount(hours_fallback)
+
+
 def _action(
     action_id: str,
     label: str,
@@ -78,11 +89,9 @@ def _attendance_candidates(attendance_risk: dict[str, Any]) -> list[dict[str, An
     crossed = crossed if isinstance(crossed, dict) else {}
     crossed_children = _count(crossed.get("children"))
     if crossed_children:
-        # A real dollar figure (when the fiscal-rate fetch produced one) always
-        # outranks a same-band action sized only by child count, since it is a
-        # more accurate measure of payment impact.
+        # Prefer fiscal-rate amounts because they measure payment impact directly.
         crossed_amount = _amount(crossed.get("risk_amount_estimate"))
-        # No deadline field is guaranteed for this candidate; use a wide default.
+        # Use a wide default because no deadline is guaranteed.
         candidates.append(_action(
             "review-absence-limit-risk",
             f"Review absence-limit risk — {crossed_children} children",
@@ -100,7 +109,7 @@ def _attendance_candidates(attendance_risk: dict[str, Any]) -> list[dict[str, An
     approaching_children = _count(approaching.get("children"))
     if approaching_children:
         approaching_amount = _amount(approaching.get("risk_amount_estimate"))
-        # No deadline field is guaranteed for this candidate; use a wide default.
+        # Use a wide default because no deadline is guaranteed.
         candidates.append(_action(
             "review-approaching-absence-limit",
             f"Review approaching absence limits — {approaching_children} children",
@@ -121,20 +130,26 @@ def _attendance_candidates(attendance_risk: dict[str, Any]) -> list[dict[str, An
             "review-pending-parent-confirmations",
             f"Review pending confirmations — {pending_days} days",
             "urgency",
-            # No dollar signal is currently available for pending confirmations.
-            rank_score(0.0, _days_remaining(pending.get("confirmation_days_remaining"))),
+            # No dollar figure yet - falls back to potential_loss_hours (same value shown in the
+            # provider-facing "At-Risk Hours" table) so this is never structurally stuck at 0.
+            rank_score(
+                _magnitude(0.0, pending.get("potential_loss_hours")),
+                _days_remaining(pending.get("confirmation_days_remaining")),
+            ),
             "cccap_analyze_payment_risk",
             {"riskFocus": "PARENT_CONFIRMATIONS"},
         ))
 
+    incomplete = categories.get("incomplete_attendance")
+    incomplete = incomplete if isinstance(incomplete, dict) else {}
     incomplete_days = _count(attendance_risk.get("incomplete_attendance_days"))
     if incomplete_days:
         candidates.append(_action(
             "review-incomplete-attendance",
             f"Review incomplete attendance — {incomplete_days} records",
             "source_recovery",
-            # No dollar signal is currently available for incomplete attendance.
-            rank_score(0.0, 30),  # no deadline field; use a wide documented default
+            # No dollar figure yet - falls back to potential_loss_hours, same as pending confirmations above.
+            rank_score(_magnitude(0.0, incomplete.get("potential_loss_hours")), 30),  # no deadline field; use a wide documented default
             "cccap_analyze_payment_risk",
             {"riskFocus": "INCOMPLETE_ATTENDANCE"},
         ))
@@ -147,8 +162,6 @@ def _payment_candidates(payment: dict[str, Any]) -> list[dict[str, Any]]:
     status = payment.get("status")
 
     if status == "BLOCKED":
-        missing_inputs = payment.get("missing_inputs")
-        missing_count = len(missing_inputs) if isinstance(missing_inputs, list) else 0
         candidates.append(_action(
             "retry-payment-analysis",
             "Retry payment review",
@@ -177,7 +190,7 @@ def _payment_candidates(payment: dict[str, Any]) -> list[dict[str, Any]]:
             "review-excluded-payment-days",
             "Review excluded payment days",
             "urgency",
-            # No dollar signal is currently available for excluded payment days.
+            # Excluded payment days currently have no dollar signal.
             rank_score(0.0, payment.get("confirmation_days_remaining", 30)),
             "cccap_analyze_payment",
             {"detailPage": 1, "excludedOnly": True},
@@ -194,10 +207,7 @@ def _payment_candidates(payment: dict[str, Any]) -> list[dict[str, Any]]:
             label = entry.get("label")
             if not isinstance(action_id, str) or not isinstance(label, str):
                 continue
-            # These are already summary-level review flags (missing rate,
-            # absence/drop-in limit exceeded, pending confirmation, holiday
-            # policy) computed by the payment evaluator; treat them as
-            # urgency-band candidates ranked by their reported amount at risk.
+            # Treat evaluator summary flags as urgency candidates ranked by reported risk.
             candidates.append(_action(
                 action_id,
                 label,
@@ -229,41 +239,44 @@ def rank_actions(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(deduplicated, key=lambda action: (-action["priority_score"], action["action_id"]))
 
 
-def rank_next_actions(canonical_facts: dict[str, Any], active_capability: str) -> list[dict[str, Any]]:
-    """Public entrypoint. `canonical_facts` is the attendance-risk evaluator
-    result (for `active_capability == "attendance-risk-analysis"`) or the
-    payment evaluator result's `payment` object (for
-    `active_capability == "payment-analysis"`). Returns a ranked, deterministic
-    NextAction list; an unrecognized capability or malformed input yields an
-    empty list rather than guessing."""
-    if not isinstance(canonical_facts, dict):
-        return []
-    if active_capability == "attendance-risk-analysis":
-        return rank_actions(_attendance_candidates(canonical_facts))
-    if active_capability == "payment-analysis":
-        return rank_actions(_payment_candidates(canonical_facts))
-    return []
+def rank_next_actions(
+    attendance_facts: dict[str, Any] | None = None,
+    payment_facts: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Public entrypoint. `attendance_facts` is the attendance-risk evaluator
+    result; `payment_facts` is the payment evaluator result's `payment`
+    object. Either or both may be provided - when both are present, candidates
+    from both capabilities are generated and ranked TOGETHER in one list, so a
+    provider's top action reflects the highest-priority item across
+    attendance and payment, not whichever capability happened to be called.
+    Malformed input for a given slot is simply skipped rather than guessed at."""
+    candidates: list[dict[str, Any]] = []
+    if isinstance(attendance_facts, dict):
+        candidates.extend(_attendance_candidates(attendance_facts))
+    if isinstance(payment_facts, dict):
+        candidates.extend(_payment_candidates(payment_facts))
+    return rank_actions(candidates)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Rank next actions from a canonical attendance or payment evaluator result."
+        description="Rank next actions from attendance and/or payment evaluator results."
     )
-    parser.add_argument("payload", type=Path, help="Path to a JSON file with canonical_facts and active_capability")
+    parser.add_argument("payload", type=Path, help="Path to a JSON file with optional attendance_facts and/or payment_facts")
     args = parser.parse_args()
     try:
         payload = json.loads(args.payload.read_text(encoding="utf-8"))
         if not isinstance(payload, dict):
             raise ValueError("input must be an object")
-        canonical_facts = payload.get("canonical_facts")
-        active_capability = payload.get("active_capability")
-        if not isinstance(active_capability, str):
-            raise ValueError("active_capability is required")
+        attendance_facts = payload.get("attendance_facts")
+        payment_facts = payload.get("payment_facts")
+        if attendance_facts is None and payment_facts is None:
+            raise ValueError("at least one of attendance_facts or payment_facts is required")
         result = {
             "status": "ok",
             "result": {
                 "rule_version": RULE_VERSION,
-                "actions": rank_next_actions(canonical_facts, active_capability),
+                "actions": rank_next_actions(attendance_facts, payment_facts),
             },
         }
     except (OSError, json.JSONDecodeError, ValueError) as error:

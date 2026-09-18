@@ -296,8 +296,13 @@ class EvaluateAttendanceRisksTests(unittest.TestCase):
         self.assertEqual(ava["county"], "denver")
         self.assertEqual(ava["authorization_dates"], ["2026-09-01", "2026-09-02"])
         self.assertEqual(ava["authorization_names"], ["AUTH-AVA-1"])
-        self.assertIn("2 absence days", ava["note"])
-        self.assertIn("1 more absence day", ava["potential_impact"])
+        # note/potential_impact prose was removed from this evaluator's output (moved
+        # ownership to TypeScript, which never actually consumed the string content -
+        # only a presence check, now replaced with a schema-independent length check).
+        # The underlying facts these sentences used to describe (2 absence days, approaching
+        # the county limit with 1 more day until it's exceeded) are asserted directly:
+        self.assertIn("ABSENCE_LIMIT_APPROACHING", ava["risk_codes"])
+        self.assertEqual(ava["absence_days"], 2)
 
     @staticmethod
     def _schedule(

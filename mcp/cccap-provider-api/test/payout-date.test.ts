@@ -1,12 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { computePayoutDate } from "../src/payment-engine.js";
+import { computePayoutDate } from "../src/payment/payment-engine.js";
 
-// Offset corrected from +11 (Thursday) to +12 (Friday) - confirmed against
-// real T_SERV_PERIOD__c sample data that DTE_BATCH_FILE_PMT__c (Friday,
-// +12 days) is the true payout/release date, one day after
-// DTE_BATCH_PRCS_PMT__c (Thursday, +11 days, internal processing only).
+// The payout/release date is the Friday batch-file date, 12 days after period end.
 test("matches the shared payout-date fixtures", () => {
   const fixtures = [
     ["2024-12-28", "2025-01-09"],

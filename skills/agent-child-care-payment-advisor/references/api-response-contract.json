@@ -5,7 +5,6 @@
     "cccap_initialize_provider",
     "cccap_get_cases",
     "cccap_get_authorizations",
-    "cccap_get_attendance_analysis",
     "cccap_get_county_rate_plans",
     "cccap_get_schedules",
     "cccap_get_fiscal_rates",
@@ -19,11 +18,11 @@
   ],
   "python_scripts": [
     "scripts/evaluate_attendance_risks.py",
-    "scripts/analyze_attendance_transactions.py",
-    "scripts/provider_risk_payment_engine.py"
+    "scripts/provider_risk_payment_engine.py",
+    "scripts/next_action_ranking.py"
   ],
   "canonical_provider_risk_payment_contract": {
-    "rule_version": "provider-risk-payment-v1",
+    "rule_version": "provider-risk-payment-v3",
     "required_inputs": [
       "service_period",
       "authorizations",
@@ -49,7 +48,7 @@
     "payment_statuses": [
       "EXPECTED",
       "CONDITIONAL",
-      "DUPLICATE_GUARD",
+      "SUBMITTED",
       "BLOCKED"
     ],
     "provenance": "Every result returns the applied rule_version and source_readiness. Blocked and duplicate outcomes never include an amount."
@@ -62,7 +61,7 @@
   },
   "canonical_engine_status": {
     "script": "scripts/provider_risk_payment_engine.py",
-    "source_contract": "provider-risk-payment-v1",
+    "source_contract": "provider-risk-payment-v3",
     "production_ready": false,
     "blocker": "MCP response schemas do not yet supply complete normalized fiscal-rate, transaction, confirmation, payment-history, slot-contract, and parent-fee inputs."
   },
@@ -81,7 +80,8 @@
   },
   "attendance_analysis_source": {
     "apex_action": "getSchedules",
-    "mcp_tool": "cccap_get_attendance_analysis",
+    "mcp_tool": "cccap_analyze_payment_risk",
+    "note": "cccap_get_attendance_analysis (analyze_attendance_transactions.py) was deprecated and removed - 0 real usage confirmed via conversation logs. Attendance detail is served exclusively through cccap_analyze_payment_risk.",
     "scope": "Configured provider identity is resolved by initialize; the client injects only provider IDs returned by initialization.",
     "response": {
       "required_fields": [
@@ -192,16 +192,5 @@
         "potential_impact"
       ]
     },
-    "AttendanceTransactionAnalysis": {
-      "produced_by": [
-        "scripts/analyze_attendance_transactions.py"
-      ],
-      "derived_from": [
-        "Schedule",
-        "Transaction",
-        "County",
-        "ServicePeriod"
-      ]
-    }
   }
 }

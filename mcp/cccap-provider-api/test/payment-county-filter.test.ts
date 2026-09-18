@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getPaymentAnalysis } from "../src/payment-orchestration.js";
+import { getPaymentAnalysis } from "../src/payment/payment-orchestration.js";
 
 function buildClient() {
   return {

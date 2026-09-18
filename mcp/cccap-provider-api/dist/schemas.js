@@ -1,18 +1,10 @@
 import * as z from "zod/v4";
-// Shared bound for a single request-scoped identifier or name string.
-// Salesforce IDs are 15-18 chars and provider-facing names are short; 200
-// is generous headroom while still rejecting an unbounded/oversized payload.
+// Bound request-scoped identifiers to reject oversized payloads.
 const boundedIdentifier = z.string().min(1).max(200);
 const identifierList = z.array(boundedIdentifier).max(50);
-// Stable semantic identifier (e.g. "review-absence-limit-risk") for
-// display/dedup/documentation - see action-labels.md. Distinct from
-// actionToken below, which is the actual signed credential.
+// Semantic action identifier for display and deduplication, distinct from the signed token.
 const continuationReference = z.string().min(1).max(64);
-// Stateless signed continuation credential (see continuation-token.ts).
-// Replaces the previous contextRef/actionRef pair - the token embeds its
-// own scope/tool/expiry, so no server-side lookup is needed to verify it.
-// Bounded generously: a token can carry a childNames array of up to 50
-// names (see identifierList) plus a few scope fields, base64url-encoded.
+// Signed continuation token embeds scope, tool, and expiry without server-side lookup.
 const actionTokenSchema = z.string().min(1).max(4000);
 export const dateFilterSchema = z.enum([
     "TODAY",
@@ -23,15 +15,7 @@ export const dateFilterSchema = z.enum([
     "DATE_RANGE",
 ]);
 const isoDateSchema = z.iso.date();
-// Debug-only passthrough: the provider's exact verbatim chat message/
-// selection for this turn (e.g. "3", "Review absence-limit risk"). Never
-// used for business logic - server.ts's withConversationLogging wrapper
-// strips this out of every request before the real handler ever sees it,
-// so it exists purely to give conversation-logger.ts something to log
-// beyond the structured tool-call arguments (which never reveal what the
-// provider actually typed or which numbered option they picked). Spread
-// into dateScopeShape so every schema that spreads dateScopeShape (nearly
-// all of them) accepts it without a separate per-schema edit.
+// Preserve the provider's exact utterance for logging; the server strips it before handling.
 const debugMetaShape = {
     providerUtterance: z.string().max(4000).optional(),
 };
@@ -107,21 +91,13 @@ export const paymentHistorySchema = z
     .superRefine(validateDateScope);
 export const paymentViewSchema = z.enum([
     "STATUS",
-    // NEXT_PAYOUT: the single unpaid/upcoming period whose release date is
-    // soonest. This is the default view for a plain "upcoming payment"
-    // request - it must resolve to exactly one period, never a ledger.
+    // NEXT_PAYOUT resolves a plain upcoming-payment request to one period.
     "NEXT_PAYOUT",
-    // LAST_PAYOUT: the single most recently released period. Reachable only
-    // via explicit request or as a grounded follow-up; never a default and
-    // never offered as a standing greeting option.
+    // LAST_PAYOUT is available only for explicit or grounded follow-up requests.
     "LAST_PAYOUT",
-    // PAYOUT_LEDGER: every service period falling within an explicitly named
-    // month/range. Only reached when the provider names a range - never the
-    // default for an unscoped "upcoming" ask.
+    // PAYOUT_LEDGER covers periods in an explicitly named month or range.
     "PAYOUT_LEDGER",
-    // Scoped to the service period containing today (begin <= today <= end),
-    // not a fixed calendar week. CURRENT_WEEK_FORECAST is kept as an accepted
-    // alias so existing callers are not broken by the rename.
+    // CURRENT_PERIOD_FORECAST covers today's service period; CURRENT_WEEK_FORECAST remains an alias.
     "CURRENT_PERIOD_FORECAST",
     "CURRENT_WEEK_FORECAST",
     "CUSTOM_RANGE",
@@ -129,13 +105,6 @@ export const paymentViewSchema = z.enum([
 // CUSTOM_RANGE payouts are independent of any Salesforce ServicePeriod
 // record, so the span is bounded here rather than by a source-side limit.
 const CUSTOM_RANGE_MAX_DAYS = 31;
-export const attendanceDataSchema = z
-    .object({
-    ...dateScopeShape,
-    dateFilter: dateFilterSchema,
-})
-    .strict()
-    .superRefine(validateDateScope);
 export const attendanceAnalysisSchema = z
     .object({
     ...dateScopeShape,
@@ -144,10 +113,7 @@ export const attendanceAnalysisSchema = z
     authNames: identifierList.min(1).optional(),
     countyNames: identifierList.min(1).optional(),
     riskFocus: z.enum(["PARENT_CONFIRMATIONS", "ABSENCE_LIMITS", "INCOMPLETE_ATTENDANCE"]).optional(),
-    // Real pagination for the ABSENCE_LIMITS child-level drill-down, matching
-    // the same detailPage/detailPageSize contract already used by
-    // paymentAnalysisSchema - lets a provider page through the complete
-    // affected-child list instead of only seeing a capped preview.
+    // Pagination lets providers page through the complete affected-child list.
     detailPage: z.number().int().positive().max(10_000).optional(),
     detailPageSize: z.number().int().positive().max(100).optional(),
     actionId: continuationReference.optional(),

@@ -17,7 +17,7 @@ Provider-facing wording must use **At risk** for money that is not yet guarantee
 
 The payment detail tables use `Confirmed amount` and `Conditional amount` as their column labels when those fields are still present during migration. A bare `Conditional` header is not a dollar amount label. `Attendance type` and `Status` remain the provider-facing labels for attendance classification and confirmation state, respectively, as specified by the Payment Template.
 
-`server.ts` and the Python payment and attendance evaluators are multiple renderers/emitters of these facts. They must render from this table verbatim and must not maintain an independent vocabulary registry or parallel term set. The Payment Template in `skills/carepay-conversation-templates/SKILL.md` must likewise remain aligned with this registry.
+`server.ts` and the Python payment and attendance evaluators are multiple renderers/emitters of these facts. They must render from this table verbatim and must not maintain an independent vocabulary registry or parallel term set. The Payment Template in `skills/provider-assist-conversation-templates/SKILL.md` must likewise remain aligned with this registry.
 
 ## Migration protocol
 

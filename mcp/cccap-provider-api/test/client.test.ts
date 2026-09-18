@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CccapClient, type RequestApex } from "../src/client.js";
+import { CccapClient, type RequestApex } from "../src/shared/transport.js";
 
 test("initialization injects the configured provider user and captures allowed scope", async () => {
   const requests: Array<{ action: string; body: Record<string, unknown> }> = [];

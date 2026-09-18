@@ -16,7 +16,7 @@ class RankScoreTests(unittest.TestCase):
         self.assertGreater(rank_score(10000, 10), rank_score(500, 1))
 
     def test_rendered_action_wording_has_no_superlative_claims(self) -> None:
-        rendered = rank_next_actions({
+        rendered = rank_next_actions(payment_facts={
             "status": "CONDITIONAL",
             "amount_at_risk": 100,
             "excluded_days": 1,
@@ -25,7 +25,7 @@ class RankScoreTests(unittest.TestCase):
                 "label": "Review summary",
                 "amount_at_risk": 25,
             }]},
-        }, "payment-analysis")
+        })
         text = " ".join(
             str(value)
             for action in rendered
@@ -37,10 +37,7 @@ class RankScoreTests(unittest.TestCase):
 
 class RankActionsTests(unittest.TestCase):
     def test_payment_impact_band_always_outranks_urgency_band(self) -> None:
-        # rank_actions() sorts purely by the priority_score it is given; band
-        # separation is guaranteed by the base offsets the scorers assign
-        # (_PAYMENT_IMPACT_BASE > _URGENCY_BASE), not by rank_actions itself.
-        # Use realistic same-band-range scores here to test that contract.
+        # Band separation comes from scorer base offsets, not rank_actions.
         ranked = rank_actions([
             {"action_id": "urgency-1", "label": "Urgency", "category": "urgency", "priority_score": 2050, "tool": "t", "input": {}},
             {"action_id": "impact-1", "label": "Impact", "category": "payment_impact", "priority_score": 3000.01, "tool": "t", "input": {}},
@@ -81,66 +78,80 @@ class RankActionsTests(unittest.TestCase):
 
 class RankNextActionsAttendanceTests(unittest.TestCase):
     def test_crossed_absence_limits_rank_as_payment_impact(self) -> None:
-        ranked = rank_next_actions({
+        ranked = rank_next_actions(attendance_facts={
             "incomplete_attendance_days": 0,
             "risk_categories": {
                 "pending_parent_confirmations": {"days": 0, "children": 0},
                 "approaching_absence_limits": {"children": 0, "counties": 0},
                 "crossed_absence_limits": {"children": 2, "counties": 1},
             },
-        }, "attendance-risk-analysis")
+        })
         self.assertEqual(ranked[0]["action_id"], "review-absence-limit-risk")
         self.assertEqual(ranked[0]["category"], "payment_impact")
 
     def test_pending_confirmations_and_incomplete_records_rank_below_absence_limit_risk(self) -> None:
-        ranked = rank_next_actions({
+        ranked = rank_next_actions(attendance_facts={
             "incomplete_attendance_days": 3,
             "risk_categories": {
                 "pending_parent_confirmations": {"days": 5, "children": 2},
                 "approaching_absence_limits": {"children": 0, "counties": 0},
                 "crossed_absence_limits": {"children": 1, "counties": 1},
             },
-        }, "attendance-risk-analysis")
+        })
         action_ids = [action["action_id"] for action in ranked]
         self.assertEqual(action_ids[0], "review-absence-limit-risk")
         self.assertIn("review-pending-parent-confirmations", action_ids)
         self.assertIn("review-incomplete-attendance", action_ids)
         self.assertGreaterEqual(len(action_ids), 3)
 
+    def test_large_hours_at_risk_outranks_a_tiny_dollar_absence_limit_risk(self) -> None:
+        # Reproduces the chat_09_17_3.md scenario: pending confirmations (no dollar figure,
+        # 561 hours at risk) must outrank absence-limit risk (a tiny $ estimate) - previously
+        # pending confirmations was hardcoded to a 0.0 dollar signal and could never win.
+        ranked = rank_next_actions(attendance_facts={
+            "incomplete_attendance_days": 0,
+            "risk_categories": {
+                "pending_parent_confirmations": {"days": 57, "children": 7, "potential_loss_hours": 561.0},
+                "approaching_absence_limits": {"children": 1, "counties": 1, "risk_amount_estimate": 5.0},
+                "crossed_absence_limits": {"children": 6, "counties": 1, "risk_amount_estimate": 5.0},
+            },
+        })
+        self.assertEqual(ranked[0]["action_id"], "review-pending-parent-confirmations")
+
     def test_no_risk_returns_an_empty_list(self) -> None:
-        ranked = rank_next_actions({
+        ranked = rank_next_actions(attendance_facts={
             "incomplete_attendance_days": 0,
             "risk_categories": {
                 "pending_parent_confirmations": {"days": 0, "children": 0},
                 "approaching_absence_limits": {"children": 0, "counties": 0},
                 "crossed_absence_limits": {"children": 0, "counties": 0},
             },
-        }, "attendance-risk-analysis")
+        })
         self.assertEqual(ranked, [])
 
 
 class RankNextActionsPaymentTests(unittest.TestCase):
     def test_blocked_payment_returns_only_a_source_recovery_retry_action(self) -> None:
-        ranked = rank_next_actions({
+        ranked = rank_next_actions(payment_facts={
             "status": "BLOCKED",
             "missing_inputs": ["fiscal_rates", "parent_confirmations"],
-        }, "payment-analysis")
+        })
         self.assertEqual(len(ranked), 1)
         self.assertEqual(ranked[0]["action_id"], "retry-payment-analysis")
         self.assertEqual(ranked[0]["category"], "source_recovery")
 
     def test_amount_at_risk_ranks_above_excluded_days(self) -> None:
-        ranked = rank_next_actions({
+        ranked = rank_next_actions(payment_facts={
             "status": "CONDITIONAL",
             "amount_at_risk": "125.50",
             "excluded_days": 2,
-        }, "payment-analysis")
+        })
         action_ids = [action["action_id"] for action in ranked]
         self.assertEqual(action_ids[0], "review-conditional-payment")
         self.assertIn("review-excluded-payment-days", action_ids)
 
     def test_summary_view_next_actions_are_included_and_ranked_by_amount_at_risk(self) -> None:
-        ranked = rank_next_actions({
+        ranked = rank_next_actions(payment_facts={
             "status": "EXPECTED",
             "amount_at_risk": "0",
             "excluded_days": 0,
@@ -150,17 +161,64 @@ class RankNextActionsPaymentTests(unittest.TestCase):
                     {"action_id": "review-drop-in-limit", "label": "Review drop-in-limit days", "amount_at_risk": "40.00"},
                 ],
             },
-        }, "payment-analysis")
+        })
         action_ids = [action["action_id"] for action in ranked]
         self.assertEqual(action_ids[0], "review-drop-in-limit")
         self.assertIn("missing-fiscal-rate", action_ids)
 
-    def test_unrecognized_capability_returns_an_empty_list_rather_than_guessing(self) -> None:
-        self.assertEqual(rank_next_actions({"status": "EXPECTED"}, "unknown-capability"), [])
+    def test_neither_fact_block_returns_an_empty_list_rather_than_guessing(self) -> None:
+        self.assertEqual(rank_next_actions(), [])
+        self.assertEqual(rank_next_actions(attendance_facts=None, payment_facts=None), [])
 
-    def test_non_dict_canonical_facts_fail_closed_to_an_empty_list(self) -> None:
-        self.assertEqual(rank_next_actions(None, "payment-analysis"), [])
-        self.assertEqual(rank_next_actions(["not", "a", "dict"], "attendance-risk-analysis"), [])
+    def test_non_dict_facts_fail_closed_and_are_simply_skipped(self) -> None:
+        self.assertEqual(rank_next_actions(payment_facts=None), [])
+        self.assertEqual(rank_next_actions(attendance_facts=["not", "a", "dict"]), [])
+
+
+class RankNextActionsCrossCapabilityTests(unittest.TestCase):
+    def test_both_fact_blocks_rank_candidates_from_both_capabilities_together(self) -> None:
+        ranked = rank_next_actions(
+            attendance_facts={
+                "incomplete_attendance_days": 0,
+                "risk_categories": {
+                    "pending_parent_confirmations": {"days": 5, "children": 2},
+                    "approaching_absence_limits": {"children": 0, "counties": 0},
+                    "crossed_absence_limits": {"children": 0, "counties": 0},
+                },
+            },
+            payment_facts={
+                "status": "CONDITIONAL",
+                "amount_at_risk": "500.00",
+                "excluded_days": 0,
+            },
+        )
+        action_ids = [action["action_id"] for action in ranked]
+        self.assertIn("review-pending-parent-confirmations", action_ids)
+        self.assertIn("review-conditional-payment", action_ids)
+        # A real dollar amount at risk outranks a zero-dollar-signal pending-confirmation candidate.
+        self.assertEqual(action_ids[0], "review-conditional-payment")
+
+    def test_combined_ranking_uses_the_same_deterministic_tiebreak_as_a_single_capability(self) -> None:
+        combined = rank_next_actions(
+            attendance_facts={
+                "incomplete_attendance_days": 0,
+                "risk_categories": {
+                    "pending_parent_confirmations": {"days": 0, "children": 0},
+                    "approaching_absence_limits": {"children": 0, "counties": 0},
+                    "crossed_absence_limits": {"children": 2, "counties": 1},
+                },
+            },
+            payment_facts=None,
+        )
+        attendance_only = rank_next_actions(attendance_facts=combined and {
+            "incomplete_attendance_days": 0,
+            "risk_categories": {
+                "pending_parent_confirmations": {"days": 0, "children": 0},
+                "approaching_absence_limits": {"children": 0, "counties": 0},
+                "crossed_absence_limits": {"children": 2, "counties": 1},
+            },
+        })
+        self.assertEqual(combined, attendance_only)
 
 
 if __name__ == "__main__":
