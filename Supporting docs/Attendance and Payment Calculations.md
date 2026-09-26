@@ -619,9 +619,8 @@ STEP 1: Determine Payment Type
 └─ '14' = Care not offered
 
 STEP 2: Calculate Base Rate Amount
-├─ amt_rate := unit_hours × fiscal_rate
-│  ├─ unit_hours (from FN_GET_UNIT_HRS)
-│  └─ fiscal_rate (from FN_GET_FISCAL_RATE)
+├─ amt_rate := fiscal_rate
+│  └─ fiscal_rate already matches the hours-based care unit returned by FN_GET_FISCAL_RATE
 │
 └─ amt_slot_paid (for slot contracts only):
    ├─ If slot contract: amt_slot_paid := amount paid to provider
@@ -664,13 +663,13 @@ PAYMENT TYPE IMPACT ON RATE:
 ╔═══════════════════════╦═════════════════╦═══════════════════════╗
 ║ Payment Type          ║ Copay Applied   ║ Rate Calculation      ║
 ╠═══════════════════════╬═════════════════╬═══════════════════════╣
-║ Regular (0)           ║ YES             ║ Auth Hours × Rate     ║
-║ Holiday (1)           ║ NO              ║ Auth Hours × Rate     ║
-║ Absence (4)           ║ NO              ║ Auth Hours × Rate     ║
-║ Drop-In (3)           ║ NO              ║ Actual Hours × Rate   ║
-║ Enrollment (13)       ║ NO              ║ Auth Hours × Rate     ║
-║ Slot Regular (8)      ║ NO              ║ Slot Hrs × Slot Rate  ║
-║ Slot Holiday (9)      ║ NO              ║ Slot Hrs × Slot Rate  ║
+║ Regular (0)           ║ YES             ║ Fiscal care-unit rate  ║
+║ Holiday (1)           ║ NO              ║ Fiscal care-unit rate  ║
+║ Absence (4)           ║ NO              ║ Fiscal care-unit rate  ║
+║ Drop-In (3)           ║ NO              ║ Fiscal care-unit rate  ║
+║ Enrollment (13)       ║ NO              ║ Fiscal care-unit rate  ║
+║ Slot Regular (8)      ║ NO              ║ Contract amount        ║
+║ Slot Holiday (9)      ║ NO              ║ Contract amount        ║
 ║ Care Not Offered (14) ║ NO              ║ 0                     ║
 ╚═══════════════════════╩═════════════════╩═══════════════════════╝
 ```
@@ -1383,7 +1382,9 @@ STEP 7: GET PROVIDER RATE
 └─ Continue to Step 8
 
 STEP 8: CALCULATE PAYMENT AMOUNT
-├─ amt_rate := v_cnt_hour_care × fiscal_rate
+├─ amt_rate := fiscal_rate
+│  └─ The fiscal rate already represents the resolved care-unit grouping;
+│     v_cnt_hour_care remains a classification/exposure measure, not a multiplier.
 ├─ amt_copay := 0
 ├─ IF cde_type_info_addntl = '0' (Regular only):
 │  └─ Call FN_CALCULATE_COPAY_FT_PT(case, income, family_size, fpg)

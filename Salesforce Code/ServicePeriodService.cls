@@ -15,10 +15,11 @@
  * Filters (all optional — agent passes only what it needs):
  *
  *   dateOn        Date     Period window contains this date (TODAY only).
- *   dateFrom      Date     DTE_BEGIN_EFFV__c >= dateFrom.
- *   dateTo        Date     DTE_END_EFFV__c   <= dateTo.
- *   paymentAfter  Date     DTE_BATCH_FILE_PMT__c > paymentAfter (TODAY only).
- *   limitOne      Boolean  Add LIMIT 1 to get the first matching record.
+ *   dateFrom      Date     Period overlaps the range on or after dateFrom.
+ *   dateTo        Date     Period overlaps the range on or before dateTo.
+ *   paymentAfter  Date     DTE_BATCH_FILE_PMT__c >= paymentAfter (TODAY only).
+ *   paymentBefore  Date     DTE_BATCH_FILE_PMT__c <= paymentBefore (TODAY only).
+ *   limitOne      Boolean  Add LIMIT 1 to get the first ordered matching record.
  */
 public with sharing class ServicePeriodService {
 
@@ -54,16 +55,20 @@ public with sharing class ServicePeriodService {
             whereClauses.add('DTE_END_EFFV__c >= ' + dateOnStr);
         }
 
-        if (filters.dateFrom != null) {
-            whereClauses.add('DTE_BEGIN_EFFV__c >= ' + formatDate(filters.dateFrom));
-        }
-
-        if (filters.dateTo != null) {
-            whereClauses.add('DTE_END_EFFV__c <= ' + formatDate(filters.dateTo));
+        if (filters.dateFrom != null && filters.dateTo != null) {
+            whereClauses.add('DTE_BEGIN_EFFV__c <= ' + formatDate(filters.dateTo));
+            whereClauses.add('DTE_END_EFFV__c >= ' + formatDate(filters.dateFrom));
+        } else if (filters.dateFrom != null) {
+            whereClauses.add('DTE_END_EFFV__c >= ' + formatDate(filters.dateFrom));
+        } else if (filters.dateTo != null) {
+            whereClauses.add('DTE_BEGIN_EFFV__c <= ' + formatDate(filters.dateTo));
         }
 
         if (filters.paymentAfter != null) {
-            whereClauses.add('DTE_BATCH_FILE_PMT__c > ' + formatDate(filters.paymentAfter));
+            whereClauses.add('DTE_BATCH_FILE_PMT__c >= ' + formatDate(filters.paymentAfter));
+        }
+        if (filters.paymentBefore != null) {
+            whereClauses.add('DTE_BATCH_FILE_PMT__c <= ' + formatDate(filters.paymentBefore));
         }
 
         // ── Assemble query ────────────────────────────────────────────────────
@@ -72,12 +77,13 @@ public with sharing class ServicePeriodService {
             query += ' WHERE ' + String.join(whereClauses, ' AND ');
         }
 
-        // Order by begin date; paymentAfter intent uses processing date ascending
-        String orderField = (filters.paymentAfter != null && filters.dateOn == null
-                             && filters.dateFrom == null)
-                            ? 'DTE_BATCH_FILE_PMT__c'
-                            : 'DTE_BEGIN_EFFV__c';
-        query += ' ORDER BY ' + orderField + ' ASC';
+        // Payout lookups use release date; last-payout lookup needs newest first.
+        String orderField = ((filters.paymentAfter != null || filters.paymentBefore != null) && filters.dateOn == null
+                     && filters.dateFrom == null)
+                    ? 'DTE_BATCH_FILE_PMT__c'
+                    : 'DTE_BEGIN_EFFV__c';
+        String orderDirection = filters.paymentBefore != null ? 'DESC' : 'ASC';
+        query += ' ORDER BY ' + orderField + ' ' + orderDirection;
 
         if (filters.limitOne == true) {
             query += ' LIMIT 1';
@@ -118,6 +124,9 @@ public with sharing class ServicePeriodService {
         } else if (isTodaySwitch(requestMap, 'paymentAfter')) {
             filters.paymentAfter = Date.today();
         }
+        else if (isTodaySwitch(requestMap, 'paymentBefore')) {
+            filters.paymentBefore = Date.today();
+        }
 
         filters.limitOne = CCCAPGeneric.getBoolean(requestMap, 'limitOne', null);
         return filters;
@@ -130,7 +139,8 @@ public with sharing class ServicePeriodService {
 
         return String.isNotBlank(CCCAPGeneric.getString(requestMap, 'dateFilter'))
             || isTodaySwitch(requestMap, 'dateOn')
-            || isTodaySwitch(requestMap, 'paymentAfter');
+            || isTodaySwitch(requestMap, 'paymentAfter')
+            || isTodaySwitch(requestMap, 'paymentBefore');
     }
 
     // ─── Filter class ─────────────────────────────────────────────────────────
@@ -144,6 +154,7 @@ public with sharing class ServicePeriodService {
         public Date    dateTo;
         /** First period whose payment run has not yet happened (pass Date.today()). */
         public Date    paymentAfter;
+        public Date    paymentBefore;
         /** Limit results to 1 record. */
         public Boolean limitOne;
     }
@@ -202,14 +213,29 @@ public with sharing class ServicePeriodService {
             Integer gap = Math.mod(4 - dow + 7, 7);
             Date thu    = base.addDays(gap == 0 ? 7 : gap);
             results.add(computeForMonday(thu.addDays(-(DAYS_TO_PROCESSING + 6))));
-        } else if (f.dateFrom != null) {
+        } else if (f.paymentBefore != null && f.dateFrom == null) {
+            // Find the newest fallback period whose release date has passed.
+            Date monday = mondayOf(f.paymentBefore);
+            Integer guard = 0;
+            while (guard < 8) {
+                ServicePeriodResult candidate = computeForMonday(monday);
+                if (candidate.paymentReleaseDate != null
+                    && candidate.paymentReleaseDate <= f.paymentBefore) {
+                    results.add(candidate);
+                    break;
+                }
+                monday = monday.addDays(-7);
+                guard++;
+            }
+        }else if (f.dateFrom != null) {
             // Generate weekly periods across the range
             Date rangeEnd = f.dateTo != null ? f.dateTo : f.dateFrom.addDays(34);
             Date monday   = mondayOf(f.dateFrom);
             Integer guard = 0;
             while (monday <= rangeEnd && guard < 8) {
                 ServicePeriodResult r = computeForMonday(monday);
-                if (f.dateTo == null || r.serviceEndDate <= f.dateTo) {
+                if ((f.dateTo == null || r.serviceBeginDate <= f.dateTo)
+                    && (f.dateFrom == null || r.serviceEndDate >= f.dateFrom)) {
                     results.add(r);
                 }
                 monday = monday.addDays(7);

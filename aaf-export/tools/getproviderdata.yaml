@@ -1,0 +1,446 @@
+id: getproviderdata
+name: CCARE Attendance APIs
+version: 1.0.137
+description: |-
+  sf org auth show-access-token --target-org CHATS_SIT
+tool_type: http
+base_url: https://cccap--sitfull.sandbox.my.salesforce.com/
+auth_type: bearer
+auth_config:
+  token: ••••••••
+endpoints:
+- name: getProviderInfo
+  path: /services/apexrest/CccapPortalApi/v1/getProviderData
+  method: POST
+  description: 'Returns provider details for a userId and applies a date window to active fiscal agreements,
+    rate schedules, and closures. If dateFilter is provided, it scopes records to that range; otherwise
+    it defaults to TODAY.
+
+    '
+  input_schema:
+    type: object
+    properties:
+      userId:
+        type: string
+        description: Required session user identifier.
+      dateFilter:
+        type: string
+        enum:
+        - TODAY
+        - THIS_MONTH
+        - LAST_MONTH
+        - LAST_N_MONTHS
+        - LAST_N_DAYS
+        - DATE_RANGE
+        description: Optional date window for provider fiscal agreements, rate schedules, and closures.
+          Defaults to TODAY if omitted.
+      periodCount:
+        type: integer
+        minimum: 1
+        description: Required only when dateFilter is LAST_N_MONTHS or LAST_N_DAYS.
+      dateFrom:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+      dateTo:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+    required:
+    - userId
+  content_type: application/json
+- name: getServicePeriods
+  path: /services/apexrest/CccapPortalApi/v1/getServicePeriods
+  method: POST
+  description: 'Returns service period data using dateFilter plus optional TODAY-only switches dateOn
+    and paymentAfter. dateFilter controls range-based lookups, dateOn is for point-in-time lookup, paymentAfter
+    is for next payout lookup, and limitOne can be combined with any of them.
+
+    '
+  input_schema:
+    type: object
+    properties:
+      dateFilter:
+        type: string
+        enum:
+        - TODAY
+        - THIS_MONTH
+        - LAST_MONTH
+        - LAST_N_MONTHS
+        - LAST_N_DAYS
+        - DATE_RANGE
+        description: Generic date filter. TODAY maps to point-in-time lookup; all others map to a date
+          range.
+      periodCount:
+        type: integer
+        minimum: 1
+        description: Required only when dateFilter is LAST_N_MONTHS or LAST_N_DAYS.
+      dateFrom:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+      dateTo:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+      dateOn:
+        type: string
+        enum:
+        - TODAY
+        description: TODAY-only switch for current service period lookup.
+      paymentAfter:
+        type: string
+        enum:
+        - TODAY
+        description: TODAY-only switch for next payout-style service period lookup.
+      limitOne:
+        type: boolean
+        description: Optional flag to return only the first matching service period.
+    anyOf:
+    - required:
+      - dateFilter
+    - required:
+      - dateOn
+    - required:
+      - paymentAfter
+  content_type: application/json
+- name: getSchedules
+  path: /services/apexrest/CccapPortalApi/v1/getSchedules
+  method: POST
+  description: Returns schedule for providerIds, optionally narrowed by authNames, and requires dateFilter.
+    The dateFilter controls the schedule date window; dateOn and paymentAfter are supported only as TODAY-only
+    switches where applicable.
+  input_schema:
+    type: object
+    properties:
+      providerIds:
+        type: array
+        items:
+          type: string
+        description: Required provider IDs. These are mapped to DECL provider account IDs before the callout.
+      authNames:
+        type: array
+        items:
+          type: string
+        description: Optional authorization names/numbers used to narrow schedules.
+      dateFilter:
+        type: string
+        enum:
+        - TODAY
+        - THIS_MONTH
+        - LAST_MONTH
+        - LAST_N_MONTHS
+        - LAST_N_DAYS
+        - DATE_RANGE
+        description: Required schedule date window.
+      periodCount:
+        type: integer
+        minimum: 1
+        description: Required only when dateFilter is LAST_N_MONTHS or LAST_N_DAYS.
+      dateFrom:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+      dateTo:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+    required:
+    - providerIds
+    - dateFilter
+  content_type: application/json
+- name: getCountyData
+  path: /services/apexrest/CccapPortalApi/v1/getCountyData
+  method: POST
+  description: 'Returns active county rate plan details for countyIds. When dateFilter/dateFrom/dateTo
+    are supplied, effective-date overlap is evaluated against that range; otherwise the current date is used.
+
+    '
+  input_schema:
+    type: object
+    properties:
+      countyIds:
+        type: array
+        items:
+          type: string
+        description: List of county IDs.
+      dateFilter:
+        type: string
+        enum:
+        - TODAY
+        - THIS_MONTH
+        - LAST_MONTH
+        - LAST_N_MONTHS
+        - LAST_N_DAYS
+        - DATE_RANGE
+        description: Optional effective-date window for county rate plans.
+      periodCount:
+        type: integer
+        minimum: 1
+        description: Required only when dateFilter is LAST_N_MONTHS or LAST_N_DAYS.
+      dateFrom:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+      dateTo:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+    required:
+    - countyIds
+  content_type: application/json
+- name: getHolidayList
+  path: /services/apexrest/CccapPortalApi/v1/getHolidayList
+  method: POST
+  description: Returns holiday records optionally filtered by dateFilter. If provided, the filter applies
+    as a date window; otherwise all holidays are returned.
+  input_schema:
+    type: object
+    properties:
+      dateFilter:
+        type: string
+        enum:
+        - TODAY
+        - THIS_MONTH
+        - LAST_MONTH
+        - LAST_N_MONTHS
+        - LAST_N_DAYS
+        - DATE_RANGE
+        description: Optional holiday date window.
+      periodCount:
+        type: integer
+        minimum: 1
+        description: Required only when dateFilter is LAST_N_MONTHS or LAST_N_DAYS.
+      dateFrom:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+      dateTo:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+    required:
+    - dateFilter
+  content_type: application/json
+- name: getAuthData
+  path: /services/apexrest/CccapPortalApi/v1/getAuthData
+  method: POST
+  description: 'Returns authorizations scoped by caseIds, countyIds, providerIds, authIds, authNames,
+    caseId, countyCode, or providerId. When dateFilter/dateFrom/dateTo are supplied, effective-date
+    overlap is evaluated against that range; otherwise the current date is used.
+
+    '
+  input_schema:
+    type: object
+    properties:
+      caseIds:
+        type: array
+        items:
+          type: string
+        description: Authorization filter by multiple case IDs.
+      countyIds:
+        type: array
+        items:
+          type: string
+        description: Authorization filter by multiple county IDs.
+      providerIds:
+        type: array
+        items:
+          type: string
+        description: Authorization filter by multiple provider IDs.
+      authIds:
+        type: array
+        items:
+          type: string
+        description: Authorization filter by authorization record IDs.
+      authNames:
+        type: array
+        items:
+          type: string
+        description: Authorization filter by authorization names/numbers.
+      caseId:
+        type: string
+        description: Single case fallback.
+      countyCode:
+        type: string
+        description: Single county fallback.
+      providerId:
+        type: string
+        description: Single provider fallback.
+      dateFilter:
+        type: string
+        enum:
+        - TODAY
+        - THIS_MONTH
+        - LAST_MONTH
+        - LAST_N_MONTHS
+        - LAST_N_DAYS
+        - DATE_RANGE
+        description: Optional effective-date window for authorization records.
+      periodCount:
+        type: integer
+        minimum: 1
+        description: Required only when dateFilter is LAST_N_MONTHS or LAST_N_DAYS.
+      dateFrom:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+      dateTo:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+    anyOf:
+    - required:
+      - caseIds
+    - required:
+      - authIds
+    - required:
+      - authNames
+    - required:
+      - caseId
+    - required:
+      - providerId
+      - countyIds
+      - dateFilter
+  content_type: application/json
+- name: getVacantSlots
+  path: /services/apexrest/CccapPortalApi/v1/getVacantSlots
+  method: POST
+  description: 'Returns vacant slot contracts scoped by providerIds and countyIds. When dateFilter/dateFrom/dateTo
+    are supplied, effective-date overlap is evaluated against that range; otherwise the current date is used.
+
+    '
+  input_schema:
+    type: object
+    properties:
+      countyIds:
+        type: array
+        items:
+          type: string
+        description: Authorization filter by multiple county IDs.
+      providerIds:
+        type: array
+        items:
+          type: string
+        description: Authorization filter by multiple provider IDs.
+      dateFilter:
+        type: string
+        enum:
+        - TODAY
+        - THIS_MONTH
+        - LAST_MONTH
+        - LAST_N_MONTHS
+        - LAST_N_DAYS
+        - DATE_RANGE
+        description: Optional effective-date window for vacant slot contracts.
+      periodCount:
+        type: integer
+        minimum: 1
+        description: Required only when dateFilter is LAST_N_MONTHS or LAST_N_DAYS.
+      dateFrom:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+      dateTo:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+    anyOf:
+    - required:
+      - providerIds
+      - countyIds
+      - dateFilter
+  content_type: application/json
+- name: getFiscalRates
+  path: /services/apexrest/CccapPortalApi/v1/getFiscalRates
+  method: POST
+  description: returns the applicable fiscal rates for the providerIds, fiscalScheduleIds and dateRange
+    applicable
+  input_schema:
+    type: object
+    properties:
+      fiscalScheduleIds:
+        type: array
+        items:
+          type: string
+        description: Fiscal Schedule Ids from the Fiscal Agreement of providers on respective county IDs.
+      providerIds:
+        type: array
+        items:
+          type: string
+        description: Authorization filter by multiple provider IDs.
+      dateFilter:
+        type: string
+        enum:
+        - TODAY
+        - THIS_MONTH
+        - LAST_MONTH
+        - LAST_N_MONTHS
+        - LAST_N_DAYS
+        - DATE_RANGE
+        description: Optional holiday date window.
+      periodCount:
+        type: integer
+        minimum: 1
+        description: Required only when dateFilter is LAST_N_MONTHS or LAST_N_DAYS.
+      dateFrom:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+      dateTo:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+    anyOf:
+    - required:
+      - providerIds
+      - fiscalScheduleIds
+      - dateFilter
+  content_type: application/json
+- name: getPaymentHistory
+  path: /services/apexrest/CccapPortalApi/v1/getPaymentHistory
+  method: POST
+  description: returns the applicable payment history of the provider of certain time period
+  input_schema:
+    type: object
+    properties:
+      providerIds:
+        type: array
+        items:
+          type: string
+        description: Authorization filter by multiple provider IDs.
+      dateFilter:
+        type: string
+        enum:
+        - TODAY
+        - THIS_MONTH
+        - LAST_MONTH
+        - LAST_N_MONTHS
+        - LAST_N_DAYS
+        - DATE_RANGE
+        description: Optional holiday date window.
+      periodCount:
+        type: integer
+        minimum: 1
+        description: Required only when dateFilter is LAST_N_MONTHS or LAST_N_DAYS.
+      dateFrom:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+      dateTo:
+        type: string
+        format: date
+        description: 'Required only when dateFilter is DATE_RANGE. Format: YYYY-MM-DD.'
+    anyOf:
+    - required:
+      - providerIds
+      - dateFilter
+  content_type: application/json
+code: null
+input_schema: {}
+timeout_ms: 30000
+retry_policy: {}
+tags:
+- Child Care
+created_at: '2026-08-13T12:14:33.794426Z'
+updated_at: '2026-09-26T15:38:20.597456Z'

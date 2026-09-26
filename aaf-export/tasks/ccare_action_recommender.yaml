@@ -1,0 +1,22 @@
+kind: Task
+id: ccare_action_recommender
+name: ccare_action_recommender
+version: 1.0.2
+description: |-
+  Builds context.recommendedActions each turn: deduped once shown this
+  conversation, deprioritizing the just-answered action/subFilter, with
+  excluding the action answered on the current turn.
+model: null
+model_error: null
+task_type: deterministic
+system_prompt: ''
+max_turns: 10
+code: SEE_FILE:tasks/python/ccare_action_recommender.py
+timeout: 15
+allowed_tools: []
+knowledge_base_scope: null
+tags:
+- Child Care
+response: null
+created_at: '2026-09-25T19:31:09.720818Z'
+updated_at: '2026-09-25T19:31:09.720818Z'

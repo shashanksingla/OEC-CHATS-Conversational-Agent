@@ -1192,13 +1192,13 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
             and rate is not None
             and risk_day
         ):
-            child_payment_impact[day["child_name"]] += rate * amount_hours
+            child_payment_impact[day["child_name"]] += rate
         if isinstance(day.get("child_name"), str) and rate is not None:
-            child_payment_total[day["child_name"]] += rate * amount_hours
+            child_payment_total[day["child_name"]] += rate
         if day.get("child_name"):
             distinct_children_served.add(str(day.get("child_name")))
         if rate is not None and risk_day:
-            conditional_total += rate * amount_hours
+            conditional_total += rate
 
         # Separate resolved, forecast, and at-risk amounts for the payment breakdown.
         is_future_day = day.get("forecast_basis") == "SCHEDULED"
@@ -1210,7 +1210,7 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
         still_pending = day.get("classification") in {"PENDING_CONFIRMATION", "INCOMPLETE_ATTENDANCE_RECORD"}
         rate_unavailable = (day["authorization_id"], str(day.get("service_date"))) in unavailable_rate_days
         will_be_excluded = (not day["payable"] and not still_pending) or rate_unavailable
-        classified_amount = (rate * amount_hours) if rate is not None else Decimal("0")
+        classified_amount = rate if rate is not None else Decimal("0")
         if day.get("payment_type") == "GUARANTEED":
             guaranteed_total += classified_amount
         expected_holiday = day.get("service_date") in {str(value)[:10] for value in payload.get("holiday_dates", []) if isinstance(value, str)}
@@ -1252,7 +1252,7 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
                 excluded_days += 1
                 day["payment_excluded"] = True
             elif amount_class == "EXPECTED":
-                total += rate * unit_hours
+                total += rate
 
         # ---- summary_groups accumulation (replaces the old separate loop) ----
         if day["payable"] and not day.get("payment_excluded"):
@@ -1265,7 +1265,7 @@ def evaluate_provider_risk_and_payment(payload: dict[str, Any]) -> dict[str, Any
                 group = summary_groups.setdefault(group_key, {"county_id": county_id, "county_name": day.get("county_name"), "rates": set(), "paid_tier": paid_tier, "basis": basis, "children_served": set(), "hours": Decimal("0"), "amount": Decimal("0"), "conditional_amount": Decimal("0")})
                 group["rates"].add(_money(rate))
                 group_hours = _hours(day.get("unit_hours")) or Decimal("0")
-                group_amount = rate * group_hours
+                group_amount = rate
                 group["children_served"].add(day.get("child_name") or day["authorization_id"])
                 group["hours"] += group_hours
                 if day["conditional"]:

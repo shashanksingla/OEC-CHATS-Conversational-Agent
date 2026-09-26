@@ -1,0 +1,132 @@
+kind: ExportManifest
+process_id: ccare_provider_agent_process
+source: https://d3thytbs9a5a1.cloudfront.net/admin
+fetched_at: 2026-09-27T02:39:00Z
+fetch_method: Python urllib against /admin/api/processes/{id}, /admin/api/tasks/{id}, /admin/api/tools/{id}, authenticated via cookie session from POST /admin/api/auth/login (child.care)
+
+# ==============================================================================
+# 2026-09-27 PROCESS RESYNC. The prior same-day sync (fetched_at ~23:41) wrote
+# invalid YAML (malformed literal-string tag "tag:yaml.org,str" instead of
+# "tag:yaml.org,2002:str") and, separately, was already one version behind:
+# the live process moved from v1.16.1 -> v1.19.0 *during this session* --
+# ccare_freshness_check node removed entirely, its logic merged into
+# ccare_data_collection (now an idempotent ensure-data guard). The process
+# was subsequently deployed as v1.19.5 with the dead cached edge removed and
+# the constrained response-renderer LLM restored as the final provider-facing
+# synthesis layer. The task version entries below are retained from the last
+# full task export; all task version metadata and extracted source payloads are
+# now checked against the live registry as of this resync.
+# ==============================================================================
+
+live_versions:
+  process: 1.19.5
+  ccare_unified_intent_router: 1.5.2
+  ccare_provider_data_py: 1.2.6
+  ccare_data_freshness_check_py: 1.3.0
+  ccare_data_collection: 1.1.5
+  attendance_risks_analyzer_py: 1.2.1
+  ccare_payment_engine: 1.3.38
+  ccare_response_renderer: 1.1.3   # live bound renderer; prompt strengthened in v1.19.5
+  ccare_action_recommender: 1.0.2   # live registry artifact; no longer bound
+  ccare_payout_impact_correlator: 1.1.13
+  ccare_response_formatter: 1.5.11
+  getproviderdata_tool: 1.0.137
+
+new_vs_deleted:
+  # Checked live process.tasks[].bound_task (8 distinct) against the full
+  # /admin/api/tasks list (129 tasks total org-wide, most belonging to
+  # OTHER processes -- ccap_caseworker_*, snap_texas_*, adjudicator_*,
+  # placement_*, etc. -- and correctly excluded) and against local files.
+  new_bound_tasks_missing_locally: []   # none -- every live-bound task already had a local file
+  local_tasks_no_longer_bound_in_graph:
+    - ccare_data_freshness_check_py   # NEW as of v1.19.0 -- node removed, logic merged into ccare_data_collection
+    - ccare_action_recommender        # unbound since the 2026-09-26 merge into ccare_response_formatter
+    # Both still exist as live tasks (confirmed present in /admin/api/tasks)
+    # -- kept locally as orphaned-but-real artifacts, not deleted. Only
+    # delete a local file if the task is removed from the LIVE task list
+    # entirely, which neither is.
+  local_files_removed_this_pass: []    # nothing deleted -- no local file corresponds to a task absent from the live task list
+  tasks_confirmed_still_live_but_unbound:
+    - ccare_data_freshness_check_py
+    - ccare_action_recommender
+
+downloaded:
+  process:
+    - process/ccare_provider_agent_process.yaml
+  tasks:
+    - tasks/ccare_unified_intent_router.yaml
+    - tasks/ccare_provider_data_py.yaml
+    - tasks/ccare_data_freshness_check_py.yaml   # orphaned in graph, still live -- see new_vs_deleted
+    - tasks/ccare_data_collection.yaml
+    - tasks/attendance_risks_analyzer_py.yaml
+    - tasks/ccare_payment_engine.yaml
+    - tasks/ccare_response_renderer.yaml
+    - tasks/ccare_action_recommender.yaml        # orphaned in graph, still live -- see new_vs_deleted
+    - tasks/ccare_payout_impact_correlator.yaml
+    - tasks/ccare_response_formatter.yaml
+  tasks_python_extracted:
+    - tasks/python/ccare_provider_data_py.py
+    - tasks/python/ccare_data_freshness_check_py.py
+    - tasks/python/ccare_data_collection.py
+    - tasks/python/attendance_risks_analyzer_py.py
+    - tasks/python/ccare_payment_engine.py
+    - tasks/python/ccare_action_recommender.py
+    - tasks/python/ccare_payout_impact_correlator.py
+    - tasks/python/ccare_response_formatter.py
+  tools:
+    - tools/getproviderdata.yaml
+
+referenced_tasks:
+  - ccare_unified_intent_router      # llm, v1.5.2
+  - ccare_provider_data_py           # deterministic, v1.2.6
+  - ccare_data_collection            # deterministic, v1.1.5 -- now absorbs the former freshness-check's idempotent ensure-data guard
+  - attendance_risks_analyzer_py     # deterministic, v1.2.1
+  - ccare_payment_engine             # deterministic, v1.3.38
+  - ccare_payout_impact_correlator   # deterministic, v1.1.13
+  - ccare_response_formatter         # deterministic, v1.5.11
+  - ccare_response_renderer          # llm, v1.1.3 -- constrained provider-facing synthesis layer
+  # Present locally, present live, NOT bound to any node in the current graph:
+  - ccare_data_freshness_check_py    # deterministic, v1.3.0 -- superseded by ccare_data_collection's merged guard
+  - ccare_action_recommender         # deterministic, v1.0.2 -- superseded by ccare_response_formatter's merged logic
+
+node_to_task_bindings:
+  - ccare_unified_intent_router -> ccare_unified_intent_router
+  - ccare_provider_data_py -> ccare_provider_data_py
+  - ccare_data_collection -> ccare_data_collection
+  - attendance_risks_analyzer_py -> attendance_risks_analyzer_py
+  - ccare_payment_action -> ccare_payment_engine
+  - ccare_payout_impact_correlator -> ccare_payout_impact_correlator
+  - ccare_response_formatter -> ccare_response_formatter
+  - ccare_response_renderer -> ccare_response_renderer
+  # ccare_freshness_check node REMOVED as of v1.19.0 (was -> ccare_data_freshness_check_py)
+
+decision_nodes:
+  - provider_validated_gate  # 3 branches: validated, not_validated, default -- "validated" now points straight to ccare_data_collection
+  - session_gate             # 3 branches: needs_clarification, failed, default -- "sufficient"/"needs_refresh" branches REMOVED, replaced by a single "default" -> ccare_data_collection path (freshness logic now lives inside that task)
+  - action_dispatch          # 7 branches: attendance, payment, explain, starter, clarify, end, default
+  - payout_impact_gate       # 2 branches: payout_impact, default
+  - response_exit_gate       # 2 branches: end, continue(default)
+
+human_nodes:
+  - human_end
+  - human_gate
+
+referenced_tools:
+  - getproviderdata   # v1.0.137, bound to ccare_payment_engine's allowed_tools
+
+referenced_personas: []
+
+graph_summary:
+  node_count: 15
+  edge_count: 28
+  distinct_bound_tasks: 8
+  decision_nodes: 5
+  human_nodes: 2
+  notes: >-
+    Live process version 1.19.5. Freshness remains inside
+    ccare_data_collection; session_gate has no cached edge; and the
+    deterministic formatter feeds the constrained AI response renderer
+    before response_exit_gate.
+
+http_failures: []
+unresolved_references: []

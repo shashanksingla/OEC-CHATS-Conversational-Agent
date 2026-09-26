@@ -87,7 +87,7 @@ global with sharing class CccapPortalApiV1 {
                         'No provider persona mapping found for supplied userId');
                 }
                 
-                String providerName = records[0].RecordId__c;
+                String providerName = [select firstName from User where id=:userId]?.firstName;
                 CCCAPGeneric.DateRange activeDateRange = CCCAPGeneric.resolveDateRangeOrToday(params);
                 Date activeStartDate = activeDateRange.startDate;
                 Date activeEndDate = activeDateRange.endDate;
@@ -96,7 +96,7 @@ global with sharing class CccapPortalApiV1 {
                     SELECT Id, Name, NAM_FACILITY__c, TXT_CHATS_RATING__c, CDE_STATUS_PROVR__c,
                     CDE_TYPE_PROVR__c, CDE_TYPE_LICENSE__c, DTE_BEGIN_EFFV__c, DTE_END_EFFV__c
                     FROM T_CHATS_PROVR_STATUS__c
-                    WHERE Name =:providerName
+                    WHERE Name =:records[0].RecordId__c
                     WITH SYSTEM_MODE
                 ];
                 providerIds.add(providers[0].Id);
@@ -133,6 +133,7 @@ global with sharing class CccapPortalApiV1 {
                 
                 return new CccapPortalApiV1ResponseWrapper.ApiResponse(true,
                                                                        new Map<String, Object>{
+                                                                           'ProviderName'  => providerName,
                                                                            'providers'        => providers,
                                                                                'fiscalAgreements' => faList,
                                                                                'providerClosures' => closures
@@ -182,6 +183,7 @@ global with sharing class CccapPortalApiV1 {
                 
                 List<T_FISCAL_SCH__c> fiscalSchedules = [
                     SELECT Id, Name, IDN_EXTNL__c, IDN_AGRMT_FISCAL__c,
+                    IDN_AGRMT_FISCAL__r.CDE_COUNTY__R.Name,
                     CDE_RATE_TYPE__c, DTE_BEGIN_EFFV__c, DTE_END_EFFV__c,
                     TXT_CHATS_RATING__c
                     FROM T_FISCAL_SCH__c
@@ -321,7 +323,7 @@ global with sharing class CccapPortalApiV1 {
                 Date activeEndDate = activeDateRange.endDate;
                 
                 String soql =
-                    'SELECT Id, Name, IDN_EXTNL__c, IDN_CASE__c, IDN_PROVR__c, IDN_CLIENT__c, '
+                    'SELECT Id, Name, IDN_EXTNL__c, IDN_CASE__c, IDN_PROVR__c, IDN_CLIENT__c,IDN_CLIENT__r.NAM_FIRST__c, '
                     + 'IDN_CLIENT__r.DTE_DOB__c, '
                     + 'IDN_SLOT_CONTRACT__c, CDE_COUNTY__c, AMT_ACTV_AUTH__c, AMT_RGSTR_AUTH__c, AMT_TRANSP_AUTH__c, '
                     + 'CDE_TYPE_VERIF__c, CDE_TRANS_FEE__c, CDE_CHILD_ENROLLED_IN_UPK__c, '
@@ -344,8 +346,11 @@ global with sharing class CccapPortalApiV1 {
                     }
                     soql += 'AND (' + String.join(authFilters, ' OR ') + ') ';
                 }
-                if (!authNames.isEmpty())   soql += 'AND Name IN ('          + buildInClause(authNames)   + ') ';
-                soql += 'WITH SYSTEM_MODE ORDER BY CDE_COUNTY__c ASC, Name ASC';
+                if (!authNames.isEmpty())  
+                {
+                    soql += 'AND Name IN ('          + buildInClause(authNames)   + ') ';
+                 soql += 'WITH SYSTEM_MODE ORDER BY CDE_COUNTY__c ASC, Name ASC';
+                }
                 
                 List<T_AUTH__c> authorizations = Database.query(soql);
                 Set<Id> slotContractIds = new Set<Id>();
@@ -426,8 +431,8 @@ global with sharing class CccapPortalApiV1 {
                     DTE_BEGIN_EFFV_RATE__c, DTE_END_EFFV_RATE__c,
                     PAYMENT_Q13_a__c, PAYMENT_Q13_b__c, PAYMENT_Q13_c__c,
                     PAYMENT_Q13_d__c, PAYMENT_Q13_e__c, PAYMENT_Q13_2__c,
-                    PAYMENT_Q13_1__c, PAYMENT_Q14__c, PAYMENT_Q14_1__c, PAYMENT_Q14_2__c,
-                    PAYMENT_Q14_3__c, PAYMENT_Q10__c, PAYMENT_Q9__c, PAYMENT_Q11__c
+                    toLabel(PAYMENT_Q13_1__c), PAYMENT_Q14__c, PAYMENT_Q14_1__c, PAYMENT_Q14_2__c,
+                    PAYMENT_Q14_3__c
                     FROM T_COUNTY_RATE__c
                     WHERE CDE_STATUS__c           = :STATUS_COUNTY_ACTIVE
                     AND IND_RATE_PLAN_TEMPLT__c = false
@@ -458,9 +463,6 @@ global with sharing class CccapPortalApiV1 {
                             'allowDropInDays'         => p.PAYMENT_Q14__c,
                             'maxDropInDaysPerMonth'   => p.PAYMENT_Q14_1__c,
                             'dropInResponse'          => p.PAYMENT_Q14_2__c,
-                            'activityArtCap'          => p.PAYMENT_Q10__c,
-                            'registrationArtCap'      => p.PAYMENT_Q9__c,
-                            'transportationArtCap'    => p.PAYMENT_Q11__c,
                             'manageDropInAtAuthLevel' => p.PAYMENT_Q14_3__c
                             });
                 }
@@ -541,6 +543,7 @@ global with sharing class CccapPortalApiV1 {
                 
                 List<T_PAYMT__c> payments = [
                     SELECT Id, IDN_EXTNL__c, IDN_PROVR__c, IDN_PERIOD_SERV__c,
+                    CDE_COUNTY__c,CDE_COUNTY__r.name,
                     DTE_PAID_PMT__c, CDE_STATUS_PMT__c, CDE_METHOD_PMT__c,
                     AMT_PMT__c, AMT_SLOT_PMT__c
                     FROM T_PAYMT__c

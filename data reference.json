@@ -1,0 +1,272 @@
+giving reference of all objects responses : schedule : "schedules": [
+      {
+        "Account__r": {
+          "License_Number__c": "20260910",
+          "Id": "001dl00001CyI16AAF",
+          "attributes": {
+            "url": "/services/data/v67.0/sobjects/Account/001dl00001CyI16AAF",
+            "type": "Account"
+          }
+        },
+        "Authorization__r": {
+          "County__r": {
+            "County_Name__c": "Adams",
+            "Id": "a3g1J0000004WArQAM",
+            "attributes": {
+              "url": "/services/data/v67.0/sobjects/County__c/a3g1J0000004WArQAM",
+              "type": "County__c"
+            }
+          },
+          "County__c": "a3g1J0000004WArQAM",
+          "Id": "a3ddl000000QnczAAC",
+          "attributes": {
+            "url": "/services/data/v67.0/sobjects/CCCAP_Authorization__c/a3ddl000000QnczAAC",
+            "type": "CCCAP_Authorization__c"
+          }
+        },
+        "Attendance__r": {
+          "records": [
+            {
+              "RecordTypeId": "0121J0000012cmFQAQ",
+              "Creation_Source__c": "Provider",
+              "Sub_Type__c": "CCCAP",
+              "Status__c": "PARENT_PENDING",
+              "CI_Transaction_Time__c": "2026-09-02T23:00:00.000+0000",
+              "Record_Type_Name__c": "Check-Out",
+              "Reporting_Authorization_Id__c": "963383",
+              "Id": "a3kdl000000khWbAAI",
+              "Schedule__c": "a3jdl0000061ZgrAAE",
+              "attributes": {
+                "url": "/services/data/v67.0/sobjects/Transaction__c/a3kdl000000khWbAAI",
+                "type": "Transaction__c"
+              }
+            },
+            {
+              "RecordTypeId": "0121J0000012cmEQAQ",
+              "Creation_Source__c": "Provider",
+              "Sub_Type__c": "CCCAP",
+              "Status__c": "PARENT_PENDING",
+              "CI_Transaction_Time__c": "2026-09-02T20:00:00.000+0000",
+              "Record_Type_Name__c": "Check-In",
+              "Reporting_Authorization_Id__c": "963383",
+              "Id": "a3kdl000000khUzAAI",
+              "Schedule__c": "a3jdl0000061ZgrAAE",
+              "attributes": {
+                "url": "/services/data/v67.0/sobjects/Transaction__c/a3kdl000000khUzAAI",
+                "type": "Transaction__c"
+              }
+            },
+            {
+              "RecordTypeId": "0121J0000012cmEQAQ",
+              "Creation_Source__c": "Provider",
+              "Sub_Type__c": "CCCAP",
+              "Status__c": "VOID",
+              "CI_Transaction_Time__c": "2026-09-02T18:00:00.000+0000",
+              "Record_Type_Name__c": "Check-In",
+              "Reporting_Authorization_Id__c": "963383",
+              "Id": "a3kdl000000kgttAAA",
+              "Schedule__c": "a3jdl0000061ZgrAAE",
+              "attributes": {
+                "url": "/services/data/v67.0/sobjects/Transaction__c/a3kdl000000kgttAAA",
+                "type": "Transaction__c"
+              }
+            }
+          ],
+          "done": true,
+          "totalSize": 3
+        },
+        "Id": "a3jdl0000061ZgrAAE",
+        "Check_Out_Count__c": 1,
+        "Check_In_Count__c": 1,
+        "Day_Sort__c": 3,
+        "Account__c": "001dl00001CyI16AAF",
+        "Type__c": "CCCAP_AUTHORIZED",
+        "Hours__c": 0,
+        "Day_of_the_Week__c": "W",
+        "Household_Name__c": "SB Household",
+        "Contact_Name__c": "MURTI SB",
+        "In_Current_Month__c": "Yes",
+        "In_current_week__c": "Other",
+        "CI_Authorization_Rate_Type__c": "1",
+        "Schedule_Type__c": "FT/PT",
+        "CI_Authorization_Hours__c": 16,
+        "CI_Authorization_Date__c": "2026-09-02",
+        "Authorization__c": "a3ddl000000QnczAAC",
+        "CI_Authorization_Id__c": 963383,
+        "attributes": {
+          "url": "/services/data/v67.0/sobjects/Schedule__c/a3jdl0000061ZgrAAE",
+          "type": "Schedule__c"
+        }
+      }] , authorizations : "authorizations": [
+      {
+        "attributes": {
+          "type": "T_AUTH__c",
+          "url": "/services/data/v68.0/sobjects/T_AUTH__c/a0shG000000a9SzQAI"
+        },
+        "Id": "a0shG000000a9SzQAI",
+        "Name": "963383",
+        "IDN_EXTNL__c": "a0shG000000a9SzQAI",
+        "IDN_CASE__c": "a1mhG000000f9ddQAA",
+        "IDN_PROVR__c": "a0whG0000013O5FQAU",
+        "IDN_CLIENT__c": "a1rhG00000Vmjc5QAB",
+        "CDE_COUNTY__c": "a1441000004dc7bAAA",
+        "CDE_TRANS_FEE__c": "N",
+        "CDE_CHILD_ENROLLED_IN_UPK__c": "Yes",
+        "Contract_for_Slots_indicator__c": false,
+        "Do_we_need_to_allow_drop_in_days_for__c": false,
+        "DTE_BEGIN_EFFV_AUTH__c": "2026-09-02",
+        "DTE_END_EFFV_AUTH__c": "2027-08-31",
+        "Authorization_Status__c": "Authorized",
+        "Number_of_Drop_in_Days__c": 1,
+        "IDN_CLIENT__r": {
+          "attributes": {
+            "type": "T_SBSD_INDIV__c",
+            "url": "/services/data/v68.0/sobjects/T_SBSD_INDIV__c/a1rhG00000Vmjc5QAB"
+          },
+          "Id": "a1rhG00000Vmjc5QAB",
+          "DTE_DOB__c": "2022-09-01"
+        }
+      }
+    ] , service periods : "servicePeriods": [
+      {
+        "storedRecordId": "a1sPg000005r7sSIAQ",
+        "status": "SCHEDULED",
+        "servicePeriodId": "895",
+        "serviceEndDate": "2026-09-27",
+        "serviceBeginDate": "2026-09-21",
+        "paymentReleaseDate": "2026-10-09",
+        "paymentProcessingDate": "2026-10-08",
+        "fromStoredRecord": true
+      }
+    ] , fiscal rates : "fiscalRates": [
+      {
+        "attributes": {
+          "type": "batchsit_t_fiscal_rate__x"
+        },
+        "Id": "x0Lxx000001X5laEAC",
+        "idn_fiscal_sch__c": "a1DhG000000AyR7UAK",
+        "cde_age_group__c": "5",
+        "cde_care_unit__c": "4",
+        "cde_rate_type__c": "1",
+        "amt_cty__c": 6,
+        "amt_fa__c": 24.8,
+        "amt_provr__c": 24.8
+      },
+      {
+        "attributes": {
+          "type": "batchsit_t_fiscal_rate__x"
+        },
+        "Id": "x0Lxx000001X5lbEAC",
+        "idn_fiscal_sch__c": "a1DhG000000AyR7UAK",
+        "cde_age_group__c": "4",
+        "cde_care_unit__c": "5",
+        "cde_rate_type__c": "43",
+        "amt_cty__c": 6,
+        "amt_fa__c": 46,
+        "amt_provr__c": 84
+      }] , vacant slots : "vacantSlots": [
+      {
+        "attributes": {
+          "type": "T_SLOT_CONTRACT__c",
+          "url": "/services/data/v68.0/sobjects/T_SLOT_CONTRACT__c/a3phG000000W8QfQAK"
+        },
+        "Id": "a3phG000000W8QfQAK",
+        "Name": "008234",
+        "IDN_PROVIDER__c": "a0whG0000013O5FQAU",
+        "IDN_ADDENDUM__c": "a3ohG000000FxEHQA0",
+        "CDE_COUNTY__c": "a1441000004dc7KAAQ",
+        "CDE_CARE_UNIT__c": "3",
+        "CDE_CARE_LEVEL__c": "3",
+        "CDE_RATE_TYPE__c": "37",
+        "CDE_PRG_TYPE__c": "LI",
+        "CNT_DAYS_OF_MONTH__c": 12,
+        "CNT_DAYS_OF_WEEK__c": "Thursday;Friday",
+        "DTE_BEGIN_SLOT__c": "2026-09-02",
+        "DTE_END_SLOT__c": "2026-10-25",
+        "IND_OCCUPIED__c": false,
+        "IND_FUTURE_VACANT__c": false,
+        "IND_AVAILABLE__c": true,
+        "SLOT_CONTRACT_DESCRIPTION__c": "Denver_September regression test - sb updated_008234",
+        "CDE_COUNTY__r": {
+          "attributes": {
+            "type": "T_COUNTY__c",
+            "url": "/services/data/v68.0/sobjects/T_COUNTY__c/a1441000004dc7KAAQ"
+          },
+          "Id": "a1441000004dc7KAAQ",
+          "Name": "Denver"
+        }
+      }] , countyData : "countyRatePlans": [
+      {
+        "manageDropInAtAuthLevel": "Y",
+        "dropInResponse": "1",
+        "maxDropInDaysPerMonth": 5,
+        "allowDropInDays": "Y",
+        "countyholidayList": "1;4;5;6;9;10",
+        "allowPaidHolidays?": "Y",
+        "absenceDaysTier5": 4,
+        "absenceDaysTier4": 4,
+        "absenceDaysTier3": 4,
+        "absenceDaysTier2": 4,
+        "absenceDaysTier1": 4,
+        "effectiveEndDate": null,
+        "effectiveBeginDate": "2026-04-01",
+        "status": "APV",
+        "countyName": "Denver",
+        "countyId": "a1441000004dc7KAAQ",
+        "planName": "13171",
+        "planId": "a0AhG0000008t2XUAQ"
+      }] , provider closure, Fiscal agreements and fiscal schedules : "providerClosures": [
+      {
+        "attributes": {
+          "type": "T_PROVR_CLOSURE__c",
+          "url": "/services/data/v68.0/sobjects/T_PROVR_CLOSURE__c/a3nhG000003rj6zQAA"
+        },
+        "Id": "a3nhG000003rj6zQAA",
+        "IDN_PROVIDER__c": "a0whG0000013O5FQAU",
+        "CDE_COUNTY__c": "a1441000004dc7bAAA",
+        "DTE_BEGIN_CLOSURE__c": "2026-09-24",
+        "IND_ACTIVE__c": true,
+        "TXT_COMMENTS__c": "testing - sb"
+      }
+    ],
+    "fiscalAgreements": [
+      {
+        "attributes": {
+          "type": "T_PROVR_FISCAL_AGREMENT__c",
+          "url": "/services/data/v68.0/sobjects/T_PROVR_FISCAL_AGREMENT__c/a1ahG000000fucXQAQ"
+        },
+        "Id": "a1ahG000000fucXQAQ",
+        "Name": "281179",
+        "ID_SERVICE__c": "a0whG0000013O5FQAU",
+        "CDE_COUNTY__c": "a1441000004dc7bAAA",
+        "CDE_TYPE_STATUS__c": "OPN",
+        "DTE_BEGIN_AGRMT__c": "2026-08-01",
+        "DTE_END_AGRMT__c": "2029-07-31",
+        "Rate_Schedules__r": {
+          "totalSize": 1,
+          "done": true,
+          "records": [
+            {
+              "attributes": {
+                "type": "T_FISCAL_SCH__c",
+                "url": "/services/data/v68.0/sobjects/T_FISCAL_SCH__c/a1DhG000000AyR7UAK"
+              },
+              "IDN_AGRMT_FISCAL__c": "a1ahG000000fucXQAQ",
+              "Id": "a1DhG000000AyR7UAK",
+              "CDE_RATE_TYPE__c": "1;13;19;25;31;37;43;55;91",
+              "IDN_EXTNL__c": "a1DhG000000AyR7UAK",
+              "TXT_CHATS_RATING__c": "Level 2",
+              "DTE_BEGIN_EFFV__c": "2026-08-01"
+            }
+          ]
+        },
+        "CDE_COUNTY__r": {
+          "attributes": {
+            "type": "T_COUNTY__c",
+            "url": "/services/data/v68.0/sobjects/T_COUNTY__c/a1441000004dc7bAAA"
+          },
+          "Id": "a1441000004dc7bAAA",
+          "Name": "Adams"
+        }
+      }
+    ] , ask questions now around matching logic confusion if any

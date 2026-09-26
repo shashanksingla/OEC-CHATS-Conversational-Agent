@@ -1,0 +1,304 @@
+kind: Process
+id: ccare_provider_agent_process
+name: CCARE Provider Agent process
+version: 1.19.5
+description: |-
+  2026-09-27: Freshness check remains merged into ccare_data_collection (idempotent ensure-data guard); payment source reads are centralized in ccare_data_collection; deterministic tasks own all financial facts and action selection, while the response renderer provides the final provider-facing explanation using only those facts. 15 nodes / 28 edges.
+model: bedrock/us.anthropic.claude-sonnet-5
+model_error: null
+tasks:
+- node_id: ccare_unified_intent_router
+  name: Unified intent router
+  task_type: task
+  bound_task: ccare_unified_intent_router
+  position: 1
+  config:
+    bound_task: ccare_unified_intent_router
+  parallel_group: null
+- node_id: provider_validated_gate
+  name: Provider session validated gate
+  task_type: decision
+  bound_task: null
+  position: 2
+  config:
+    branches:
+    - value: 'YES'
+      name: validated
+      source: context.sessionState
+      path: providerVerified
+      operator: contains
+      condition_type: text
+    - value: 'NO'
+      name: not_validated
+      source: context.sessionState
+      path: providerVerified
+      operator: contains
+      condition_type: text
+    - name: default
+      condition_type: default
+  parallel_group: null
+- node_id: ccare_provider_data_py
+  name: Provider data validation
+  task_type: task
+  bound_task: ccare_provider_data_py
+  position: 3
+  config:
+    bound_task: ccare_provider_data_py
+  parallel_group: null
+- node_id: session_gate
+  name: Session & data freshness gate
+  task_type: decision
+  bound_task: null
+  position: 5
+  config:
+    branches:
+    - value: needs_clarification
+      name: needs_clarification
+      source: context.ccare_provider_data_py
+      path: status
+      operator: contains
+      condition_type: text
+    - value: failed
+      name: failed
+      source: context.ccare_provider_data_py
+      path: status
+      operator: contains
+      condition_type: text
+    - name: default
+      condition_type: default
+  parallel_group: null
+- node_id: human_end
+  name: End conversation
+  task_type: human
+  bound_task: null
+  position: 7
+  config: {}
+  parallel_group: null
+- node_id: ccare_data_collection
+  name: Data collection
+  task_type: task
+  bound_task: ccare_data_collection
+  position: 8
+  config:
+    bound_task: ccare_data_collection
+  parallel_group: null
+- node_id: action_dispatch
+  name: Action dispatch
+  task_type: decision
+  bound_task: null
+  position: 9
+  config:
+    branches:
+    - value: ATTENDANCE
+      name: attendance
+      source: context.turnRequest
+      path: action
+      operator: contains
+      condition_type: text
+    - value: PAYMENT
+      name: payment
+      source: context.turnRequest
+      path: action
+      operator: contains
+      condition_type: text
+    - value: EXPLAIN
+      name: explain
+      source: context.turnRequest
+      path: action
+      operator: contains
+      condition_type: text
+    - value: STARTER
+      name: starter
+      source: context.turnRequest
+      path: action
+      operator: contains
+      condition_type: text
+    - value: CLARIFY
+      name: clarify
+      source: context.turnRequest
+      path: action
+      operator: contains
+      condition_type: text
+    - value: END
+      name: end
+      source: context.turnRequest
+      path: action
+      operator: contains
+      condition_type: text
+    - name: default
+      condition_type: default
+  parallel_group: null
+- node_id: attendance_risks_analyzer_py
+  name: Attendance risk analysis
+  task_type: task
+  bound_task: attendance_risks_analyzer_py
+  position: 10
+  config:
+    bound_task: attendance_risks_analyzer_py
+  parallel_group: null
+- node_id: payout_impact_gate
+  name: Payout impact gate
+  task_type: decision
+  bound_task: null
+  position: 11
+  config:
+    branches:
+    - value: PAYOUT_IMPACT
+      name: payout_impact
+      source: context.turnRequest
+      path: subFilter
+      operator: contains
+      condition_type: text
+    - value: STARTER
+      name: starter
+      source: context.turnRequest
+      path: action
+      operator: contains
+      condition_type: text
+    - name: default
+      condition_type: default
+  parallel_group: null
+- node_id: ccare_payout_impact_correlator
+  name: Payout impact correlator
+  task_type: task
+  bound_task: ccare_payout_impact_correlator
+  position: 12
+  config:
+    bound_task: ccare_payout_impact_correlator
+  parallel_group: null
+- node_id: ccare_payment_action
+  name: CCARE payment engine
+  task_type: task
+  bound_task: ccare_payment_engine
+  position: 13
+  config:
+    bound_task: ccare_payment_engine
+  parallel_group: null
+- node_id: ccare_response_formatter
+  name: Deterministic response formatter (+ recommended actions)
+  task_type: task
+  bound_task: ccare_response_formatter
+  position: 14
+  config:
+    bound_task: ccare_response_formatter
+  parallel_group: null
+- node_id: response_exit_gate
+  name: Response exit gate
+  task_type: decision
+  bound_task: null
+  position: 17
+  config:
+    branches:
+    - value: failed
+      name: end
+      source: context.ccare_provider_data_py
+      path: status
+      operator: contains
+      condition_type: text
+    - name: continue
+      condition_type: default
+  parallel_group: null
+- node_id: ccare_response_renderer
+  name: AI response renderer
+  task_type: task
+  bound_task: ccare_response_renderer
+  position: 16
+  config:
+    bound_task: ccare_response_renderer
+  parallel_group: null
+- node_id: human_gate
+  name: Human turn
+  task_type: human
+  bound_task: null
+  position: 18
+  config: {}
+  parallel_group: null
+edges:
+- from: ccare_unified_intent_router
+  to: provider_validated_gate
+  condition: always
+- from: provider_validated_gate
+  to: ccare_provider_data_py
+  condition: not_validated
+- from: provider_validated_gate
+  to: ccare_provider_data_py
+  condition: default
+- from: session_gate
+  to: ccare_response_formatter
+  condition: needs_clarification
+- from: session_gate
+  to: ccare_response_formatter
+  condition: failed
+- from: ccare_data_collection
+  to: action_dispatch
+  condition: always
+- from: action_dispatch
+  to: attendance_risks_analyzer_py
+  condition: attendance
+- from: action_dispatch
+  to: ccare_payment_action
+  condition: payment
+- from: action_dispatch
+  to: ccare_response_formatter
+  condition: explain
+- from: action_dispatch
+  to: attendance_risks_analyzer_py
+  condition: starter
+- from: action_dispatch
+  to: ccare_response_formatter
+  condition: clarify
+- from: action_dispatch
+  to: ccare_response_formatter
+  condition: default
+- from: action_dispatch
+  to: human_end
+  condition: end
+- from: attendance_risks_analyzer_py
+  to: payout_impact_gate
+  condition: always
+- from: payout_impact_gate
+  to: ccare_payout_impact_correlator
+  condition: payout_impact
+- from: payout_impact_gate
+  to: ccare_payout_impact_correlator
+  condition: starter
+- from: payout_impact_gate
+  to: ccare_response_formatter
+  condition: default
+- from: ccare_payout_impact_correlator
+  to: ccare_response_formatter
+  condition: always
+- from: ccare_payment_action
+  to: payout_impact_gate
+  condition: always
+- from: ccare_response_formatter
+  to: ccare_response_renderer
+  condition: always
+- from: ccare_response_renderer
+  to: response_exit_gate
+  condition: always
+- from: response_exit_gate
+  to: human_end
+  condition: end
+- from: response_exit_gate
+  to: human_gate
+  condition: continue
+- from: human_gate
+  to: ccare_unified_intent_router
+  condition: always
+- from: human_end
+  to: null
+  condition: always
+- from: provider_validated_gate
+  to: ccare_data_collection
+  condition: validated
+- from: ccare_provider_data_py
+  to: session_gate
+  condition: always
+- from: session_gate
+  to: ccare_data_collection
+  condition: default
+tags:
+- Child Care
+created_at: '2026-08-14T11:10:21.136879Z'
+updated_at: '2026-09-26T17:50:06.120402Z'
