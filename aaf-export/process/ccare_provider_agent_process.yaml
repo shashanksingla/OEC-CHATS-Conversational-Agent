@@ -1,7 +1,7 @@
 kind: Process
 id: ccare_provider_agent_process
 name: CCARE Provider Agent process
-version: 1.19.5
+version: 1.21.0
 description: |-
   2026-09-27: Freshness check remains merged into ccare_data_collection (idempotent ensure-data guard); payment source reads are centralized in ccare_data_collection; deterministic tasks own all financial facts and action selection, while the response renderer provides the final provider-facing explanation using only those facts. 15 nodes / 28 edges.
 model: bedrock/us.anthropic.claude-sonnet-5
@@ -66,6 +66,14 @@ tasks:
       condition_type: text
     - name: default
       condition_type: default
+  parallel_group: null
+- node_id: ccare_progress_emitter
+  name: In-progress response
+  task_type: task
+  bound_task: ccare_progress_emitter
+  position: 6
+  config:
+    bound_task: ccare_progress_emitter
   parallel_group: null
 - node_id: human_end
   name: End conversation
@@ -198,20 +206,34 @@ tasks:
     - name: continue
       condition_type: default
   parallel_group: null
-- node_id: ccare_response_renderer
-  name: AI response renderer
-  task_type: task
-  bound_task: ccare_response_renderer
-  position: 16
-  config:
-    bound_task: ccare_response_renderer
-  parallel_group: null
 - node_id: human_gate
   name: Human turn
   task_type: human
   bound_task: null
   position: 18
   config: {}
+  parallel_group: null
+- node_id: post_emitter_gate
+  name: Post-emitter routing gate
+  task_type: decision
+  bound_task: null
+  position: 7
+  config:
+    branches:
+    - value: CLARIFY
+      name: clarify
+      source: context.turnRequest
+      path: routingClass
+      operator: contains
+      condition_type: text
+    - value: END
+      name: end
+      source: context.turnRequest
+      path: routingClass
+      operator: contains
+      condition_type: text
+    - name: default
+      condition_type: default
   parallel_group: null
 edges:
 - from: ccare_unified_intent_router
@@ -271,12 +293,6 @@ edges:
 - from: ccare_payment_action
   to: payout_impact_gate
   condition: always
-- from: ccare_response_formatter
-  to: ccare_response_renderer
-  condition: always
-- from: ccare_response_renderer
-  to: response_exit_gate
-  condition: always
 - from: response_exit_gate
   to: human_end
   condition: end
@@ -290,15 +306,30 @@ edges:
   to: null
   condition: always
 - from: provider_validated_gate
-  to: ccare_data_collection
+  to: ccare_progress_emitter
   condition: validated
 - from: ccare_provider_data_py
   to: session_gate
   condition: always
 - from: session_gate
+  to: ccare_progress_emitter
+  condition: default
+- from: ccare_response_formatter
+  to: response_exit_gate
+  condition: always
+- from: ccare_progress_emitter
+  to: post_emitter_gate
+  condition: always
+- from: post_emitter_gate
+  to: human_gate
+  condition: clarify
+- from: post_emitter_gate
+  to: human_end
+  condition: end
+- from: post_emitter_gate
   to: ccare_data_collection
   condition: default
 tags:
 - Child Care
 created_at: '2026-08-14T11:10:21.136879Z'
-updated_at: '2026-09-26T17:50:06.120402Z'
+updated_at: '2026-09-28T13:23:55.291213Z'

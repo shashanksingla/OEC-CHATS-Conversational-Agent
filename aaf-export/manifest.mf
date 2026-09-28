@@ -1,36 +1,38 @@
 kind: ExportManifest
 process_id: ccare_provider_agent_process
 source: https://d3thytbs9a5a1.cloudfront.net/admin
-fetched_at: 2026-09-27T02:39:00Z
-fetch_method: Python urllib against /admin/api/processes/{id}, /admin/api/tasks/{id}, /admin/api/tools/{id}, authenticated via cookie session from POST /admin/api/auth/login (child.care)
+fetched_at: 2026-09-28T22:26:00+05:30
+fetch_method: Python urllib against /admin/api/processes/{id}, /admin/api/tasks/{id}, /admin/api/tools/{id}, /admin/api/tasks (full list), authenticated via cookie session from POST /admin/api/auth/login (child.care). Every written YAML file is round-trip validated with yaml.safe_load immediately after writing.
 
 # ==============================================================================
-# 2026-09-27 PROCESS RESYNC. The prior same-day sync (fetched_at ~23:41) wrote
-# invalid YAML (malformed literal-string tag "tag:yaml.org,str" instead of
-# "tag:yaml.org,2002:str") and, separately, was already one version behind:
-# the live process moved from v1.16.1 -> v1.19.0 *during this session* --
-# ccare_freshness_check node removed entirely, its logic merged into
-# ccare_data_collection (now an idempotent ensure-data guard). The process
-# was subsequently deployed as v1.19.5 with the dead cached edge removed and
-# the constrained response-renderer LLM restored as the final provider-facing
-# synthesis layer. The task version entries below are retained from the last
-# full task export; all task version metadata and extracted source payloads are
-# now checked against the live registry as of this resync.
+# 2026-09-28 RESYNC #4. ccare_response_renderer NODE REMOVED from the live
+# graph (process v1.19.7 -> v1.21.0) -- it now joins ccare_data_freshness_check_py
+# and ccare_action_recommender as orphaned-but-still-live: the task record
+# still exists on the portal, kept locally, but nothing in the current graph
+# calls it. Live bound-task count dropped 9 -> 8. Confirmed by diffing
+# process.tasks[].bound_task against the full /admin/api/tasks list AND
+# local files, not assumed from the version bump alone.
+#
+# 2026-09-28 RESYNC #3. Added and deployed a no-tools LLM progress emitter
+# after provider/session validation and before data collection. It emits one
+# provider-safe acknowledgement, while the existing formatter/renderer remains
+# the only source of the final evidence-backed answer.
 # ==============================================================================
 
 live_versions:
-  process: 1.19.5
-  ccare_unified_intent_router: 1.5.2
+  process: 1.21.0
+  ccare_unified_intent_router: 1.6.0
   ccare_provider_data_py: 1.2.6
   ccare_data_freshness_check_py: 1.3.0
-  ccare_data_collection: 1.1.5
-  attendance_risks_analyzer_py: 1.2.1
+  ccare_data_collection: 1.1.12
+  attendance_risks_analyzer_py: 1.2.3
   ccare_payment_engine: 1.3.38
-  ccare_response_renderer: 1.1.3   # live bound renderer; prompt strengthened in v1.19.5
+  ccare_response_renderer: 2.1.2   # no longer bound to any node -- see note above
+  ccare_progress_emitter: 1.3.0
   ccare_action_recommender: 1.0.2   # live registry artifact; no longer bound
-  ccare_payout_impact_correlator: 1.1.13
-  ccare_response_formatter: 1.5.11
-  getproviderdata_tool: 1.0.137
+  ccare_payout_impact_correlator: 1.1.20
+  ccare_response_formatter: 1.8.5
+  getproviderdata_tool: 1.0.138
 
 new_vs_deleted:
   # Checked live process.tasks[].bound_task (8 distinct) against the full
@@ -39,16 +41,19 @@ new_vs_deleted:
   # placement_*, etc. -- and correctly excluded) and against local files.
   new_bound_tasks_missing_locally: []   # none -- every live-bound task already had a local file
   local_tasks_no_longer_bound_in_graph:
-    - ccare_data_freshness_check_py   # NEW as of v1.19.0 -- node removed, logic merged into ccare_data_collection
-    - ccare_action_recommender        # unbound since the 2026-09-26 merge into ccare_response_formatter
-    # Both still exist as live tasks (confirmed present in /admin/api/tasks)
+    - ccare_data_freshness_check_py   # unbound since v1.19.0 -- logic merged into ccare_data_collection
+    - ccare_action_recommender        # unbound since the earlier merge into ccare_response_formatter
+    - ccare_response_renderer         # NEW as of v1.21.0 -- node removed from the graph entirely
+    # All three still exist as live tasks (confirmed present in /admin/api/tasks)
     # -- kept locally as orphaned-but-real artifacts, not deleted. Only
     # delete a local file if the task is removed from the LIVE task list
-    # entirely, which neither is.
-  local_files_removed_this_pass: []    # nothing deleted -- no local file corresponds to a task absent from the live task list
+    # entirely, which none currently are.
+  known_tasks_removed_from_live_portal: []   # none -- confirmed against the full /admin/api/tasks list
+  local_files_removed_this_pass: []    # nothing deleted
   tasks_confirmed_still_live_but_unbound:
     - ccare_data_freshness_check_py
     - ccare_action_recommender
+    - ccare_response_renderer
 
 downloaded:
   process:
@@ -61,6 +66,7 @@ downloaded:
     - tasks/attendance_risks_analyzer_py.yaml
     - tasks/ccare_payment_engine.yaml
     - tasks/ccare_response_renderer.yaml
+    - tasks/ccare_progress_emitter.yaml
     - tasks/ccare_action_recommender.yaml        # orphaned in graph, still live -- see new_vs_deleted
     - tasks/ccare_payout_impact_correlator.yaml
     - tasks/ccare_response_formatter.yaml
@@ -85,6 +91,7 @@ referenced_tasks:
   - ccare_payout_impact_correlator   # deterministic, v1.1.13
   - ccare_response_formatter         # deterministic, v1.5.11
   - ccare_response_renderer          # llm, v1.1.3 -- constrained provider-facing synthesis layer
+  - ccare_progress_emitter           # llm, v1.0.1 -- interim acknowledgement before data collection
   # Present locally, present live, NOT bound to any node in the current graph:
   - ccare_data_freshness_check_py    # deterministic, v1.3.0 -- superseded by ccare_data_collection's merged guard
   - ccare_action_recommender         # deterministic, v1.0.2 -- superseded by ccare_response_formatter's merged logic
@@ -98,6 +105,7 @@ node_to_task_bindings:
   - ccare_payout_impact_correlator -> ccare_payout_impact_correlator
   - ccare_response_formatter -> ccare_response_formatter
   - ccare_response_renderer -> ccare_response_renderer
+  - ccare_progress_emitter -> ccare_progress_emitter
   # ccare_freshness_check node REMOVED as of v1.19.0 (was -> ccare_data_freshness_check_py)
 
 decision_nodes:
@@ -117,16 +125,19 @@ referenced_tools:
 referenced_personas: []
 
 graph_summary:
-  node_count: 15
-  edge_count: 28
-  distinct_bound_tasks: 8
+  node_count: 16
+  edge_count: 29
+  distinct_bound_tasks: 9
   decision_nodes: 5
   human_nodes: 2
   notes: >-
-    Live process version 1.19.5. Freshness remains inside
-    ccare_data_collection; session_gate has no cached edge; and the
-    deterministic formatter feeds the constrained AI response renderer
-    before response_exit_gate.
+    Live process version 1.19.7. New as of this resync: ccare_progress_emitter
+    (llm, no tools) runs after provider/session validation and before data
+    collection, emitting one interim provider-safe acknowledgement sentence
+    keyed off turnRequest.action/subFilter -- the final answer still comes
+    only from ccare_response_formatter + ccare_response_renderer downstream.
+    Freshness remains inside ccare_data_collection; session_gate has no
+    cached edge.
 
 http_failures: []
 unresolved_references: []

@@ -1,9 +1,9 @@
 kind: Task
 id: ccare_unified_intent_router
-name: CCARE Unified Intent Router (LLM)
-version: 1.5.2
+name: ccare_unified_intent_router
+version: 1.6.0
 description: |-
-  Added FULL_BREAKDOWN to PAYMENT subFilter enum -- used when the provider asks to see the full day-by-day breakdown/detail for a payment already shown this conversation; reuses the already-resolved period rather than re-asking for a date range.
+  Routes greetings to the starter snapshot and genuine vague domain requests to clarification so the assistant stays useful without guessing the provider's intent.
 model: null
 model_error: null
 task_type: llm
@@ -27,12 +27,21 @@ system_prompt: |-
 
   | action     | routingClass | intent     | When to use |
   |------------|-------------|-----------|-------------|
-  | STARTER    | DATA_ACTION | Starter   | Greeting, pleasantry, or no clear request |
+  | STARTER    | DATA_ACTION | Starter   | INITIAL greeting/pleasantry (first turn, no session yet) or explicit request for a current overview or dashboard |
   | ATTENDANCE | DATA_ACTION | Attendance| Children, check-ins, absences, schedules, risk analysis |
   | PAYMENT    | DATA_ACTION | Payment   | Payouts, payment dates, amounts, service periods, forecasts |
   | EXPLAIN    | DATA_ACTION | Explain   | Clarify something already visible in a prior response |
-  | CLARIFY    | CLARIFY     | Unclear   | Genuinely ambiguous -- domain or scope cannot be resolved |
+  | CLARIFY    | CLARIFY     | Unclear   | Vague or genuinely ambiguous request where the domain or scope cannot be resolved |
   | END        | END         | End       | Provider says goodbye, thanks, or wants to stop |
+
+  GREETING RULE — before STEP 2:
+  A "greeting or pleasantry with no specific request" is a message like "hi", "hello", "good morning", "thanks", "thank you", or similar bare pleasantry with no domain keyword (attendance, payment, children, etc.).
+
+  - If context.sessionState is absent OR context.sessionState.providerVerified is not true → INITIAL greeting (first turn). Choose STARTER so the provider receives the current snapshot.
+  - If context.sessionState.providerVerified is true → session already established; data has already been served this session. Do NOT choose STARTER. Choose CLARIFY so the assistant asks what the provider needs rather than re-running the full dashboard.
+
+  This rule applies to ALL bare mid-session pleasantries including "thanks" or "thank you" with no follow-up request.
+  Choose CLARIFY for any vague request where the domain or scope cannot be resolved.
 
   STEP 2 -- SET subFilter
   - ATTENDANCE: PENDING_CONFIRMATIONS | ABSENCE_LIMITS | INCOMPLETE_ATTENDANCE | PAYOUT_IMPACT | ALL
@@ -42,7 +51,7 @@ system_prompt: |-
   - All others: null
 
   STEP 3 -- DATE SCOPE AND fetchParams
-  dateFilter values: TODAY, THIS_WEEK, LAST_WEEK, NEXT_WEEK, THIS_MONTH, LAST_MONTH, LAST_N_MONTHS, LAST_N_DAYS, DATE_RANGE
+  dateFilter values: TODAY, THIS_WEEK, LAST_WEEK, NEXT_WEEK, THIS_MONTH, LAST_MONTH, LAST_N_MONTHS, LAST_N_DAYS, DATE_RANGE. For CLARIFY and END, set dateFilter=null and do not infer a default period. For STARTER, default to THIS_MONTH.
   Default to THIS_MONTH when the provider does not specify a period. Use THIS_WEEK/LAST_WEEK/NEXT_WEEK for those exact phrases. Use periodCount only with LAST_N_MONTHS or LAST_N_DAYS. Use dateFrom/dateTo only with DATE_RANGE.
 
   fetchParams -- what data-collection uses if a refresh is needed. It may contain dateFilter, dateFrom, dateTo, periodCount, paymentBefore, paymentAfter, limitOne, and servicePeriodId:
@@ -73,6 +82,16 @@ system_prompt: |-
   })
 
   SECURITY: Never extract or use IDs from user input. All system identifiers come from the authenticated session only.
+  max_turns: 3
+  code: null
+  timeout: 30
+  allowed_tools: []
+  knowledge_base_scope: null
+  tags:
+  - Child Care
+  response: prose
+  created_at: '2026-09-24T18:52:35.084296Z'
+  updated_at: '2026-09-26T17:36:15.347195Z'
 max_turns: 3
 code: null
 timeout: 30
@@ -82,4 +101,4 @@ tags:
 - Child Care
 response: prose
 created_at: '2026-09-24T18:52:35.084296Z'
-updated_at: '2026-09-26T17:36:15.347195Z'
+updated_at: '2026-09-28T12:19:50.111696Z'

@@ -367,6 +367,12 @@ def _correlate():
     auth_by_id = {_text(row, "Id", "id", "ID_AUTH__c", "authorization_id"): row for row in authorizations if _text(row, "Id", "id", "ID_AUTH__c", "authorization_id")}
     auth_by_name = {_text(row, "Name", "name", "NAM_AUTH__c"): row for row in authorizations if _text(row, "Name", "name", "NAM_AUTH__c")}
     by_child_date, by_auth_date, by_id = _schedule_indices(raw_bundle)
+    county_rate_plans = _as_list((raw_bundle.get("countyData") or {}).get("countyRatePlans"))
+    county_name_by_id = {
+        _text(plan, "countyId", "county_id", "CDE_COUNTY__c"): _text(plan, "countyName", "county_name")
+        for plan in county_rate_plans
+        if _text(plan, "countyId", "county_id", "CDE_COUNTY__c")
+    }
 
     provider_ids = _extract_ids(_as_list(provider_data.get("providers")), "Id", "id")
     fiscal_schedule_ids = []
@@ -389,6 +395,8 @@ def _correlate():
     absence_unresolved = False
     unconfirmed_unresolved = False
     schedules = _as_list((raw_bundle.get("schedulesData") or {}).get("schedules"))
+    absence_identities = {}
+    unconfirmed_identities = {}
 
     def _skip(child_name, county_name):
         if child_filter and (child_name or "").lower() not in child_filter:
@@ -396,6 +404,15 @@ def _correlate():
         if county_filter and county_name and (county_name or "").lower() not in county_filter:
             return True
         return False
+
+    def _risk_identity(schedule, fallback_auth=None, fallback_date=None, fallback_child=None):
+        schedule_id = _text(schedule, "Id", "id", "schedule_id")
+        if schedule_id:
+            return ("schedule", schedule_id)
+        auth_id = _text(schedule, "CI_Authorization_Id__c", "authorization_id", "auth_id") or fallback_auth
+        service_date = _text(schedule, "CI_Authorization_Date__c", "date") or fallback_date
+        child_id = _text(schedule, "IDN_CLIENT__c", "child_id", "childId") or fallback_child
+        return ("day", auth_id or child_id or "unknown", service_date or "unknown")
 
     def _record(child_name, authorization_id, county_name, hours, rate, blocker, reason, category=None, debug=None):
         nonlocal total_hours, total_dollar
@@ -438,12 +455,17 @@ def _correlate():
             continue
         dates = list(group.get("confirmed_absence_dates") or []) + list(group.get("tentative_absence_dates") or [])
         for absence_date in dates:
+            _absence_key = (str(group.get("authorization_id") or group.get("child_id") or ""), absence_date)
+            if _absence_key in absence_identities:
+                continue
+            absence_identities[_absence_key] = 1
             schedule = by_auth_date.get((str(group.get("authorization_id")), absence_date))
             if not schedule:
                 schedule = by_child_date.get((str(group.get("child_id")), absence_date))
             if not schedule:
                 # A missing schedule is not a valid absence or payment day.
                 absence_unresolved = True
+                continue
                 continue
             hours = _number(schedule, "CI_Authorization_Hours__c", "authorized_hours") or Decimal("0")
             authorization = auth_by_id.get(group.get("authorization_id")) or auth_by_name.get(
@@ -476,6 +498,15 @@ def _correlate():
             # still exists in the collected data.
             unconfirmed_unresolved = True
             continue
+        identity = _risk_identity(
+            schedule,
+            fallback_auth=item.get("auth_id"),
+            fallback_date=item.get("date"),
+            fallback_child=item.get("child_id"),
+        )
+        if identity in unconfirmed_identities:
+            continue
+        unconfirmed_identities[identity] = 1
         hours = _number(schedule, "CI_Authorization_Hours__c", "authorized_hours") or Decimal("0")
         county_id = item.get("county_id") or _text(schedule, "CDE_COUNTY__c")
         provider_id = _text(schedule, "IDN_PROVIDER__c")
@@ -488,7 +519,7 @@ def _correlate():
         _record(
             item.get("child_name"),
             item.get("auth_id"),
-            None,
+            county_name_by_id.get(county_id),
             hours,
             rate,
             blocker,
@@ -499,19 +530,23 @@ def _correlate():
     for schedule in schedules:
         check_in_count = _count_value(schedule, "Check_In_Count__c", "check_in_count", "checkInCount")
         check_out_count = _count_value(schedule, "Check_Out_Count__c", "check_out_count", "checkOutCount")
-        hours = _number(schedule, "CI_Authorization_Hours__c", "authorized_hours") or Decimal("0")
-        if hours <= 0 or not (
-            (check_in_count == 0 and check_out_count == 0)
-            or check_in_count != check_out_count
-        ):
+        if not ((check_in_count > 0 and check_out_count == 0) or (check_out_count > 0 and check_in_count == 0)):
             continue
         service_date = _text(schedule, "CI_Authorization_Date__c", "date")
+        hours = _number(schedule, "CI_Authorization_Hours__c", "authorized_hours") or Decimal("0")
         authorization_ref = _text(schedule, "CI_Authorization_Id__c", "authorization_id")
         authorization = auth_by_name.get(authorization_ref) or auth_by_id.get(authorization_ref) or {}
         child_name = _text(
             authorization.get("IDN_CLIENT__r") if isinstance(authorization, dict) else None,
             "Name", "name", "NAM_FIRST__c",
         ) or _text(schedule, "child_name", "childName")
+        if _risk_identity(
+            schedule,
+            fallback_auth=authorization_ref,
+            fallback_date=service_date,
+            fallback_child=_text(schedule, "IDN_CLIENT__c", "child_id", "childId"),
+        ) in unconfirmed_identities:
+            continue
         county_id = _text(authorization, "CDE_COUNTY__c", "county_id")
         provider_id = _text(schedule, "IDN_PROVIDER__c", "provider_id") or _text(
             authorization, "IDN_PROVR__c", "provider_id"
@@ -590,35 +625,6 @@ _data_result = _ctx("data_collection_result") or {}
 _snapshot = _data_result.get("snapshot") if isinstance(_data_result, dict) else None
 if isinstance(_snapshot, dict):
     _risk_categories = _snapshot.setdefault("risk_categories", {})
-    _analyzer = _ctx("attendance_risks_analyzer_py") or {}
-    _analyzer_absence = [
-        row for row in (_analyzer.get("approaching_absence_limits") or [])
-        if isinstance(row, dict)
-    ]
-    _absence_children = {
-        str(row.get("child_id") or row.get("child_name")).strip()
-        for row in _analyzer_absence
-        if row.get("child_id") or row.get("child_name")
-    }
-    _absence_counties = {
-        str(row.get("county_id") or row.get("county_name")).strip()
-        for row in _analyzer_absence
-        if row.get("county_id") or row.get("county_name")
-    }
-    _crossed_absence = [
-        row for row in _analyzer_absence
-        if row.get("status") in ("OVER_LIMIT", "POTENTIAL_OVER_LIMIT")
-    ]
-    _crossed_children = {
-        str(row.get("child_id") or row.get("child_name")).strip()
-        for row in _crossed_absence
-        if row.get("child_id") or row.get("child_name")
-    }
-    _approaching_category = _risk_categories.setdefault("approaching_absence_limits", {})
-    _crossed_category = _risk_categories.setdefault("crossed_absence_limits", {})
-    _approaching_category["children"] = len(_absence_children)
-    _approaching_category["counties"] = len(_absence_counties)
-    _crossed_category["children"] = len(_crossed_children)
     _absence_category = _risk_categories.setdefault("approaching_absence_limits", {})
     _pending_category = _risk_categories.setdefault("pending_parent_confirmations", {})
     _absence_category["potential_loss_hours"] = _impact["absence_risk_hours"]

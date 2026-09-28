@@ -316,7 +316,7 @@ for schedule in schedules:
         absence_groups[key] = {
             "child_id": child_id,
             "child_name": child_name,
-            "authorization_id": auth_sfid or auth_ref,
+            "authorization_id": auth_ref or auth_sfid,
             "provider_id": linked_provider_id,
             "county_id": county_id,
             "quality_tier": tier,

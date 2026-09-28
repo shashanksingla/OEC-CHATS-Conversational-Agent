@@ -418,6 +418,7 @@ def _build_snapshot(providers, resolved_filters, county_data, holiday_data, auth
                         children[child_key]["pending_confirmation_days"] += 1
                 pending_rows.append({
                     "child_name": child_name,
+                    "authorization_id": _record_value(schedule, "CI_Authorization_Id__c", "authorization_id", "auth_id"),
                     "service_date": schedule_date,
                     "status": "PARENT_PENDING",
                 })
@@ -434,9 +435,9 @@ def _build_snapshot(providers, resolved_filters, county_data, holiday_data, auth
             "check_out_count",
             "checkOutCount",
         )
-        incomplete = schedule_hours > 0 and (
-            (check_in_count == 0 and check_out_count == 0)
-            or check_in_count != check_out_count
+        incomplete = (
+            (check_in_count > 0 and check_out_count == 0)
+            or (check_out_count > 0 and check_in_count == 0)
         )
         if incomplete:
             incomplete_key = (child_key or "unknown", schedule_date or "unknown")
@@ -506,8 +507,6 @@ def _build_snapshot(providers, resolved_filters, county_data, holiday_data, auth
         next_actions.append("Review absence-limit risk - %d children" % absence_count)
     if incomplete_category["days"]:
         next_actions.append("Review incomplete attendance - %d days" % incomplete_category["days"])
-    next_actions.append("View upcoming payout summary")
-
     scheduled_children = len(today_children)
     checked_in_children = len(today_checked_children)
     return {
@@ -713,10 +712,14 @@ _full_breakdown_reuse = (
         )
     )
 )
+
 _data_sufficient = (
     _manifest_is_fresh(_manifest, _needs_payment_sources)
     and all(source in _manifest_sources(_manifest) for source in _required_sources)
-    and (_manifest.get('requestKey') == _requested_scope_key or _full_breakdown_reuse)
+    and (
+        _manifest.get('requestKey') == _requested_scope_key
+        or _full_breakdown_reuse
+    )
 )
 _skip_fetch = _rc in ('CLARIFY', 'END') or _data_sufficient
 if _skip_fetch:
@@ -783,21 +786,28 @@ else:
                 and all(source in _manifest_sources(_manifest) for source in _COMMON_SOURCES)
                 and _scope_matches_manifest(_manifest, _shared_source_params)
             )
-            log("parallel: getCountyData + getHolidayList")
+            log("parallel: getCountyData + getHolidayList + getAuthData")
         t0 = time.time()
         if _common_cache_reusable:
             county_response = {"isSuccess": True, "data": {"countyRatePlans": _safe_get("CountyInformation") or []}}
             holiday_response = {"isSuccess": True, "data": {"holidayList": _safe_get("orgHolidays") or []}}
+            auth_response = {"isSuccess": True, "data": {"authorizations": _safe_get("AuthInformation") or []}}
             log("reusing cached county and holiday data")
         else:
-            with ThreadPoolExecutor(max_workers=2) as pool:
+            with ThreadPoolExecutor(max_workers=3) as pool:
                 county_future = pool.submit(call_endpoint, "getCountyData", {
                     "countyIds": county_ids,
                     **_shared_source_params,
                 })
                 holiday_future = pool.submit(call_endpoint, "getHolidayList", _shared_source_params)
+                auth_future = pool.submit(call_endpoint, "getAuthData", {
+                    "countyIds": county_ids,
+                    "providerIds": provider_ids,
+                    **_shared_source_params,
+                })
                 county_response = county_future.result()
                 holiday_response = holiday_future.result()
+                auth_response = auth_future.result()
         log(f"getCountyData + getHolidayList done in {time.time() - t0:.1f}s")
 
         if not county_response or not county_response.get("isSuccess"):
@@ -811,22 +821,6 @@ else:
             holiday_data = holiday_response.get("data") or {}
             holiday_list = holiday_data.get("holidayList", [])
             write_context("orgHolidays", holiday_list)
-
-            log("calling getAuthData")
-            t1 = time.time()
-            if _common_cache_reusable:
-                auth_response = {"isSuccess": True, "data": {"authorizations": _safe_get("AuthInformation") or []}}
-                log("reusing cached authorization data")
-            else:
-                auth_response = call_endpoint(
-                    "getAuthData",
-                    {
-                        "countyIds": county_ids,
-                        "providerIds": provider_ids,
-                        **_shared_source_params,
-                    },
-                )
-            log(f"getAuthData done in {time.time() - t1:.1f}s")
 
             if not auth_response or not auth_response.get("isSuccess"):
                 _respond_failure("getAuthData failed")
@@ -873,15 +867,16 @@ else:
                             if _needs_risk_rate_sources:
                                 _payment_date_params_value = _shared_source_params
                                 _fiscal_schedule_ids = _extract_fiscal_schedule_ids(agreements)
-                                _fiscal_rate_response = call_endpoint("getFiscalRates", {
+                                _fiscal_rate_params = {
                                     "providerIds": provider_ids,
                                     "fiscalScheduleIds": _fiscal_schedule_ids,
                                     **_payment_date_params_value,
-                                })
+                                }
                                 _payment_history_response = {"isSuccess": True, "data": {"subPayments": []}}
                                 _vacant_slot_response = {"isSuccess": True, "data": {"vacantSlots": []}}
-                                if _needs_payment_sources:
-                                    with ThreadPoolExecutor(max_workers=2) as pool:
+                                with ThreadPoolExecutor(max_workers=3 if _needs_payment_sources else 1) as pool:
+                                    _fiscal_rate_future = pool.submit(call_endpoint, "getFiscalRates", _fiscal_rate_params)
+                                    if _needs_payment_sources:
                                         _payment_history_future = pool.submit(call_endpoint, "getPaymentHistory", {
                                             "providerIds": provider_ids,
                                             **_payment_date_params_value,
@@ -891,8 +886,10 @@ else:
                                             "countyIds": county_ids,
                                             **_payment_date_params_value,
                                         }) if county_ids else None
-                                    _payment_history_response = _payment_history_future.result()
-                                    _vacant_slot_response = _vacant_slot_future.result() if _vacant_slot_future else _vacant_slot_response
+                                    _fiscal_rate_response = _fiscal_rate_future.result()
+                                    if _needs_payment_sources:
+                                        _payment_history_response = _payment_history_future.result()
+                                        _vacant_slot_response = _vacant_slot_future.result() if _vacant_slot_future else _vacant_slot_response
                                 _payment_responses = {
                                     "getFiscalRates": _fiscal_rate_response,
                                 }
