@@ -24,6 +24,16 @@ public class CCCAPGeneric {
                 startDate.addMonths(1).addDays(-1)
             );
         }
+
+        if (filter == 'THIS_WEEK') {
+            Date startDate = startOfWeek(today);
+            return new DateRange(startDate, startDate.addDays(6));
+        }
+
+        if (filter == 'LAST_WEEK') {
+            Date startDate = startOfWeek(today).addDays(-7);
+            return new DateRange(startDate, startDate.addDays(6));
+        }
         
         if (filter == 'LAST_N_MONTHS') {
             Integer months = getInteger(requestMap, 'periodCount');
@@ -120,6 +130,21 @@ public class CCCAPGeneric {
         }
         return normalized;
     }
+
+    /**
+     * Returns the Sunday that starts the calendar week containing the given date.
+     * Computed via day-count offset from a known Sunday anchor (Jan 2, 2000),
+     * avoiding Datetime/timezone-dependent APIs.
+     */
+    private static Date startOfWeek(Date d) {
+        Date sundayAnchor = Date.newInstance(2000, 1, 2); // known Sunday
+        Integer offset = Math.mod(sundayAnchor.daysBetween(d), 7);
+        if (offset < 0) {
+            offset += 7;
+        }
+        return d.addDays(-offset);
+    }
+
     public static List<String> getStringList(
         Map<String, Object> requestMap,
         String key

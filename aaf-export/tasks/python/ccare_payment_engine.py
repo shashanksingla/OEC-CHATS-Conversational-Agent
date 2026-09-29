@@ -673,7 +673,7 @@ def _calculate_for_period(
         provider_id = _text(authorization, "IDN_PROVR__c", "provider_id")
         county_id = _text(authorization, "county_id", "CDE_COUNTY__c", "countyId")
         classification = _classification(
-            provider_closures, provider_id, county_id, service_date, authorized_hours, attended_hours, holidays,
+            provider_closures, provider_id, county_id, service_date, authorized_hours, attended_hours, holidays, as_of_date,
         )
         rate_type_code = _text(schedule, "CI_Authorization_Rate_Type__c", "rate_type_code", "Rate_Type_Code__c", "CDE_RATE_TYPE__c") \
             or _text(authorization, "rate_type_code", "Rate_Type_Code__c", "CDE_RATE_TYPE__c")
@@ -717,6 +717,9 @@ def _calculate_for_period(
 
         auth_name = _text(authorization, "Name")
         county_name = (county_policy_by_id.get(county_id or "", {}) or {}).get("county_name")
+        child_name = _text((authorization.get("IDN_CLIENT__r") or {}) if isinstance(authorization, dict) else {}, "Name") \
+            or _text(authorization, "childName", "child_name", "clientName", "client_name") \
+            or _text(schedule, "childName", "child_name", "Contact_Name__c", "clientName", "client_name")
 
         if limit_exceeded_blocker:
             rows.append({
@@ -724,6 +727,7 @@ def _calculate_for_period(
                 "service_date": service_date.isoformat(),
                 "authorization_id": auth_id,
                 "authorization_name": auth_name,
+                "child_name": child_name,
                 "county_id": county_id,
                 "county_name": county_name,
                 "classification": classification,
@@ -743,6 +747,7 @@ def _calculate_for_period(
                 "service_date": service_date.isoformat(),
                 "authorization_id": auth_id,
                 "authorization_name": auth_name,
+                "child_name": child_name,
                 "county_id": county_id,
                 "county_name": county_name,
                 "classification": classification,
@@ -772,6 +777,7 @@ def _calculate_for_period(
             "service_date": service_date.isoformat(),
             "authorization_id": auth_id,
             "authorization_name": auth_name,
+            "child_name": child_name,
             "county_id": county_id,
             "county_name": county_name,
             "classification": classification,
@@ -814,6 +820,8 @@ def _calculate_for_period(
     at_risk_rows = [r for r in rows if r.get("status") == "at_risk"]
     total = sum((Decimal(r["amount"]) for r in calculated_rows), Decimal("0"))
     amount_at_risk = sum((Decimal(r["amount"]) for r in at_risk_rows), Decimal("0"))
+    _attended_rows = [r for r in calculated_rows if r.get("kind") == "ATTENDED_CARE" and r.get("classification") != "FORECAST"]
+    _forecast_rows = [r for r in calculated_rows if r.get("kind") == "ATTENDED_CARE" and r.get("classification") == "FORECAST"]
     unique_blockers = sorted(frozenset(blockers))
     return {
         "status": "blocked" if unique_blockers else "ok",
@@ -824,7 +832,10 @@ def _calculate_for_period(
         "payment_history_found": False,
         "rows": rows,
         "total_amount": _money(total),
-        "attended_care_amount": _money(sum((Decimal(r["amount"]) for r in calculated_rows if r["kind"] == "ATTENDED_CARE"), Decimal("0"))),
+        "attended_care_amount": _money(sum((Decimal(r["amount"]) for r in _attended_rows), Decimal("0"))),
+        "attended_care_hours": _money(sum((Decimal(str(r.get("payable_hours") or "0")) for r in _attended_rows), Decimal("0"))),
+        "forecast_amount": _money(sum((Decimal(r["amount"]) for r in _forecast_rows), Decimal("0"))),
+        "forecast_hours": _money(sum((Decimal(str(r.get("payable_hours") or "0")) for r in _forecast_rows), Decimal("0"))),
         "vacant_slot_amount": _money(sum((Decimal(r["amount"]) for r in calculated_rows if r["kind"] == "VACANT_SLOT"), Decimal("0"))),
         "amount_at_risk": _money(amount_at_risk),
         "at_risk_day_count": len(at_risk_rows),
@@ -853,7 +864,7 @@ def _payable_hours(classification, authorized, attended, schedule):
     return min(authorized, attended)
 
 
-def _classification(closures, provider_id, county_id, service_date, authorized_hours, attended_hours, holidays):
+def _classification(closures, provider_id, county_id, service_date, authorized_hours, attended_hours, holidays, as_of_date=None):
     """Derived purely from hours + closure + holiday + status semantics
     (CCCAP_AUTHORIZED/CCCAP_NOT_AUTHORIZED/CARE_NOT_OFFERED are states, not
     booleans) -- confirmed rule: closure checked first, then hours decide
@@ -867,6 +878,8 @@ def _classification(closures, provider_id, county_id, service_date, authorized_h
         return "REGULAR"
     if any(_date(row, "DTE_HOL__c", "DTE_OBSERVED_HOL__c", "holiday_date", "date") == service_date for row in holidays):
         return "HOLIDAY"
+    if as_of_date is not None and service_date > as_of_date:
+        return "FORECAST"
     return "ABSENCE"
 
 
@@ -876,7 +889,7 @@ def _attended_hours(schedule):
         return direct
     check_in = _number(schedule, "Check_In_Count__c", "check_in")
     check_out = _number(schedule, "Check_Out_Count__c", "check_out")
-    return (check_out - check_in) if (check_in is not None and check_out is not None and check_out >= check_in) else None
+    return (check_out - check_in) if (check_in is not None and check_out is not None and check_in > 0 and check_out >= check_in) else None
 
 
 def _attendance_confirmation_risk(schedule, service_date, as_of_date, classification=None):

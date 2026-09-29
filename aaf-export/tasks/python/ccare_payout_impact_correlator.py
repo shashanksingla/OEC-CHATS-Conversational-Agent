@@ -354,7 +354,17 @@ def _schedule_indices(raw_bundle):
 def _correlate():
     analyzer = _ctx("attendance_risks_analyzer_py") or {}
     approaching = analyzer.get("approaching_absence_limits") or []
-    unconfirmed = analyzer.get("unconfirmed_attendance_last_9_days") or []
+    unconfirmed = analyzer.get("pending_confirmation_records") or []
+    _ref_date = (analyzer.get("reference_date") or "")[:10]
+    _lookback = int(analyzer.get("lookback_days") or 9)
+    _win_start = None
+    try:
+        from datetime import date as _ddate, timedelta as _dtd
+        _win_start = str(_ddate.fromisoformat(_ref_date) - _dtd(days=_lookback))
+    except Exception:
+        pass
+    if _win_start:
+        unconfirmed = [r for r in unconfirmed if (r.get("date") or "") >= _win_start]
 
     turn_request = _ctx("turnRequest") or {}
     child_filter = {c.lower() for c in (turn_request.get("childNames") or []) if c}
@@ -453,7 +463,17 @@ def _correlate():
             continue
         if _skip(group.get("child_name"), group.get("county_name")):
             continue
-        dates = list(group.get("confirmed_absence_dates") or []) + list(group.get("tentative_absence_dates") or [])
+        limit = int(group.get("absence_limit") or 0)
+        confirmed_dates = sorted(group.get("confirmed_absence_dates") or [])
+        probable_dates = sorted(group.get("probable_absence_dates") or [])
+        # Only dates that exceed the allowed limit carry payment risk.
+        # First `limit` confirmed absences are within the paid allowance.
+        over_confirmed = confirmed_dates[limit:] if limit > 0 else confirmed_dates
+        remaining_capacity = max(0, limit - len(confirmed_dates))
+        over_probable = probable_dates[remaining_capacity:]
+        dates = over_confirmed + over_probable
+        if _win_start:
+            dates = [d for d in dates if d and d >= _win_start]
         for absence_date in dates:
             _absence_key = (str(group.get("authorization_id") or group.get("child_id") or ""), absence_date)
             if _absence_key in absence_identities:
@@ -465,7 +485,6 @@ def _correlate():
             if not schedule:
                 # A missing schedule is not a valid absence or payment day.
                 absence_unresolved = True
-                continue
                 continue
             hours = _number(schedule, "CI_Authorization_Hours__c", "authorized_hours") or Decimal("0")
             authorization = auth_by_id.get(group.get("authorization_id")) or auth_by_name.get(
@@ -533,6 +552,8 @@ def _correlate():
         if not ((check_in_count > 0 and check_out_count == 0) or (check_out_count > 0 and check_in_count == 0)):
             continue
         service_date = _text(schedule, "CI_Authorization_Date__c", "date")
+        if _win_start and service_date and service_date < _win_start:
+            continue
         hours = _number(schedule, "CI_Authorization_Hours__c", "authorized_hours") or Decimal("0")
         authorization_ref = _text(schedule, "CI_Authorization_Id__c", "authorization_id")
         authorization = auth_by_name.get(authorization_ref) or auth_by_id.get(authorization_ref) or {}
@@ -597,7 +618,7 @@ def _correlate():
         elif row.get("risk_category") == "unconfirmed":
             unconfirmed_hours += hours
             unconfirmed_dollar += amount
-            if row.get("amount") is None:
+            if row.get("amount") is None and float(row.get("care_hours") or 0) > 0:
                 unconfirmed_unresolved = True
         elif row.get("risk_category") == "incomplete":
             incomplete_hours += hours
@@ -616,14 +637,16 @@ def _correlate():
         "unconfirmed_risk_amount": None if unconfirmed_unresolved else (_money(unconfirmed_dollar) if unconfirmed_dollar else "0.00"),
         "incomplete_risk_hours": float(incomplete_hours),
         "incomplete_risk_amount": None if incomplete_unresolved else (_money(incomplete_dollar) if incomplete_dollar else "0.00"),
+        "unconfirmed_count": len(unconfirmed),
+        "unconfirmed_children": len({r.get("child_name") or r.get("child_id") for r in unconfirmed if r.get("child_name") or r.get("child_id")}),
     }
 
 
 _impact = _correlate()
 
 _data_result = _ctx("data_collection_result") or {}
-_snapshot = _data_result.get("snapshot") if isinstance(_data_result, dict) else None
-if isinstance(_snapshot, dict):
+_snapshot = (_data_result.get("snapshot") if isinstance(_data_result, dict) else None) or {}
+if True:
     _risk_categories = _snapshot.setdefault("risk_categories", {})
     _absence_category = _risk_categories.setdefault("approaching_absence_limits", {})
     _pending_category = _risk_categories.setdefault("pending_parent_confirmations", {})
@@ -631,6 +654,8 @@ if isinstance(_snapshot, dict):
     _absence_category["potential_loss_amount"] = _impact["absence_risk_amount"]
     _pending_category["potential_loss_hours"] = _impact["unconfirmed_risk_hours"]
     _pending_category["potential_loss_amount"] = _impact["unconfirmed_risk_amount"]
+    _pending_category["days"] = _impact.get("unconfirmed_count", 0)
+    _pending_category["children"] = _impact.get("unconfirmed_children", 0)
     _incomplete_category = _risk_categories.setdefault("incomplete_attendance", {})
     _incomplete_category["potential_loss_hours"] = _impact["incomplete_risk_hours"]
     _incomplete_category["potential_loss_amount"] = _impact["incomplete_risk_amount"]

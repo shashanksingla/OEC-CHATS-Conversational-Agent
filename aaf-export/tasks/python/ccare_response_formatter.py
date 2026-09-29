@@ -76,47 +76,78 @@ def _distinct_child_count(rows):
     return len(keys)
 
 
-def _absence_day_counts(rows):
+def _absence_day_counts(rows, win_start=None):
     """Count near-limit absence days separately from days beyond the limit."""
     approaching_days = 0
     crossed_days = 0
     for row in rows if isinstance(rows, list) else []:
         if not isinstance(row, dict):
             continue
-        confirmed_dates = {str(value) for value in row.get("confirmed_absence_dates") or [] if value}
-        tentative_dates = {str(value) for value in row.get("tentative_absence_dates") or [] if value}
-        try:
-            confirmed_count = len(confirmed_dates) or int(row.get("confirmed_absence_count") or 0)
-        except (TypeError, ValueError):
-            confirmed_count = len(confirmed_dates)
-        try:
-            tentative_count = len(tentative_dates) or int(row.get("tentative_absence_count") or 0)
-        except (TypeError, ValueError):
-            tentative_count = len(tentative_dates)
-        try:
-            limit = int(row.get("absence_limit") or 0)
-        except (TypeError, ValueError):
-            limit = 0
         status = row.get("status") or ""
-        if status == "OVER_LIMIT":
-            crossed_days += max(confirmed_count - limit, 0)
-        elif status == "POTENTIAL_OVER_LIMIT":
-            crossed_days += max(confirmed_count + tentative_count - limit, 0)
+        if status in ("OVER_LIMIT", "POTENTIAL_OVER_LIMIT"):
+            over_dates = _over_limit_dates(row)
+            if win_start:
+                over_dates = [d for d in over_dates if d and d >= win_start]
+            crossed_days += len(over_dates)
         else:
-            approaching_days += confirmed_count + tentative_count
+            confirmed_dates = {str(value) for value in row.get("confirmed_absence_dates") or [] if value}
+            probable_dates = {str(value) for value in row.get("probable_absence_dates") or [] if value}
+            try:
+                confirmed_count = len(confirmed_dates) or int(row.get("confirmed_absence_count") or 0)
+            except (TypeError, ValueError):
+                confirmed_count = len(confirmed_dates)
+            try:
+                probable_count = len(probable_dates) or int(row.get("probable_absence_count") or 0)
+            except (TypeError, ValueError):
+                probable_count = len(probable_dates)
+            approaching_days += confirmed_count + probable_count
     return approaching_days, crossed_days
 
 
-def _absence_finding(rows):
+def _absence_finding(rows, win_start=None):
     child_count = _distinct_child_count(rows)
-    approaching_days, crossed_days = _absence_day_counts(rows)
+    approaching_days, crossed_days = _absence_day_counts(rows, win_start=win_start)
     if not child_count:
         return "No children currently near or over county monthly absence limits"
-    return (
-        f"{approaching_days} day(s) approaching the limit; "
-        f"{crossed_days} day(s) over the limit across {child_count} child(ren)"
-    )
+    parts = []
+    if approaching_days > 0:
+        parts.append(f"{approaching_days} day(s) approaching the limit")
+    if crossed_days > 0:
+        parts.append(f"{crossed_days} day(s) over the limit")
+    return ("; ".join(parts) + f" across {child_count} child(ren)") if parts else f"Absence risk across {child_count} child(ren)"
 
+
+def _over_limit_dates(row):
+    limit = int(row.get("absence_limit") or 0)
+    confirmed = sorted(row.get("confirmed_absence_dates") or [])
+    probable = sorted(row.get("probable_absence_dates") or [])
+    over_confirmed = confirmed[limit:] if limit > 0 else confirmed
+    remaining_capacity = max(0, limit - len(confirmed))
+    over_probable = probable[remaining_capacity:]
+    return over_confirmed + over_probable
+
+
+def _date_range_for_dates(dates):
+    valid = sorted(str(d) for d in (dates or []) if d)
+    if not valid:
+        return None
+    if valid[0] == valid[-1]:
+        return _fmt_date(valid[0])
+    return _fmt_date_range(valid[0], valid[-1])
+
+def _absence_rows_for_summary(rows, win_start):
+    """OVER_LIMIT/POTENTIAL_OVER_LIMIT always surface; APPROACHING groups only when within window."""
+    _crossed = {"OVER_LIMIT", "POTENTIAL_OVER_LIMIT"}
+    result = []
+    for r in (rows or []):
+        status = r.get("status") or ""
+        if status in _crossed or not win_start:
+            result.append(r)
+        else:
+            all_dates = list(r.get("confirmed_absence_dates") or []) + list(r.get("probable_absence_dates") or [])
+            if any((d or "") >= win_start for d in all_dates):
+                result.append(r)
+    return result
 
 def _build_candidates(current_action, current_sub_filter):
     """Every possible recommended action for THIS turn's data, in no
@@ -127,11 +158,19 @@ def _build_candidates(current_action, current_sub_filter):
         return candidates
 
     if current_action == "CLARIFY":
-        return [
-            _candidate("kickstart_attendance", "Check attendance and confirmations", "ATTENDANCE", "ALL", "INFO"),
-            _candidate("kickstart_payment", "Review a payout or payment", "PAYMENT", "NEXT_PAYOUT", "INFO"),
+        _kickstarts = [
+            _candidate("kickstart_attendance", "Review attendance and pending items", "ATTENDANCE", "ALL", "INFO"),
             _candidate("kickstart_overview", "Show today's overview", "STARTER", None, "INFO"),
         ]
+        _snap_for_clarify = ((_ctx("data_collection_result") or {}).get("snapshot") or {})
+        _has_payment = bool(
+            _snap_for_clarify.get("payment_history_found")
+            or (_snap_for_clarify.get("service_period_count") or 0) > 0
+            or (_snap_for_clarify.get("service_periods") or [])
+        )
+        if _has_payment:
+            _kickstarts.insert(1, _candidate("kickstart_payment", "Review a payout or payment", "PAYMENT", "NEXT_PAYOUT", "INFO"))
+        return _kickstarts
 
     dcr = _ctx("data_collection_result") or {}
     snapshot = dcr.get("snapshot") or {}
@@ -139,10 +178,21 @@ def _build_candidates(current_action, current_sub_filter):
     payment_result = _ctx("paymentResult") or {}
     attendance_scope = current_action in ("STARTER", "ATTENDANCE")
 
-    pending_days = snapshot.get("pending_confirmation_days", 0) or 0
+    _ref_date = (analyzer.get("reference_date") or "")[:10]
+    _lookback = int(analyzer.get("lookback_days") or 9)
+    _win_start = None
+    try:
+        from datetime import date as _ddate, timedelta as _dtd
+        _win_start = str(_ddate.fromisoformat(_ref_date) - _dtd(days=_lookback))
+    except Exception:
+        pass
+    _analyzer_pending = analyzer.get("pending_confirmation_records") or []
+    _windowed_pending_cands = [r for r in _analyzer_pending
+                               if not _win_start or (r.get("date") or "") >= _win_start]
+    pending_days = len(_windowed_pending_cands)
     overview_scope = current_action == "STARTER" or (current_action == "ATTENDANCE" and current_sub_filter == "ALL")
     if overview_scope and pending_days:
-        _conf_label = f"Confirm {pending_days} pending day(s)"
+        _conf_label = f"Review {pending_days} pending day(s)"
         impact_result = _ctx("payoutImpactResult") or {}
         _at_risk_amt = impact_result.get("unconfirmed_risk_amount")
         try:
@@ -169,7 +219,7 @@ def _build_candidates(current_action, current_sub_filter):
         if pending_impact_rows:
             candidates.append(
                 _candidate(
-                    "payout_impact",
+                    "payout_impact_pending",
                     "See estimated payout impact of these pending days",
                     "ATTENDANCE",
                     "PAYOUT_IMPACT",
@@ -177,18 +227,24 @@ def _build_candidates(current_action, current_sub_filter):
                 )
             )
 
-    approaching = analyzer.get("approaching_absence_limits") or [] if attendance_scope else []
+    approaching = _absence_rows_for_summary(
+        analyzer.get("approaching_absence_limits") or [], _win_start
+    ) if attendance_scope else []
     if approaching and overview_scope:
         absence_child_count = _distinct_child_count(approaching)
-        approaching_days, crossed_days = _absence_day_counts(approaching)
-        crossed_count = sum(
-            1 for r in approaching if isinstance(r, dict) and r.get("status") in ("OVER_LIMIT", "POTENTIAL_OVER_LIMIT")
-        )
-        severity = "URGENT" if crossed_count else "REVIEW"
+        _exc_rows = [r for r in approaching if isinstance(r, dict) and (r.get("status") or "") in ("OVER_LIMIT", "POTENTIAL_OVER_LIMIT")]
+        _app_rows = [r for r in approaching if isinstance(r, dict) and (r.get("status") or "") == "APPROACHING_LIMIT"]
+        severity = "URGENT" if _exc_rows else "REVIEW"
+        _abs_label_parts = []
+        if _exc_rows:
+            _abs_label_parts.append(f"{_distinct_child_count(_exc_rows)} exceeded")
+        if _app_rows:
+            _abs_label_parts.append(f"{_distinct_child_count(_app_rows)} approaching")
+        _abs_label_summary = ", ".join(_abs_label_parts) if _abs_label_parts else "risk detected"
         candidates.append(
             _candidate(
                 "absence_limits",
-                f"Review absence risk -- {approaching_days} day(s) approaching, {crossed_days} over limit ({absence_child_count} child(ren))",
+                f"Review absence risk -- {_abs_label_summary} ({absence_child_count} child(ren))",
                 "ATTENDANCE",
                 "ABSENCE_LIMITS",
                 severity,
@@ -204,7 +260,7 @@ def _build_candidates(current_action, current_sub_filter):
         if resolved_absence_rows:
             candidates.append(
                 _candidate(
-                    "payout_impact",
+                    "payout_impact_absence",
                     "See estimated payout impact of these absence risks",
                     "ATTENDANCE",
                     "PAYOUT_IMPACT",
@@ -212,11 +268,12 @@ def _build_candidates(current_action, current_sub_filter):
                 )
             )
 
-    unconfirmed = analyzer.get("unconfirmed_attendance_last_9_days") or [] if attendance_scope else []
+    unconfirmed = analyzer.get("pending_confirmation_records") or [] if attendance_scope else []
     impact_rows = (_ctx("payoutImpactResult") or {}).get("rows") or []
     incomplete_attendance = [
         row for row in impact_rows
         if isinstance(row, dict) and row.get("risk_category") == "incomplete"
+        and (not _win_start or (row.get("date") or row.get("service_date") or "") >= _win_start)
     ] if attendance_scope else []
     if incomplete_attendance and overview_scope:
             incomplete_days = len({
@@ -241,7 +298,7 @@ def _build_candidates(current_action, current_sub_filter):
         if incomplete_impact_rows:
             candidates.append(
                 _candidate(
-                    "payout_impact",
+                    "payout_impact_incomplete",
                     "See estimated payout impact of these missing records",
                     "ATTENDANCE",
                     "PAYOUT_IMPACT",
@@ -252,22 +309,6 @@ def _build_candidates(current_action, current_sub_filter):
     # disagrees with the analyzer's authoritative result and produces false-positive
     # actions that resolve to "no records found". Only surface INCOMPLETE_ATTENDANCE
     # when the analyzer has actually run and found records.
-    if overview_scope and not approaching:
-        _snap_risk = (snapshot.get("risk_categories") or {})
-        _snap_cross = (_snap_risk.get("crossed_absence_limits") or {})
-        _snap_appr = (_snap_risk.get("approaching_absence_limits") or {})
-        _snap_abs_children = (_snap_cross.get("children", 0) or 0) + (_snap_appr.get("children", 0) or 0)
-        if _snap_abs_children:
-            _abs_sev = "URGENT" if (_snap_cross.get("children", 0) or 0) > 0 else "REVIEW"
-            candidates.append(
-                _candidate(
-                    "absence_limits",
-                    f"Review absence-limit risk -- {_snap_abs_children} child(ren)",
-                    "ATTENDANCE",
-                    "ABSENCE_LIMITS",
-                    _abs_sev,
-                )
-            )
 
     # Payment actions are scoped to a payment turn. paymentResult may remain
     # cached after a prior payment request and must not create actions for an
@@ -345,7 +386,7 @@ def _recommend():
 
     # The full-breakdown drill-down can re-surface when payment data supports
     # it; risk actions remain one-time within the same request context.
-    _never_expire = {FULL_BREAKDOWN_ID}
+    _never_expire = set()
 
     # Recommendations are intentionally deterministic. The conversational
     # model may route to an action, but it cannot invent a new action here.
@@ -473,7 +514,7 @@ def _table(headers, rows):
 def _actions_block(recommended):
     if not recommended:
         return "There is no other action I can recommend for this view. You can ask me about anything else."
-    lines = ["**Recommended actions**"]
+    lines = ["### Recommended actions"]
     for i, item in enumerate(recommended, start=1):
         label = SEVERITY_LABEL.get(item.get("severity"), "[Info]")
         lines.append(f"{i}. {label} {item.get('label', '')}")
@@ -520,21 +561,55 @@ def render_greeting(recommended):
     incomplete = risk.get("incomplete_attendance") or {}
     analyzer = _ctx("attendance_risks_analyzer_py") or {}
     analyzer_absence_rows = analyzer.get("approaching_absence_limits") or []
-    analyzer_incomplete_rows = analyzer.get("unconfirmed_attendance_last_9_days") or []
+    analyzer_pending_rows = analyzer.get("pending_confirmation_records") or []
 
-    pending_days = pending.get("days", 0) or 0
+    _ref_date = (analyzer.get("reference_date") or "")[:10]
+    _lookback = int(analyzer.get("lookback_days") or 9)
+    _win_start = None
+    try:
+        from datetime import date as _ddate, timedelta as _dtd
+        _win_start = str(_ddate.fromisoformat(_ref_date) - _dtd(days=_lookback))
+    except Exception:
+        pass
+    _windowed_pending = [r for r in analyzer_pending_rows
+                         if not _win_start or (r.get("date") or "") >= _win_start]
+    pending_days = len(_windowed_pending)
+    _pending_win_children = len({r.get("child_id") for r in _windowed_pending if r.get("child_id")})
+    _pending_range = _date_range_for_dates(r.get("date") for r in _windowed_pending)
     pending_finding = (
         "No pending parent confirmations"
         if not pending_days
-        else f"{pending_days} day(s), {pending.get('children', 0)} child(ren)"
+        else f"{pending_days} day(s), {_pending_win_children} child(ren)"
     )
-    absence_finding = _absence_finding(analyzer_absence_rows)
+    _summary_absence_rows = _absence_rows_for_summary(analyzer_absence_rows, _win_start)
+    _exceeded_rows = [r for r in _summary_absence_rows if (r.get("status") or "") in ("OVER_LIMIT", "POTENTIAL_OVER_LIMIT")]
+    _approaching_rows = [r for r in _summary_absence_rows if (r.get("status") or "") == "APPROACHING_LIMIT"]
+    _exc_win_dates = [d for r in _exceeded_rows for d in _over_limit_dates(r) if not _win_start or d >= _win_start]
+    _exc_days = len(_exc_win_dates)
+    _exc_children = _distinct_child_count(_exceeded_rows)
+    _app_children = _distinct_child_count(_approaching_rows)
+    _exc_range = _date_range_for_dates(_exc_win_dates)
+    _app_dates = [d for r in _approaching_rows for d in (list(r.get("confirmed_absence_dates") or []) + list(r.get("probable_absence_dates") or []))]
+    _app_range = _date_range_for_dates(_app_dates)
+    _absence_finding_parts = []
+    _absence_period_parts = []
+    if _exceeded_rows:
+        _absence_finding_parts.append(f"Limit exceeded: {_exc_children} child(ren), {_exc_days} day(s) in window")
+        _absence_period_parts.append(_exc_range or "--")
+    if _approaching_rows:
+        _absence_finding_parts.append(f"Approaching limit: {_app_children} child(ren)")
+        _absence_period_parts.append(_app_range or "--")
+    absence_finding = "\n".join(_absence_finding_parts) or "No children near or over county absence limits"
+    _absence_range = "\n".join(_absence_period_parts) or "--"
     incomplete_attendance_rows = [
         row for row in ((_ctx("payoutImpactResult") or {}).get("rows") or [])
         if isinstance(row, dict) and row.get("risk_category") == "incomplete"
     ]
-    incomplete_days = len(incomplete_attendance_rows) or incomplete.get("days", 0) or 0
+    _windowed_incomplete = [r for r in incomplete_attendance_rows
+                            if not _win_start or (r.get("date") or "") >= _win_start]
+    incomplete_days = len(_windowed_incomplete)
     incomplete_finding = "No incomplete check-in/out found" if not incomplete_days else f"{incomplete_days} day(s)"
+    _incomplete_range = _date_range_for_dates(r.get("date") for r in _windowed_incomplete)
 
     def _loss(cat):
         val = cat.get("potential_loss_hours") if isinstance(cat, dict) else None
@@ -544,21 +619,28 @@ def render_greeting(recommended):
             return f"{_fmt_money(amount)} ({hours} care hrs)" if amount is not None else "Unavailable"
         return "Unavailable" if cat else "No calculated impact"
 
+    _absence_impact_parts = []
+    if _exceeded_rows:
+        _absence_impact_parts.append(_loss(approaching))
+    if _approaching_rows:
+        _absence_impact_parts.append("Within county limit")
+    _absence_impact = "\n".join(_absence_impact_parts) or "No actionable impact"
+
     issues_table = _table(
-        ["Risk area", "Verified finding", "Potential payment impact"],
+        ["Risk area", "Verified finding", "Period", "Potential payment impact"],
         [
-            ["Pending parent confirmations", pending_finding, _loss(pending)],
-            ["Absence-limit risk", absence_finding, _loss(approaching)],
-            ["Incomplete check-ins/check-outs", incomplete_finding, _loss(incomplete)],
+            ["Pending parent confirmations", pending_finding, _pending_range or "--", _loss(pending) if pending_days else "No actionable impact"],
+            ["Absence-limit risk", absence_finding, _absence_range, _absence_impact],
+            ["Incomplete check-ins/check-outs", incomplete_finding, _incomplete_range or "--", _loss(incomplete) if incomplete_days else "No actionable impact"],
         ],
     )
-    body = [
-        f"Greetings for the day, {user_name}. Here's where things stand today at {facility_name}.",
-        "",
-        "**Today's snapshot**",
+    _progress_sent = bool(_ctx("progressMessage"))
+    _intro = f"{user_name}, here's where things stand today at {facility_name}."
+    body = ([] if _progress_sent else [_intro, ""]) + [
+        "## Today's snapshot",
         snap_table,
         "",
-        "**Attendance and payment issues**",
+        "## Attendance and payment issues",
         issues_table,
         "",
         _actions_block(recommended),
@@ -567,69 +649,127 @@ def render_greeting(recommended):
 
 
 def render_pending_confirmations(recommended):
-    dcr = _ctx("data_collection_result") or {}
-    rows = (dcr.get("snapshot") or {}).get("pending_confirmations") or []
+    _analyzer = _ctx("attendance_risks_analyzer_py") or {}
+    _ref = (_analyzer.get("reference_date") or "")[:10]
+    _lkb = int(_analyzer.get("lookback_days") or 9)
+    _win = None
+    try:
+        from datetime import date as _ddate, timedelta as _dtd
+        _win = str(_ddate.fromisoformat(_ref) - _dtd(days=_lkb))
+    except Exception:
+        pass
+    all_pending = _analyzer.get("pending_confirmation_records") or []
+    rows = [r for r in all_pending if not _win or (r.get("date") or "") >= _win]
     _mask_id = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
     table = _table(
         ["Child", "Authorization", "Service date", "Status"],
         [
-            [_mask_id(r.get("child_name") or ""), r.get("authorization_id") or "--", _fmt_date(r.get("service_date")), "Pending"]
+            [_mask_id(r.get("child_name") or ""), r.get("auth_id") or "--", _fmt_date(r.get("date")), "Pending"]
             for r in rows
         ],
     )
-    body = ["**Pending parent confirmations**", "", table or "No pending parent confirmations found.", "", _actions_block(recommended)]
+    body = ["# Pending parent confirmations", "", table or "No pending parent confirmations found.", "", _actions_block(recommended)]
     return "\n".join(body)
 
 
 def render_absence_limits(recommended, _emit_actions=True):
-    rows = (_ctx("attendance_risks_analyzer_py") or {}).get("approaching_absence_limits") or []
+    _analyzer_al = _ctx("attendance_risks_analyzer_py") or {}
+    _ref_al = (_analyzer_al.get("reference_date") or "")[:10]
+    _win_al = None
+    try:
+        from datetime import date as _ddate, timedelta as _dtd
+        _win_al = str(_ddate.fromisoformat(_ref_al) - _dtd(days=int(_analyzer_al.get("lookback_days") or 9)))
+    except Exception:
+        pass
+    rows = _absence_rows_for_summary(
+        _analyzer_al.get("approaching_absence_limits") or [], _win_al
+    )
     period = _period_label()
     period_line = f"*Period: {period}*" if period else None
     if not rows:
-        body = ["**Absence-limit risk**"]
+        body = ["# Absence-limit risk"]
         if period_line:
             body += [period_line]
         body += ["", "No children currently near or over county monthly absence limits."]
         if _emit_actions:
             body += ["", _actions_block(recommended)]
         return "\n".join(body)
+    _payout_rows = [r for r in ((_ctx("payoutImpactResult") or {}).get("rows") or [])
+                    if isinstance(r, dict) and r.get("risk_category") == "absence"]
+    _impact_by_auth = {}
+    for pr in _payout_rows:
+        _ak = str(pr.get("authorization_id") or pr.get("auth_id") or pr.get("child_name") or "")
+        if _ak not in _impact_by_auth:
+            _impact_by_auth[_ak] = {"hours": 0.0, "amount": 0.0}
+        _impact_by_auth[_ak]["hours"] += float(pr.get("care_hours") or 0)
+        try:
+            _impact_by_auth[_ak]["amount"] += float(pr.get("amount") or 0)
+        except (TypeError, ValueError):
+            pass
+    _mask = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
+    table_rows = []
+    for r in rows:
+        _rs = r.get("status") or ""
+        _is_exc = _rs in ("OVER_LIMIT", "POTENTIAL_OVER_LIMIT")
+        _risk_type = "Limit exceeded" if _is_exc else "Approaching limit"
+        _auth_key = str(r.get("authorization_id") or r.get("auth_id") or r.get("child_name") or "")
+        if _is_exc:
+            _od_all = _over_limit_dates(r)
+            _od_win = [d for d in _od_all if not _win_al or d >= _win_al]
+            _at_risk_period = _date_range_for_dates(_od_all) or "--"
+            _imp = _impact_by_auth.get(_auth_key)
+            if _imp and _imp["amount"] > 0:
+                _payment_impact = f"${_imp['amount']:.2f} at risk ({_imp['hours']:.1f} care hrs)"
+            else:
+                _payment_impact = "Outside confirmation window" if not _od_win else "At risk (rate unavailable)"
+        else:
+            _at_risk_period = _date_range_for_dates(
+                list(r.get("confirmed_absence_dates") or []) + list(r.get("probable_absence_dates") or [])
+            ) or "--"
+            _payment_impact = "Within county limit"
+        table_rows.append([
+            _risk_type,
+            _mask(r.get("child_name") or ""),
+            r.get("authorization_id") or r.get("auth_id") or "--",
+            r.get("county_name") or "--",
+            r.get("confirmed_absence_count", len(r.get("confirmed_absence_dates") or [])),
+            r.get("probable_absence_count", len(r.get("probable_absence_dates") or [])),
+            r.get("absence_limit", "--"),
+            _at_risk_period,
+            _payment_impact,
+        ])
+    table_rows.sort(key=lambda row: 0 if row[8] != "Outside confirmation window" else 1)
     table = _table(
-        ["Child", "Authorization", "County", "Absences used", "Absence limit", "Status"],
-        [
-            [
-                # Salesforce record IDs (15-18 alphanumeric) are internal and
-                # unreadable to providers — hide them rather than showing auth ID,
-                # which is already visible in the Authorization column.
-                (lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--")
-                (r.get("child_name") or ""),
-                r.get("authorization_id") or r.get("auth_id") or "--",
-                r.get("county_name") or "--",
-                r.get("confirmed_absence_count", r.get("absence_used", 0)),
-                r.get("absence_limit", "--"),
-                {"OVER_LIMIT": "Exceeded", "POTENTIAL_OVER_LIMIT": "At risk",
-                 "APPROACHING_LIMIT": "Near limit", "POTENTIAL_APPROACHING_LIMIT": "Near limit"}
-                .get(r.get("status") or "", (r.get("status") or "--").replace("_", " ").title()),
-            ]
-            for r in rows
-        ],
+        ["Risk type", "Child", "Authorization", "County", "Confirmed", "Probable", "Limit", "At-risk period", "Payment impact"],
+        table_rows,
     )
-    body = ["**Absence-limit risk**"]
+    body = ["# Absence-limit risk"]
     if period_line:
         body += [period_line]
-    body += ["", _absence_finding(rows), "", table]
+    body += ["", table]
     if _emit_actions:
         body += ["", _actions_block(recommended)]
     return "\n".join(body)
 
 
 def render_incomplete_attendance(recommended, _emit_actions=True):
+    _analyzer = _ctx("attendance_risks_analyzer_py") or {}
+    _ref = (_analyzer.get("reference_date") or "")[:10]
+    _lkb = int(_analyzer.get("lookback_days") or 9)
+    _win = None
+    try:
+        from datetime import date as _ddate, timedelta as _dtd
+        _win = str(_ddate.fromisoformat(_ref) - _dtd(days=_lkb))
+    except Exception:
+        pass
     rows = [
         row for row in ((_ctx("payoutImpactResult") or {}).get("rows") or [])
         if isinstance(row, dict) and row.get("risk_category") == "incomplete"
+        and (not _win or (row.get("date") or "") >= _win)
     ]
     if not rows:
         body = [
-            "**Missing check-in/check-out**",
+            "# Missing check-in/check-out",
             "",
             "No incomplete attendance found in the current window.",
         ]
@@ -642,7 +782,7 @@ def render_incomplete_attendance(recommended, _emit_actions=True):
         [
             [
                 _mask_id(r.get("child_name") or ""),
-                r.get("auth_id") or "--",
+                r.get("authorization_id") or r.get("auth_id") or "--",
                 _fmt_date(r.get("date")),
                 "Missing check-in/check-out",
                 r.get("reason") or "A scheduled day is missing one attendance event",
@@ -650,7 +790,7 @@ def render_incomplete_attendance(recommended, _emit_actions=True):
             for r in rows
         ],
     )
-    body = ["**Missing check-in/check-out**", "", table]
+    body = ["# Missing check-in/check-out", "", table]
     if _emit_actions:
         body += ["", _actions_block(recommended)]
     return "\n".join(body)
@@ -666,16 +806,24 @@ def render_attendance_all(recommended):
         if not pending_cat.get("days")
         else f"Pending parent confirmations: {pending_cat.get('days')} day(s), {pending_cat.get('children', 0)} child(ren)"
     )
-    body = ["**Attendance overview**", "", absence_section, "", incomplete_section, "", pending_line, "", _actions_block(recommended)]
+    body = ["# Attendance overview", "", absence_section, "", incomplete_section, "", pending_line, "", _actions_block(recommended)]
     return "\n".join(body)
 
 
 def render_payout_impact(recommended):
     result = _ctx("payoutImpactResult") or {}
     rows = result.get("rows") or []
+    _tr = _ctx("turnRequest") or {}
+    _pi_scope = (_tr.get("id") or "") if isinstance(_tr, dict) else ""
+    if _pi_scope == "payout_impact_absence":
+        rows = [r for r in rows if (r.get("risk_category") or "") == "absence"]
+    elif _pi_scope == "payout_impact_pending":
+        rows = [r for r in rows if (r.get("risk_category") or "") == "unconfirmed"]
+    elif _pi_scope == "payout_impact_incomplete":
+        rows = [r for r in rows if (r.get("risk_category") or "") == "incomplete"]
     if not rows:
         body = [
-            "**Payout impact of current attendance risk**",
+            "# Payout impact of current attendance risk",
             "",
             "No attendance risk currently affects an upcoming payout.",
             "",
@@ -688,7 +836,7 @@ def render_payout_impact(recommended):
     _calc_rows = [r for r in rows if r.get("amount") is not None]
     if not _calc_rows:
         body = [
-            "**Payout impact of current attendance risk**",
+            "# Payout impact of current attendance risk",
             "",
             "Attendance risk entries were found but payout amounts couldn't be calculated — "
             "rate schedule data may still be loading.",
@@ -712,10 +860,10 @@ def render_payout_impact(recommended):
             for r in rows
         ],
     )
-    total_hours = result.get("total_hours_at_risk")
-    total_dollar = result.get("total_dollar_at_risk")
+    total_hours = sum(float(r.get("care_hours") or 0) for r in _calc_rows)
+    total_dollar = sum(float(r.get("amount") or 0) for r in _calc_rows)
     headline = f"~ {_fmt_money(total_dollar)} at risk across {_fmt_hours(total_hours)} care hour(s)"
-    body = ["**Payout impact of current attendance risk**", "", f"**{headline}**", "", table, "", DISCLAIMER_GLOBAL, "", _actions_block(recommended)]
+    body = ["# Payout impact of current attendance risk", "", f"**{headline}**", "", table, "", DISCLAIMER_GLOBAL, "", _actions_block(recommended)]
     return "\n".join(body)
 
 
@@ -762,7 +910,7 @@ def render_payment_multi_period(recommended):
     page_rows = all_rows[start_idx:start_idx + MULTI_PERIOD_PAGE_SIZE]
     table = _table(["Service period", "Payout date", "Potential total", "Status"], page_rows)
     grand_total = sum((Decimal(p.get("potential_total_amount") or p.get("total_amount") or "0.00") for p in periods), Decimal("0"))
-    body = ["**Payment summary -- period by period**", "", table, "", f"**Grand total: {_fmt_money(grand_total)}**"]
+    body = ["# Payment summary -- period by period", "", table, "", f"**Grand total: {_fmt_money(grand_total)}**"]
     if total_count > MULTI_PERIOD_PAGE_SIZE:
         body += ["", f"Showing {start_idx + 1}-{min(start_idx + MULTI_PERIOD_PAGE_SIZE, total_count)} of {total_count} periods."]
     body += ["", DISCLAIMER_GLOBAL]
@@ -807,7 +955,7 @@ def render_payment(recommended):
             # No rows, no blockers — genuine absence of payment history,
             # not a calculation failure.
             body = [
-                "**No payment history found**",
+                "# No payment history found",
                 "",
                 "No payment records are available for the requested period.",
                 "",
@@ -833,7 +981,8 @@ def render_payment(recommended):
     table_rows = [
         ["Service period", period_label],
         ["Payout date", _fmt_date(payout_date) if payout_date else "--"],
-        ["Attendance-based payment", f"{_fmt_money(result.get('attended_care_amount'))} ({amount_type})"],
+        ["Attendance-based payment", f"{_fmt_money(result.get('attended_care_amount'))} ({_fmt_hours(float(result.get('attended_care_hours') or 0))} hrs, {amount_type})"],
+        *([["Scheduled forecast payment", f"{_fmt_money(result.get('forecast_amount'))} ({_fmt_hours(float(result.get('forecast_hours') or 0))} hrs, {amount_type})"]] if float(result.get('forecast_amount') or 0) > 0 else []),
         ["Vacant slot payment", f"{_fmt_money(result.get('vacant_slot_amount'))} ({amount_type})"],
         ["At risk", f"{_fmt_money(result.get('amount_at_risk'))} ({_risk_detail})" if _risk_detail else _fmt_money(result.get("amount_at_risk"))],
     ]
@@ -857,6 +1006,9 @@ def render_payment_full_breakdown(recommended):
     result = _ctx("paymentResult") or {}
     rows = result.get("rows") or []
     calculated_rows = [r for r in rows if r.get("status") in ("calculated", "at_risk")]
+    _at_risk_only = [r for r in calculated_rows if r.get("status") == "at_risk"]
+    if result.get("payment_history_found") is not True and _at_risk_only:
+        calculated_rows = _at_risk_only
     settled = result.get("payment_history_found") is True
     period_range = _fmt_date_range(result.get("service_period_start"), result.get("service_period_end"))
     period_label = period_range or (result.get("service_period_id") or "--")
@@ -867,16 +1019,24 @@ def render_payment_full_breakdown(recommended):
     except (TypeError, ValueError):
         page = 0
 
-    sections = [f"**Full attendance breakdown -- service period {period_label}**"]
+    _at_risk_md = sum(1 for r in calculated_rows if r.get("status") == "at_risk")
+    _calc_md = len(calculated_rows) - _at_risk_md
+    _title_md = f"Here's the day-by-day attendance for {period_label}."
+    if calculated_rows:
+        _title_md += f" {len(calculated_rows)} days on record — {_calc_md} calculated, {_at_risk_md} at-risk."
+    sections = [_title_md]
 
     total_calc = len(calculated_rows)
     start_idx = page * FULL_BREAKDOWN_PAGE_SIZE
     page_rows = calculated_rows[start_idx:start_idx + FULL_BREAKDOWN_PAGE_SIZE]
     if page_rows:
         detail = _table(
-            ["Service date", "Attendance type", "Care hours", "Amount", "Amount type"],
+            ["Child", "Authorization", "County", "Care date", "Attendance type", "Care hours", "Amount", "Amount type"],
             [
                 [
+                    r.get("child_name") or "--",
+                    r.get("authorization_name") or r.get("authorization_id") or "--",
+                    r.get("county_name") or "--",
                     _fmt_date(r.get("service_date")),
                     (r.get("classification") or "--").replace("_", " ").title(),
                     _fmt_hours(r.get("payable_hours")),
@@ -890,7 +1050,8 @@ def render_payment_full_breakdown(recommended):
             sections += ["", detail]
         if total_calc > FULL_BREAKDOWN_PAGE_SIZE:
             shown_end = min(start_idx + FULL_BREAKDOWN_PAGE_SIZE, total_calc)
-            sections += ["", f"Showing {start_idx + 1}-{shown_end} of {total_calc} days."]
+            _total_pages_md = (total_calc + FULL_BREAKDOWN_PAGE_SIZE - 1) // FULL_BREAKDOWN_PAGE_SIZE
+            sections += ["", f"Showing {start_idx + 1}–{shown_end} of {total_calc} days · Page {page + 1} of {_total_pages_md}"]
 
     sections += ["", DISCLAIMER_GLOBAL, "", _actions_block(recommended)]
     return "\n".join(sections)
@@ -990,6 +1151,11 @@ def render_clarify(recommended, prior_recommended=None):
     session_state = _ctx("sessionState") or {}
     provider_verified = session_state.get("providerVerified", False)
     provider_name = (session_state.get("providerName") or "").strip()
+    clarify_reason = (_ctx("turnRequest") or {}).get("clarifyReason") or ""
+    if clarify_reason == "greeting" and provider_verified:
+        # Mid-session greeting: ask open question, no kickstart menu
+        name_suffix = f", {provider_name}" if provider_name else ""
+        return f"Of course{name_suffix}. What would you like to look at?"
     if provider_verified and provider_name:
         greeting_line = f"What can I help you with next, {provider_name}?"
     elif provider_verified:
@@ -1022,7 +1188,7 @@ def render_explain(recommended):
     if _at_risk_float > 0:
         _detail = _at_risk_reason(payment_result)
         sections += [
-            "**About \"at risk\" amounts**", "",
+            "## About \"at risk\" amounts", "",
             "A day is marked **at risk** when care was provided but parent "
             "confirmation is still pending. The county holds payment on those "
             "days until the parent confirms.",
@@ -1050,7 +1216,7 @@ def render_explain(recommended):
         summary_rows.append(["Incomplete attendance", f"{incomplete_days} day(s) missing check-in or check-out"])
 
     if summary_rows:
-        sections += ["**Current items requiring attention**", "", _table(["Area", "Status"], summary_rows), ""]
+        sections += ["## Current items requiring attention", "", _table(["Area", "Status"], summary_rows), ""]
     elif not sections:
         sections += ["No outstanding items found for the current period.", ""]
 
@@ -1078,13 +1244,13 @@ DISCLAIMER_TEXT = (
 )
 
 
-def _mk_table(caption, col_specs, row_list):
+def _mk_table(caption, col_specs, row_list, no_limit=False, footer=None):
     """col_specs: list of (key, label) or (key, label, align) tuples.
     row_list: list of dicts keyed by col_specs[*][0]."""
     if not row_list:
         return None
     total = len(row_list)
-    if total > TABLE_ROW_LIMIT:
+    if not no_limit and total > TABLE_ROW_LIMIT:
         row_list = row_list[:TABLE_ROW_LIMIT]
         note = f"Showing {TABLE_ROW_LIMIT} of {total}"
         caption = f"{caption} — {note}" if caption else note
@@ -1094,7 +1260,10 @@ def _mk_table(caption, col_specs, row_list):
         if len(spec) > 2 and spec[2]:
             col["align"] = spec[2]
         cols.append(col)
-    return {"version": 1, "type": "table", "caption": caption, "columns": cols, "rows": row_list}
+    block = {"version": 1, "type": "table", "caption": caption, "columns": cols, "rows": row_list}
+    if footer:
+        block["footer"] = footer
+    return block
 
 
 def _mk_buttons(recommended):
@@ -1102,7 +1271,7 @@ def _mk_buttons(recommended):
         return None
     items = []
     for i, r in enumerate(recommended):
-        item = {"label": r["label"], "value": r["label"]}
+        item = {"label": r["label"], "value": str(i + 1)}
         if i == 0:
             item["variant"] = "primary"
         items.append(item)
@@ -1130,7 +1299,8 @@ def _blocks_greeting(recommended):
     today = snapshot.get("today") or {}
     scheduled = today.get("scheduled_children", snapshot.get("children_scheduled_count", 0))
     checked_in = today.get("checked_in_children", snapshot.get("checked_in_count", 0))
-    blocks = [_mk_text(f"Greetings for the day, {user_name}. Here's where things stand today at {facility_name}.")]
+    _progress_sent_b = bool(_ctx("progressMessage"))
+    blocks = ([] if _progress_sent_b else [_mk_text(f"# {user_name}, here's where things stand today at {facility_name}.")])
     snap_tbl = _mk_table(
         "Today's snapshot",
         [("measure", "Measure"), ("count", "Verified count", "right")],
@@ -1145,13 +1315,49 @@ def _blocks_greeting(recommended):
     incomplete = risk.get("incomplete_attendance") or {}
     analyzer = _ctx("attendance_risks_analyzer_py") or {}
     analyzer_absence_rows = analyzer.get("approaching_absence_limits") or []
-    pending_days = pending.get("days", 0) or 0
-    absence_finding = _absence_finding(analyzer_absence_rows)
+    analyzer_pending_rows = analyzer.get("pending_confirmation_records") or []
+    _ref_date = (analyzer.get("reference_date") or "")[:10]
+    _lookback = int(analyzer.get("lookback_days") or 9)
+    _win_start = None
+    try:
+        from datetime import date as _ddate, timedelta as _dtd
+        _win_start = str(_ddate.fromisoformat(_ref_date) - _dtd(days=_lookback))
+    except Exception:
+        pass
+    _windowed_pending = [r for r in analyzer_pending_rows
+                         if not _win_start or (r.get("date") or "") >= _win_start]
+    pending_days = len(_windowed_pending)
+    _pending_win_children = len({r.get("child_id") for r in _windowed_pending if r.get("child_id")})
+    _pending_range = _date_range_for_dates(r.get("date") for r in _windowed_pending)
+    _summary_absence_rows = _absence_rows_for_summary(analyzer_absence_rows, _win_start)
+    _exceeded_rows = [r for r in _summary_absence_rows if (r.get("status") or "") in ("OVER_LIMIT", "POTENTIAL_OVER_LIMIT")]
+    _approaching_rows = [r for r in _summary_absence_rows if (r.get("status") or "") == "APPROACHING_LIMIT"]
+    _exc_win_dates = [d for r in _exceeded_rows for d in _over_limit_dates(r) if not _win_start or d >= _win_start]
+    _exc_days = len(_exc_win_dates)
+    _exc_children = _distinct_child_count(_exceeded_rows)
+    _app_children = _distinct_child_count(_approaching_rows)
+    _exc_range = _date_range_for_dates(_exc_win_dates)
+    _app_dates = [d for r in _approaching_rows for d in (list(r.get("confirmed_absence_dates") or []) + list(r.get("probable_absence_dates") or []))]
+    _app_range = _date_range_for_dates(_app_dates)
+    _absence_finding_parts = []
+    _absence_period_parts = []
+    if _exceeded_rows:
+        _absence_finding_parts.append(f"Limit exceeded: {_exc_children} child(ren), {_exc_days} day(s) in window")
+        _absence_period_parts.append(_exc_range or "--")
+    if _approaching_rows:
+        _absence_finding_parts.append(f"Approaching limit: {_app_children} child(ren)")
+        _absence_period_parts.append(_app_range or "--")
+    absence_finding = "\n".join(_absence_finding_parts) or "No children near or over county absence limits"
+    _absence_range = "\n".join(_absence_period_parts) or "--"
     incomplete_attendance_rows = [
         row for row in ((_ctx("payoutImpactResult") or {}).get("rows") or [])
         if isinstance(row, dict) and row.get("risk_category") == "incomplete"
     ]
-    incomplete_days = len(incomplete_attendance_rows) or incomplete.get("days", 0) or 0
+    _windowed_incomplete = [r for r in incomplete_attendance_rows
+                            if not _win_start or (r.get("date") or "") >= _win_start]
+    incomplete_days = len(_windowed_incomplete)
+    incomplete_finding = "No incomplete check-in/out found" if not incomplete_days else f"{incomplete_days} day(s)"
+    _incomplete_range = _date_range_for_dates(r.get("date") for r in _windowed_incomplete)
 
     def _loss(cat):
         val = cat.get("potential_loss_hours") if isinstance(cat, dict) else None
@@ -1160,19 +1366,29 @@ def _blocks_greeting(recommended):
             return f"{_fmt_money(amount)} ({'%.1f' % val} care hrs)" if amount is not None else "Unavailable"
         return "Unavailable" if cat else "No calculated impact"
 
+    _absence_impact_parts = []
+    if _exceeded_rows:
+        _absence_impact_parts.append(_loss(approaching))
+    if _approaching_rows:
+        _absence_impact_parts.append("Within county limit")
+    _absence_impact = "\n".join(_absence_impact_parts) or "No actionable impact"
+
     issues_tbl = _mk_table(
-        "Attendance and payment issues",
-        [("area", "Risk area"), ("finding", "Verified finding"), ("impact", "Potential payment impact")],
+        f"Attendance and payment issues — {_period_label()}",
+        [("area", "Risk area"), ("finding", "Verified finding"), ("period", "Period"), ("impact", "Potential payment impact")],
         [
             {"area": "Pending parent confirmations",
-             "finding": "No pending parent confirmations" if not pending_days else f"{pending_days} day(s), {pending.get('children', 0)} child(ren)",
-             "impact": _loss(pending)},
+             "finding": "No pending parent confirmations" if not pending_days else f"{pending_days} day(s), {_pending_win_children} child(ren)",
+             "period": _pending_range or "--",
+             "impact": _loss(pending) if pending_days else "No actionable impact"},
             {"area": "Absence-limit risk",
              "finding": absence_finding,
-             "impact": _loss(approaching)},
+             "period": _absence_range,
+             "impact": _absence_impact},
             {"area": "Incomplete check-ins/check-outs",
              "finding": "No incomplete check-in/out found" if not incomplete_days else f"{incomplete_days} day(s)",
-             "impact": _loss(incomplete)},
+             "period": _incomplete_range or "--",
+             "impact": _loss(incomplete) if incomplete_days else "No actionable impact"},
         ],
     )
     if issues_tbl:
@@ -1184,8 +1400,17 @@ def _blocks_greeting(recommended):
 
 
 def _blocks_pending_confirmations(recommended):
-    dcr = _ctx("data_collection_result") or {}
-    rows = (dcr.get("snapshot") or {}).get("pending_confirmations") or []
+    _analyzer = _ctx("attendance_risks_analyzer_py") or {}
+    _ref = (_analyzer.get("reference_date") or "")[:10]
+    _lkb = int(_analyzer.get("lookback_days") or 9)
+    _win = None
+    try:
+        from datetime import date as _ddate, timedelta as _dtd
+        _win = str(_ddate.fromisoformat(_ref) - _dtd(days=_lkb))
+    except Exception:
+        pass
+    all_pending = _analyzer.get("pending_confirmation_records") or []
+    rows = [r for r in all_pending if not _win or (r.get("date") or "") >= _win]
     blocks = []
     if rows:
         _mask = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
@@ -1193,8 +1418,8 @@ def _blocks_pending_confirmations(recommended):
             "Pending parent confirmations",
             [("child", "Child"), ("authorization", "Authorization"),
              ("service_date", "Service date"), ("status", "Status")],
-            [{"child": _mask(r.get("child_name") or ""), "authorization": r.get("authorization_id") or "--",
-              "service_date": _fmt_date(r.get("service_date")), "status": "Pending"} for r in rows],
+            [{"child": _mask(r.get("child_name") or ""), "authorization": r.get("auth_id") or "--",
+              "service_date": _fmt_date(r.get("date")), "status": "Pending"} for r in rows],
         )
         if tbl:
             blocks.append(tbl)
@@ -1207,10 +1432,18 @@ def _blocks_pending_confirmations(recommended):
 
 
 def _blocks_absence_limits(recommended):
-    rows = (_ctx("attendance_risks_analyzer_py") or {}).get("approaching_absence_limits") or []
+    _analyzer_al = _ctx("attendance_risks_analyzer_py") or {}
+    _ref_al = (_analyzer_al.get("reference_date") or "")[:10]
+    _win_al = None
+    try:
+        from datetime import date as _ddate, timedelta as _dtd
+        _win_al = str(_ddate.fromisoformat(_ref_al) - _dtd(days=int(_analyzer_al.get("lookback_days") or 9)))
+    except Exception:
+        pass
+    rows = _absence_rows_for_summary(
+        _analyzer_al.get("approaching_absence_limits") or [], _win_al
+    )
     _mask = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
-    _STATUS_MAP = {"OVER_LIMIT": "Exceeded", "POTENTIAL_OVER_LIMIT": "At risk",
-                   "APPROACHING_LIMIT": "Near limit", "POTENTIAL_APPROACHING_LIMIT": "Near limit"}
     period = _period_label()
     blocks = []
     if period:
@@ -1218,18 +1451,56 @@ def _blocks_absence_limits(recommended):
     if not rows:
         blocks.append(_mk_accordion([{"title": "Absence-limit risk", "content": "No children currently near or over county monthly absence limits."}]))
     else:
-        blocks.append(_mk_text(_absence_finding(rows)))
+        _payout_rows = [r for r in ((_ctx("payoutImpactResult") or {}).get("rows") or [])
+                        if isinstance(r, dict) and r.get("risk_category") == "absence"]
+        _impact_by_auth = {}
+        for pr in _payout_rows:
+            _ak = str(pr.get("authorization_id") or pr.get("auth_id") or pr.get("child_name") or "")
+            if _ak not in _impact_by_auth:
+                _impact_by_auth[_ak] = {"hours": 0.0, "amount": 0.0}
+            _impact_by_auth[_ak]["hours"] += float(pr.get("care_hours") or 0)
+            try:
+                _impact_by_auth[_ak]["amount"] += float(pr.get("amount") or 0)
+            except (TypeError, ValueError):
+                pass
+        tbl_rows = []
+        for r in rows:
+            _rs = r.get("status") or ""
+            _is_exc = _rs in ("OVER_LIMIT", "POTENTIAL_OVER_LIMIT")
+            _auth_key = str(r.get("authorization_id") or r.get("auth_id") or r.get("child_name") or "")
+            if _is_exc:
+                _od_all = _over_limit_dates(r)
+                _od_win = [d for d in _od_all if not _win_al or d >= _win_al]
+                _at_risk_period = _date_range_for_dates(_od_all) or "--"
+                _imp = _impact_by_auth.get(_auth_key)
+                if _imp and _imp["amount"] > 0:
+                    _payment_impact = f"${_imp['amount']:.2f} at risk ({_imp['hours']:.1f} care hrs)"
+                else:
+                    _payment_impact = "Outside confirmation window" if not _od_win else "At risk (rate unavailable)"
+            else:
+                _at_risk_period = _date_range_for_dates(
+                    list(r.get("confirmed_absence_dates") or []) + list(r.get("probable_absence_dates") or [])
+                ) or "--"
+                _payment_impact = "Within county limit"
+            tbl_rows.append({
+                "risk_type": "Limit exceeded" if _is_exc else "Approaching limit",
+                "child": _mask(r.get("child_name") or ""),
+                "authorization": r.get("authorization_id") or r.get("auth_id") or "--",
+                "county": r.get("county_name") or "--",
+                "confirmed_absences": r.get("confirmed_absence_count", len(r.get("confirmed_absence_dates") or [])),
+                "probable_absences": r.get("probable_absence_count", len(r.get("probable_absence_dates") or [])),
+                "absence_limit": r.get("absence_limit", "--"),
+                "at_risk_period": _at_risk_period,
+                "payment_impact": _payment_impact,
+            })
+        tbl_rows.sort(key=lambda row: 0 if row.get("payment_impact", "") != "Outside confirmation window" else 1)
         tbl = _mk_table(
             "Absence-limit risk",
-            [("child", "Child"), ("authorization", "Authorization"), ("county", "County"),
-             ("absences_used", "Absences used", "right"), ("absence_limit", "Absence limit", "right"), ("status", "Status")],
-            [{"child": _mask(r.get("child_name") or ""),
-              "authorization": r.get("authorization_id") or r.get("auth_id") or "--",
-              "county": r.get("county_name") or "--",
-              "absences_used": r.get("confirmed_absence_count", r.get("absence_used", 0)),
-              "absence_limit": r.get("absence_limit", "--"),
-              "status": _STATUS_MAP.get(r.get("status") or "", (r.get("status") or "--").replace("_", " ").title())}
-             for r in rows],
+            [("risk_type", "Risk type"), ("child", "Child"), ("authorization", "Authorization"),
+             ("county", "County"), ("confirmed_absences", "Confirmed", "right"),
+             ("probable_absences", "Probable", "right"), ("absence_limit", "Limit", "right"),
+             ("at_risk_period", "At-risk period"), ("payment_impact", "Payment impact")],
+            tbl_rows,
         )
         if tbl:
             blocks.append(tbl)
@@ -1240,8 +1511,18 @@ def _blocks_absence_limits(recommended):
 
 
 def _blocks_incomplete_attendance(recommended):
+    _analyzer = _ctx("attendance_risks_analyzer_py") or {}
+    _ref = (_analyzer.get("reference_date") or "")[:10]
+    _lkb = int(_analyzer.get("lookback_days") or 9)
+    _win = None
+    try:
+        from datetime import date as _ddate, timedelta as _dtd
+        _win = str(_ddate.fromisoformat(_ref) - _dtd(days=_lkb))
+    except Exception:
+        pass
     rows = [row for row in ((_ctx("payoutImpactResult") or {}).get("rows") or [])
-            if isinstance(row, dict) and row.get("risk_category") == "incomplete"]
+            if isinstance(row, dict) and row.get("risk_category") == "incomplete"
+            and (not _win or (row.get("date") or "") >= _win)]
     _mask = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
     blocks = []
     if not rows:
@@ -1251,7 +1532,7 @@ def _blocks_incomplete_attendance(recommended):
             "Missing check-in/check-out",
             [("child", "Child"), ("authorization", "Authorization"), ("service_date", "Service date"),
              ("attendance_type", "Attendance type"), ("reason", "Reason")],
-            [{"child": _mask(r.get("child_name") or ""), "authorization": r.get("auth_id") or "--",
+            [{"child": _mask(r.get("child_name") or ""), "authorization": r.get("authorization_id") or r.get("auth_id") or "--",
               "service_date": _fmt_date(r.get("date")), "attendance_type": "Missing check-in/check-out",
               "reason": r.get("reason") or "A scheduled day is missing one attendance event"} for r in rows],
         )
@@ -1266,6 +1547,14 @@ def _blocks_incomplete_attendance(recommended):
 def _blocks_payout_impact(recommended):
     result = _ctx("payoutImpactResult") or {}
     rows = result.get("rows") or []
+    _tr = _ctx("turnRequest") or {}
+    _pi_scope = (_tr.get("id") or "") if isinstance(_tr, dict) else ""
+    if _pi_scope == "payout_impact_absence":
+        rows = [r for r in rows if (r.get("risk_category") or "") == "absence"]
+    elif _pi_scope == "payout_impact_pending":
+        rows = [r for r in rows if (r.get("risk_category") or "") == "unconfirmed"]
+    elif _pi_scope == "payout_impact_incomplete":
+        rows = [r for r in rows if (r.get("risk_category") or "") == "incomplete"]
     _calc_rows = [r for r in rows if r.get("amount") is not None]
     _mask = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
     blocks = []
@@ -1274,13 +1563,13 @@ def _blocks_payout_impact(recommended):
     elif not _calc_rows:
         blocks.append(_mk_accordion([{"title": "Payout impact", "content": "Attendance risk entries were found but payout amounts couldn't be calculated — rate schedule data may still be loading."}]))
     else:
-        total_hours = result.get("total_hours_at_risk")
-        total_dollar = result.get("total_dollar_at_risk")
+        total_hours = sum(float(_r.get("care_hours") or 0) for _r in _calc_rows)
+        total_dollar = sum(float(_r.get("amount") or 0) for _r in _calc_rows)
         caption = f"~ {_fmt_money(total_dollar)} at risk across {_fmt_hours(total_hours)} care hour(s)"
         blocks.append(_mk_text("Payout impact of current attendance risk"))
         _agg = {}
         for _r in _calc_rows:
-            _k = (_mask(_r.get("child_name") or ""), _r.get("authorization_id") or "--", _r.get("county_name") or "--")
+            _k = (_mask(_r.get("child_name") or ""), _r.get("authorization_id") or "--", _r.get("county_name") or "--", _r.get("risk_category") or "")
             if _k not in _agg:
                 _agg[_k] = {"hours": Decimal("0"), "amount": Decimal("0"), "amount_type": _r.get("amount_type") or "--", "reason": _r.get("reason") or "--"}
             _agg[_k]["hours"] += Decimal(str(_r.get("care_hours") or 0))
@@ -1335,12 +1624,21 @@ def _blocks_payment(recommended):
         summary_rows = [
             {"field": "Service period", "value": period_label},
             {"field": "Payout date", "value": _fmt_date(payout_date) if payout_date else "--"},
-            {"field": "Attendance-based payment", "value": f"{_fmt_money(result.get('attended_care_amount'))} ({amount_type})"},
+            {"field": "Attendance-based payment", "value": f"{_fmt_money(result.get('attended_care_amount'))} ({_fmt_hours(float(result.get('attended_care_hours') or 0))} hrs, {amount_type})"},
+            *([{"field": "Scheduled forecast payment", "value": f"{_fmt_money(result.get('forecast_amount'))} ({_fmt_hours(float(result.get('forecast_hours') or 0))} hrs, {amount_type})"}] if float(result.get('forecast_amount') or 0) > 0 else []),
             {"field": "Vacant slot payment", "value": f"{_fmt_money(result.get('vacant_slot_amount'))} ({amount_type})"},
             {"field": "At risk", "value": f"{_fmt_money(result.get('amount_at_risk'))} ({_risk_detail})" if _risk_detail else _fmt_money(result.get("amount_at_risk"))},
         ]
         summary_rows.append({"field": "Potential total", "value": _fmt_money(result.get("potential_total_amount") or result.get("total_amount"))})
-        tbl = _mk_table("Payment summary", [("field", "Field"), ("value", "Value")], summary_rows)
+        _at_risk_days_b = result.get("at_risk_day_count") or 0
+        _potential_total_b = result.get("potential_total_amount") or result.get("total_amount")
+        _payout_str_b = _fmt_date(payout_date) if payout_date else "a date to be confirmed"
+        _intro_b = f"Here's what we're seeing for {period_label}"
+        if _at_risk_days_b > 0:
+            _day_word_b = "day" if _at_risk_days_b == 1 else "days"
+            _intro_b += f" {_at_risk_days_b} {_day_word_b} are flagged at risk, so the final amount may differ at county processing."
+        blocks.append(_mk_text(_intro_b))
+        tbl = _mk_table("Payment summary", [("field", "Field"), ("value", "Value")], summary_rows, no_limit=True)
         if tbl:
             blocks.append(tbl)
         blocks.append(_mk_text(DISCLAIMER_TEXT, italic=True))
@@ -1383,6 +1681,7 @@ def _blocks_payment_multi_period(recommended):
             [("service_period", "Service period"), ("payout_date", "Payout date"),
              ("potential_total", "Potential total", "right"), ("status", "Status")],
             page_rows,
+            no_limit=True,
         )
         if tbl:
             blocks.append(tbl)
@@ -1397,6 +1696,9 @@ def _blocks_payment_full_breakdown(recommended):
     result = _ctx("paymentResult") or {}
     rows = result.get("rows") or []
     calculated_rows = [r for r in rows if r.get("status") in ("calculated", "at_risk")]
+    _at_risk_only = [r for r in calculated_rows if r.get("status") == "at_risk"]
+    if result.get("payment_history_found") is not True and _at_risk_only:
+        calculated_rows = _at_risk_only
     settled = result.get("payment_history_found") is True
     period_range = _fmt_date_range(result.get("service_period_start"), result.get("service_period_end"))
     period_label = period_range or (result.get("service_period_id") or "--")
@@ -1408,22 +1710,34 @@ def _blocks_payment_full_breakdown(recommended):
     total_calc = len(calculated_rows)
     start_idx = page * FULL_BREAKDOWN_PAGE_SIZE
     page_rows = calculated_rows[start_idx:start_idx + FULL_BREAKDOWN_PAGE_SIZE]
-    caption = f"Full attendance breakdown — {period_label}"
+    _at_risk_b = sum(1 for r in calculated_rows if r.get("status") == "at_risk")
+    _calc_b = len(calculated_rows) - _at_risk_b
+    _title_b = f"Here's the day-by-day attendance for {period_label}."
+    if calculated_rows:
+        _title_b += f" {len(calculated_rows)} days on record — {_calc_b} calculated, {_at_risk_b} at-risk."
+    _footer_b = None
     if total_calc > FULL_BREAKDOWN_PAGE_SIZE:
         shown_end = min(start_idx + FULL_BREAKDOWN_PAGE_SIZE, total_calc)
-        caption += f" · Showing {start_idx + 1}–{shown_end} of {total_calc} days"
-    blocks = []
+        _total_pages_b = (total_calc + FULL_BREAKDOWN_PAGE_SIZE - 1) // FULL_BREAKDOWN_PAGE_SIZE
+        _footer_b = f"Showing {start_idx + 1}–{shown_end} of {total_calc} days  ·  Page {page + 1} of {_total_pages_b}"
+    blocks = [_mk_text(_title_b)]
     if page_rows:
         tbl = _mk_table(
-            caption,
-            [("service_date", "Service date"), ("attendance_type", "Attendance type"),
+            "Attendance breakdown",
+            [("child_name", "Child"), ("authorization", "Authorization"), ("county", "County"),
+             ("care_date", "Care date"), ("attendance_type", "Attendance type"),
              ("care_hours", "Care hours", "right"), ("amount", "Amount", "right"), ("amount_type", "Amount type")],
-            [{"service_date": _fmt_date(r.get("service_date")),
+            [{"child_name": r.get("child_name") or "--",
+              "authorization": r.get("authorization_name") or r.get("authorization_id") or "--",
+              "county": r.get("county_name") or "--",
+              "care_date": _fmt_date(r.get("service_date")),
               "attendance_type": (r.get("classification") or "--").replace("_", " ").title(),
               "care_hours": _fmt_hours(r.get("payable_hours")),
               "amount": _fmt_money(r.get("amount")),
               "amount_type": "At-risk" if r.get("status") == "at_risk" else ("Calculated" if settled else "Expected")}
              for r in page_rows],
+            no_limit=True,
+            footer=_footer_b,
         )
         if tbl:
             blocks.append(tbl)
@@ -1551,7 +1865,7 @@ def _blocks_explain(recommended):
 
 
 def _blocks_attendance_all(recommended):
-    blocks = [_mk_text("**Attendance overview**")]
+    blocks = [_mk_text("# Attendance overview")]
     for blk in _blocks_absence_limits([]):
         blocks.append(blk)
     for blk in _blocks_incomplete_attendance([]):
@@ -1584,6 +1898,11 @@ def _blocks_clarify(recommended, prior_recommended=None):
     session_state = _ctx("sessionState") or {}
     provider_verified = session_state.get("providerVerified", False)
     provider_name = (session_state.get("providerName") or "").strip()
+    clarify_reason = (_ctx("turnRequest") or {}).get("clarifyReason") or ""
+    if clarify_reason == "greeting" and provider_verified:
+        # Mid-session greeting: open question only, no menu
+        name_suffix = f", {provider_name}" if provider_name else ""
+        return [_mk_text(f"Of course{name_suffix}. What would you like to look at?")]
     if provider_verified and provider_name:
         headline = f"What can I help you with next, {provider_name}?"
     elif provider_verified:
@@ -1675,46 +1994,6 @@ else:
 if "$" in _formatted and DISCLAIMER_GLOBAL not in _formatted:
     _formatted = f"{_formatted}\n\n{DISCLAIMER_GLOBAL}"
 
-# First-turn greeting: prepend "Hi {name}!" on every action except STARTER
-# (render_greeting already includes the name for STARTER turns).
-_greeting_block = None
-if not _ctx("greetingDone") and _action not in (None, "STARTER", "END"):
-    _snap = (_ctx("data_collection_result") or {}).get("snapshot") or {}
-    _greet_name = (
-        _snap.get("user_name")
-        or (_ctx("ccare_provider_data_py") or {}).get("providerName")
-        or "Provider"
-    )
-    if str(_greet_name).isdigit():
-        _greet_name = "Provider"
-    _GREETING_PHRASES = {
-        "PAYMENT": {
-            "NEXT_PAYOUT":           "Here's your next estimated payout",
-            "LAST_PAYOUT":           "Here's a summary of your last payout",
-            "CURRENT_PERIOD_FORECAST": "Here's the forecast for your current period",
-            "CURRENT_MONTH":         "Here's your payment summary for this month",
-            "FULL_BREAKDOWN":        "Here's the full day-by-day breakdown you requested",
-            "ALL":                   "Here's your complete payment overview",
-            "SPECIFIC_PERIOD":       "Here's the payment detail for that period",
-        },
-        "ATTENDANCE": {
-            "PENDING_CONFIRMATIONS": "Let's take a look at your pending confirmations",
-            "ABSENCE_LIMITS":        "Here's a review of your current absence limits",
-            "INCOMPLETE_ATTENDANCE": "Here's a look at your incomplete attendance records",
-            "PAYOUT_IMPACT":         "Here's how your current attendance activity could affect your payout",
-            "ALL":                   "Here's your full attendance overview",
-        },
-        "EXPLAIN":  {"__default__": "Happy to clarify that for you"},
-        "CLARIFY":  {"__default__": "Happy to help you narrow that down"},
-    }
-    _action_phrases = _GREETING_PHRASES.get(_action) or {}
-    _greet_prefix = _action_phrases.get(_sub_filter) or _action_phrases.get("__default__")
-    if _greet_prefix:
-        _greeting_msg = f"{_greet_prefix}, {_greet_name}."
-    else:
-        _greeting_msg = f"Welcome back, {_greet_name}."
-    _greeting_block = _mk_text(_greeting_msg)
-    _formatted = f"{_greeting_msg}\n\n" + _formatted
 write_context("greetingDone", True)
 
 
@@ -1755,8 +2034,29 @@ elif _action == "ATTENDANCE":
         _blocks = _blocks_attendance_all(_recommended)
 else:
     _blocks = _blocks_fallback(_recommended)
-if _greeting_block:
-    _blocks = [_greeting_block] + _blocks
+
+
+# Central disclaimer injection for blocks path (mirrors the markdown path check above).
+# Insert before the buttons block if present, else append.
+_disc_block = _mk_text(DISCLAIMER_TEXT, italic=True)
+_blocks_have_dollar = any(
+    (isinstance(b, dict) and b.get("type") == "text" and "$" in (b.get("content") or ""))
+    or (isinstance(b, dict) and b.get("type") == "table" and any(
+        "$" in str(v) for row in (b.get("rows") or []) for v in row.values() if v is not None
+    ))
+    for b in _blocks
+)
+_blocks_have_disclaimer = any(
+    isinstance(b, dict) and b.get("type") == "text" and b.get("content") == DISCLAIMER_TEXT
+    for b in _blocks
+)
+if _blocks_have_dollar and not _blocks_have_disclaimer:
+    _btn_idx = next((i for i, b in enumerate(_blocks) if isinstance(b, dict) and b.get("type") == "buttons"), None)
+    if _btn_idx is not None:
+        _blocks = _blocks[:_btn_idx] + [_disc_block] + _blocks[_btn_idx:]
+    else:
+        _blocks.append(_disc_block)
+
 write_context("formattedBlocks", _blocks)
 write_context("formattedResponse", _formatted)
 

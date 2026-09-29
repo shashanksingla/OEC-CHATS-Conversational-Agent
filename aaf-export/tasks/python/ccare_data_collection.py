@@ -915,9 +915,9 @@ else:
                             if isinstance(_turn_request, dict) and _turn_request.get("servicePeriodId"):
                                 _payment_bundle["service_period_id"] = _turn_request["servicePeriodId"]
                             if _sub_filter == "CURRENT_MONTH":
-                                _payment_bundle["multi_period_window"] = _month_bounds(date.today())
+                                _payment_bundle["multi_period_window"] = [d.isoformat() for d in _month_bounds(date.today())]
                             elif _sub_filter == "ALL":
-                                _payment_bundle["multi_period_window"] = (_month_bounds(date.today(), 1)[0], _month_bounds(date.today())[1])
+                                _payment_bundle["multi_period_window"] = [_month_bounds(date.today(), 1)[0].isoformat(), _month_bounds(date.today())[1].isoformat()]
                             elif _sub_filter == "LAST_PAYOUT":
                                 _payment_bundle["select_last_released"] = True
                             write_context("paymentData", _payment_bundle)

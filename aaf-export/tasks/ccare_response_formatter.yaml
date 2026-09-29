@@ -1,9 +1,9 @@
 kind: Task
 id: ccare_response_formatter
 name: ccare_response_formatter
-version: 1.8.5
+version: 1.20.0
 description: |-
-  Payout summary rebuilt into one consistent table. Now also emits formattedBlocks (list of chat-ui JSON block objects) alongside formattedResponse for the deterministic renderer.
+  Payout summary rebuilt into one consistent table. Now also emits formattedBlocks (list of chat-ui JSON block objects) alongside formattedResponse for the deterministic renderer. | absence-finding only shows approaching/over-limit parts when count>0; payment-summary table no_limit=True (shows all 6 rows) | rec-actions: payout_impact split into 3 distinct IDs; snapshot-fallback absence action removed; view_full_breakdown removed from never-expire; kickstart_payment gated on payment availability | render_greeting/blocks_greeting skip personal greeting when progressMessage already set; render_clarify/blocks_clarify suppress kickstart menu when clarifyReason==greeting | provider-action 'Confirm' renamed to 'Review' in action labels; absence_limits action label now conditional on counts>0 | _blocks_payment_multi_period and _blocks_payment_full_breakdown pass no_limit=True — callers own pagination, _mk_table must not re-truncate
 model: null
 model_error: null
 task_type: deterministic
@@ -17,4 +17,4 @@ tags:
 - Child Care
 response: prose
 created_at: '2026-09-25T19:31:13.111528Z'
-updated_at: '2026-09-28T13:03:26.596298Z'
+updated_at: '2026-09-29T13:14:05.074953Z'

@@ -127,7 +127,7 @@ def _attended_hours(schedule):
         return direct
     check_in = _number(schedule, "Check_In_Count__c", default=None)
     check_out = _number(schedule, "Check_Out_Count__c", default=None)
-    if check_in is not None and check_out is not None and check_out >= check_in:
+    if check_in is not None and check_out is not None and check_in > 0 and check_out >= check_in:
         return check_out - check_in
     return None
 
@@ -225,7 +225,7 @@ write_context("input.provider_id", provider_id)
 write_context("input.schedules_count", len(schedules))
 
 absence_groups = {}
-unconfirmed_records = []
+pending_confirmation_records = []
 
 for schedule in schedules:
     schedule_id = _text(schedule, "Id", "id")
@@ -253,34 +253,17 @@ for schedule in schedules:
         _text(r, "Status__c") == PARENT_PENDING for r in attendance_records if isinstance(r, dict)
     )
     if is_pending:
-        days_ago = _days_from(reference_date, schedule_date)
-        if days_ago is not None and 0 <= days_ago <= lookback_days:
-            unconfirmed_records.append({
-                "schedule_id": schedule_id,
-                "auth_id": auth_ref,
-                "child_id": child_id,
-                "child_name": child_name,
-                "provider_id": linked_provider_id,
-                "county_id": county_id,
-                "date": schedule_date,
-                "status": PARENT_PENDING,
-            })
-    elif not attendance_records and _number(schedule, "CI_Authorization_Hours__c") > 0:
-        # MISSING_ATTENDANCE: authorized care expected but no Transaction__c
-        # records exist at all -- mirrors payment engine's MISSING_ATTENDANCE
-        # confirmation_risk so both engines flag the same at-risk scenarios.
-        days_ago = _days_from(reference_date, schedule_date)
-        if days_ago is not None and 0 <= days_ago <= lookback_days:
-            unconfirmed_records.append({
-                "schedule_id": schedule_id,
-                "auth_id": auth_ref,
-                "child_id": child_id,
-                "child_name": child_name,
-                "provider_id": linked_provider_id,
-                "county_id": county_id,
-                "date": schedule_date,
-                "status": "MISSING_ATTENDANCE",
-            })
+        pending_confirmation_records.append({
+            "schedule_id": schedule_id,
+            "auth_id": auth_ref,
+            "child_id": child_id,
+            "child_name": child_name,
+            "provider_id": linked_provider_id,
+            "county_id": county_id,
+            "date": schedule_date,
+            "status": PARENT_PENDING,
+        })
+        continue  # PARENT_PENDING: excluded from absence counting
 
     authorized_hours = _number(schedule, "CI_Authorization_Hours__c")
     attended_hours = _attended_hours(schedule) or 0
@@ -322,9 +305,9 @@ for schedule in schedules:
             "quality_tier": tier,
             "year_month": year_month,
             "confirmed_absence_dates": [],
-            "tentative_absence_dates": [],
+            "probable_absence_dates": [],
         }
-    target = "tentative_absence_dates" if is_tentative_absence else "confirmed_absence_dates"
+    target = "probable_absence_dates" if is_tentative_absence else "confirmed_absence_dates"
     if schedule_date not in absence_groups[key][target]:
         absence_groups[key][target].append(schedule_date)
 
@@ -332,7 +315,7 @@ approaching_absence_limits = []
 for group in absence_groups.values():
     limit = _tier_limit(rate_plan_by_county.get(group["county_id"]), group["quality_tier"])
     confirmed_used = len(group["confirmed_absence_dates"])
-    tentative_used = len(group["tentative_absence_dates"])
+    tentative_used = len(group["probable_absence_dates"])
     confirmed_remaining = limit - confirmed_used
     potential_remaining = limit - confirmed_used - tentative_used
     if limit > 0 and (confirmed_remaining <= near_limit_threshold or potential_remaining <= near_limit_threshold):
@@ -346,13 +329,13 @@ for group in absence_groups.values():
             "quality_tier": group["quality_tier"],
             "absence_limit": limit,
             "confirmed_absence_count": confirmed_used,
-            "tentative_absence_count": tentative_used,
+            "probable_absence_count": tentative_used,
             "confirmed_absence_remaining": max(confirmed_remaining, 0),
             "potential_absence_remaining": max(potential_remaining, 0),
             "status": _status_from_remaining(confirmed_remaining, potential_remaining, tentative_used, near_limit_threshold),
             "year_month": group["year_month"],
             "confirmed_absence_dates": sorted(group["confirmed_absence_dates"]),
-            "tentative_absence_dates": sorted(group["tentative_absence_dates"]),
+            "probable_absence_dates": sorted(group["probable_absence_dates"]),
         })
 
 turn_request = read_context("turnRequest") or {}
@@ -370,13 +353,14 @@ def _passes(row):
 
 if child_filter or county_filter:
     approaching_absence_limits = [r for r in approaching_absence_limits if _passes(r)]
-    unconfirmed_records = [r for r in unconfirmed_records if _passes(r)]
+    pending_confirmation_records = [r for r in pending_confirmation_records if _passes(r)]
 
 result = {
     "provider_id": provider_id,
     "reference_date": reference_date,
     "approaching_absence_limits": sorted(approaching_absence_limits, key=lambda r: (r["county_id"] or "", r["child_id"] or "")),
-    "unconfirmed_attendance_last_9_days": sorted(unconfirmed_records, key=lambda r: (r["date"], r.get("child_id") or "")),
+    "pending_confirmation_records": sorted(pending_confirmation_records, key=lambda r: (r["date"], r.get("child_id") or "")),
+    "lookback_days": lookback_days,
 }
 
 if input_errors:
@@ -385,7 +369,7 @@ if input_errors:
     respond(error_response)
 else:
     write_context("result.approaching_absence_limits", result["approaching_absence_limits"])
-    write_context("result.unconfirmed_attendance_last_9_days", result["unconfirmed_attendance_last_9_days"])
+    write_context("result.pending_confirmation_records", result["pending_confirmation_records"])
     respond(result)
 
 # __________________________GenAI: Generated code ends here______________________________
