@@ -54,6 +54,10 @@ def _resolve_by_keyword(user_message, recommended_actions, payment_candidates):
                 "action": candidate.get("action") or "PAYMENT",
                 "subFilter": candidate.get("subFilter"),
                 "servicePeriodId": candidate.get("id"),
+                # Carried through so downstream drill-down views (e.g. the three
+                # PAYOUT_IMPACT variants, which share one subFilter) can tell
+                # which specific recommended action was clicked.
+                "actionId": candidate.get("id"),
             }, True
     for item in (recommended_actions if isinstance(recommended_actions, list) else []):
         if isinstance(item, dict) and str(item.get("id") or "").strip().lower() == text:
@@ -61,6 +65,7 @@ def _resolve_by_keyword(user_message, recommended_actions, payment_candidates):
                 "action": item.get("action"),
                 "subFilter": item.get("subFilter"),
                 "servicePeriodId": None,
+                "actionId": item.get("id"),
             }, True
     return {}, False
 
@@ -97,6 +102,7 @@ def _resolve_positional(ref, recommended_actions, payment_candidates):
             "action": candidate.get("action") or "PAYMENT",
             "subFilter": candidate.get("subFilter"),
             "servicePeriodId": candidate.get("id"),
+            "actionId": candidate.get("id"),
         }, True
 
     if isinstance(recommended_actions, list) and recommended_actions:
@@ -110,6 +116,7 @@ def _resolve_positional(ref, recommended_actions, payment_candidates):
             "action": item.get("action"),
             "subFilter": item.get("subFilter"),
             "servicePeriodId": None,
+            "actionId": item.get("id"),
         }, True
 
     return {}, False
@@ -132,8 +139,9 @@ if _matched:
         "action": _resolved.get("action"),
         "subFilter": _resolved.get("subFilter"),
         "servicePeriodId": _resolved.get("servicePeriodId"),
+        "actionId": _resolved.get("actionId"),
     })
-    log(f"action shortcut: matched action={_resolved.get('action')} subFilter={_resolved.get('subFilter')} -- skipping LLM router")
+    log(f"action shortcut: matched action={_resolved.get('action')} subFilter={_resolved.get('subFilter')} actionId={_resolved.get('actionId')} -- skipping LLM router")
     respond({"matched": "YES"}, confidence=1.0)
 else:
     write_context("shortcutResolution", {"matched": "NO"})

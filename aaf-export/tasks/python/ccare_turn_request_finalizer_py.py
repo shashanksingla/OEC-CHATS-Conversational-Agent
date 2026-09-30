@@ -66,6 +66,7 @@ def _resolve_positional(classification, recommended_actions, payment_candidates)
             "action": candidate.get("action") or "PAYMENT",
             "subFilter": candidate.get("subFilter"),
             "servicePeriodId": candidate.get("id"),
+            "actionId": candidate.get("id"),
         }, True
 
     if isinstance(recommended_actions, list) and recommended_actions:
@@ -79,6 +80,7 @@ def _resolve_positional(classification, recommended_actions, payment_candidates)
             "action": item.get("action"),
             "subFilter": item.get("subFilter"),
             "servicePeriodId": None,
+            "actionId": item.get("id"),
         }, True
 
     return {}, False
@@ -222,12 +224,14 @@ _date_to = _classification.get("dateTo")
 _period_count = _classification.get("periodCount")
 _confidence = _classification.get("confidence", 1.0)
 _service_period_id = None
+_action_id = None
 
 # Use shortcut resolution directly; its classification may be stale.
 if _shortcut_matched:
     _action = _shortcut.get("action") or "CLARIFY"
     _sub_filter = _shortcut.get("subFilter")
     _service_period_id = _shortcut.get("servicePeriodId")
+    _action_id = _shortcut.get("actionId")
     _clarify_reason = None
     _child_names = []
     _county_names = []
@@ -246,6 +250,7 @@ else:
             _action = _positional_fields.get("action") or _action
             _sub_filter = _positional_fields.get("subFilter")
             _service_period_id = _positional_fields.get("servicePeriodId")
+            _action_id = _positional_fields.get("actionId")
 
 # Require explicit dates for SPECIFIC_PERIOD.
 if _sub_filter == "SPECIFIC_PERIOD" and not (_date_from and _date_to):
@@ -269,11 +274,17 @@ _progress = _progress_message(
     _action, _sub_filter, _first_turn, _mention_name, _provider_name, _child_names, _county_names, _date_filter, _service_period_id, _turn_seq,
 )
 write_context("progressMessage", _progress)
+# NOTE (ai-firstify re-engineer pass): `progressMessage` is NOT a separate
+# turn shown to the provider -- no node in the live graph emits it
+# independently. It exists only so the formatter can decide whether to
+# still show its own opening line. Do not repurpose this as if it were
+# delivered; see ccare_response_formatter.py's `_progress_sent` handling.
 if _action != "END":
     write_context("greetingDone", True)
 
 _turn_request = {
     "action": _action,
+    "actionId": _action_id,
     "routingClass": _routing_class,
     "intent": _intent,
     "subFilter": _sub_filter,
@@ -290,7 +301,7 @@ _turn_request = {
     "confidence": _confidence,
 }
 write_context("turnRequest", _turn_request)
-log(f"turnRequest finalized: action={_action} subFilter={_sub_filter} dateFilter={_date_filter}")
+log(f"turnRequest finalized: action={_action} subFilter={_sub_filter} dateFilter={_date_filter} actionId={_action_id}")
 respond(_turn_request, confidence=_confidence)
 
 # __________________________GenAI: Generated code ends here______________________________
