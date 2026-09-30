@@ -26,6 +26,20 @@ sys.path.insert(0, os.path.dirname(__file__))
 from aaf_client import AafClient, bump_version, contains_replacement_char  # noqa: E402
 
 
+def _safe_print(text):
+    """Windows console (cp1252) can raise UnicodeEncodeError on real
+    non-ASCII characters (em-dash, etc.) in diff output -- this is a
+    console-display limitation only, never actual file/payload corruption
+    (verified separately via contains_replacement_char). Fall back to a
+    replace-on-encode write instead of crashing the whole deploy before the
+    PUT ever runs."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        encoding = sys.stdout.encoding or "utf-8"
+        sys.stdout.write(text.encode(encoding, errors="replace").decode(encoding) + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Deploy a local task file to the live AAF portal.")
     parser.add_argument("task_id")
@@ -64,7 +78,7 @@ def main():
         print("No changes detected -- nothing to deploy.")
         sys.exit(0)
 
-    print("\n".join(diff))
+    _safe_print("\n".join(diff))
 
     if not args.yes:
         answer = input("\nDeploy this change? [y/N] ").strip().lower()

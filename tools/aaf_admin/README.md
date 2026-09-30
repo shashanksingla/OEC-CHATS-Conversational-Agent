@@ -71,3 +71,42 @@ $env:AAF_BASE_URL = "https://..."
 - If a structural process change is ever needed (new/removed nodes or edges,
   not just a branch field), extend `deploy_process.py` rather than writing a
   new scratch script.
+- **Before editing any local task file, run a dry-run diff first**
+  (`deploy_task.py <task_id> <local_file>` without `--yes`, answer `n`) to
+  confirm local actually matches live. A local file can silently drift from
+  what a task_id serves live (e.g. someone else deploying through the portal
+  directly) — editing a stale local copy and deploying it overwrites real
+  live changes. This happened once (2026-09-30): the local
+  `ccare_payment_engine.py` had drifted to an old payment-only version while
+  the live `ccare_payment_engine` task_id was actually serving the
+  consolidated payment+attendance+payout-impact engine — deploying the stale
+  file would have deleted `ATTENDANCE`/`STARTER` handling in production. A
+  0-diff dry run against the live task_id is the cheapest way to confirm you
+  are editing the right base before writing anything.
+
+## Live task_id -> local file map (current `ccare_provider_agent_process`)
+
+Only files referenced by a `bound_task` in the live process graph are real —
+verify against `fetch_process.py <process_id>` (no `--node` filter) whenever
+in doubt, not against local file *names* alone (a task_id and its serving
+file's internal name can differ, as the incident above shows).
+
+| Live task_id | Node(s) that bind it | Local file |
+|---|---|---|
+| `ccare_scope_cache_gate_py` | `ccare_action_shortcut_gate_py` | `tasks/python/ccare_scope_cache_gate_py.py` |
+| `ccare_unified_intent_router` | `ccare_unified_intent_router` | LLM task — prompt lives in `tasks/ccare_unified_intent_router.yaml` only, no `.py` |
+| `ccare_turn_request_finalizer_py` | `ccare_turn_request_finalizer_py` | `tasks/python/ccare_turn_request_finalizer_py.py` |
+| `ccare_provider_data_py` | `ccare_provider_data_py` | `tasks/python/ccare_provider_data_py.py` |
+| `ccare_data_collection` | `ccare_data_collection` | `tasks/python/ccare_data_collection.py` |
+| `ccare_payment_engine` | `ccare_calc_engine_py` (node name differs from task_id — this is the consolidated payment+attendance-risk+payout-impact engine) | `tasks/python/ccare_payment_engine.py` |
+| `ccare_response_formatter` | `ccare_response_formatter` | `tasks/python/ccare_response_formatter.py` |
+
+Any other `.py`/`.yaml` file under `aaf-export/tasks/` not in this table is
+**not wired into the current live process** — treat as dead unless a fresh
+`fetch_process.py` shows otherwise. As of 2026-09-30, `attendance_risks_analyzer_py`,
+`ccare_action_recommender`, `ccare_data_freshness_check_py`,
+`ccare_payout_impact_correlator`, `ccare_progress_emitter`, and
+`ccare_response_renderer` were removed as orphans (their logic was
+consolidated into `ccare_payment_engine`/`ccare_response_formatter`/
+`ccare_turn_request_finalizer_py` per the process's own 2026-09-30
+consolidation description).

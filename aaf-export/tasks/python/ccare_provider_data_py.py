@@ -74,63 +74,79 @@ if not _skip_rest:
         params["dateFilter"] = "THIS_MONTH"
 
     log("calling getProviderInfo userId=%s filters=%s" % (user_id, {k: v for k, v in params.items() if k != "userId"}))
-    response = call_endpoint("getProviderInfo", params)
+    _connection_failed = False
+    try:
+        response = call_endpoint("getProviderInfo", params)
+    except RuntimeError as _exc:
+        _msg = str(_exc)
+        if "401" in _msg or "INVALID_SESSION_ID" in _msg or "Session expired" in _msg:
+            log("connection error calling getProviderInfo: %s" % _msg)
+            write_context("sessionState", {"providerVerified": "NO"})
+            write_context("ccare_provider_data_py", {"status": "failed", "reason": "CONNECTION_FAILED"})
+            _tr_end = dict(turn_request)
+            _tr_end["action"] = "END"
+            write_context("turnRequest", _tr_end)
+            respond({"status": "failed", "reason": "CONNECTION_FAILED"}, confidence=1.0)
+            _connection_failed = True
+        else:
+            raise
 
-    if not response or not response.get("isSuccess"):
-        reason = "getProviderInfo call failed"
-        if isinstance(response, dict):
-            reason = response.get("message") or response.get("error") or reason
-        log("provider validation failed: %s" % reason)
-        # A failed re-check must not leave stale trust available to the gate.
-        write_context("sessionState", {"providerVerified": "NO"})
-        respond({"status": "failed", "reason": reason}, confidence=1.0)
-    else:
-        provider_data = response.get("data") or {}
-        provider_name = provider_data.get("ProviderName")
-        conversation_state = {
-            "providerVerified": True,
-            "providerName": provider_name,
-            "turnRequest": turn_request,
-            "resolvedFilters": resolved_filters,
-        }
-        # 2026-09-26: persistent, session-scoped flag -- written once, never
-        # re-derived from per-turn data-freshness logic (unlike the removed
-        # freshnessResult.sessionValidated). provider_validated_gate reads this
-        # to skip this task (and its getProviderInfo call) on every turn after
-        # the first; nothing else in the process writes to sessionState.
-        # validatedTurnCount resets to 0 on every real validation --
-        # ccare_turn_request_finalizer_py increments it each turn and forces
-        # re-validation once it exceeds a bound (see that task).
-        write_context("sessionState", {"providerVerified": "YES", "providerName": provider_name, "validatedTurnCount": 0})
-        log("provider validated: providerName=%s intent=%s" % (provider_name, intent))
-    if intent == "Unclear":
-        log("intent unclear -- routing to clarification after provider validated")
-        write_context("ccare_provider_data_py", {
-            "status": "needs_clarification",
-            "providerName": provider_name,
-            "providerDataRaw": provider_data,
-            "resolvedFilters": resolved_filters,
-            "conversationState": conversation_state,
-        })
-        respond({
-            "status": "needs_clarification",
-            "providerName": provider_name,
-            "resolvedFilters": resolved_filters,
-            "conversationState": conversation_state,
-        }, confidence=1.0)
-    else:
-        write_context("ccare_provider_data_py", {
-            "status": "success",
-            "providerName": provider_name,
-            "providerDataRaw": provider_data,
-            "resolvedFilters": resolved_filters,
-            "conversationState": conversation_state,
-        })
-        respond({
-            "status": "success",
-            "providerName": provider_name,
-            "resolvedFilters": resolved_filters,
-            "conversationState": conversation_state,
-        }, confidence=1.0)
+    if not _connection_failed:
+        if not response or not response.get("isSuccess"):
+            reason = "getProviderInfo call failed"
+            if isinstance(response, dict):
+                reason = response.get("message") or response.get("error") or reason
+            log("provider validation failed: %s" % reason)
+            # A failed re-check must not leave stale trust available to the gate.
+            write_context("sessionState", {"providerVerified": "NO"})
+            respond({"status": "failed", "reason": reason}, confidence=1.0)
+        else:
+            provider_data = response.get("data") or {}
+            provider_name = provider_data.get("ProviderName")
+            conversation_state = {
+                "providerVerified": True,
+                "providerName": provider_name,
+                "turnRequest": turn_request,
+                "resolvedFilters": resolved_filters,
+            }
+            # 2026-09-26: persistent, session-scoped flag -- written once, never
+            # re-derived from per-turn data-freshness logic (unlike the removed
+            # freshnessResult.sessionValidated). provider_validated_gate reads this
+            # to skip this task (and its getProviderInfo call) on every turn after
+            # the first; nothing else in the process writes to sessionState.
+            # validatedTurnCount resets to 0 on every real validation --
+            # ccare_turn_request_finalizer_py increments it each turn and forces
+            # re-validation once it exceeds a bound (see that task).
+            write_context("sessionState", {"providerVerified": "YES", "providerName": provider_name, "validatedTurnCount": 0})
+            log("provider validated: providerName=%s intent=%s" % (provider_name, intent))
+        if intent == "Unclear":
+            log("intent unclear -- routing to clarification after provider validated")
+            write_context("ccare_provider_data_py", {
+                "status": "needs_clarification",
+                "providerName": provider_name,
+                "providerDataRaw": provider_data,
+                "resolvedFilters": resolved_filters,
+                "conversationState": conversation_state,
+            })
+            respond({
+                "status": "needs_clarification",
+                "providerName": provider_name,
+                "resolvedFilters": resolved_filters,
+                "conversationState": conversation_state,
+            }, confidence=1.0)
+        else:
+            write_context("ccare_provider_data_py", {
+                "status": "success",
+                "providerName": provider_name,
+                "providerDataRaw": provider_data,
+                "resolvedFilters": resolved_filters,
+                "conversationState": conversation_state,
+            })
+            respond({
+                "status": "success",
+                "providerName": provider_name,
+                "resolvedFilters": resolved_filters,
+                "conversationState": conversation_state,
+            }, confidence=1.0)
 
 # __________________________GenAI: Generated code ends here______________________________

@@ -2,9 +2,29 @@ kind: ExportManifest
 process_id: ccare_provider_agent_process
 source: https://d3thytbs9a5a1.cloudfront.net/admin
 fetched_at: 2026-09-29T19:02:00+05:30
-fetch_method: Python urllib against /admin/api/processes/{id}, /admin/api/tasks/{id}, /admin/api/tools/{id}, /admin/api/tasks (full list), authenticated via cookie session from POST /admin/api/auth/login (child.care). Every written YAML file is round-trip validated with yaml.safe_load immediately after writing.
+fetch_method: Python urllib against /admin/api/processes/{id}, /admin/api/tasks/{id}, /admin/api/tools/{id}, /admin/api/tasks (full list), authenticated via cookie session from POST /admin/api/auth/login (child.care). Every written YAML file is round-trip validated with yaml.safe_load immediately after writing. As of 2026-09-30, use tools/aaf_admin/ scripts for this instead of one-off scratch scripts.
 
 # ==============================================================================
+# 2026-09-30 CONSOLIDATION. ccare_payment_engine.py, attendance_risks_analyzer_py.py,
+# and ccare_payout_impact_correlator.py merged into ONE file
+# (ccare_calc_engine_py.py, deployed under the EXISTING ccare_payment_engine
+# task_id -- this portal has no confirmed API to create a brand-new task, only
+# update existing ones; see tools/aaf_admin/create_task.py's docstring).
+# Process node ccare_calc_engine_py has bound_task: ccare_payment_engine.
+# attendance_risks_analyzer_py and ccare_payout_impact_correlator task nodes
+# REMOVED from the graph (files kept live/local as orphaned-but-real, per the
+# existing convention below). attendance_cache_gate/payment_cache_gate/
+# payout_impact_gate decision nodes collapsed into one engine_cache_gate.
+# Process: 1.24.2 -> 1.26.0 (deployed as 1.24.3 -- portal auto-versioned,
+# not the local file's stated 1.26.0; local file kept at 1.26.0 for the
+# authored description, live is authoritative for the version number).
+# Graph: 18 nodes/33 edges -> 14 nodes/26 edges, verified via re-read after
+# deploy (node set matches local exactly). ccare_data_collection.py also
+# fixed in this pass: dropped unused fiscalRateFees fetch, wired
+# providerClosures through from getProviderInfo (was fetched but never
+# propagated, so the payment engine's closure-check always saw an empty list).
+# ==============================================================================
+#
 # 2026-09-29 RESYNC #6 (same day, immediate redo). No structural graph change
 # vs RESYNC #5 -- still 7 bound tasks, same orphaned-but-live set. Task-level
 # version bumps only, but ccare_response_formatter jumped 1.14.0 -> 1.20.0

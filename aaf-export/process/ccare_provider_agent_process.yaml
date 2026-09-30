@@ -3,21 +3,63 @@ id: ccare_provider_agent_process
 name: CCARE Provider Agent process
 version: 1.25.0
 description: |-
-  2026-09-29: ccare_unified_intent_router shrunk to a pure LLM classifier;
-  new deterministic ccare_turn_request_finalizer_py inserted right after it
-  to resolve positional references, build fetchParams, apply date defaults,
-  and compose a templated context-aware progressMessage -- moves all
-  non-language-understanding work off the LLM to cut per-turn token/latency
-  cost. Same turnRequest contract downstream, no other task changed. 15
-  nodes / 28 edges.
+  2026-09-30: consolidation -- ccare_payment_engine, attendance_risks_analyzer_py,
+  and ccare_payout_impact_correlator merged into ONE ccare_calc_engine_py task,
+  eliminating a duplicated fiscal-rate/classification core the two calculation
+  paths previously carried independently (and the resulting calculation drift:
+  the old correlator rated risk on authorized_hours while payment rated the
+  same day on payable_hours post-classification). attendance_cache_gate,
+  payment_cache_gate, and payout_impact_gate collapsed into one
+  engine_cache_gate reading one reconciled scope fingerprint. Every business
+  rule ported verbatim from the three retired task files -- this is a
+  structural simplification, not a behavior change. Output contract to
+  ccare_response_formatter unchanged (paymentResult/attendance_risks_analyzer_py/
+  payoutImpactResult context keys preserved).
+
+  2026-09-30 (retry, safer design): re-adding the pre-router deterministic
+  shortcut for button clicks/bare positional replies. The FIRST attempt
+  repurposed ccare_unified_intent_router's own node_id/position for the
+  shortcut gate, which broke basic turns live ("hi" landed straight at
+  human_gate, "end" landed at human_end with empty context). This retry
+  adds the shortcut gate as a genuinely SEPARATE node with its OWN unique
+  position -- ccare_unified_intent_router's node_id, bound_task, and its
+  outgoing edge to the finalizer are completely UNCHANGED, only its
+  position number shifts and it gains a new incoming edge from the
+  decision node's default branch (replacing its old direct incoming edge
+  from human_gate). NOT YET DEPLOYED -- local only, pending review/testing
+  given the prior regression.
 model: bedrock/us.anthropic.claude-sonnet-5
 model_error: null
 tasks:
+- node_id: ccare_action_shortcut_gate_py
+  name: Action shortcut gate (button clicks / bare positional replies -- deterministic, no LLM)
+  task_type: task
+  bound_task: ccare_scope_cache_gate_py
+  position: 1
+  config:
+    bound_task: ccare_scope_cache_gate_py
+  parallel_group: null
+- node_id: action_shortcut_decision
+  name: Action shortcut matched?
+  task_type: decision
+  bound_task: null
+  position: 2
+  config:
+    branches:
+    - value: 'YES'
+      name: shortcut_matched
+      source: context.shortcutResolution
+      path: matched
+      operator: equals
+      condition_type: text
+    - name: default
+      condition_type: default
+  parallel_group: null
 - node_id: ccare_unified_intent_router
   name: Unified intent router
   task_type: task
   bound_task: ccare_unified_intent_router
-  position: 1
+  position: 3
   config:
     bound_task: ccare_unified_intent_router
   parallel_group: null
@@ -33,9 +75,21 @@ tasks:
   name: Provider session validated gate
   task_type: decision
   bound_task: null
-  position: 2
+  position: 5
   config:
     branches:
+    - value: CLARIFY
+      name: clarify_shortcut
+      source: context.turnRequest
+      path: action
+      operator: equals
+      condition_type: text
+    - value: END
+      name: end_shortcut
+      source: context.turnRequest
+      path: action
+      operator: equals
+      condition_type: text
     - value: 'YES'
       name: validated
       source: context.sessionState
@@ -55,7 +109,7 @@ tasks:
   name: Provider data validation
   task_type: task
   bound_task: ccare_provider_data_py
-  position: 3
+  position: 6
   config:
     bound_task: ccare_provider_data_py
   parallel_group: null
@@ -63,7 +117,7 @@ tasks:
   name: Session & data freshness gate
   task_type: decision
   bound_task: null
-  position: 5
+  position: 7
   config:
     branches:
     - value: needs_clarification
@@ -81,18 +135,11 @@ tasks:
     - name: default
       condition_type: default
   parallel_group: null
-- node_id: human_end
-  name: End conversation
-  task_type: human
-  bound_task: null
-  position: 7
-  config: {}
-  parallel_group: null
 - node_id: ccare_data_collection
   name: Data collection
   task_type: task
   bound_task: ccare_data_collection
-  position: 8
+  position: 9
   config:
     bound_task: ccare_data_collection
   parallel_group: null
@@ -100,7 +147,7 @@ tasks:
   name: Action dispatch
   task_type: decision
   bound_task: null
-  position: 9
+  position: 11
   config:
     branches:
     - value: ATTENDANCE
@@ -137,91 +184,29 @@ tasks:
       name: end
       source: context.turnRequest
       path: action
-      operator: contains
+      operator: equals
       condition_type: text
     - name: default
       condition_type: default
   parallel_group: null
-- node_id: ccare_scope_cache_gate_py
-  name: Shared scope cache gate
-  task_type: task
-  bound_task: ccare_scope_cache_gate_py
-  position: 9
-  config:
-    bound_task: ccare_scope_cache_gate_py
-  parallel_group: null
-- node_id: attendance_cache_gate
-  name: Attendance cache gate
+- node_id: engine_cache_gate
+  name: Calc engine cache gate
   task_type: decision
   bound_task: null
-  position: 10
-  config:
-    branches:
-    - value: 'YES'
-      name: cache_valid
-      source: context.turnRequest
-      path: attendanceCacheValid
-      operator: contains
-      condition_type: text
-    - name: default
-      condition_type: default
-  parallel_group: null
-- node_id: attendance_risks_analyzer_py
-  name: Attendance risk analysis
-  task_type: task
-  bound_task: attendance_risks_analyzer_py
-  position: 10
-  config:
-    bound_task: attendance_risks_analyzer_py
-  parallel_group: null
-- node_id: payment_cache_gate
-  name: Payment cache gate
-  task_type: decision
-  bound_task: null
-  position: 13
-  config:
-    branches:
-    - value: 'YES'
-      name: cache_valid
-      source: context.turnRequest
-      path: paymentCacheValid
-      operator: contains
-      condition_type: text
-    - name: default
-      condition_type: default
-  parallel_group: null
-- node_id: payout_impact_gate
-  name: Payout impact gate
-  task_type: decision
-  bound_task: null
-  position: 11
-  config:
-    branches:
-    - value: PAYOUT_IMPACT
-      name: payout_impact
-      source: context.turnRequest
-      path: subFilter
-      operator: contains
-      condition_type: text
-    - value: STARTER
-      name: starter
-      source: context.turnRequest
-      path: action
-      operator: contains
-      condition_type: text
-    - name: default
-      condition_type: default
-  parallel_group: null
-- node_id: ccare_payout_impact_correlator
-  name: Payout impact correlator
-  task_type: task
-  bound_task: ccare_payout_impact_correlator
   position: 12
   config:
-    bound_task: ccare_payout_impact_correlator
+    branches:
+    - value: 'YES'
+      name: cache_valid
+      source: context.turnRequest
+      path: engineCacheValid
+      operator: contains
+      condition_type: text
+    - name: default
+      condition_type: default
   parallel_group: null
-- node_id: ccare_payment_action
-  name: CCARE payment engine
+- node_id: ccare_calc_engine_py
+  name: Consolidated calc engine (payment + attendance risk + payout impact)
   task_type: task
   bound_task: ccare_payment_engine
   position: 13
@@ -240,7 +225,7 @@ tasks:
   name: Response exit gate
   task_type: decision
   bound_task: null
-  position: 17
+  position: 15
   config:
     branches:
     - value: failed
@@ -262,16 +247,31 @@ tasks:
   name: Human turn
   task_type: human
   bound_task: null
-  position: 18
+  position: 16
   config: {}
   parallel_group: null
 edges:
+- from: ccare_action_shortcut_gate_py
+  to: action_shortcut_decision
+  condition: always
+- from: action_shortcut_decision
+  to: ccare_turn_request_finalizer_py
+  condition: shortcut_matched
+- from: action_shortcut_decision
+  to: ccare_unified_intent_router
+  condition: default
 - from: ccare_unified_intent_router
   to: ccare_turn_request_finalizer_py
   condition: always
 - from: ccare_turn_request_finalizer_py
   to: provider_validated_gate
   condition: always
+- from: provider_validated_gate
+  to: ccare_response_formatter
+  condition: clarify_shortcut
+- from: provider_validated_gate
+  to: ccare_response_formatter
+  condition: end_shortcut
 - from: provider_validated_gate
   to: ccare_provider_data_py
   condition: not_validated
@@ -294,22 +294,19 @@ edges:
   to: ccare_data_collection
   condition: default
 - from: ccare_data_collection
-  to: ccare_scope_cache_gate_py
-  condition: always
-- from: ccare_scope_cache_gate_py
   to: action_dispatch
   condition: always
 - from: action_dispatch
-  to: attendance_cache_gate
+  to: engine_cache_gate
   condition: attendance
 - from: action_dispatch
-  to: payment_cache_gate
+  to: engine_cache_gate
   condition: payment
 - from: action_dispatch
   to: ccare_response_formatter
   condition: explain
 - from: action_dispatch
-  to: attendance_cache_gate
+  to: engine_cache_gate
   condition: starter
 - from: action_dispatch
   to: ccare_response_formatter
@@ -320,52 +317,28 @@ edges:
 - from: action_dispatch
   to: ccare_response_formatter
   condition: end
-- from: attendance_cache_gate
-  to: payout_impact_gate
-  condition: cache_valid
-- from: attendance_cache_gate
-  to: attendance_risks_analyzer_py
-  condition: default
-- from: attendance_risks_analyzer_py
-  to: payout_impact_gate
-  condition: always
-- from: payout_impact_gate
-  to: ccare_payout_impact_correlator
-  condition: payout_impact
-- from: payout_impact_gate
-  to: ccare_payout_impact_correlator
-  condition: starter
-- from: payout_impact_gate
-  to: ccare_response_formatter
-  condition: default
-- from: ccare_payout_impact_correlator
-  to: ccare_response_formatter
-  condition: always
-- from: payment_cache_gate
+- from: engine_cache_gate
   to: ccare_response_formatter
   condition: cache_valid
-- from: payment_cache_gate
-  to: ccare_payment_action
+- from: engine_cache_gate
+  to: ccare_calc_engine_py
   condition: default
-- from: ccare_payment_action
-  to: payout_impact_gate
+- from: ccare_calc_engine_py
+  to: ccare_response_formatter
   condition: always
 - from: ccare_response_formatter
   to: response_exit_gate
   condition: always
 - from: response_exit_gate
-  to: human_end
+  to: null
   condition: end
 - from: response_exit_gate
   to: human_gate
   condition: continue
 - from: human_gate
-  to: ccare_unified_intent_router
-  condition: always
-- from: human_end
-  to: null
+  to: ccare_action_shortcut_gate_py
   condition: always
 tags:
 - Child Care
 created_at: '2026-08-14T11:10:21.136879Z'
-updated_at: '2026-09-29T07:00:31.792059Z'
+updated_at: '2026-09-30T17:09:01.531670Z'
