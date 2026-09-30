@@ -54,39 +54,55 @@ if (turn_request.get("action") == "PAYMENT" and
         turn_request.get("subFilter") == "LAST_PAYOUT"):
     resolved_filters = {"dateFilter": "LAST_N_MONTHS", "periodCount": 2}
 
-# userId always sourced from authenticated session context -- never from user input
-user_id = _safe_get("external_id") or "005hG0000011ZG6QAM"
+# userId always sourced from authenticated session context -- never from user
+# input. Fail closed when missing -- a hardcoded fallback provider here would
+# silently validate the wrong provider instead of surfacing the real problem.
+user_id = _safe_get("external_id")
 
-params = {"userId": user_id}
-params.update({k: v for k, v in resolved_filters.items() if v is not None})
-if "dateFilter" not in params:
-    params["dateFilter"] = "THIS_MONTH"
-
-log("calling getProviderInfo userId=%s filters=%s" % (user_id, {k: v for k, v in params.items() if k != "userId"}))
-response = call_endpoint("getProviderInfo", params)
-
-if not response or not response.get("isSuccess"):
-    reason = "getProviderInfo call failed"
-    if isinstance(response, dict):
-        reason = response.get("message") or response.get("error") or reason
-    log("provider validation failed: %s" % reason)
-    respond({"status": "failed", "reason": reason}, confidence=1.0)
+if not user_id:
+    log("provider validation failed: missing external_id in session context")
+    write_context("sessionState", {"providerVerified": "NO"})
+    respond({"status": "failed", "reason": "IDENTITY_MISSING"}, confidence=1.0)
+    _skip_rest = True
 else:
-    provider_data = response.get("data") or {}
-    provider_name = provider_data.get("ProviderName")
-    conversation_state = {
-        "providerVerified": True,
-        "providerName": provider_name,
-        "turnRequest": turn_request,
-        "resolvedFilters": resolved_filters,
-    }
-    # 2026-09-26: persistent, session-scoped flag -- written once, never
-    # re-derived from per-turn data-freshness logic (unlike the removed
-    # freshnessResult.sessionValidated). provider_validated_gate reads this
-    # to skip this task (and its getProviderInfo call) on every turn after
-    # the first; nothing else in the process writes to sessionState.
-    write_context("sessionState", {"providerVerified": "YES", "providerName": provider_name})
-    log("provider validated: providerName=%s intent=%s" % (provider_name, intent))
+    _skip_rest = False
+
+if not _skip_rest:
+    params = {"userId": user_id}
+    params.update({k: v for k, v in resolved_filters.items() if v is not None})
+    if "dateFilter" not in params:
+        params["dateFilter"] = "THIS_MONTH"
+
+    log("calling getProviderInfo userId=%s filters=%s" % (user_id, {k: v for k, v in params.items() if k != "userId"}))
+    response = call_endpoint("getProviderInfo", params)
+
+    if not response or not response.get("isSuccess"):
+        reason = "getProviderInfo call failed"
+        if isinstance(response, dict):
+            reason = response.get("message") or response.get("error") or reason
+        log("provider validation failed: %s" % reason)
+        # A failed re-check must not leave stale trust available to the gate.
+        write_context("sessionState", {"providerVerified": "NO"})
+        respond({"status": "failed", "reason": reason}, confidence=1.0)
+    else:
+        provider_data = response.get("data") or {}
+        provider_name = provider_data.get("ProviderName")
+        conversation_state = {
+            "providerVerified": True,
+            "providerName": provider_name,
+            "turnRequest": turn_request,
+            "resolvedFilters": resolved_filters,
+        }
+        # 2026-09-26: persistent, session-scoped flag -- written once, never
+        # re-derived from per-turn data-freshness logic (unlike the removed
+        # freshnessResult.sessionValidated). provider_validated_gate reads this
+        # to skip this task (and its getProviderInfo call) on every turn after
+        # the first; nothing else in the process writes to sessionState.
+        # validatedTurnCount resets to 0 on every real validation --
+        # ccare_turn_request_finalizer_py increments it each turn and forces
+        # re-validation once it exceeds a bound (see that task).
+        write_context("sessionState", {"providerVerified": "YES", "providerName": provider_name, "validatedTurnCount": 0})
+        log("provider validated: providerName=%s intent=%s" % (provider_name, intent))
     if intent == "Unclear":
         log("intent unclear -- routing to clarification after provider validated")
         write_context("ccare_provider_data_py", {

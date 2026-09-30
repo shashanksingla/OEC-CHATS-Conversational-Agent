@@ -604,6 +604,12 @@ def _calculate_for_period(
     # Once an actual PAID/REQUESTED record is on file for this period, that
     # record is authoritative -- return it directly and skip all per-day
     # computation (no recalculation, ever, for a settled period).
+    #
+    # Phase 3: subPayment/payment_history rows carry no confirmed
+    # authorization-linking field (checked, not found) -- so this total
+    # cannot be scoped to a requested child/county without guessing at a
+    # field name. Explicitly flagged rather than silently mis-scoped:
+    # settlement amounts are period-wide by definition.
     existing_amount = _existing_payment_amount(payment_history, period_id)
     if existing_amount is not None:
         return {
@@ -622,6 +628,7 @@ def _calculate_for_period(
             "potential_total_amount": _money(existing_amount),
             "blockers": [],
             "settlement_source": "ACTUAL_PAYMENT_RECORD",
+            "settlement_scope": "PERIOD_WIDE",
         }
 
     auth_by_id = _unique_index(authorizations, "Id", "id", "ID_AUTH__c", "authorization_id")
@@ -665,6 +672,10 @@ def _calculate_for_period(
         # authorization record.
         authorized_hours = _number(schedule, "CI_Authorization_Hours__c", "authorized_hours", "authorization_hours", "hours")
         attended_hours = _attended_hours(schedule)
+        if attended_hours is None and service_date > as_of_date:
+            # Forecast day -- attendance can't exist yet for a future service
+            # date; treat as zero attended hours instead of a data blocker.
+            attended_hours = Decimal("0")
         if authorized_hours is None or attended_hours is None:
             rows.append(_blocked_row("ATTENDED_CARE", service_date, "hours"))
             blockers.append("attendance_hours")
@@ -672,9 +683,16 @@ def _calculate_for_period(
 
         provider_id = _text(authorization, "IDN_PROVR__c", "provider_id")
         county_id = _text(authorization, "county_id", "CDE_COUNTY__c", "countyId")
+        _county_holiday_names = (county_policy_by_id.get(county_id or "", {}) or {}).get("holiday_names") or set()
         classification = _classification(
             provider_closures, provider_id, county_id, service_date, authorized_hours, attended_hours, holidays, as_of_date,
+            _county_holiday_names,
         )
+        # Phase 4: closure-first precedence is confirmed/unchanged (do not
+        # guess a reversal), but positive attendance on a closure date was
+        # previously silent -- surface it as an explicit flag for audit
+        # visibility without changing the payable outcome.
+        _closure_with_attendance = classification == "CARE_NOT_OFFERED" and attended_hours > 0
         rate_type_code = _text(schedule, "CI_Authorization_Rate_Type__c", "rate_type_code", "Rate_Type_Code__c", "CDE_RATE_TYPE__c") \
             or _text(authorization, "rate_type_code", "Rate_Type_Code__c", "CDE_RATE_TYPE__c")
         age_group_code = _text(schedule, "age_group_code", "Age_Group_Code__c", "CDE_AGE_GROUP__c", "fiscal_age_group_code") \
@@ -864,19 +882,24 @@ def _payable_hours(classification, authorized, attended, schedule):
     return min(authorized, attended)
 
 
-def _classification(closures, provider_id, county_id, service_date, authorized_hours, attended_hours, holidays, as_of_date=None):
+def _classification(closures, provider_id, county_id, service_date, authorized_hours, attended_hours, holidays, as_of_date=None, county_holiday_names=None):
     """Derived purely from hours + closure + holiday + status semantics
     (CCCAP_AUTHORIZED/CCCAP_NOT_AUTHORIZED/CARE_NOT_OFFERED are states, not
     booleans) -- confirmed rule: closure checked first, then hours decide
     authorized vs. drop-in vs. no-care, then holiday/absence for a scheduled
-    day with zero attendance."""
+    day with zero attendance.
+
+    Phase 4: holiday check now uses the same county-specific
+    _is_county_holiday() the vacant-slot path already uses, instead of a
+    date match against the unscoped global holiday list -- a date is only
+    HOLIDAY when it's on THIS authorization's county's configured list."""
     if _is_provider_closure(closures, provider_id, county_id, service_date):
         return "CARE_NOT_OFFERED"
     if authorized_hours == 0:
         return "DROP_IN" if attended_hours > 0 else "NO_CARE"
     if attended_hours > 0:
         return "REGULAR"
-    if any(_date(row, "DTE_HOL__c", "DTE_OBSERVED_HOL__c", "holiday_date", "date") == service_date for row in holidays):
+    if _is_county_holiday(holidays, service_date, county_holiday_names or set()):
         return "HOLIDAY"
     if as_of_date is not None and service_date > as_of_date:
         return "FORECAST"
@@ -1279,6 +1302,15 @@ if _county_name_filter:
             _county_name_to_id.setdefault(_name.strip().lower(), _cid)
     _allowed_county_ids = {_county_name_to_id[n] for n in _county_name_filter if n in _county_name_to_id}
     _authorizations = [a for a in _authorizations if _text(a, "CDE_COUNTY__c", "county_id") in _allowed_county_ids]
+    # Phase 3 filter-leak fix: vacant slots were previously aggregated for
+    # every county regardless of a county-scoped request -- narrow here,
+    # before shared_inputs is built, same treatment as _authorizations above.
+    _vacant_slots_bundle = _payment_bundle.get("vacantSlots") if isinstance(_payment_bundle, dict) else None
+    if isinstance(_vacant_slots_bundle, list):
+        _payment_bundle["vacantSlots"] = [
+            s for s in _vacant_slots_bundle
+            if isinstance(s, dict) and _text(s, "CDE_COUNTY__c") in _allowed_county_ids
+        ]
 
 def _schedule_matches_filters(schedule):
     if not isinstance(schedule, dict):
@@ -1315,34 +1347,25 @@ else:
     }
     _payment_result = calculate_payment(_raw_bundle)
 
-    # Add provider-facing message and next-actions for the response renderer.
-    if _payment_result.get("status") == "ok" and _payment_result.get("mode") != "multi_period":
-        _total = _payment_result.get("total_amount", "0.00")
-        _period = _payment_result.get("service_period_id", chr(8212))
-        _blockers = _payment_result.get("blockers") or []
-        _sub = (_ctx("turnRequest.subFilter") or "").upper()
-        _label = {
-            "NEXT_PAYOUT": "Next estimated payout",
-            "LAST_PAYOUT": "Last payout",
-            "CURRENT_PERIOD_FORECAST": "Current period forecast",
-            "CURRENT_MONTH": "Current month payment summary",
-        }.get(_sub, "Payment estimate")
-        if _blockers:
-            _lines = ["**" + _label + ": calculation blocked (" + str(len(_blockers)) + " issue(s))**", "", "| Issue |", "|---|"]
-            for _b in _blockers[:10]:
-                _lines.append("| " + str(_b) + " |")
-            _lines.extend(["", "Final payment cannot be projected until the issues above are resolved."])
-        else:
-            _lines = [
-                "**" + _label + ": $" + _total + "**", "", "Service period: " + _period, "",
-                "This is a calculated estimate based on attendance, authorizations, and fiscal rates on file. Final amounts are determined at county payment processing.",
-            ]
-        _payment_result["providerMessage"] = "\n".join(_lines)
-        _payment_result["nextActions"] = [
-            "View attendance details for this service period",
-            "Check pending parent confirmations that may affect this amount",
-            "Ask about a different service period or payment date",
-        ]
+    # providerMessage/nextActions removed: unused downstream (formatter builds
+    # its own provider-facing text from paymentResult via BLOCKER_TITLE), and
+    # this block was dumping raw blocker codes straight into a table instead
+    # of going through that friendly-text mapping.
+
+    # Phase 0 caching: scope fingerprint so a later same-scope request (e.g.
+    # a drill-down view of this same period) can skip recalculation entirely.
+    _resolved_period_ids = (
+        [p.get("service_period_id") for p in (_payment_result.get("periods") or [])]
+        if _payment_result.get("mode") == "multi_period"
+        else [_payment_result.get("service_period_id")]
+    )
+    _payment_result["scopeFingerprint"] = {
+        "resolved_service_period_ids": sorted(str(p) for p in _resolved_period_ids if p),
+        "child_filter": sorted(_child_filter),
+        "county_filter": sorted(_county_name_filter),
+        "as_of_date": date.today().isoformat(),
+        "dataSnapshotVersion": _ctx("dataManifest.fetchedAtEpoch"),
+    }
 
     write_context("paymentResult", _payment_result)
     respond(_payment_result)

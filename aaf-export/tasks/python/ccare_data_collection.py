@@ -691,6 +691,10 @@ _requested_scope_key = json.dumps({
     "servicePeriodId": _turn_request.get("servicePeriodId") if isinstance(_turn_request, dict) else None,
     "source": _initial_source_params,
     "servicePeriod": _service_period_params(_sub_filter, _turn_request, resolved_filters),
+    # Phase 3 filter-leak fix: a snapshot fetched for one child/county scope
+    # must never satisfy a request for a different scope.
+    "childNames": sorted({str(c).strip().lower() for c in (_turn_request.get("childNames") or []) if c}) if isinstance(_turn_request, dict) else [],
+    "countyNames": sorted({str(c).strip().lower() for c in (_turn_request.get("countyNames") or []) if c}) if isinstance(_turn_request, dict) else [],
 }, sort_keys=True)
 _manifest = _safe_get('dataManifest')
 _manifest = _manifest if isinstance(_manifest, dict) else {}
@@ -827,6 +831,16 @@ else:
             else:
                 auth_data = auth_response.get("data") or {}
                 authorizations = auth_data.get("authorizations", [])
+                # Phase 3 filter-leak fix: getAuthData has no name-based filter
+                # param, so narrow locally before anything downstream reads
+                # AuthInformation -- an unrelated child's authorization must
+                # never enter shared context for a scoped request.
+                _req_child_names = {str(c).strip().lower() for c in (_turn_request.get("childNames") or []) if c} if isinstance(_turn_request, dict) else set()
+                if _req_child_names:
+                    authorizations = [
+                        a for a in authorizations
+                        if str((a.get("IDN_CLIENT__r") or {}).get("Name") or "").strip().lower() in _req_child_names
+                    ]
                 write_context("AuthInformation", authorizations)
                 auth_names = _unique_values(authorizations, "Name")
                 if not auth_names:

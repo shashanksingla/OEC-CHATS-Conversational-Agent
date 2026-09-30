@@ -12,7 +12,7 @@ Runtime affordances: read_context, write_context, respond().
 
 import json
 import re
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 if "read_context" not in globals():
     _STATE: dict = {}
@@ -33,8 +33,8 @@ if "respond" not in globals():
 log = print
 
 DISCLAIMER_GLOBAL = (
-    "*⚠️ Amounts shown are estimates based on current attendance, authorizations, and fiscal rates on file. "
-    "Final amounts are determined at county payment processing.*"
+    "*⚠️ This is an estimate based on your current attendance, authorizations, and rates on file. "
+    "The county determines the final amount during payment processing.*"
 )
 
 TABLE_ROW_LIMIT = 5
@@ -443,6 +443,15 @@ def _fmt_date(value):
         return text or "--"
 
 
+def _safe_display_value(value):
+    """Phase 5: one shared masking helper -- was duplicated as an identical
+    lambda at 8 call sites, risking drift as new renderers get added. Hides
+    a raw Salesforce-ID-shaped value (15+ char alphanumeric) from provider
+    display; anything else passes through unchanged."""
+    text = str(value) if value else ""
+    return text if text and not (text.isalnum() and len(text) >= 15) else "--"
+
+
 def _fmt_money(value):
     if value is None:
         return "--"
@@ -502,12 +511,30 @@ def _group_by_classification(rows):
     return groups
 
 
+def _safe_decimal(value, default=Decimal("0")):
+    """Per-value Decimal parse -- one malformed upstream amount degrades
+    that row/total instead of raising and killing the whole response."""
+    if value is None:
+        return default
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError, TypeError):
+        return default
+
+
+def _escape_cell(value):
+    """A name/reason containing '|' or a newline would otherwise corrupt the
+    Markdown table structure -- escape pipes, collapse embedded newlines."""
+    text = str(value) if value is not None else "--"
+    return text.replace("|", "\\|").replace("\n", " ").replace("\r", "")
+
+
 def _table(headers, rows):
     if not rows:
         return None
     lines = ["| " + " | ".join(headers) + " |", "|" + "|".join(["---"] * len(headers)) + "|"]
     for row in rows:
-        lines.append("| " + " | ".join(str(c) if c is not None else "--" for c in row) + " |")
+        lines.append("| " + " | ".join(_escape_cell(c) for c in row) + " |")
     return "\n".join(lines)
 
 
@@ -531,9 +558,9 @@ def _contains_at_risk_or_forecast(text):
 
 def render_unauthorized():
     return (
-        "I wasn't able to complete that request. The provider account on this session couldn't be "
-        "verified, or is outside the authorized CCARE services for this program. If this seems "
-        "incorrect, please contact your program administrator."
+        "I am unable to verify your provider account for this session — it may not yet be authorized "
+        "for CCARE services, or the session may have expired. If you believe this is incorrect, please "
+        "contact your program administrator to review your access."
     )
 
 
@@ -660,15 +687,14 @@ def render_pending_confirmations(recommended):
         pass
     all_pending = _analyzer.get("pending_confirmation_records") or []
     rows = [r for r in all_pending if not _win or (r.get("date") or "") >= _win]
-    _mask_id = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
     table = _table(
         ["Child", "Authorization", "Service date", "Status"],
         [
-            [_mask_id(r.get("child_name") or ""), r.get("auth_id") or "--", _fmt_date(r.get("date")), "Pending"]
+            [_safe_display_value(r.get("child_name") or ""), r.get("auth_id") or "--", _fmt_date(r.get("date")), "Pending"]
             for r in rows
         ],
     )
-    body = ["# Pending parent confirmations", "", table or "No pending parent confirmations found.", "", _actions_block(recommended)]
+    body = ["# Pending parent confirmations", "", table or "There are currently no pending parent confirmations.", "", _actions_block(recommended)]
     return "\n".join(body)
 
 
@@ -706,7 +732,6 @@ def render_absence_limits(recommended, _emit_actions=True):
             _impact_by_auth[_ak]["amount"] += float(pr.get("amount") or 0)
         except (TypeError, ValueError):
             pass
-    _mask = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
     table_rows = []
     for r in rows:
         _rs = r.get("status") or ""
@@ -729,7 +754,7 @@ def render_absence_limits(recommended, _emit_actions=True):
             _payment_impact = "Within county limit"
         table_rows.append([
             _risk_type,
-            _mask(r.get("child_name") or ""),
+            _safe_display_value(r.get("child_name") or ""),
             r.get("authorization_id") or r.get("auth_id") or "--",
             r.get("county_name") or "--",
             r.get("confirmed_absence_count", len(r.get("confirmed_absence_dates") or [])),
@@ -771,21 +796,20 @@ def render_incomplete_attendance(recommended, _emit_actions=True):
         body = [
             "# Missing check-in/check-out",
             "",
-            "No incomplete attendance found in the current window.",
+            "No missing check-ins or check-outs were found in this window.",
         ]
         if _emit_actions:
             body += ["", _actions_block(recommended)]
         return "\n".join(body)
-    _mask_id = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
     table = _table(
         ["Child", "Authorization", "Service date", "Attendance type", "Reason"],
         [
             [
-                _mask_id(r.get("child_name") or ""),
+                _safe_display_value(r.get("child_name") or ""),
                 r.get("authorization_id") or r.get("auth_id") or "--",
                 _fmt_date(r.get("date")),
                 "Missing check-in/check-out",
-                r.get("reason") or "A scheduled day is missing one attendance event",
+                r.get("reason") or "A check-in or check-out was not logged for this day",
             ]
             for r in rows
         ],
@@ -825,7 +849,7 @@ def render_payout_impact(recommended):
         body = [
             "# Payout impact of current attendance risk",
             "",
-            "No attendance risk currently affects an upcoming payout.",
+            "None of your current attendance risk is affecting an upcoming payout.",
             "",
             _actions_block(recommended),
         ]
@@ -838,8 +862,8 @@ def render_payout_impact(recommended):
         body = [
             "# Payout impact of current attendance risk",
             "",
-            "Attendance risk entries were found but payout amounts couldn't be calculated — "
-            "rate schedule data may still be loading.",
+            "Attendance risk was found, but the payout impact cannot be calculated yet — "
+            "rate schedule data may still be loading. Please try again shortly.",
             "",
             _actions_block(recommended),
         ]
@@ -848,8 +872,7 @@ def render_payout_impact(recommended):
         ["Child", "Authorization", "County", "Care hours", "Amount", "Amount type", "Reason"],
         [
             [
-                (lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--")
-                (r.get("child_name") or ""),
+                _safe_display_value(r.get("child_name") or ""),
                 r.get("authorization_id") or "--",
                 r.get("county_name") or "--",
                 _fmt_hours(r.get("care_hours")),
@@ -886,11 +909,11 @@ def render_payment_multi_period(recommended):
     result = _ctx("paymentResult") or {}
     periods = result.get("periods") or []
     if not periods:
-        return "\n".join(["**Payment summary**", "", "No service periods found for that range.", "", _actions_block(recommended)])
+        return "\n".join(["**Payment summary**", "", "I couldn't find any service periods in that date range. Please try a different range, or ask for your next payout.", "", _actions_block(recommended)])
 
     page = (_ctx("turnRequest.fetchParams.page")) or 0
     try:
-        page = int(page)
+        page = max(0, int(page))
     except (TypeError, ValueError):
         page = 0
 
@@ -909,7 +932,7 @@ def render_payment_multi_period(recommended):
     start_idx = page * MULTI_PERIOD_PAGE_SIZE
     page_rows = all_rows[start_idx:start_idx + MULTI_PERIOD_PAGE_SIZE]
     table = _table(["Service period", "Payout date", "Potential total", "Status"], page_rows)
-    grand_total = sum((Decimal(p.get("potential_total_amount") or p.get("total_amount") or "0.00") for p in periods), Decimal("0"))
+    grand_total = sum((_safe_decimal(p.get("potential_total_amount") or p.get("total_amount") or "0.00") for p in periods), Decimal("0"))
     body = ["# Payment summary -- period by period", "", table, "", f"**Grand total: {_fmt_money(grand_total)}**"]
     if total_count > MULTI_PERIOD_PAGE_SIZE:
         body += ["", f"Showing {start_idx + 1}-{min(start_idx + MULTI_PERIOD_PAGE_SIZE, total_count)} of {total_count} periods."]
@@ -957,14 +980,14 @@ def render_payment(recommended):
             body = [
                 "# No payment history found",
                 "",
-                "No payment records are available for the requested period.",
+                "There is no payment record on file for this period yet. This is expected if the county has not yet processed it.",
                 "",
                 _actions_block(recommended),
             ]
             return "\n".join(body)
         issue_rows = [[BLOCKER_TITLE.get(b, b.replace("_", " ").title()), b] for b in top_level_blockers]
         table = _table(["Issue area", "Reason"], issue_rows)
-        body = ["That payment view couldn't be fully calculated right now.", ""]
+        body = ["I encountered a few data issues while calculating this. Here is what is blocking it:", ""]
         body += [table] if table else ["No further detail is available for this issue."]
         body += ["", _actions_block(recommended)]
         return "\n".join(body)
@@ -1015,7 +1038,7 @@ def render_payment_full_breakdown(recommended):
 
     page = _ctx("turnRequest.fetchParams.page") or 0
     try:
-        page = int(page)
+        page = max(0, int(page))
     except (TypeError, ValueError):
         page = 0
 
@@ -1078,7 +1101,7 @@ def render_payment_child_detail(recommended, child_key):
     result = _ctx("paymentResult") or {}
     rows = _child_rows(result.get("rows") or [], child_key)
     if not rows:
-        return "\n".join([f"I couldn't find attendance for \"{child_key}\" in this service period.", "", _actions_block(recommended)])
+        return "\n".join([f"I couldn't find any attendance records for \"{child_key}\" in this service period. Please verify the spelling, or ask me to list your children.", "", _actions_block(recommended)])
 
     auth_name = rows[0].get("authorization_name") or child_key
     county_name = rows[0].get("county_name") or "--"
@@ -1089,8 +1112,8 @@ def render_payment_child_detail(recommended, child_key):
     total_days, total_hours, total_amount = 0, Decimal("0"), Decimal("0")
     for label, group in _group_by_classification(payable_rows).items():
         days = len(group)
-        hours = sum((Decimal(str(r.get("payable_hours") or "0")) for r in group), Decimal("0"))
-        amount = sum((Decimal(r["amount"]) for r in group), Decimal("0"))
+        hours = sum((_safe_decimal(r.get("payable_hours")) for r in group), Decimal("0"))
+        amount = sum((_safe_decimal(r.get("amount")) for r in group), Decimal("0"))
         category_rows.append([label, days, _fmt_hours(float(hours)), _fmt_money(str(amount))])
         total_days += days
         total_hours += hours
@@ -1099,7 +1122,7 @@ def render_payment_child_detail(recommended, child_key):
         category_rows.append(["**Total**", f"**{total_days}**", f"**{_fmt_hours(float(total_hours))}**", f"**{_fmt_money(str(total_amount))}**"])
     table = _table(["Category", "Days", "Hours", "Amount"], category_rows)
 
-    sections = [header, "", (table or "No payable days found for this authorization in this service period."), "", _actions_block(recommended)]
+    sections = [header, "", (table or "There are no payable days on this authorization for this service period yet."), "", _actions_block(recommended)]
     return "\n".join(sections)
 
 
@@ -1112,13 +1135,13 @@ def render_payment_county_detail(recommended, county_key):
     key = str(county_key or "").strip().lower()
     matching = [r for r in rows if str(r.get("county_name") or "").strip().lower() == key]
     if not matching:
-        return "\n".join([f"I couldn't find payment data for county \"{county_key}\" in this service period.", "", _actions_block(recommended)])
+        return "\n".join([f"I don't have payment data for \"{county_key}\" in this service period. Please verify the county name, or request your full breakdown.", "", _actions_block(recommended)])
 
     attended = [r for r in matching if r.get("kind") == "ATTENDED_CARE" and r.get("status") in ("calculated", "at_risk")]
     vacant = [r for r in matching if r.get("kind") == "VACANT_SLOT" and r.get("status") == "calculated"]
-    attended_amount = sum((Decimal(r["amount"]) for r in attended), Decimal("0"))
-    attended_hours = sum((Decimal(str(r.get("payable_hours") or "0")) for r in attended), Decimal("0"))
-    vacant_amount = sum((Decimal(r["amount"]) for r in vacant), Decimal("0"))
+    attended_amount = sum((_safe_decimal(r.get("amount")) for r in attended), Decimal("0"))
+    attended_hours = sum((_safe_decimal(r.get("payable_hours")) for r in attended), Decimal("0"))
+    vacant_amount = sum((_safe_decimal(r.get("amount")) for r in vacant), Decimal("0"))
 
     county_name = matching[0].get("county_name") or county_key
     header = f"County: {county_name}"
@@ -1131,19 +1154,21 @@ def render_payment_county_detail(recommended, county_key):
 
 
 BLOCKER_TITLE = {
-    "age_group_code_unresolved": "Child's age band could not be determined",
-    "care_unit_mapping_unconfirmed": "Care unit could not be resolved from attended hours",
-    "fiscal_schedule": "No matching fiscal schedule on file for this provider/county",
-    "fiscal_rate": "No matching fiscal rate on file for this day",
-    "authorization_relationship": "Could not link this day to an authorization",
-    "attendance_hours": "Attendance hours are missing for this day",
-    "absence_limit_exceeded": "This absence is beyond the county's approved monthly limit",
-    "drop_in_not_allowed": "Drop-in care is not allowed under this county's policy",
-    "drop_in_limit_exceeded": "This drop-in day is beyond the county's approved monthly limit",
-    "vacant_slot_rate_fields": "Vacant slot is missing rate information",
-    "vacant_slot_rate_ambiguous_age_group": "Vacant slot rate is ambiguous across age groups",
-    "service_period": "No matching service period found",
-    "service_period_dates": "Service period dates are invalid or missing",
+    "age_group_code_unresolved": "I am unable to determine this child's age band from the data on file",
+    "care_unit_mapping_unconfirmed": "I am unable to confirm the care-hours tier for this day",
+    "fiscal_schedule": "No fiscal schedule is currently on file for this provider and county",
+    "fiscal_rate": "No rate is currently on file for this day",
+    "authorization_relationship": "This day is not yet linked to a valid authorization",
+    "attendance_hours": "Attendance hours for this day are missing or unclear",
+    "absence_limit_exceeded": "This absence is beyond the county's monthly limit",
+    "absence_limit_unavailable": "The county absence limit is not on file, so this day cannot yet be confirmed",
+    "drop_in_not_allowed": "Drop-in care is not authorized for this county",
+    "drop_in_limit_exceeded": "This drop-in day is beyond the county's monthly limit",
+    "vacant_slot_rate_fields": "This vacant slot is missing rate information",
+    "vacant_slot_rate_ambiguous_age_group": "This vacant slot's rate cannot be narrowed to a single age group",
+    "vacant_slot_monthly_cap_exceeded": "This vacant slot is beyond the county's monthly cap",
+    "service_period": "This could not be matched to a service period",
+    "service_period_dates": "This service period's dates appear incomplete on file",
 }
 
 
@@ -1161,11 +1186,11 @@ def render_clarify(recommended, prior_recommended=None):
     elif provider_verified:
         greeting_line = "What can I help you with next?"
     else:
-        greeting_line = "Welcome to Provider Assist. What would you like to look at today?"
+        greeting_line = "Hello, I'm Provider Assist. I can help you review attendance, payments, and payout details. What would you like to look at first?"
     body = [
         greeting_line,
         "",
-        "Choose an option below, or tell me in your own words.",
+        "Select an option below, or describe what you need in your own words.",
         "",
         _actions_block(recommended),
     ]
@@ -1218,7 +1243,7 @@ def render_explain(recommended):
     if summary_rows:
         sections += ["## Current items requiring attention", "", _table(["Area", "Status"], summary_rows), ""]
     elif not sections:
-        sections += ["No outstanding items found for the current period.", ""]
+        sections += ["There are no outstanding items to flag for the current period.", ""]
 
     sections += [_actions_block(recommended)]
     return "\n".join(sections)
@@ -1226,11 +1251,18 @@ def render_explain(recommended):
 
 def render_fallback(recommended):
     body = [
-        "I couldn't load today's provider snapshot. Please try again later or contact your system administrator.",
+        "I was unable to retrieve your account details at this time. This is typically temporary — "
+        "please try again shortly, and contact your system administrator if the issue persists.",
         "",
         _actions_block(recommended),
     ]
     return "\n".join(body)
+
+
+def render_end():
+    # Phase 5: action_dispatch's END branch used to skip the formatter
+    # entirely, so the provider never got a closing message.
+    return "Thank you for checking in. Have a good rest of your day."
 
 
 
@@ -1239,8 +1271,8 @@ def render_fallback(recommended):
 # ==============================================================================
 
 DISCLAIMER_TEXT = (
-    "Amounts shown are estimates based on current attendance, authorizations, "
-    "and fiscal rates on file. Final amounts are determined at county payment processing."
+    "This is an estimate based on your current attendance, authorizations, and rates on file. "
+    "The county determines the final amount during payment processing."
 )
 
 
@@ -1413,18 +1445,17 @@ def _blocks_pending_confirmations(recommended):
     rows = [r for r in all_pending if not _win or (r.get("date") or "") >= _win]
     blocks = []
     if rows:
-        _mask = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
         tbl = _mk_table(
             "Pending parent confirmations",
             [("child", "Child"), ("authorization", "Authorization"),
              ("service_date", "Service date"), ("status", "Status")],
-            [{"child": _mask(r.get("child_name") or ""), "authorization": r.get("auth_id") or "--",
+            [{"child": _safe_display_value(r.get("child_name") or ""), "authorization": r.get("auth_id") or "--",
               "service_date": _fmt_date(r.get("date")), "status": "Pending"} for r in rows],
         )
         if tbl:
             blocks.append(tbl)
     else:
-        blocks.append(_mk_text("No pending parent confirmations found."))
+        blocks.append(_mk_text("There are currently no pending parent confirmations."))
     btn = _mk_buttons(recommended)
     if btn:
         blocks.append(btn)
@@ -1443,7 +1474,6 @@ def _blocks_absence_limits(recommended):
     rows = _absence_rows_for_summary(
         _analyzer_al.get("approaching_absence_limits") or [], _win_al
     )
-    _mask = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
     period = _period_label()
     blocks = []
     if period:
@@ -1484,7 +1514,7 @@ def _blocks_absence_limits(recommended):
                 _payment_impact = "Within county limit"
             tbl_rows.append({
                 "risk_type": "Limit exceeded" if _is_exc else "Approaching limit",
-                "child": _mask(r.get("child_name") or ""),
+                "child": _safe_display_value(r.get("child_name") or ""),
                 "authorization": r.get("authorization_id") or r.get("auth_id") or "--",
                 "county": r.get("county_name") or "--",
                 "confirmed_absences": r.get("confirmed_absence_count", len(r.get("confirmed_absence_dates") or [])),
@@ -1523,18 +1553,17 @@ def _blocks_incomplete_attendance(recommended):
     rows = [row for row in ((_ctx("payoutImpactResult") or {}).get("rows") or [])
             if isinstance(row, dict) and row.get("risk_category") == "incomplete"
             and (not _win or (row.get("date") or "") >= _win)]
-    _mask = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
     blocks = []
     if not rows:
-        blocks.append(_mk_accordion([{"title": "Missing check-in/check-out", "content": "No incomplete attendance found in the current window."}]))
+        blocks.append(_mk_accordion([{"title": "Missing check-in/check-out", "content": "No missing check-ins or check-outs were found in this window."}]))
     else:
         tbl = _mk_table(
             "Missing check-in/check-out",
             [("child", "Child"), ("authorization", "Authorization"), ("service_date", "Service date"),
              ("attendance_type", "Attendance type"), ("reason", "Reason")],
-            [{"child": _mask(r.get("child_name") or ""), "authorization": r.get("authorization_id") or r.get("auth_id") or "--",
+            [{"child": _safe_display_value(r.get("child_name") or ""), "authorization": r.get("authorization_id") or r.get("auth_id") or "--",
               "service_date": _fmt_date(r.get("date")), "attendance_type": "Missing check-in/check-out",
-              "reason": r.get("reason") or "A scheduled day is missing one attendance event"} for r in rows],
+              "reason": r.get("reason") or "A check-in or check-out was not logged for this day"} for r in rows],
         )
         if tbl:
             blocks.append(tbl)
@@ -1556,12 +1585,11 @@ def _blocks_payout_impact(recommended):
     elif _pi_scope == "payout_impact_incomplete":
         rows = [r for r in rows if (r.get("risk_category") or "") == "incomplete"]
     _calc_rows = [r for r in rows if r.get("amount") is not None]
-    _mask = lambda cn: cn if cn and not (cn.isalnum() and len(cn) >= 15) else "--"
     blocks = []
     if not rows:
-        blocks.append(_mk_accordion([{"title": "Payout impact", "content": "No attendance risk currently affects an upcoming payout."}]))
+        blocks.append(_mk_accordion([{"title": "Payout impact", "content": "None of your current attendance risk is affecting an upcoming payout."}]))
     elif not _calc_rows:
-        blocks.append(_mk_accordion([{"title": "Payout impact", "content": "Attendance risk entries were found but payout amounts couldn't be calculated — rate schedule data may still be loading."}]))
+        blocks.append(_mk_accordion([{"title": "Payout impact", "content": "Attendance risk was found, but the payout impact cannot be calculated yet — rate schedule data may still be loading. Please try again shortly."}]))
     else:
         total_hours = sum(float(_r.get("care_hours") or 0) for _r in _calc_rows)
         total_dollar = sum(float(_r.get("amount") or 0) for _r in _calc_rows)
@@ -1569,7 +1597,7 @@ def _blocks_payout_impact(recommended):
         blocks.append(_mk_text("Payout impact of current attendance risk"))
         _agg = {}
         for _r in _calc_rows:
-            _k = (_mask(_r.get("child_name") or ""), _r.get("authorization_id") or "--", _r.get("county_name") or "--", _r.get("risk_category") or "")
+            _k = (_safe_display_value(_r.get("child_name") or ""), _r.get("authorization_id") or "--", _r.get("county_name") or "--", _r.get("risk_category") or "")
             if _k not in _agg:
                 _agg[_k] = {"hours": Decimal("0"), "amount": Decimal("0"), "amount_type": _r.get("amount_type") or "--", "reason": _r.get("reason") or "--"}
             _agg[_k]["hours"] += Decimal(str(_r.get("care_hours") or 0))
@@ -1603,9 +1631,9 @@ def _blocks_payment(recommended):
     blocks = []
     if not rows and not settled:
         if not top_level_blockers:
-            blocks.append(_mk_accordion([{"title": "No payment history found", "content": "No payment records are available for the requested period."}]))
+            blocks.append(_mk_accordion([{"title": "No payment history found", "content": "There is no payment record on file for this period yet. This is expected if the county has not yet processed it."}]))
         else:
-            blocks.append(_mk_text("That payment view couldn't be fully calculated right now."))
+            blocks.append(_mk_text("I encountered a few data issues while calculating this. Here is what is blocking it:"))
             tbl = _mk_table(
                 "Payment issues",
                 [("issue_area", "Issue area"), ("reason", "Reason")],
@@ -1653,11 +1681,11 @@ def _blocks_payment_multi_period(recommended):
     periods = result.get("periods") or []
     blocks = []
     if not periods:
-        blocks.append(_mk_accordion([{"title": "Payment summary", "content": "No service periods found for that range."}]))
+        blocks.append(_mk_accordion([{"title": "Payment summary", "content": "I couldn't find any service periods in that date range. Please try a different range, or ask for your next payout."}]))
     else:
         page = _ctx("turnRequest.fetchParams.page") or 0
         try:
-            page = int(page)
+            page = max(0, int(page))
         except (TypeError, ValueError):
             page = 0
         all_rows = []
@@ -1671,7 +1699,7 @@ def _blocks_payment_multi_period(recommended):
         total_count = len(all_rows)
         start_idx = page * MULTI_PERIOD_PAGE_SIZE
         page_rows = all_rows[start_idx:start_idx + MULTI_PERIOD_PAGE_SIZE]
-        grand_total = sum((Decimal(p.get("potential_total_amount") or p.get("total_amount") or "0.00") for p in periods), Decimal("0"))
+        grand_total = sum((_safe_decimal(p.get("potential_total_amount") or p.get("total_amount") or "0.00") for p in periods), Decimal("0"))
         caption = f"Payment summary — period by period · Grand total: {_fmt_money(grand_total)}"
         if total_count > MULTI_PERIOD_PAGE_SIZE:
             shown_end = min(start_idx + MULTI_PERIOD_PAGE_SIZE, total_count)
@@ -1753,7 +1781,7 @@ def _blocks_payment_child_detail(recommended, child_key):
     rows = _child_rows(result.get("rows") or [], child_key)
     blocks = []
     if not rows:
-        blocks.append(_mk_text(f"No attendance found for \"{child_key}\" in this service period."))
+        blocks.append(_mk_text(f"I couldn't find any attendance records for \"{child_key}\" in this service period. Please verify the spelling, or ask me to list your children."))
         btn = _mk_buttons(recommended)
         if btn:
             blocks.append(btn)
@@ -1765,8 +1793,8 @@ def _blocks_payment_child_detail(recommended, child_key):
     total_days, total_hours, total_amount = 0, Decimal("0"), Decimal("0")
     for label, group in _group_by_classification(payable_rows).items():
         days = len(group)
-        hours = sum((Decimal(str(r.get("payable_hours") or "0")) for r in group), Decimal("0"))
-        amount = sum((Decimal(r["amount"]) for r in group), Decimal("0"))
+        hours = sum((_safe_decimal(r.get("payable_hours")) for r in group), Decimal("0"))
+        amount = sum((_safe_decimal(r.get("amount")) for r in group), Decimal("0"))
         category_rows.append({"category": label, "days": days, "hours": _fmt_hours(float(hours)), "amount": _fmt_money(str(amount))})
         total_days += days
         total_hours += hours
@@ -1793,16 +1821,16 @@ def _blocks_payment_county_detail(recommended, county_key):
     blocks = []
     if not matching:
         blocks.append(_mk_accordion([{"title": f"County detail — {county_key}",
-                                      "content": f"No payment data found for county \"{county_key}\" in this service period."}]))
+                                      "content": f"I don't have payment data for \"{county_key}\" in this service period. Please verify the county name, or request your full breakdown."}]))
         btn = _mk_buttons(recommended)
         if btn:
             blocks.append(btn)
         return blocks
     attended = [r for r in matching if r.get("kind") == "ATTENDED_CARE" and r.get("status") in ("calculated", "at_risk")]
     vacant = [r for r in matching if r.get("kind") == "VACANT_SLOT" and r.get("status") == "calculated"]
-    attended_amount = sum((Decimal(r["amount"]) for r in attended), Decimal("0"))
-    attended_hours = sum((Decimal(str(r.get("payable_hours") or "0")) for r in attended), Decimal("0"))
-    vacant_amount = sum((Decimal(r["amount"]) for r in vacant), Decimal("0"))
+    attended_amount = sum((_safe_decimal(r.get("amount")) for r in attended), Decimal("0"))
+    attended_hours = sum((_safe_decimal(r.get("payable_hours")) for r in attended), Decimal("0"))
+    vacant_amount = sum((_safe_decimal(r.get("amount")) for r in vacant), Decimal("0"))
     county_name = matching[0].get("county_name") or county_key
     tbl = _mk_table(
         f"County: {county_name}",
@@ -1857,7 +1885,7 @@ def _blocks_explain(recommended):
         if tbl:
             blocks.append(tbl)
     elif not blocks:
-        blocks.append(_mk_accordion([{"title": "Current status", "content": "No outstanding items found for the current period."}]))
+        blocks.append(_mk_accordion([{"title": "Current status", "content": "There are no outstanding items to flag for the current period."}]))
     btn = _mk_buttons(recommended)
     if btn:
         blocks.append(btn)
@@ -1908,8 +1936,8 @@ def _blocks_clarify(recommended, prior_recommended=None):
     elif provider_verified:
         headline = "What can I help you with next?"
     else:
-        headline = "Welcome to Provider Assist. What would you like to look at today?"
-    content = f"{headline}\n\nChoose an option below, or tell me in your own words."
+        headline = "Hello, I'm Provider Assist. I can help you review attendance, payments, and payout details. What would you like to look at first?"
+    content = f"{headline}\n\nSelect an option below, or describe what you need in your own words."
     blocks = [_mk_text(content)]
     btn = _mk_buttons(recommended)
     if btn:
@@ -1919,16 +1947,20 @@ def _blocks_clarify(recommended, prior_recommended=None):
 
 def _blocks_unauthorized():
     return [_mk_accordion([{"title": "Verification required",
-                            "content": "The provider account on this session couldn't be verified, or is outside the authorized CCARE services for this program. If this seems incorrect, please contact your program administrator."}])]
+                            "content": "I am unable to verify your provider account for this session — it may not yet be authorized for CCARE services, or the session may have expired. If you believe this is incorrect, please contact your program administrator to review your access."}])]
 
 
 def _blocks_fallback(recommended):
     blocks = [_mk_accordion([{"title": "Unable to load snapshot",
-                              "content": "I couldn't load today's provider snapshot. Please try again later or contact your system administrator."}])]
+                              "content": "I was unable to retrieve your account details at this time. This is typically temporary — please try again shortly, and contact your system administrator if the issue persists."}])]
     btn = _mk_buttons(recommended)
     if btn:
         blocks.append(btn)
     return blocks
+
+
+def _blocks_end():
+    return [_mk_text("Thank you for checking in. Have a good rest of your day.")]
 
 
 
@@ -1954,6 +1986,8 @@ elif _action == "STARTER":
     _formatted = render_greeting(_recommended)
 elif _provider_status == "needs_clarification" or _action == "CLARIFY":
     _formatted = render_clarify(_recommended, _previous_recommended)
+elif _action == "END":
+    _formatted = render_end()
 elif _action == "EXPLAIN":
     _formatted = render_explain(_recommended)
 elif _action == "PAYMENT":
@@ -2004,6 +2038,8 @@ elif _action == "STARTER":
     _blocks = _blocks_greeting(_recommended)
 elif _provider_status == "needs_clarification" or _action == "CLARIFY":
     _blocks = _blocks_clarify(_recommended, _previous_recommended)
+elif _action == "END":
+    _blocks = _blocks_end()
 elif _action == "EXPLAIN":
     _blocks = _blocks_explain(_recommended)
 elif _action == "PAYMENT":
@@ -2122,7 +2158,7 @@ for _b in _blocks:
         _parts.append("```chat-ui\n" + json.dumps(_b, ensure_ascii=False, separators=(",", ":")) + "\n```")
 
 respond(
-    "\n\n".join(_parts) if _parts else "I could not load today's provider snapshot. Please try again later or contact your system administrator.",
+    "\n\n".join(_parts) if _parts else "I was unable to retrieve your account details at this time. This is typically temporary — please try again shortly, and contact your system administrator if the issue persists.",
     confidence=1.0,
 )
 

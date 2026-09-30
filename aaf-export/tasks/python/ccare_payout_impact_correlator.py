@@ -188,12 +188,16 @@ def _fiscal_schedule_index(fiscal_agreements, fiscal_schedules):
 
 
 def _rate_lookup(fiscal_rates):
+    """Phase 4: key by the SAME normalized rate type _resolve_rate_for_schedule
+    queries with (_fiscal_rate_type()) -- storing the raw code here while the
+    query side normalizes meant an alias code (e.g. 2-6 -> 1) could never
+    match, surfacing as a false "fiscal_rate" blocker."""
     lookup = {}
     for rate in fiscal_rates:
         if not isinstance(rate, dict):
             continue
         ext_id = _text(rate, "idn_fiscal_sch__c")
-        rate_type = _text(rate, "cde_rate_type__c")
+        rate_type = _fiscal_rate_type(_text(rate, "cde_rate_type__c"))
         age_group = _text(rate, "cde_age_group__c") or ""
         care_unit = _text(rate, "cde_care_unit__c")
         amount = _number(rate, "amt_fa__c", "amount")
@@ -355,6 +359,20 @@ def _correlate():
     analyzer = _ctx("attendance_risks_analyzer_py") or {}
     approaching = analyzer.get("approaching_absence_limits") or []
     unconfirmed = analyzer.get("pending_confirmation_records") or []
+
+    # Phase 0c: zero-risk short-circuit -- STARTER turns always run this
+    # correlator (payout_impact_gate's "starter" branch) even when there is
+    # nothing to correlate. Skip the fiscal-rate lookup/index build entirely
+    # rather than paying for it with an empty result.
+    if not approaching and not unconfirmed:
+        return {
+            "status": "ok", "rows": [], "total_hours_at_risk": 0.0, "total_dollar_at_risk": "0.00",
+            "absence_risk_hours": 0.0, "absence_risk_amount": "0.00",
+            "unconfirmed_risk_hours": 0.0, "unconfirmed_risk_amount": "0.00",
+            "incomplete_risk_hours": 0.0, "incomplete_risk_amount": "0.00",
+            "unconfirmed_count": 0, "unconfirmed_children": 0,
+        }
+
     _ref_date = (analyzer.get("reference_date") or "")[:10]
     _lookback = int(analyzer.get("lookback_days") or 9)
     _win_start = None
@@ -407,6 +425,11 @@ def _correlate():
     schedules = _as_list((raw_bundle.get("schedulesData") or {}).get("schedules"))
     absence_identities = {}
     unconfirmed_identities = {}
+    # Phase 4: join instrumentation -- ratio (not just a raw count) shows
+    # whether the analyzer/correlator child-id join is actually failing in
+    # production, without guessing at a key-normalization "fix" first.
+    _join_attempts = 0
+    _join_unmatched = 0
 
     def _skip(child_name, county_name):
         if child_filter and (child_name or "").lower() not in child_filter:
@@ -479,12 +502,14 @@ def _correlate():
             if _absence_key in absence_identities:
                 continue
             absence_identities[_absence_key] = 1
+            _join_attempts += 1
             schedule = by_auth_date.get((str(group.get("authorization_id")), absence_date))
             if not schedule:
                 schedule = by_child_date.get((str(group.get("child_id")), absence_date))
             if not schedule:
                 # A missing schedule is not a valid absence or payment day.
                 absence_unresolved = True
+                _join_unmatched += 1
                 continue
             hours = _number(schedule, "CI_Authorization_Hours__c", "authorized_hours") or Decimal("0")
             authorization = auth_by_id.get(group.get("authorization_id")) or auth_by_name.get(
@@ -511,11 +536,13 @@ def _correlate():
             continue
         if _skip(item.get("child_name"), None):
             continue
+        _join_attempts += 1
         schedule = by_id.get(str(item.get("schedule_id")))
         if not schedule:
             # Analyzer records are only actionable when their source schedule
             # still exists in the collected data.
             unconfirmed_unresolved = True
+            _join_unmatched += 1
             continue
         identity = _risk_identity(
             schedule,
@@ -561,6 +588,15 @@ def _correlate():
             authorization.get("IDN_CLIENT__r") if isinstance(authorization, dict) else None,
             "Name", "name", "NAM_FIRST__c",
         ) or _text(schedule, "child_name", "childName")
+        # Phase 3 filter-leak fix: this was the only risk-category loop that
+        # skipped _skip() entirely -- a scoped request could still aggregate
+        # out-of-scope incomplete-attendance rows into the totals.
+        _county_name_for_skip = _text(
+            authorization.get("CDE_COUNTY__r") if isinstance(authorization, dict) else None, "Name", "name",
+        )
+        if _skip(child_name, _county_name_for_skip):
+            continue
+        _join_attempts += 1
         if _risk_identity(
             schedule,
             fallback_auth=authorization_ref,
@@ -639,6 +675,11 @@ def _correlate():
         "incomplete_risk_amount": None if incomplete_unresolved else (_money(incomplete_dollar) if incomplete_dollar else "0.00"),
         "unconfirmed_count": len(unconfirmed),
         "unconfirmed_children": len({r.get("child_name") or r.get("child_id") for r in unconfirmed if r.get("child_name") or r.get("child_id")}),
+        "diagnostics": {
+            "join_attempts": _join_attempts,
+            "join_unmatched": _join_unmatched,
+            "join_unmatched_ratio": round(_join_unmatched / _join_attempts, 3) if _join_attempts else 0.0,
+        },
     }
 
 

@@ -206,6 +206,12 @@ for plan in rate_plans:
     if county_id:
         rate_plan_by_county[county_id] = plan
 
+# Phase 3 filter-leak fix: read scope filters before the aggregation loop so
+# an out-of-scope child/county is skipped at the source, not after grouping.
+turn_request = read_context("turnRequest") or {}
+child_filter = {str(c).strip().lower() for c in (turn_request.get("childNames") or []) if c}
+county_filter = {str(c).strip().lower() for c in (turn_request.get("countyNames") or []) if c}
+
 # Confirmed join (same as ccare_payment_engine.py):
 # schedule.CI_Authorization_Id__c -> authorization.Name.
 auth_by_name = {}
@@ -244,6 +250,14 @@ for schedule in schedules:
     linked_provider_id = _text(auth, "IDN_PROVR__c") or provider_id
     tier = provider_tier
 
+    # Phase 3 filter-leak fix: skip out-of-scope schedules before any
+    # aggregation/grouping, not just at the very end on the finished lists.
+    if child_filter and (child_name or "").strip().lower() not in child_filter:
+        continue
+    county_name_for_filter = _text(rate_plan_by_county.get(county_id, {}), "countyName", "county_name") if county_id else None
+    if county_filter and (county_name_for_filter or "").strip().lower() not in county_filter:
+        continue
+
     # 2026-09-26 (confirmed, was previously guessed): Status__c does not
     # exist as a top-level Schedule__c field -- it lives on the child
     # Attendance__r.records[] (Transaction__c rows). Same fix applied in
@@ -253,11 +267,14 @@ for schedule in schedules:
         _text(r, "Status__c") == PARENT_PENDING for r in attendance_records if isinstance(r, dict)
     )
     if is_pending:
+        # Phase 6: carry county_name (not just county_id) so a county-name
+        # filter downstream doesn't silently drop in-scope pending rows.
         pending_confirmation_records.append({
             "schedule_id": schedule_id,
             "auth_id": auth_ref,
             "child_id": child_id,
             "child_name": child_name,
+            "county_name": _text(rate_plan_by_county.get(county_id, {}), "countyName", "county_name") if county_id else None,
             "provider_id": linked_provider_id,
             "county_id": county_id,
             "date": schedule_date,
@@ -330,8 +347,11 @@ for group in absence_groups.values():
             "absence_limit": limit,
             "confirmed_absence_count": confirmed_used,
             "probable_absence_count": tentative_used,
-            "confirmed_absence_remaining": max(confirmed_remaining, 0),
-            "potential_absence_remaining": max(potential_remaining, 0),
+            # Phase 6: preserve the signed value -- clamping to zero hid how
+            # far over the limit a child actually was (exact-limit and
+            # exceeded-by-N looked identical to a consumer reading this field).
+            "confirmed_absence_remaining": confirmed_remaining,
+            "potential_absence_remaining": potential_remaining,
             "status": _status_from_remaining(confirmed_remaining, potential_remaining, tentative_used, near_limit_threshold),
             "year_month": group["year_month"],
             "confirmed_absence_dates": sorted(group["confirmed_absence_dates"]),
@@ -368,8 +388,17 @@ if input_errors:
     write_context("result.error", error_response)
     respond(error_response)
 else:
+    # Phase 0 caching: scope fingerprint so a same-scope subFilter switch
+    # (e.g. ABSENCE_LIMITS -> INCOMPLETE_ATTENDANCE) can skip recalculation.
+    result["scopeFingerprint"] = {
+        "child_filter": sorted(child_filter),
+        "county_filter": sorted(county_filter),
+        "as_of_date": reference_date,
+        "dataSnapshotVersion": read_context("dataManifest.fetchedAtEpoch"),
+    }
     write_context("result.approaching_absence_limits", result["approaching_absence_limits"])
     write_context("result.pending_confirmation_records", result["pending_confirmation_records"])
+    write_context("result.scopeFingerprint", result["scopeFingerprint"])
     respond(result)
 
 # __________________________GenAI: Generated code ends here______________________________

@@ -1,9 +1,15 @@
 kind: Process
 id: ccare_provider_agent_process
 name: CCARE Provider Agent process
-version: 1.24.0
+version: 1.25.0
 description: |-
-  2026-09-28: ccare_progress_emitter restored as a context-writer — calls write_context(progressMessage) then returns empty string; never touches final_response. Frontend polls context.progressMessage for live progress display. Single response per turn remains owned by ccare_response_formatter. 14 nodes / 27 edges.
+  2026-09-29: ccare_unified_intent_router shrunk to a pure LLM classifier;
+  new deterministic ccare_turn_request_finalizer_py inserted right after it
+  to resolve positional references, build fetchParams, apply date defaults,
+  and compose a templated context-aware progressMessage -- moves all
+  non-language-understanding work off the LLM to cut per-turn token/latency
+  cost. Same turnRequest contract downstream, no other task changed. 15
+  nodes / 28 edges.
 model: bedrock/us.anthropic.claude-sonnet-5
 model_error: null
 tasks:
@@ -14,6 +20,14 @@ tasks:
   position: 1
   config:
     bound_task: ccare_unified_intent_router
+  parallel_group: null
+- node_id: ccare_turn_request_finalizer_py
+  name: Turn request finalizer
+  task_type: task
+  bound_task: ccare_turn_request_finalizer_py
+  position: 4
+  config:
+    bound_task: ccare_turn_request_finalizer_py
   parallel_group: null
 - node_id: provider_validated_gate
   name: Provider session validated gate
@@ -128,6 +142,30 @@ tasks:
     - name: default
       condition_type: default
   parallel_group: null
+- node_id: ccare_scope_cache_gate_py
+  name: Shared scope cache gate
+  task_type: task
+  bound_task: ccare_scope_cache_gate_py
+  position: 9
+  config:
+    bound_task: ccare_scope_cache_gate_py
+  parallel_group: null
+- node_id: attendance_cache_gate
+  name: Attendance cache gate
+  task_type: decision
+  bound_task: null
+  position: 10
+  config:
+    branches:
+    - value: 'YES'
+      name: cache_valid
+      source: context.turnRequest
+      path: attendanceCacheValid
+      operator: contains
+      condition_type: text
+    - name: default
+      condition_type: default
+  parallel_group: null
 - node_id: attendance_risks_analyzer_py
   name: Attendance risk analysis
   task_type: task
@@ -135,6 +173,22 @@ tasks:
   position: 10
   config:
     bound_task: attendance_risks_analyzer_py
+  parallel_group: null
+- node_id: payment_cache_gate
+  name: Payment cache gate
+  task_type: decision
+  bound_task: null
+  position: 13
+  config:
+    branches:
+    - value: 'YES'
+      name: cache_valid
+      source: context.turnRequest
+      path: paymentCacheValid
+      operator: contains
+      condition_type: text
+    - name: default
+      condition_type: default
   parallel_group: null
 - node_id: payout_impact_gate
   name: Payout impact gate
@@ -195,6 +249,12 @@ tasks:
       path: status
       operator: contains
       condition_type: text
+    - value: END
+      name: end
+      source: context.turnRequest
+      path: action
+      operator: equals
+      condition_type: text
     - name: continue
       condition_type: default
   parallel_group: null
@@ -207,6 +267,9 @@ tasks:
   parallel_group: null
 edges:
 - from: ccare_unified_intent_router
+  to: ccare_turn_request_finalizer_py
+  condition: always
+- from: ccare_turn_request_finalizer_py
   to: provider_validated_gate
   condition: always
 - from: provider_validated_gate
@@ -231,19 +294,22 @@ edges:
   to: ccare_data_collection
   condition: default
 - from: ccare_data_collection
+  to: ccare_scope_cache_gate_py
+  condition: always
+- from: ccare_scope_cache_gate_py
   to: action_dispatch
   condition: always
 - from: action_dispatch
-  to: attendance_risks_analyzer_py
+  to: attendance_cache_gate
   condition: attendance
 - from: action_dispatch
-  to: ccare_payment_action
+  to: payment_cache_gate
   condition: payment
 - from: action_dispatch
   to: ccare_response_formatter
   condition: explain
 - from: action_dispatch
-  to: attendance_risks_analyzer_py
+  to: attendance_cache_gate
   condition: starter
 - from: action_dispatch
   to: ccare_response_formatter
@@ -252,8 +318,14 @@ edges:
   to: ccare_response_formatter
   condition: default
 - from: action_dispatch
-  to: human_end
+  to: ccare_response_formatter
   condition: end
+- from: attendance_cache_gate
+  to: payout_impact_gate
+  condition: cache_valid
+- from: attendance_cache_gate
+  to: attendance_risks_analyzer_py
+  condition: default
 - from: attendance_risks_analyzer_py
   to: payout_impact_gate
   condition: always
@@ -269,6 +341,12 @@ edges:
 - from: ccare_payout_impact_correlator
   to: ccare_response_formatter
   condition: always
+- from: payment_cache_gate
+  to: ccare_response_formatter
+  condition: cache_valid
+- from: payment_cache_gate
+  to: ccare_payment_action
+  condition: default
 - from: ccare_payment_action
   to: payout_impact_gate
   condition: always
