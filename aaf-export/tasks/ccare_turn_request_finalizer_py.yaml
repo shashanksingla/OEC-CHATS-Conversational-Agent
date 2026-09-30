@@ -3,11 +3,7 @@ id: ccare_turn_request_finalizer_py
 name: CCARE Turn Request Finalizer (PY)
 version: 1.0.0
 description: |-
-  Deterministic post-processor for the shrunk ccare_unified_intent_router.
-  Resolves positional references, builds fetchParams, applies date defaults,
-  derives routingClass/intent, and composes a templated context-aware
-  progressMessage -- assembles the same turnRequest shape the rest of the
-  process already expects, with zero LLM cost.
+  Deterministic post-processor for the router: resolves positional refs, builds fetchParams/date defaults, composes progressMessage.
 model: null
 model_error: null
 task_type: deterministic

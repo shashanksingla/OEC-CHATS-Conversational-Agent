@@ -1,9 +1,6 @@
 """_______________This Code was generated using GenAI tool : Codify, Please check for accuracy_______________
 
-ccare_data_collection, v1.0.56. Fetches county, holiday, authorization, and
-schedule data in parallel and builds the provider snapshot written to
-context.data_collection_result/raw_provider_data.
-
+Fetches provider source data in parallel and builds the provider snapshot.
 Runtime affordances: _context, call_endpoint(), write_context(), respond().
 """
 
@@ -165,14 +162,7 @@ def _service_period_support_params(sub_filter, turn_request, initial_params, per
         if matching:
             selected_periods = matching
 
-    # Widened to the full calendar month(s) spanning the resolved period,
-    # not just the period's own start/end -- county absence/drop-in limits
-    # are monthly, and a service period can be a sub-range (e.g. weekly)
-    # within that month. Scoping getSchedules to only the narrow period
-    # window (the previous behavior for NEXT_PAYOUT/CURRENT_PERIOD_FORECAST/
-    # FULL_BREAKDOWN/SPECIFIC_PERIOD) made sibling periods' absences in the
-    # same month invisible, undercounting the true monthly limit regardless
-    # of which specific view was being explored.
+    # Use full calendar months because absence limits are monthly.
     if sub_filter == "LAST_PAYOUT" and selected_periods:
         start, end = _period_bounds(selected_periods[:1])
         if start is not None and end is not None:
@@ -567,7 +557,7 @@ def _build_snapshot(providers, resolved_filters, county_data, holiday_data, auth
 
 
 def _materialize_bounds(resolved_f, df):
-    """Resolve dateFilter label + resolved_filters to actual (from, to) date strings."""
+    """Resolve filters to concrete date bounds."""
     if isinstance(resolved_f, dict):
         if resolved_f.get("dateFrom") and resolved_f.get("dateTo"):
             return resolved_f["dateFrom"], resolved_f["dateTo"]
@@ -620,12 +610,7 @@ def _scope_matches_manifest(manifest, source_params):
 
 
 def _date_window_within_manifest(manifest, source_params):
-    """True when the CURRENT request's date window is fully covered by the
-    already-fetched manifest window -- schedules/holidays are fetched for
-    the full calendar month, so a narrower drill-down window (e.g. one
-    service period) still falls inside it. Unmaterializable filters
-    (TODAY/LAST_N_MONTHS/etc.) return False -- conservative, forces a real
-    fetch rather than risk reusing an unrelated window."""
+    """Return whether the request window is covered by the manifest."""
     if not isinstance(manifest, dict):
         return False
     m_from, m_to = manifest.get("dateFrom"), manifest.get("dateTo")
@@ -638,14 +623,7 @@ def _date_window_within_manifest(manifest, source_params):
 
 
 def _filters_covered(current_child, current_county, cached_child, cached_county):
-    """True when current is equal-or-narrower than cached. An empty cached
-    filter means 'all' was fetched -- any current filter is covered. A
-    non-empty cached filter requires current to be non-empty AND a subset
-    -- an empty current filter is NOT trivially covered (fixes the earlier
-    bug where an empty set was wrongly treated as a subset of everything,
-    letting a broadened "all children" request reuse a narrow cached
-    scope). Single helper shared by every narrowing check in this file so
-    the fetch-reuse and engine-cache decisions can never drift apart."""
+    """Return whether current filters are covered by cached filters."""
     def _covered(current, cached):
         if not cached:
             return True
@@ -654,14 +632,7 @@ def _filters_covered(current_child, current_county, cached_child, cached_county)
 
 
 def _drill_down_reuse(turn_request, manifest, payment_result, attendance_result, source_params):
-    """Generalized replacement for the old FULL_BREAKDOWN-only reuse check.
-    Covers payment full-breakdown/named-child/named-county drill-downs,
-    attendance subfilter switches, and payment<->attendance views over the
-    SAME already-fetched scope. Requires: current child/county filter
-    equal-or-narrower than the cached scope, same already-fetched date
-    window, current data snapshot, and (when a period is requested) that
-    period already resolved in the cached payment scope. Any unknown
-    period id or a broadened/changed filter falls through to a real fetch."""
+    """Return whether cached data can satisfy the current drill-down."""
     if not isinstance(manifest, dict) or not manifest.get("fetchedAtEpoch"):
         return False
     snapshot_version = manifest.get("fetchedAtEpoch")
@@ -675,9 +646,7 @@ def _drill_down_reuse(turn_request, manifest, payment_result, attendance_result,
             return False
         if str(service_period_id) not in (fp.get("resolved_service_period_ids") or []):
             return False
-        # A cached result from a different subFilter must never be reused
-        # just because the explicit period id happens to match -- the two
-        # views can carry different classification/scoping assumptions.
+        # Require matching subFilter; views may use different scopes.
         if fp.get("subFilter") != current_sub_filter:
             return False
     else:
@@ -687,10 +656,7 @@ def _drill_down_reuse(turn_request, manifest, payment_result, attendance_result,
             if (
                 isinstance(candidate_fp, dict)
                 and candidate_fp.get("dataSnapshotVersion") == snapshot_version
-                # subFilter match required here too -- a wide ALL/CURRENT_MONTH
-                # or attendance-scan fingerprint must never satisfy a later,
-                # unrelated NEXT_PAYOUT/LAST_PAYOUT/etc. ask just because the
-                # snapshot version and (empty) child/county filters line up.
+                # Require matching subFilter to prevent unrelated cache reuse.
                 and candidate_fp.get("subFilter") == current_sub_filter
             ):
                 fp = candidate_fp
@@ -709,13 +675,7 @@ def _drill_down_reuse(turn_request, manifest, payment_result, attendance_result,
 
 
 def _engine_cache_status(turn_request, manifest, payment_result, attendance_result):
-    """Single source of truth for engine-recompute avoidance -- replaces
-    the separately-maintained ccare_scope_cache_gate_py._cache_check (which
-    used exact-equality filters and had already drifted from the narrowing
-    semantics _drill_down_reuse relies on). Uses the SAME _filters_covered
-    helper so the fetch-reuse and engine-cache decisions can never diverge
-    again. Writes paymentCacheValid/attendanceCacheValid/engineCacheValid
-    for engine_cache_gate and ccare_calc_engine_py to consume, unchanged."""
+    """Compute cache-validity flags for payment, attendance, and engine reuse."""
     turn_request = turn_request if isinstance(turn_request, dict) else {}
     snapshot_version = manifest.get("fetchedAtEpoch") if isinstance(manifest, dict) else None
     current_child = {str(c).strip().lower() for c in (turn_request.get("childNames") or []) if c}
@@ -727,12 +687,7 @@ def _engine_cache_status(turn_request, manifest, payment_result, attendance_resu
         fp = result.get("scopeFingerprint") if isinstance(result, dict) else None
         if not isinstance(fp, dict) or fp.get("dataSnapshotVersion") != snapshot_version:
             return "NO"
-        # A cached result computed for a different subFilter must never be
-        # treated as valid here either -- e.g. a wide ALL/CURRENT_MONTH
-        # paymentResult (or a needs_period_selection stub with an empty
-        # resolved_service_period_ids list) satisfying a later NEXT_PAYOUT
-        # ask purely on snapshot/child/county match was the actual cause of
-        # a stale "multiple service periods found" prompt for NEXT_PAYOUT.
+        # Require matching subFilter before accepting cached results.
         if fp.get("subFilter") != current_sub_filter:
             return "NO"
         cached_child = set(fp.get("child_filter") or [])
@@ -751,10 +706,7 @@ def _engine_cache_status(turn_request, manifest, payment_result, attendance_resu
     if action == "PAYMENT":
         engine_valid = payment_valid
     elif action in ("ATTENDANCE", "STARTER"):
-        # PAYOUT_IMPACT/STARTER always force a fresh engine run (verbatim
-        # from the retired ccare_scope_cache_gate_py) -- engineCacheValid=NO
-        # here does not mean the attendance SCAN re-runs too; the engine
-        # checks attendanceCacheValid separately for that inner decision.
+        # PAYOUT_IMPACT/STARTER always force a fresh engine run.
         engine_valid = "NO" if (sub_filter == "PAYOUT_IMPACT" or action == "STARTER") else attendance_valid
     else:
         engine_valid = "NO"
@@ -771,7 +723,7 @@ raw_provider_path, raw_provider_data = _first_available_entry(
     "providerDataRaw",
 )
 provider_bundle, bundle_filters = _provider_bundle(raw_provider_data)
-# When called as a refresh node, turnRequest.fetchParams overrides the session date scope.
+# Refresh fetchParams override the session date scope.
 _fetch_params = _as_object(_safe_get("turnRequest.fetchParams")) or {}
 _refresh_filters = None
 if _fetch_params:
@@ -796,7 +748,7 @@ resolved_filters = (
 )
 date_filter = resolved_filters.get("dateFilter", "THIS_MONTH") if isinstance(resolved_filters, dict) else "THIS_MONTH"
 
-# Resolve weekly date filters to explicit DATE_RANGE to handle month-boundary edge cases.
+# Resolve weekly filters to explicit date ranges.
 _WEEKLY_FILTERS = {"THIS_WEEK", "LAST_WEEK", "NEXT_WEEK"}
 if date_filter in _WEEKLY_FILTERS:
     _today = date.today()
@@ -811,7 +763,7 @@ if date_filter in _WEEKLY_FILTERS:
     }
     date_filter = "DATE_RANGE"
 
-# Ensure-data guard: skip the full fetch if data already covers this request
+# Skip fetch when existing data covers the request.
 _rc_value = _safe_get('turnRequest.routingClass')
 _rc = _rc_value.strip().upper() if isinstance(_rc_value, str) else ''
 _turn_request = _safe_get("turnRequest") or {}
@@ -850,8 +802,7 @@ _requested_scope_key = json.dumps({
     "servicePeriodId": _turn_request.get("servicePeriodId") if isinstance(_turn_request, dict) else None,
     "source": _initial_source_params,
     "servicePeriod": _service_period_params(_sub_filter, _turn_request, resolved_filters),
-    # Phase 3 filter-leak fix: a snapshot fetched for one child/county scope
-    # must never satisfy a request for a different scope.
+    # Scope cache keys by child and county filters.
     "childNames": sorted({str(c).strip().lower() for c in (_turn_request.get("childNames") or []) if c}) if isinstance(_turn_request, dict) else [],
     "countyNames": sorted({str(c).strip().lower() for c in (_turn_request.get("countyNames") or []) if c}) if isinstance(_turn_request, dict) else [],
 }, sort_keys=True)
@@ -882,10 +833,7 @@ if _skip_fetch:
         else f'existing data covers {date_filter}/{_r_sf}'
     )
     log(f'data-guard: {_skip_reason}')
-    # Part B: single-source cache-validity decision, relocated here from the
-    # retired ccare_scope_cache_gate_py node -- no extra node hop needed to
-    # compute it, this task already has everything (turnRequest, manifest,
-    # paymentResult, attendance_risks_analyzer_py) in hand.
+    # Compute cache validity from the available request and results.
     _cache_status = _engine_cache_status(_turn_request, _manifest, _payment_result, _attendance_result)
     write_context("turnRequest", dict(_turn_request, **_cache_status))
     log(f"engine cache: payment={_cache_status['paymentCacheValid']} attendance={_cache_status['attendanceCacheValid']} engine={_cache_status['engineCacheValid']}")
@@ -898,10 +846,7 @@ elif provider_bundle is None:
 else:
     providers = provider_bundle.get("providers")
     agreements = provider_bundle.get("fiscalAgreements")
-    # getProviderInfo's response already includes closures alongside
-    # fiscalAgreements (per the endpoint's own description) -- previously
-    # fetched but never propagated past this point, so the payment engine's
-    # closure-check always saw an empty list.
+    # Preserve closures returned with fiscal agreements.
     provider_closures = provider_bundle.get("providerClosures") or []
     if not isinstance(providers, list) or not isinstance(agreements, list):
         _respond_failure("providerDataRaw requires providers and fiscalAgreements arrays")
@@ -912,8 +857,7 @@ else:
         )
         county_ids = _unique_values(agreements, "CDE_COUNTY__c")
         projected_provider = _project_providers(providers, agreements)
-        # write_context (not set) -- must survive the human_gate_2 pause and be
-        # readable by ccare_payment_engine / attendance_risks_analyzer directly.
+        # Persist provider data for downstream tasks.
         write_context("provider", projected_provider)
         write_context("resolvedFilters", resolved_filters)
 
@@ -993,10 +937,7 @@ else:
             else:
                 auth_data = auth_response.get("data") or {}
                 authorizations = auth_data.get("authorizations", [])
-                # Phase 3 filter-leak fix: getAuthData has no name-based filter
-                # param, so narrow locally before anything downstream reads
-                # AuthInformation -- an unrelated child's authorization must
-                # never enter shared context for a scoped request.
+                # Narrow authorizations locally for scoped child requests.
                 _req_child_names = {str(c).strip().lower() for c in (_turn_request.get("childNames") or []) if c} if isinstance(_turn_request, dict) else set()
                 if _req_child_names:
                     authorizations = [
@@ -1084,8 +1025,7 @@ else:
                                 _payment_bundle.update({
                                     "fiscalRates": _fiscal_rate_data.get("fiscalRates") or [],
                                     "fiscalSchedules": _fiscal_rate_data.get("fiscalSchedules") or [],
-                                    # fiscalRateFees dropped -- fetched every turn but never consumed
-                                    # by any downstream calculation (dead latency).
+                                    # fiscalRateFees is unused downstream.
                                     "paymentHistory": _payment_history_data.get("subPayments") or [],
                                     "vacantSlots": _vacant_slot_data.get("vacantSlots") or _vacant_slot_data.get("records") or [],
                                 })
@@ -1098,10 +1038,7 @@ else:
                             elif _sub_filter == "LAST_PAYOUT":
                                 _payment_bundle["select_last_released"] = True
                             elif _sub_filter == "NEXT_PAYOUT":
-                                # Mirrors LAST_PAYOUT above: deterministic
-                                # client-side pick of the soonest upcoming
-                                # period, replacing count-based
-                                # disambiguation for this subfilter.
+                                # Select the soonest upcoming period client-side.
                                 _payment_bundle["select_next_upcoming"] = True
                             write_context("paymentData", _payment_bundle)
                             snapshot = _build_snapshot(
@@ -1153,10 +1090,7 @@ else:
                                 },
                             }
                             write_context("dataManifest", _new_manifest)
-                            # Part B: a real fetch just landed a fresh snapshot version --
-                            # any cached paymentResult/attendance scopeFingerprint predates
-                            # it, so this naturally resolves to NO without extra logic
-                            # (the version comparison inside _engine_cache_status handles it).
+                            # Fresh snapshots invalidate older cache fingerprints.
                             _cache_status = _engine_cache_status(_turn_request, _new_manifest, _payment_result, _attendance_result)
                             write_context("turnRequest", dict(_turn_request, **_cache_status))
                             log(f"engine cache: payment={_cache_status['paymentCacheValid']} attendance={_cache_status['attendanceCacheValid']} engine={_cache_status['engineCacheValid']}")

@@ -3,7 +3,7 @@ id: ccare_provider_data_py
 name: CCARE Provider Data (PY)
 version: 1.2.6
 description: |-
-  Writes context.sessionState.providerVerified='YES' once on first success -- a persistent, session-scoped flag never re-derived by per-turn freshness logic, read by provider_validated_gate to skip this task's getProviderInfo call on every turn after the first.
+  Validates provider identity once per session; sets sessionState.providerVerified so later turns skip re-fetching.
 model: null
 model_error: null
 task_type: deterministic

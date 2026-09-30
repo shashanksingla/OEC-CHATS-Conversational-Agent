@@ -3,7 +3,8 @@ id: ccare_payment_engine
 name: CCARE_Payment_Engine
 version: 1.3.44
 description: |-
-  Critical fix: unquoted set[str] type annotations (added for the county-holiday-list vacant-slot work) crash at function-definition time -- the AAF sandbox exec environment restricts the set builtin to a plain non-subscriptable wrapper function, so set[str] raised TypeError: 'function' object is not subscriptable on every single run since that feature was deployed. Every occurrence quoted as a forward-reference string (never evaluated at runtime) -- dict[...]/list[...] are unaffected and left as-is. | skip NO_CARE rows entirely: no scheduled care + no attendance is not a payment event, not a blocker. | HOLIDAY excluded from absence limit counter: holidays do not burn an absence slot.
+  Consolidated payment + attendance-risk + payout-impact calc engine.
+  Handles settlement, absence/drop-in limits, vacant-slot fees, per-subFilter period dispatch.
 model: null
 model_error: null
 task_type: deterministic

@@ -3,13 +3,7 @@ id: ccare_unified_intent_router
 name: ccare_unified_intent_router
 version: 2.0.0
 description: |-
-  Shrunk to a pure classifier (v2.0.0): every deterministic step (progress
-  messages, fetchParams, date defaults, positional-list indexing,
-  routingClass/intent derivation) now lives in the new
-  ccare_turn_request_finalizer_py task that runs right after this one. This
-  task only does the language-understanding work an LLM is actually needed
-  for -- cuts prompt size and generated-output size substantially, directly
-  reducing per-turn completion time and token cost.
+  Pure LLM classifier for provider turns -- action/subFilter/date/name extraction only; deterministic work lives in the finalizer.
 model: null
 model_error: null
 task_type: llm

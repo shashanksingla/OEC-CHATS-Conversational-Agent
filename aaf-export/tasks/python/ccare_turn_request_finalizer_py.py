@@ -1,13 +1,5 @@
 """_______________This Code was generated using GenAI tool : Codify, Please check for accuracy_______________
-
-ccare_turn_request_finalizer_py, v1.0.0. Runs immediately after the shrunk
-ccare_unified_intent_router (LLM). Takes the router's minimal classification
-output and deterministically assembles the full turnRequest the rest of the
-process expects: positional-reference resolution, fetchParams construction,
-date defaults, routingClass/intent derivation, and a templated, context-aware
-progressMessage -- none of which need LLM reasoning, so none of it costs
-model tokens/latency.
-
+Builds the deterministic turnRequest from router output and session context.
 Runtime affordances: read_context, write_context, respond().
 """
 
@@ -38,24 +30,16 @@ ACTION_META = {
     "END": ("END", "End"),
 }
 
-# ==============================================================================
-# STEP 0 -- POSITIONAL REFERENCE RESOLUTION
-# ==============================================================================
 
 def _resolve_positional(classification, recommended_actions, payment_candidates):
-    """Walks the router's OWN positionalRef -- extracted from phrasing the
-    pre-router ccare_action_shortcut_gate_py's bare-message check can't
-    catch (e.g. "the third one" inside a longer sentence). Bare number/
-    ordinal/"last" REPLIES never reach here -- the shortcut gate already
-    resolves those before the router even runs. Returns
-    (resolved_fields_dict, ok) -- ok=False means fall through to CLARIFY."""
+    """Resolves router positional references to an action or clarification."""
     ref = classification.get("positionalRef")
     if not ref or not isinstance(ref, dict):
         return {}, True
 
     ref_type = ref.get("type")
     value = ref.get("value")
-    # LLM JSON output sometimes quotes an integer -- coerce before rejecting.
+    # Coerce quoted integer values.
     if isinstance(value, str) and value.strip().lstrip("-").isdigit():
         value = int(value.strip())
 
@@ -64,8 +48,7 @@ def _resolve_positional(classification, recommended_actions, payment_candidates)
     if list_len == 0:
         return {}, False
 
-    # type=="last" carries value=null by design (per the router contract) --
-    # resolve it to the final list item instead of rejecting a missing value.
+    # "last" resolves to the final item when value is null.
     if ref_type == "last" and value is None:
         idx = list_len - 1
     elif isinstance(value, int) and value >= 1:
@@ -91,9 +74,7 @@ def _resolve_positional(classification, recommended_actions, payment_candidates)
         item = recommended_actions[idx]
         if not isinstance(item, dict):
             return {}, False
-        # A recommendedActions item's "id" is the recommendation's own label
-        # (e.g. "view_full_breakdown"), never a real service period ID --
-        # unlike payment_candidates above, so servicePeriodId must stay null.
+        # Recommendation IDs are labels, not service-period IDs.
         return {
             "action": item.get("action"),
             "subFilter": item.get("subFilter"),
@@ -102,10 +83,6 @@ def _resolve_positional(classification, recommended_actions, payment_candidates)
 
     return {}, False
 
-
-# ==============================================================================
-# STEP 3 -- DATE DEFAULTS + fetchParams (pure lookup, no reasoning)
-# ==============================================================================
 
 def _resolve_date_filter(action, date_filter):
     if action in ("CLARIFY", "END"):
@@ -124,11 +101,6 @@ def _build_fetch_params(sub_filter, date_filter, date_from, date_to, period_coun
         return {"dateFilter": date_filter, "periodCount": period_count}
     return {}
 
-
-# ==============================================================================
-# TEMPLATED, CONTEXT-AWARE PROGRESS MESSAGES -- current turn only, every
-# template is a complete standalone sentence regardless of which slots fill.
-# ==============================================================================
 
 def _scope_ref(child_names, county_names):
     if child_names:
@@ -152,23 +124,15 @@ def _period_ref(date_filter, service_period_id):
 
 
 def _progress_message(action, sub_filter, first_turn, mention_name, provider_name, child_names, county_names, date_filter, service_period_id, variant):
-    # CLARIFY's own final response already asks the provider for more detail
-    # (via its menu/headline) -- a separate "could you share more detail"
-    # progress bubble ahead of it is redundant and reads as two different,
-    # seemingly-contradictory messages (confirmed live: a "could you share
-    # more detail" bubble immediately followed by a full options menu that
-    # already resolves the same question).
+    # CLARIFY already asks for details in its final response.
     if action in ("END", "CLARIFY"):
         return ""
 
-    # Name is included only when mention_name is set (first turn, an
-    # action-category change from the previous turn, or a milestone) --
-    # not on every turn, to avoid over-repeating the provider's name.
+    # Mention the provider name only on first turns, topic changes, or milestones.
     name_clause = f", {provider_name}" if mention_name and provider_name else ""
     scope = _scope_ref(child_names, county_names)
     period = _period_ref(date_filter, service_period_id)
-    # Two professional phrasing variants per action, alternated by turn
-    # sequence, so consecutive same-action turns don't read identically.
+    # Alternate phrasing to avoid repetitive consecutive messages.
     v = variant % 2
 
     if action == "STARTER":
@@ -220,10 +184,6 @@ def _progress_message(action, sub_filter, first_turn, mention_name, provider_nam
     )
 
 
-# ==============================================================================
-# ENTRY POINT
-# ==============================================================================
-
 _classification = read_context("routerClassification") or {}
 if not isinstance(_classification, dict):
     _classification = {}
@@ -241,13 +201,7 @@ _greeting_done = bool(read_context("greetingDone"))
 _provider_name = _session_state.get("providerName") if isinstance(_session_state, dict) else None
 _first_turn = not _greeting_done
 
-# Phase 2 bounded re-validation: "validated once" trust (sessionState.
-# providerVerified) must not mean "trusted forever for the session" -- count
-# turns since the last real getProviderInfo check and force provider_data_py
-# to re-run once the bound is exceeded, by downgrading providerVerified here
-# (this task runs before provider_validated_gate every turn). Collected into
-# _session_updates rather than written immediately -- the name-usage trigger
-# below needs to read the OLD lastActionCategory before this turn's write.
+# Revalidate providers after the session turn bound.
 _REVALIDATION_TURN_BOUND = 20
 _session_updates = {}
 if isinstance(_session_state, dict) and _session_state.get("providerVerified") == "YES":
@@ -269,22 +223,7 @@ _period_count = _classification.get("periodCount")
 _confidence = _classification.get("confidence", 1.0)
 _service_period_id = None
 
-# STEP 0: ccare_action_shortcut_gate_py (runs BEFORE the LLM router, as its
-# own dedicated first node -- NOT the router's identity/position, to avoid
-# repeating the entry-point regression from the earlier attempt) already
-# resolved a clicked recommended-action button (exact id match) or a bare
-# number/ordinal/"last" reply. Consume its resolution directly. The router
-# did NOT run this turn, so _classification is stale (from whichever
-# earlier turn last used it) -- childNames/countyNames/dateFilter/etc. must
-# NOT be inherited from it. A button/positional id's literal text never
-# carries scope (verified: recommendedActions/payment_candidates entries
-# carry only id/label/action/subFilter/severity, no filter fields) --
-# reset to neutral defaults, matching what a fresh classification of that
-# literal button-id string would have produced anyway. This is the exact
-# regression fix from the prior attempt: a stale childNames=["Alice"] from
-# an earlier unrelated free-text turn was leaking onto later generic
-# button clicks, silently narrowing/mis-scoping them and feeding an
-# inaccurate progressMessage.
+# Use shortcut resolution directly; its classification may be stale.
 if _shortcut_matched:
     _action = _shortcut.get("action") or "CLARIFY"
     _sub_filter = _shortcut.get("subFilter")
@@ -298,9 +237,7 @@ if _shortcut_matched:
     _period_count = None
     _confidence = 1.0
 else:
-    # Router ran -- resolve its OWN positionalRef when present (extracted
-    # from phrasing like "the third one" that the shortcut gate's bare-
-    # message-only check cannot catch).
+    # Resolve the router's positional reference when present.
     _positional_fields, _positional_ok = _resolve_positional(_classification, _recommended_actions, _payment_candidates)
     if _classification.get("positionalRef"):
         if not _positional_ok:
@@ -310,8 +247,7 @@ else:
             _sub_filter = _positional_fields.get("subFilter")
             _service_period_id = _positional_fields.get("servicePeriodId")
 
-# STEP 3: SPECIFIC_PERIOD without explicit dates cannot proceed -- was the
-# router's job to catch; now the finalizer enforces it deterministically.
+# Require explicit dates for SPECIFIC_PERIOD.
 if _sub_filter == "SPECIFIC_PERIOD" and not (_date_from and _date_to):
     _action, _sub_filter, _clarify_reason = "CLARIFY", None, "vague"
 
@@ -319,10 +255,7 @@ _date_filter = _resolve_date_filter(_action, _date_filter)
 _fetch_params = _build_fetch_params(_sub_filter, _date_filter, _date_from, _date_to, _period_count)
 _routing_class, _intent = ACTION_META.get(_action, ("CLARIFY", "Unclear"))
 
-# Provider-name inclusivity rule: mention the name on first turn, on an
-# action-category change from the previous turn (topic change), or on a
-# milestone (END) -- not on every turn within the same topic, so the name
-# doesn't repeat on every progress bubble the way it used to.
+# Mention names on first turn, topic changes, and END milestones.
 _last_action_category = _session_state.get("lastActionCategory") if isinstance(_session_state, dict) else None
 _topic_changed = _last_action_category is not None and _last_action_category != _action
 _mention_name = _first_turn or _action == "END" or _topic_changed

@@ -1,9 +1,6 @@
 """_______________This Code was generated using GenAI tool : Codify, Please check for accuracy_______________
-
-ccare_provider_data_py, v1.2.3. Validates the provider via getProviderInfo
-and writes context.ccare_provider_data_py (status/providerName/resolvedFilters).
-
-Runtime affordances: _context, call_endpoint(), write_context(), respond().
+Validates provider identity and writes provider context.
+Runtime affordances: read_context, write_context, respond().
 """
 
 log = print
@@ -34,9 +31,7 @@ turn_request = _safe_get("turnRequest") or {}
 if not isinstance(turn_request, dict):
     turn_request = {}
 
-# "intent" carries the legacy classification label (Starter/Attendance/Payment/
-# Explain/Unclear) written by ccare_unified_intent_router specifically for this
-# check -- everything else in the process reads turnRequest.action instead.
+# Legacy router classification used for this check.
 intent = turn_request.get("intent", "")
 
 resolved_filters = {"dateFilter": turn_request.get("dateFilter") or "THIS_MONTH"}
@@ -48,15 +43,12 @@ fetch_params = turn_request.get("fetchParams") or {}
 if isinstance(fetch_params, dict) and fetch_params.get("periodCount"):
     resolved_filters["periodCount"] = fetch_params["periodCount"]
 
-# Last-payout calculations need the selected released period plus the
-# surrounding agreement and rate data used to explain it.
+# Include surrounding agreement and rate data for last payout.
 if (turn_request.get("action") == "PAYMENT" and
         turn_request.get("subFilter") == "LAST_PAYOUT"):
     resolved_filters = {"dateFilter": "LAST_N_MONTHS", "periodCount": 2}
 
-# userId always sourced from authenticated session context -- never from user
-# input. Fail closed when missing -- a hardcoded fallback provider here would
-# silently validate the wrong provider instead of surfacing the real problem.
+# Use authenticated session identity; fail closed if missing.
 user_id = _safe_get("external_id")
 
 if not user_id:
@@ -97,7 +89,7 @@ if not _skip_rest:
             if isinstance(response, dict):
                 reason = response.get("message") or response.get("error") or reason
             log("provider validation failed: %s" % reason)
-            # A failed re-check must not leave stale trust available to the gate.
+            # Clear stale trust after failed re-check.
             write_context("sessionState", {"providerVerified": "NO"})
             respond({"status": "failed", "reason": reason}, confidence=1.0)
         else:
@@ -109,14 +101,7 @@ if not _skip_rest:
                 "turnRequest": turn_request,
                 "resolvedFilters": resolved_filters,
             }
-            # 2026-09-26: persistent, session-scoped flag -- written once, never
-            # re-derived from per-turn data-freshness logic (unlike the removed
-            # freshnessResult.sessionValidated). provider_validated_gate reads this
-            # to skip this task (and its getProviderInfo call) on every turn after
-            # the first; nothing else in the process writes to sessionState.
-            # validatedTurnCount resets to 0 on every real validation --
-            # ccare_turn_request_finalizer_py increments it each turn and forces
-            # re-validation once it exceeds a bound (see that task).
+            # Persist validation state and reset the revalidation counter.
             write_context("sessionState", {"providerVerified": "YES", "providerName": provider_name, "validatedTurnCount": 0})
             log("provider validated: providerName=%s intent=%s" % (provider_name, intent))
         if intent == "Unclear":

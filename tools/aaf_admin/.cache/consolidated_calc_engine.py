@@ -1,7 +1,22 @@
 """_______________This Code was generated using GenAI tool : Codify, Please check for accuracy_______________
 
-Consolidated payment, attendance-risk, and payout-impact calculation engine.
-Shared classification and fiscal logic keeps payment values consistent across views.
+ccare_calc_engine_py, v1.0.0. Consolidated payment + attendance-risk +
+payout-impact calculation engine. Replaces ccare_payment_engine.py,
+attendance_risks_analyzer_py.py, and ccare_payout_impact_correlator.py with
+ONE task -- eliminating the duplicated fiscal-rate/classification core those
+three files previously carried independently, and the resulting calculation
+drift (the old correlator rated risk on authorized_hours; payment rated the
+same day on payable_hours post-classification -- same day, two different
+numbers were possible). Every business rule below is ported verbatim from
+those three files, not redesigned; only the duplication and the correlator's
+independent rate-lookup are removed.
+
+Shared classification/fiscal core (this section) is used by BOTH the
+payment aggregation (period-scoped) and the payout-impact aggregation
+(lookback-window-scoped, over the SAME classification functions) -- the two
+aggregation scopes remain intentionally distinct (they answer different
+business questions) but now share one source of truth for "what is this day
+worth."
 
 Runtime affordances: read_context, write_context, respond.
 """
@@ -12,7 +27,7 @@ from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Set
 
-# AAF runtime stubs for unit tests
+# -- AAF runtime stubs (unit-test shim) --------------------------------------
 if "read_context" not in globals():
     def read_context(key):
         return None
@@ -27,9 +42,13 @@ if "write_context" not in globals():
 
 log = print
 
-# Shared calculation core
+# ==============================================================================
+# SHARED CALCULATION CORE (pure functions -- no AAF context access)
+# ==============================================================================
 
-# Days in this window remain unconfirmed and at risk.
+# Same lookback window the attendance-risk view uses for unconfirmed-
+# attendance detection -- a calculated day inside this window is "at risk"
+# (not yet guaranteed), not a settled amount.
 CONFIRMATION_WINDOW_DAYS = 9
 
 MONEY_QUANTUM = Decimal("0.01")
@@ -40,7 +59,8 @@ PAID_TIERS = (
     (Decimal("17"), "FULL_TIME_PLUS_PART_TIME"),
 )
 
-# Confirmed picklist codes used by fiscal-rate joins.
+# Confirmed picklist code tables (cde_care_unit__c, cde_age_group__c,
+# cde_rate_type__c) -- source of truth for all fiscal-rate joins below.
 CARE_UNIT_TO_TIER = {
     "1": "NO_PAYMENT",
     "2": "PART_TIME",
@@ -50,7 +70,9 @@ CARE_UNIT_TO_TIER = {
 }
 TIER_TO_CARE_UNIT = {tier: code for code, tier in CARE_UNIT_TO_TIER.items()}
 
-# Age groups use six-month bands; code 8 is open-ended school age.
+# cde_age_group__c: 6-month bands from birth through 36 months, then
+# 36-School-Age and School-Age. Upper bound is in months of age; code "8"
+# (School Age) is the open-ended final band.
 AGE_GROUP_MONTH_BOUNDS = ((6, "1"), (12, "2"), (18, "3"), (24, "4"), (30, "5"), (36, "6"), (60, "7"))
 
 # cde_rate_type__c labels, for diagnostics only (joins always use the code).
@@ -102,7 +124,8 @@ def _fiscal_rate_type(value: str | None) -> str:
 
 
 def _normalize_tier(value: Any) -> str:
-    """Normalize schedule tier values for shared limit calculations."""
+    """Shared normalization -- payment and attendance-risk aggregation agree
+    on which absence_limits.tier_N / absenceDaysTierN a schedule maps to."""
     text = str(value or "1").strip().upper()
     if text == "EXEMPT PROVIDER":
         return "1"
@@ -117,7 +140,8 @@ def _normalize_tier(value: Any) -> str:
 
 
 def _county_policy_index(county_rate_plans: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    """Index county rate plans by county ID for limit enforcement."""
+    """Index getCountyData's countyRatePlans by county_id -> policy fields
+    calculate_payment needs for limit enforcement."""
     index: dict[str, dict[str, Any]] = {}
     for plan in county_rate_plans:
         if not isinstance(plan, dict):
@@ -136,7 +160,8 @@ def _county_policy_index(county_rate_plans: list[dict[str, Any]]) -> dict[str, d
             },
             "allow_drop_in_days": plan.get("allowDropInDays"),
             "max_drop_in_days_per_month": _int_or_none(plan.get("maxDropInDaysPerMonth")),
-            # Match configured holiday names against holiday records.
+            # countyholidayList is semicolon-separated holiday NAMES, matched
+            # against getHolidayList's CDE_HOL__c.
             "holiday_names": {
                 n.strip().upper() for n in (plan.get("countyholidayList") or "").split(";") if n.strip()
             },
@@ -157,7 +182,13 @@ def _fiscal_schedule_index(
     fiscal_agreements: list[dict[str, Any]],
     fiscal_schedules: list[dict[str, Any]],
 ) -> dict[tuple[str, str], list[dict[str, Any]]]:
-    """Index fiscal schedules by provider, county, rate types, and quality tier."""
+    """Build {(provider_id, county_id): [{ext_id, rate_types, quality_tier}, ...]}.
+
+    Two real sources feed this: fiscal_agreements (from the provider-data
+    bundle) carries nested Rate_Schedules__r records directly under each
+    agreement; fiscal_schedules (the flat list from getFiscalRates) links
+    back to its agreement via IDN_AGRMT_FISCAL__c, so the agreement's
+    provider/county scope is resolved from fiscal_agreements first."""
     agreement_scope: dict[str, tuple[str, str]] = {}
     for agreement in fiscal_agreements:
         if not isinstance(agreement, dict):
@@ -205,7 +236,10 @@ def _fiscal_schedule_index(
 
 
 def _rate_lookup(fiscal_rates: list[dict[str, Any]]) -> dict[tuple[str, str, str, str], Decimal]:
-    """Index raw fiscal-rate rows by schedule, type, age group, and care unit."""
+    """{(fiscal_schedule_ext_id, rate_type, age_group, care_unit): amount},
+    built directly from raw batchsit_t_fiscal_rate__x rows -- confirmed field
+    names: idn_fiscal_sch__c, cde_rate_type__c, cde_age_group__c,
+    cde_care_unit__c, amt_fa__c."""
     lookup: dict[tuple[str, str, str, str], Decimal] = {}
     for rate in fiscal_rates:
         if not isinstance(rate, dict):
@@ -226,7 +260,8 @@ def _quality_tier_for(
     rate_type_code: str | None,
     schedule_index: dict[tuple[str, str], list[dict[str, Any]]],
 ) -> str | None:
-    """Read provider quality tier from the resolved fiscal schedule."""
+    """Provider quality tier lives on the resolved fiscal schedule
+    (TXT_CHATS_RATING__c), not on schedule or authorization records."""
     provider_id = _text(authorization, "IDN_PROVR__c")
     county_id = _text(authorization, "CDE_COUNTY__c")
     fiscal_rate_type = _fiscal_rate_type(rate_type_code)
@@ -239,7 +274,8 @@ def _quality_tier_for(
 
 
 def _months_of_age(dob: date | None, on_date: date | None) -> int | None:
-    """Return whole-month age for age bands and enrollment rules."""
+    """Child's age in whole months on a given date -- shared by age-group
+    banding and the enrollment-absence (<=36 months) rule."""
     if not dob or not on_date:
         return None
     months = (on_date.year - dob.year) * 12 + (on_date.month - dob.month)
@@ -249,7 +285,11 @@ def _months_of_age(dob: date | None, on_date: date | None) -> int | None:
 
 
 def _is_provider_closure(closures: list[dict[str, Any]], provider_id: str | None, county_id: str | None, service_date: date) -> bool:
-    """Match active provider closures by provider, county, and exact date."""
+    """Checked BEFORE holiday/absence when a scheduled day has zero
+    attendance. Closures come from getProviderData's providerClosures
+    (T_PROVR_CLOSURE__c: IDN_PROVIDER__c, CDE_COUNTY__c, DTE_BEGIN_CLOSURE__c,
+    IND_ACTIVE__c) -- single-day closures (no end-date field confirmed),
+    matched by exact date."""
     for closure in closures:
         if not isinstance(closure, dict):
             continue
@@ -268,13 +308,15 @@ def _is_provider_closure(closures: list[dict[str, Any]], provider_id: str | None
 
 
 def _child_dob(authorization: dict[str, Any]) -> date | None:
-    """Read child DOB from the nested client relationship."""
+    """Child DOB for age-band derivation -- lives on the nested client
+    relationship, IDN_CLIENT__r.DTE_DOB__c."""
     client = authorization.get("IDN_CLIENT__r") if isinstance(authorization, dict) else None
     return _date(client, "DTE_DOB__c", "dob") if isinstance(client, dict) else None
 
 
 def _age_group_code(dob: date | None, service_date: date | None) -> str | None:
-    """Map child age to the configured age-group band."""
+    """Maps child age on service_date to the confirmed AGE_GROUP_MONTH_BOUNDS
+    band. Code "8" (School Age) is the open-ended final band."""
     if not dob or not service_date:
         return None
     months = (service_date.year - dob.year) * 12 + (service_date.month - dob.month)
@@ -295,7 +337,14 @@ def _resolve_attended_rate(
     schedule_index: dict[tuple[str, str], list[dict[str, Any]]],
     rate_lookup: dict[tuple[str, str, str, str], Decimal],
 ) -> tuple[Decimal | None, str | None]:
-    """Resolve attended-care rates from authorization, schedule, and payable hours."""
+    """Joins authorization -> fiscal schedule -> fiscal rate row keyed by
+    (schedule_ext_id, rate_type, age_group, care_unit). care_unit comes from
+    payable hours via CARE_UNIT_TO_TIER. Falls back to the schedule's
+    NO_PAYMENT row (a real $0 rate) before giving up. Never guesses.
+
+    Used by BOTH the payment aggregation and the payout-impact aggregation --
+    the single source of "what is this day worth," rated on payable_hours
+    (post-classification), never on raw authorized_hours."""
     if not age_group_code:
         return None, "age_group_code_unresolved"
     fiscal_rate_type = _fiscal_rate_type(rate_type_code)
@@ -327,7 +376,10 @@ def _vacant_slot_weekday_set(slot: dict[str, Any]) -> Set[str]:
 
 
 def _is_county_holiday(holidays: list[dict[str, Any]], service_date: date, county_holiday_names: Set[str]) -> bool:
-    """Match holidays only when the county has a configured holiday name."""
+    """countyholidayList is semicolon-separated holiday NAMES;
+    getHolidayList's CDE_HOL__c carries the matching name. A county with no
+    configured holiday list has no county-specific holidays applied (fails
+    closed -- never falls back to a global match)."""
     if not county_holiday_names:
         return False
     for h in holidays:
@@ -344,7 +396,9 @@ def _vacant_slot_eligible_day(
     slot: dict[str, Any], service_date: date, holidays: list[dict[str, Any]],
     closures: list[dict[str, Any]], allowed_weekdays: Set[str], county_holiday_names: Set[str],
 ) -> bool:
-    """Check weekday, closure, and county holiday eligibility for one day."""
+    """Single-day eligibility only: weekday pattern, provider closure,
+    county-specific holiday -- independent of every other day, no monthly
+    cap applied here."""
     if allowed_weekdays and service_date.strftime("%A").upper() not in allowed_weekdays:
         return False
     provider_id = _text(slot, "IDN_PROVIDER__c")
@@ -360,7 +414,11 @@ def _vacant_slot_eligible_days_in_range(
     slot: dict[str, Any], range_start: date, range_end: date,
     holidays: list[dict[str, Any]], closures: list[dict[str, Any]], county_holiday_names: Set[str],
 ) -> list[date]:
-    """Return sorted eligible slot days within the clipped date range."""
+    """Every eligible day (weekday+closure+holiday, no cap) between
+    range_start/range_end inclusive, clipped to the slot's own
+    DTE_BEGIN_SLOT__c/DTE_END_SLOT__c. Sorted ascending. Used both for the
+    week actually being processed and for the stateless month-to-date
+    recompute in _vacant_slot_payable_days()."""
     begin = _date(slot, "DTE_BEGIN_SLOT__c")
     end = _date(slot, "DTE_END_SLOT__c")
     if not begin or not end or range_end < range_start:
@@ -383,7 +441,14 @@ def _vacant_slot_payable_days(
     slot: dict[str, Any], period_start: date, period_end: date,
     holidays: list[dict[str, Any]], closures: list[dict[str, Any]], county_holiday_names: Set[str],
 ) -> tuple[list[date], list[date]]:
-    """Apply monthly caps independently to each month segment."""
+    """Weekly service period, monthly cap recomputed fresh every call from
+    config alone -- never from stored history or a running total. A period
+    straddling a month boundary is split into per-month segments; each
+    segment's remaining cap room = CNT_DAYS_OF_MONTH__c minus the eligible
+    days that fall between that month's 1st and the day before this segment
+    starts (recomputed the same way, not fetched). Returns (payable_days,
+    excluded_days) -- excluded_days are eligible but beyond the month's
+    remaining cap room this week."""
     monthly_limit = _int_or_none(slot.get("CNT_DAYS_OF_MONTH__c"))
     payable_days: list[date] = []
     excluded_days: list[date] = []
@@ -412,7 +477,11 @@ def _vacant_slot_rate(
     schedule_index: dict[tuple[str, str], list[dict[str, Any]]],
     rate_lookup: dict[tuple[str, str, str, str], Decimal],
 ) -> tuple[Decimal | None, str | None]:
-    """Resolve vacant-slot rates using care level as the age-group key."""
+    """There is no cde_care_level__c field on batchsit_t_fiscal_rate__x; the
+    only differentiator per rate_type+care_unit is cde_age_group__c. A vacant
+    slot has no child, so its CDE_CARE_LEVEL__c fills the age_group slot in
+    the SAME rate_lookup attended-care rows use: (ext_id, rate_type,
+    age_group, care_unit)."""
     rate_type = _text(slot, "CDE_RATE_TYPE__c")
     care_unit = _text(slot, "CDE_CARE_UNIT__c")
     care_level = _text(slot, "CDE_CARE_LEVEL__c")
@@ -441,7 +510,6 @@ def paid_tier_for_hours(hours) -> str:
 
 
 def _payable_hours(classification, authorized, attended, schedule):
-    """Pay absences and enrollment absences on authorized hours within limits."""
     if classification in {"HOLIDAY", "ABSENCE", "ENROLLMENT_ABSENCE"}:
         return authorized
     if classification == "DROP_IN":
@@ -452,7 +520,13 @@ def _payable_hours(classification, authorized, attended, schedule):
 
 
 def _classification(closures, provider_id, county_id, service_date, authorized_hours, attended_hours, holidays, as_of_date=None, county_holiday_names=None):
-    """Classify a day from closure, hours, attendance, and county holidays."""
+    """Derived purely from hours + closure + holiday + status semantics
+    (CCCAP_AUTHORIZED/CCCAP_NOT_AUTHORIZED/CARE_NOT_OFFERED are states, not
+    booleans) -- closure checked first, then hours decide authorized vs.
+    drop-in vs. no-care, then holiday/absence for a scheduled day with zero
+    attendance. Holiday check uses the same county-specific
+    _is_county_holiday() the vacant-slot path uses -- a date is only HOLIDAY
+    when it's on THIS authorization's county's configured list."""
     if _is_provider_closure(closures, provider_id, county_id, service_date):
         return "CARE_NOT_OFFERED"
     if authorized_hours == 0:
@@ -467,19 +541,22 @@ def _classification(closures, provider_id, county_id, service_date, authorized_h
 
 
 def _attended_hours(schedule):
-    """Treat paired zero check-in/out counts as confirmed zero attendance."""
     direct = _number(schedule, "attended_hours", "Hours__c", "unit_hours")
     if direct is not None:
         return direct
     check_in = _number(schedule, "Check_In_Count__c", "check_in")
     check_out = _number(schedule, "Check_Out_Count__c", "check_out")
-    if check_in is None or check_out is None or check_out < check_in:
-        return None
-    return check_out - check_in
+    return (check_out - check_in) if (check_in is not None and check_out is not None and check_in > 0 and check_out >= check_in) else None
 
 
 def _attendance_confirmation_risk(schedule, service_date, as_of_date, classification=None):
-    """Flag pending or missing attendance within the confirmation window."""
+    """Within the 9-day confirmation window, a day is 'at risk' (not yet
+    guaranteed) if its attendance transaction is still PARENT_PENDING, or if
+    no attendance transaction was logged at all -- confirmed field location:
+    Attendance__r.records[].Status__c (a child Transaction__c record, NOT a
+    top-level Schedule__c field). HOLIDAY and ENROLLMENT_ABSENCE are payable
+    without parent confirmation -- no attendance records are expected, so
+    MISSING_ATTENDANCE never applies."""
     if classification in {"HOLIDAY", "ENROLLMENT_ABSENCE"}:
         return None
     if as_of_date is None or service_date > as_of_date:
@@ -497,7 +574,10 @@ def _attendance_confirmation_risk(schedule, service_date, as_of_date, classifica
 
 
 def _existing_payment_amount(records, period_id):
-    """Sum matching PAID or REQUESTED settlement records for a period."""
+    """Real settlement records are subPayments rows
+    (idn_period_serv__c/cde_status_pmt_sub__c/amt_total_pmt_sub__c), and a
+    period can have more than one sub-payment (one per authorization) -- sum
+    every matching PAID/REQUESTED row instead of returning the first."""
     total = None
     for record in records:
         record_period = _text(record, "idn_period_serv__c", "service_period_id", "ServicePeriodId", "ID_SERVICE_PERIOD__c")
@@ -511,7 +591,10 @@ def _existing_payment_amount(records, period_id):
 
 
 def _select_period_or_candidates(records, requested_id):
-    """Select one period or return candidates when disambiguation is needed."""
+    """Distinguishes "no match" from "2+ matches" instead of collapsing both
+    into a bare blocked result. Returns (period, None) on an exact single
+    match, or (None, candidates) when disambiguation is needed -- candidates
+    is None when there is truly nothing to disambiguate."""
     if requested_id is not None:
         requested = str(requested_id)
         matches = [r for r in records if _text(r, "servicePeriodId", "Id", "id", "service_period_id") == requested]
@@ -622,7 +705,8 @@ def _blocked_row(kind, service_date, blocker, **values):
 
 
 def _month_bounds(base, months_back=0):
-    """Return month boundaries for the requested offset."""
+    """First/last calendar day of the month `months_back` months before
+    `base` (0 = base's own month)."""
     year, month = base.year, base.month
     for _ in range(months_back):
         month -= 1
@@ -635,7 +719,9 @@ def _month_bounds(base, months_back=0):
 
 
 def _periods_overlapping(periods, window_start, window_end):
-    """Return periods overlapping the requested window."""
+    """Real overlap filter (begin <= window_end AND end >= window_start) --
+    replaces reliance on strict-containment dateFrom/dateTo semantics, which
+    silently drops a period straddling window_start/window_end."""
     result = []
     for period in periods:
         begin = _date(period, "serviceBeginDate", "DTE_BEGIN_EFFV__c", "Start_Date__c")
@@ -648,7 +734,10 @@ def _periods_overlapping(periods, window_start, window_end):
 
 
 def _select_last_released_period(periods):
-    """Return the most recently released period, if any."""
+    """Client-side equivalent of a 'paymentBefore' filter: most recent period
+    whose release date is <= today, by release date descending. Returns None
+    if nothing has released yet (a real, distinct blocked state -- never
+    guesses)."""
     today = date.today()
     released = []
     for period in periods:
@@ -661,26 +750,25 @@ def _select_last_released_period(periods):
     return released[0][1]
 
 
-def _select_next_upcoming_period(periods):
-    """Return the soonest upcoming release period, if any."""
-    today = date.today()
-    upcoming = []
-    for period in periods:
-        release = _date(period, "paymentReleaseDate", "DTE_BATCH_FILE_PMT__c", "release_date")
-        if release is not None and release >= today:
-            upcoming.append((release, period))
-    if not upcoming:
-        return None
-    upcoming.sort(key=lambda pair: pair[0])
-    return upcoming[0][1]
-
-
 # ==============================================================================
 # PAYMENT VIEW (period-scoped) -- ported verbatim from ccare_payment_engine.py
 # ==============================================================================
 
 def calculate_payment(raw_bundle: dict[str, Any]) -> dict[str, Any]:
-    """Calculate payment using shared endpoint data and period-selection modes."""
+    """Calculate CCCAP payment from a bundle of raw endpoint responses.
+
+    A thin dispatcher over three modes, all sharing the same already-fetched
+    authorizations/schedules/rates -- no extra endpoint calls per mode:
+    - multi_period (raw_bundle["multi_period_window"] = (start, end)):
+      CURRENT_MONTH/ALL -- runs _calculate_for_period once per period that
+      genuinely overlaps the window (via _periods_overlapping, not strict
+      containment), returns a periods[] list instead of forcing a
+      single-period pick.
+    - select_last_released (raw_bundle["select_last_released"] = True):
+      LAST_PAYOUT -- picks the most recently RELEASED period client-side.
+    - default: existing single-period selection (_select_period_or_candidates),
+      unchanged for NEXT_PAYOUT/CURRENT_PERIOD_FORECAST/SPECIFIC_PERIOD.
+    """
     if not isinstance(raw_bundle, dict):
         return _blocked(["raw_bundle"])
 
@@ -727,20 +815,17 @@ def calculate_payment(raw_bundle: dict[str, Any]) -> dict[str, Any]:
     if raw_bundle.get("select_last_released"):
         period = _select_last_released_period(service_periods)
         if period is None:
-            # Distinct state: no period has released.
+            # A real, distinct blocked state -- nothing has released yet,
+            # never the same as "no service period found."
             return _blocked(["no_released_period"])
-        return _calculate_for_period(period, *shared_inputs)
-
-    if raw_bundle.get("select_next_upcoming"):
-        # Pick deterministically instead of prompting on stale wide lists.
-        period = _select_next_upcoming_period(service_periods)
-        if period is None:
-            return _blocked(["no_upcoming_period"])
         return _calculate_for_period(period, *shared_inputs)
 
     period, candidates = _select_period_or_candidates(service_periods, raw_bundle.get("service_period_id"))
     if candidates is not None:
-        # Surface candidates for formatter and positional follow-up resolution.
+        # Service-period disambiguation -- 2+ matches surfaces the candidate
+        # list so the formatter can ask the provider which one they meant,
+        # and positional resolution can resolve a follow-up against this
+        # same list.
         return {
             "status": "needs_period_selection",
             "candidates": candidates,
@@ -753,52 +838,6 @@ def calculate_payment(raw_bundle: dict[str, Any]) -> dict[str, Any]:
     if period is None:
         return _blocked(["service_period"])
     return _calculate_for_period(period, *shared_inputs)
-
-
-def _monthly_limit_counts(schedules, auth_by_name, auth_by_id, holidays, provider_closures, county_policy_by_id, as_of_date):
-    """Count confirmed absence and drop-in days across each full calendar month."""
-    absence_day_counts: dict[tuple[str, str], int] = {}
-    drop_in_day_counts: dict[tuple[str, str], int] = {}
-    for schedule in schedules:
-        service_date = _date(schedule, "CI_Authorization_Date__c", "Service_Date__c", "Schedule_Date__c", "service_date", "schedule_date", "date")
-        if not service_date:
-            continue
-        schedule_auth_ref = _text(schedule, "CI_Authorization_Id__c", "authorization_id", "AuthorizationId", "IDN_AUTH__c", "auth_id")
-        authorization = auth_by_name.get(schedule_auth_ref) if schedule_auth_ref else None
-        if authorization is None and schedule_auth_ref:
-            authorization = auth_by_id.get(schedule_auth_ref)
-        auth_id = _text(authorization, "Id", "id", "ID_AUTH__c", "authorization_id") if authorization else None
-        if authorization is None or not auth_id:
-            continue
-        authorized_hours = _number(schedule, "CI_Authorization_Hours__c", "authorized_hours", "authorization_hours", "hours")
-        attended_hours = _attended_hours(schedule)
-        if attended_hours is None and service_date > as_of_date:
-            attended_hours = Decimal("0")
-        if authorized_hours is None or attended_hours is None:
-            continue
-        provider_id = _text(authorization, "IDN_PROVR__c", "provider_id")
-        county_id = _text(authorization, "county_id", "CDE_COUNTY__c", "countyId")
-        _county_holiday_names = (county_policy_by_id.get(county_id or "", {}) or {}).get("holiday_names") or set()
-        classification = _classification(
-            provider_closures, provider_id, county_id, service_date, authorized_hours, attended_hours, holidays, as_of_date,
-            _county_holiday_names,
-        )
-        if classification not in ("ABSENCE", "DROP_IN"):
-            continue
-        attendance = schedule.get("Attendance__r") if isinstance(schedule, dict) else None
-        records = attendance.get("records") if isinstance(attendance, dict) else None
-        records = records if isinstance(records, list) else []
-        if any(_text(r, "Status__c") == "PARENT_PENDING" for r in records if isinstance(r, dict)):
-            continue
-        key = (auth_id, service_date.strftime("%Y-%m"))
-        if classification == "ABSENCE":
-            age_months = _months_of_age(_child_dob(authorization), service_date)
-            if age_months is not None and age_months <= 36:
-                continue  # Enrollment absences do not count toward limits.
-            absence_day_counts[key] = absence_day_counts.get(key, 0) + 1
-        else:
-            drop_in_day_counts[key] = drop_in_day_counts.get(key, 0) + 1
-    return absence_day_counts, drop_in_day_counts
 
 
 def _calculate_for_period(
@@ -814,14 +853,21 @@ def _calculate_for_period(
     county_policy_by_id: dict[str, dict[str, Any]],
     provider_closures: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Calculate one service period's daily payment rows."""
+    """The per-day calculation core, shared by both the single-period and
+    multi-period dispatch paths in calculate_payment()."""
     period_id = _text(period, "servicePeriodId", "Id", "id", "ID_SERVICE_PERIOD__c", "service_period_id")
     start = _date(period, "serviceBeginDate", "Start_Date__c", "DTE_START__c", "start_date", "startDate", "period_start")
     end = _date(period, "serviceEndDate", "End_Date__c", "DTE_END__c", "end_date", "endDate", "period_end")
     if not period_id or not start or not end or end < start:
         return _blocked(["service_period_dates"])
 
-    # Settled periods use authoritative payment records.
+    # ---- settlement short-circuit ------------------------------------------
+    # Once an actual PAID/REQUESTED record is on file for this period, that
+    # record is authoritative -- return it directly and skip all per-day
+    # computation (no recalculation, ever, for a settled period). subPayment/
+    # payment_history rows carry no confirmed authorization-linking field, so
+    # this total cannot be scoped to a requested child/county -- settlement
+    # amounts are period-wide by definition.
     existing_amount = _existing_payment_amount(payment_history, period_id)
     if existing_amount is not None:
         return {
@@ -847,14 +893,15 @@ def _calculate_for_period(
     auth_by_name = _unique_index(authorizations, "Name", "name", "NAM_AUTH__c", "authorization_name")
     fiscal_schedule_index = _fiscal_schedule_index(fiscal_agreements, fiscal_schedules)
     rate_lookup = _rate_lookup(fiscal_rates)
-    as_of_date = date.today()
 
     # ---- per-authorization absence-day and drop-in-day counters -----------
-    # Pre-computed against ALL fetched schedules (not just this period's own
-    # Count monthly limits across the full calendar month.
-    absence_day_counts, drop_in_day_counts = _monthly_limit_counts(
-        schedules, auth_by_name, auth_by_id, holidays, provider_closures, county_policy_by_id, as_of_date,
-    )
+    # Counted across this authorization's schedule rows within the service
+    # period (the same population iterated below), in date order, so the
+    # Nth+1 absence/drop-in day beyond the county's monthly limit is
+    # excluded from payment.
+    absence_day_counts: dict[str, int] = {}
+    drop_in_day_counts: dict[str, int] = {}
+    as_of_date = date.today()
 
     rows: list[dict[str, Any]] = []
     blockers: list[str] = []
@@ -866,7 +913,9 @@ def _calculate_for_period(
         if not service_date or not start <= service_date <= end:
             continue
 
-        # Prefer the schedule authorization name.
+        # schedule.CI_Authorization_Id__c (bare number) matches
+        # authorization.Name -- schedule.Authorization__c/IDN_AUTH__c point
+        # to an unrelated DECL-side object and are kept only as a fallback.
         schedule_auth_ref = _text(schedule, "CI_Authorization_Id__c", "authorization_id", "AuthorizationId", "IDN_AUTH__c", "auth_id")
         authorization = auth_by_name.get(schedule_auth_ref) if schedule_auth_ref else None
         if authorization is None and schedule_auth_ref:
@@ -877,11 +926,13 @@ def _calculate_for_period(
             blockers.append("authorization_relationship")
             continue
 
-        # Read authorized hours from the schedule.
+        # authorized_hours lives on the schedule row, not on the
+        # authorization record.
         authorized_hours = _number(schedule, "CI_Authorization_Hours__c", "authorized_hours", "authorization_hours", "hours")
         attended_hours = _attended_hours(schedule)
         if attended_hours is None and service_date > as_of_date:
-            # Future attendance defaults to zero.
+            # Forecast day -- attendance can't exist yet for a future service
+            # date; treat as zero attended hours instead of a data blocker.
             attended_hours = Decimal("0")
         if authorized_hours is None or attended_hours is None:
             rows.append(_blocked_row("ATTENDED_CARE", service_date, "hours"))
@@ -895,7 +946,9 @@ def _calculate_for_period(
             provider_closures, provider_id, county_id, service_date, authorized_hours, attended_hours, holidays, as_of_date,
             _county_holiday_names,
         )
-        # Flag attendance recorded during closure.
+        # Closure-first precedence is unchanged, but positive attendance on a
+        # closure date was previously silent -- surface it as an explicit
+        # flag for audit visibility without changing the payable outcome.
         _closure_with_attendance = classification == "CARE_NOT_OFFERED" and attended_hours > 0
         rate_type_code = _text(schedule, "CI_Authorization_Rate_Type__c", "rate_type_code", "Rate_Type_Code__c", "CDE_RATE_TYPE__c") \
             or _text(authorization, "rate_type_code", "Rate_Type_Code__c", "CDE_RATE_TYPE__c")
@@ -904,26 +957,27 @@ def _calculate_for_period(
             or _age_group_code(_child_dob(authorization), service_date)
 
         policy = county_policy_by_id.get(county_id or "", {})
-        # Read quality tier from the resolved fiscal schedule.
+        # Quality tier lives on the resolved fiscal schedule
+        # (TXT_CHATS_RATING__c), not on schedule or authorization.
         quality_tier_raw = _quality_tier_for(authorization, rate_type_code, fiscal_schedule_index) \
             or _text(schedule, "quality_tier", "TXT_CHATS_RATING__c") \
             or _text(authorization, "quality_tier", "TXT_CHATS_RATING__c")
         tier = _normalize_tier(quality_tier_raw)
 
         limit_exceeded_blocker = None
-        if classification == "ABSENCE":  # Holidays do not count against absence limits.
-            # Children under 36 months are exempt.
+        if classification == "ABSENCE":  # HOLIDAY does not count against absence limit
+            # Enrollment carve-out first: <=36 months old, always payable, never
+            # counted against the county absence limit.
             age_months = _months_of_age(_child_dob(authorization), service_date)
             if age_months is not None and age_months <= 36:
                 classification = "ENROLLMENT_ABSENCE"
             else:
                 absence_limit = (policy.get("absence_limits") or {}).get(tier)
-                # Use the precomputed monthly count.
                 _abs_key = (auth_id, service_date.strftime("%Y-%m"))
-                _abs_month_count = absence_day_counts.get(_abs_key, 0)
+                absence_day_counts[_abs_key] = absence_day_counts.get(_abs_key, 0) + 1
                 if not isinstance(absence_limit, int):
                     limit_exceeded_blocker = "absence_limit_unavailable"
-                elif _abs_month_count > absence_limit:
+                elif absence_day_counts[_abs_key] > absence_limit:
                     limit_exceeded_blocker = "absence_limit_exceeded"
         elif classification == "DROP_IN":
             max_drop_in = policy.get("max_drop_in_days_per_month")
@@ -932,8 +986,8 @@ def _calculate_for_period(
                 limit_exceeded_blocker = "drop_in_not_allowed"
             elif isinstance(max_drop_in, int):
                 _di_key = (auth_id, service_date.strftime("%Y-%m"))
-                _di_month_count = drop_in_day_counts.get(_di_key, 0)
-                if _di_month_count > max_drop_in:
+                drop_in_day_counts[_di_key] = drop_in_day_counts.get(_di_key, 0) + 1
+                if drop_in_day_counts[_di_key] > max_drop_in:
                     limit_exceeded_blocker = "drop_in_limit_exceeded"
 
         auth_name = _text(authorization, "Name")
@@ -961,7 +1015,7 @@ def _calculate_for_period(
 
         payable_hours = _payable_hours(classification, authorized_hours, attended_hours, schedule)
         if classification == "NO_CARE":
-            continue  # No care means no payment.
+            continue  # no scheduled care and no attendance -- not a payment event, not a blocker
         if classification == "CARE_NOT_OFFERED" or payable_hours <= 0:
             rows.append({
                 "kind": "ATTENDED_CARE",
@@ -978,7 +1032,7 @@ def _calculate_for_period(
             })
             continue
 
-        # Resolve authorization, schedule, and rate.
+        # Joins authorization -> fiscal schedule -> fiscal rate row.
         rate, rate_blocker = _resolve_attended_rate(
             authorization, rate_type_code, age_group_code, payable_hours, fiscal_schedule_index, rate_lookup,
         )
@@ -993,8 +1047,6 @@ def _calculate_for_period(
         paid_tier = paid_tier_for_hours(payable_hours)
         amount = rate
         confirmation_risk = _attendance_confirmation_risk(schedule, service_date, as_of_date, classification)
-        # Payment basis distinguishes attended from scheduled hours.
-        _basis = "scheduled" if classification in {"HOLIDAY", "FORECAST"} else "attended"
         row = {
             "kind": "ATTENDED_CARE",
             "service_date": service_date.isoformat(),
@@ -1004,8 +1056,6 @@ def _calculate_for_period(
             "county_id": county_id,
             "county_name": county_name,
             "classification": classification,
-            "rate_type_label": RATE_TYPE_LABELS.get(rate_type_code or "", rate_type_code),
-            "payment_basis": _basis,
             "paid_tier": paid_tier,
             "payable_hours": _money(payable_hours),
             "rate": _money(rate),
@@ -1016,7 +1066,8 @@ def _calculate_for_period(
             row["confirmation_risk"] = confirmation_risk
         rows.append(row)
 
-    # Vacant slots use contract ranges and monthly caps.
+    # ---- vacant slots are contract ranges, monthly cap recomputed
+    # stateless per week (see _vacant_slot_payable_days) --------------------
     for slot in vacant_slots:
         if not isinstance(slot, dict):
             continue
@@ -1069,7 +1120,12 @@ def _calculate_for_period(
 
 
 # ==============================================================================
-# ATTENDANCE-RISK VIEW (rolling lookback window with string-date helpers).
+# ATTENDANCE-RISK VIEW (rolling lookback window, period-agnostic) -- ported
+# near-verbatim from attendance_risks_analyzer_py.py. Deliberately keeps its
+# own small string-date helpers (below) rather than forcing the payment
+# view's date-object helpers on it -- the two views operate over genuinely
+# different scopes (one resolved period vs. a rolling lookback window), and
+# only the closure/carve-out RULES need to agree, not their date type.
 # ==============================================================================
 
 PARENT_PENDING = "PARENT_PENDING"
@@ -1112,7 +1168,9 @@ def _status_from_remaining(confirmed_remaining, potential_remaining, tentative_u
 
 
 def _is_provider_closure_str(closures, provider_id, county_id, schedule_date):
-    """Apply the closure rule to string-keyed dates."""
+    """Same closure rule _is_provider_closure() enforces, but against a
+    string-keyed schedule_date (this view's native date representation)
+    instead of a date object."""
     for closure in closures:
         if not isinstance(closure, dict):
             continue
@@ -1130,7 +1188,8 @@ def _is_provider_closure_str(closures, provider_id, county_id, schedule_date):
 
 
 def _months_of_age_str(dob_key, on_date_key):
-    """Apply the enrollment-absence carve-out to string dates."""
+    """Same enrollment-absence (<=36 months) carve-out rule _months_of_age()
+    enforces, against string-keyed dates."""
     dob = _date_key(dob_key)
     on_date_str = on_date_key
     if not dob or not on_date_str:
@@ -1143,7 +1202,10 @@ def _months_of_age_str(dob_key, on_date_key):
 
 
 def analyze_attendance_risks(providers, rate_plans, authorizations, schedules, org_holiday_records, provider_closures, child_filter, county_filter, data_snapshot_version):
-    """Analyze absence-limit and unconfirmed-attendance risks in a rolling window."""
+    """Absence-limit risk and unconfirmed-attendance analysis, over ALL
+    fetched schedules regardless of service period -- a rolling lookback
+    window from today, independent of any resolved payment period. Returns
+    the same shape attendance_risks_analyzer_py.py wrote to context."""
     input_errors = []
     if not providers:
         input_errors.append("provider record is missing")
@@ -1222,14 +1284,10 @@ def analyze_attendance_risks(providers, rate_plans, authorizations, schedules, o
                 "date": schedule_date,
                 "status": PARENT_PENDING,
             })
-            continue  # Pending confirmation is excluded from absence counts.
+            continue  # PARENT_PENDING: excluded from absence counting
 
         authorized_hours = float((_number(schedule, "CI_Authorization_Hours__c") or Decimal("0")))
-        # Count absence only when attendance is explicitly confirmed as zero.
-        _attended_raw = _attended_hours(schedule)
-        if _attended_raw is None:
-            continue
-        attended_hours = float(_attended_raw)
+        attended_hours = float(_attended_hours(schedule) or Decimal("0"))
 
         if authorized_hours <= 0 or attended_hours != 0:
             continue
@@ -1240,11 +1298,13 @@ def analyze_attendance_risks(providers, rate_plans, authorizations, schedules, o
         if _is_provider_closure_str(provider_closures, linked_provider_id, county_id, schedule_date):
             continue
 
-        # Future dates are not absences.
+        # Future scheduled dates are not absences yet.
         if schedule_date > reference_date:
             continue
 
-        # Children 36 months or younger are exempt from absence alerts.
+        # Enrollment-absence carve-out: <=36 months old on this date is exempt
+        # from the county absence limit, so it should not count toward the
+        # near-limit alert either.
         client = auth.get("IDN_CLIENT__r") if isinstance(auth, dict) else None
         child_dob = _text(client, "DTE_DOB__c") if isinstance(client, dict) else None
         age_months = _months_of_age_str(child_dob, schedule_date)
@@ -1291,7 +1351,8 @@ def analyze_attendance_risks(providers, rate_plans, authorizations, schedules, o
                 "absence_limit": limit,
                 "confirmed_absence_count": confirmed_used,
                 "probable_absence_count": tentative_used,
-                # Preserve signed remaining values to show overage.
+                # Signed value preserved -- clamping to zero hides how far
+                # over the limit a child actually was.
                 "confirmed_absence_remaining": confirmed_remaining,
                 "potential_absence_remaining": potential_remaining,
                 "status": _status_from_remaining(confirmed_remaining, potential_remaining, tentative_used, near_limit_threshold),
@@ -1327,7 +1388,12 @@ def analyze_attendance_risks(providers, rate_plans, authorizations, schedules, o
 
 
 # ==============================================================================
-# PAYOUT-IMPACT VIEW -- shares the payment view's classification and rate path.
+# PAYOUT-IMPACT VIEW -- ported from ccare_payout_impact_correlator.py, but its
+# entire duplicate rate-lookup/classification core is REMOVED. Every row's
+# dollar amount is now resolved via the SAME _classification()/_payable_hours()
+# /_resolve_attended_rate() the payment view uses, rated on payable_hours
+# post-classification -- never on raw authorized_hours. This is the fix for
+# the calculation-drift bug: one amount per day, shared by both views.
 # ==============================================================================
 
 def _count_value(row, *keys):
@@ -1346,7 +1412,10 @@ def _risk_identity(schedule, fallback_auth=None, fallback_date=None, fallback_ch
 
 
 def _schedule_indices(all_schedules):
-    """Build schedule indices from the already-filtered schedule set."""
+    """{(child_id, date): schedule}, {(auth_ref, date): schedule}, and
+    {schedule_id: schedule} -- built from the SAME already-fetched/filtered
+    ScheduleInformation the payment view iterates, so this view never
+    re-fetches or re-filters schedules itself."""
     by_child_date = {}
     by_auth_date = {}
     by_id = {}
@@ -1366,7 +1435,10 @@ def _schedule_indices(all_schedules):
 
 
 def _rated_amount_for_schedule(schedule, authorization, county_id, provider_id, schedule_index, rate_lookup, holidays, provider_closures, county_holiday_names, as_of_date, authorized_hours_override=None):
-    """Resolve a schedule's classification, payable hours, and fiscal rate."""
+    """The single shared path from a schedule row to a rated dollar amount --
+    classification -> payable_hours -> fiscal rate. authorized_hours_override
+    lets a caller supply the hours it already resolved (e.g. from the
+    analyzer's absence-day grouping) instead of re-reading the schedule."""
     service_date = _date(schedule, "CI_Authorization_Date__c", "Service_Date__c", "date")
     authorized_hours = authorized_hours_override if authorized_hours_override is not None else _number(schedule, "CI_Authorization_Hours__c", "authorized_hours")
     if authorized_hours is None:
@@ -1391,11 +1463,14 @@ def _rated_amount_for_schedule(schedule, authorization, county_id, provider_id, 
 
 
 def correlate_payout_impact(analyzer_result, all_authorizations, all_schedules, fiscal_agreements, fiscal_schedules, fiscal_rates, county_rate_plans, holidays, provider_closures, county_policy_by_id, child_filter, county_filter, as_of_date):
-    """Resolve at-risk hours and amounts using the payment view's fiscal core."""
+    """Resolves $/hours at risk for each attendance-risk row (absence-limit,
+    unconfirmed attendance, incomplete check-in/out) against the SAME fiscal
+    core the payment view uses."""
     approaching = analyzer_result.get("approaching_absence_limits") or []
     unconfirmed = analyzer_result.get("pending_confirmation_records") or []
 
-    # Skip fiscal indexing when no risks require correlation.
+    # Zero-risk short-circuit -- skip the fiscal-rate index build entirely
+    # when there is nothing to correlate (e.g. a STARTER turn with no risk).
     if not approaching and not unconfirmed:
         return {
             "status": "ok", "rows": [], "total_hours_at_risk": 0.0, "total_dollar_at_risk": "0.00",
@@ -1469,7 +1544,8 @@ def correlate_payout_impact(analyzer_result, all_authorizations, all_schedules, 
         limit = int(group.get("absence_limit") or 0)
         confirmed_dates = sorted(group.get("confirmed_absence_dates") or [])
         probable_dates = sorted(group.get("probable_absence_dates") or [])
-        # Only dates beyond the allowed limit carry payment risk.
+        # Only dates that exceed the allowed limit carry payment risk. First
+        # `limit` confirmed absences are within the paid allowance.
         over_confirmed = confirmed_dates[limit:] if limit > 0 else confirmed_dates
         remaining_capacity = max(0, limit - len(confirmed_dates))
         over_probable = probable_dates[remaining_capacity:]
@@ -1659,7 +1735,8 @@ def _as_list(v):
 
 
 # ==============================================================================
-# ENTRY POINT -- read context, apply filters, and dispatch the action.
+# ENTRY POINT -- reads context ONCE, applies child/county filtering ONCE
+# (shared by every view below), then dispatches by turnRequest.action.
 # ==============================================================================
 
 _providers = _ctx("provider", [])
@@ -1674,7 +1751,9 @@ _sub_filter = _turn_request.get("subFilter") if isinstance(_turn_request, dict) 
 _as_of_date = date.today()
 _data_snapshot_version = _ctx("dataManifest.fetchedAtEpoch")
 
-# Shared child/county filters apply to every view.
+# Shared child/county filtering -- applied ONCE for every view (payment,
+# attendance risk, payout impact). Previously this same filter logic was
+# independently re-implemented in all three original task files.
 _child_filter = {c.strip().lower() for c in (_turn_request.get("childNames") or []) if c}
 _county_name_filter = {c.strip().lower() for c in (_turn_request.get("countyNames") or []) if c}
 
@@ -1754,8 +1833,6 @@ if _action == "PAYMENT":
         "county_filter": sorted(_county_name_filter),
         "as_of_date": _as_of_date.isoformat(),
         "dataSnapshotVersion": _data_snapshot_version,
-        # Include subFilter to prevent incompatible cache reuse.
-        "subFilter": _sub_filter,
     }
     write_context("paymentResult", _payment_result)
 
@@ -1793,7 +1870,7 @@ if _action in ("ATTENDANCE", "STARTER"):
                 _fiscal_rates, _county_info, _holidays, _provider_closures, _county_policy_by_id,
                 _child_filter, _county_name_filter, _as_of_date,
             )
-            # Update snapshot risk categories.
+            # Same snapshot risk_categories update the original correlator performed.
             _data_result = _ctx("data_collection_result") or {}
             _snapshot = (_data_result.get("snapshot") if isinstance(_data_result, dict) else None) or {}
             _risk_categories = _snapshot.setdefault("risk_categories", {})

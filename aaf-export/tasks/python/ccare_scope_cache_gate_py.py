@@ -1,18 +1,7 @@
 """_______________This Code was generated using GenAI tool : Codify, Please check for accuracy_______________
 
-ccare_action_shortcut_gate_py (deployed under the retired ccare_scope_cache_gate_py
-task slot -- the AAF portal has no API to create a brand-new task, so an
-existing unbound slot is repurposed; see tools/aaf_admin/README.md). Runs
-FIRST in the process graph, before the LLM intent classifier. Resolves a
-clicked recommended-action button (exact id match) or a bare positional
-reply ("3" / "first" / "last") deterministically -- neither needs language
-understanding, so a match here lets the graph skip the LLM call entirely.
-Relocated (not duplicated) from ccare_turn_request_finalizer_py.py, which
-previously computed this same match AFTER an LLM call whose classification
-was then discarded every time the match won -- confirmed live: a clicked
-"view_full_breakdown" button still paid for a full Bedrock round-trip whose
-output was thrown away by the finalizer's own keyword match.
-
+Runs deterministic action shortcut matching before LLM routing.
+Resolves exact action IDs and positional replies.
 Runtime affordances: read_context, write_context, respond().
 """
 
@@ -41,11 +30,7 @@ _ORDINAL_WORDS = {
 
 
 def _detect_positional_ref(user_message):
-    """A message that is ONLY a number/ordinal/"last" (optionally with
-    light punctuation) is unambiguous regardless of what an LLM would
-    decide -- confirmed live the router does not always reliably set
-    positionalRef for a bare number, so this never depends on model
-    behavior in the first place."""
+    """Returns an unambiguous positional reference from a bare reply."""
     text = (user_message or "").strip().strip(".!?").lower()
     if not text:
         return None
@@ -59,10 +44,7 @@ def _detect_positional_ref(user_message):
 
 
 def _resolve_by_keyword(user_message, recommended_actions, payment_candidates):
-    """A clicked recommended-action button's value is the candidate's own
-    meaningful id (e.g. "upcoming_payment") -- a direct, exact,
-    order-independent id match resolves it without any language
-    understanding. Returns (resolved_fields_dict, matched)."""
+    """Resolves exact action IDs without language understanding."""
     text = (user_message or "").strip().lower()
     if not text:
         return {}, False
@@ -84,9 +66,7 @@ def _resolve_by_keyword(user_message, recommended_actions, payment_candidates):
 
 
 def _resolve_positional(ref, recommended_actions, payment_candidates):
-    """Walks a detected positional reference against the actual structured
-    list. Returns (resolved_fields_dict, ok) -- ok=False means no list to
-    resolve against, or the index is out of range."""
+    """Resolves a positional reference against available candidates."""
     if not ref or not isinstance(ref, dict):
         return {}, False
 
@@ -125,8 +105,7 @@ def _resolve_positional(ref, recommended_actions, payment_candidates):
         item = recommended_actions[idx]
         if not isinstance(item, dict):
             return {}, False
-        # A recommendedActions item's "id" is the recommendation's own label
-        # (e.g. "view_full_breakdown"), never a real service period ID.
+        # Recommended-action IDs are labels, not service-period IDs.
         return {
             "action": item.get("action"),
             "subFilter": item.get("subFilter"),

@@ -1,12 +1,6 @@
 """_______________This Code was generated using GenAI tool : Codify, Please check for accuracy_______________
 
-ccare_response_formatter, v1.3.0. Merged with ccare_action_recommender
-(2026-09-26, less process-graph visual complexity) -- this task now computes
-recommendedActions AND builds every Markdown table/count/disclaimer in one
-deterministic pass. Canonical columns: Child | Authorization | County |
-Service date | Attendance type | Status | Scheduled/Attended/Care hours |
-Amount | Amount type | Reason.
-
+Builds deterministic provider responses and recommended actions.
 Runtime affordances: read_context, write_context, respond().
 """
 
@@ -59,9 +53,6 @@ def _ctx(key, default=None):
     return value if value is not None else default
 
 
-# ==============================================================================
-# RECOMMENDED ACTIONS (merged from ccare_action_recommender, v1.1.0)
-# ==============================================================================
 
 def _candidate(id_, label, action, sub_filter, severity):
     return {"id": id_, "label": label, "action": action, "subFilter": sub_filter, "severity": severity}
@@ -312,21 +303,13 @@ def _build_candidates(current_action, current_sub_filter):
                     "REVIEW",
                 )
             )
-    # snapshot.risk_categories.incomplete_attendance fallback removed: its count
-    # disagrees with the analyzer's authoritative result and produces false-positive
-    # actions that resolve to "no records found". Only surface INCOMPLETE_ATTENDANCE
-    # when the analyzer has actually run and found records.
+    # Use analyzer results for incomplete-attendance actions.
 
-    # Payment actions are scoped to a payment turn. paymentResult may remain
-    # cached after a prior payment request and must not create actions for an
-    # attendance, explanation, or starter response.
+    # Scope payment actions to payment turns.
     if current_action != "PAYMENT":
         payment_result = {}
 
-    # Payment scenario actions -- locked per the scenario table (Section C):
-    # settled/blocked get their own action; a normal calculated/at-risk
-    # period gets the full-breakdown drill-down, exempt from dedup like the
-    # evergreen action (see action deduplication).
+    # Add payment actions by result status.
     turn_request = _ctx("turnRequest") or {}
     is_payment_summary = not (turn_request.get("childNames") or turn_request.get("countyNames"))
     if (
@@ -391,19 +374,13 @@ def _recommend():
         return [], list(_ctx("shownActionIds") or [])
     shown_ids = list(_ctx("shownActionIds") or []) if _ctx("recommendedActionScope") == scope else []
 
-    # The full-breakdown drill-down can re-surface when payment data supports
-    # it; risk actions remain one-time within the same request context.
-    # upcoming_payment/current_week_forecast are persistent dashboard
-    # shortcuts, not one-time alerts -- they should reappear on the
-    # overview every time, not just the first time they're shown.
+    # Keep dashboard shortcuts reusable; risk actions are one-time.
     _never_expire = {"upcoming_payment", "current_week_forecast"}
 
-    # Recommendations are intentionally deterministic. The conversational
-    # model may route to an action, but it cannot invent a new action here.
+    # Recommendations are deterministic.
     candidates = _build_candidates(current_action, current_sub_filter)
 
-    # Keep the first candidate for each action identity and discard anything
-    # already shown in this conversation (never-expire IDs bypass this check).
+    # Deduplicate candidates and skip previously shown actions.
     unique = []
     seen_keys = {}
     for candidate in candidates:
@@ -415,8 +392,7 @@ def _recommend():
         seen_keys[key] = True
         unique.append(candidate)
 
-    # Drop the action currently being answered; recommendations should advance
-    # the conversation rather than repeat the current request.
+    # Omit the action currently being answered.
     remaining = [
         c for c in unique
         if not (
@@ -429,8 +405,7 @@ def _recommend():
     remaining.sort(key=lambda c: _rank(c, current_action, current_sub_filter))
     selected = remaining[:MAX_ACTIONS]
 
-    # Never-expire IDs are not tracked in shownActionIds so they remain
-    # available every turn and do not consume a shown-history slot.
+    # Do not track reusable dashboard shortcuts.
     new_ids = [c["id"] for c in selected if c["id"] not in _never_expire]
     updated_shown = list(dict.fromkeys(shown_ids + new_ids))
     write_context("recommendedActionScope", scope)
@@ -443,8 +418,7 @@ def _recommend():
 # ==============================================================================
 
 def _fmt_date(value):
-    """Human-readable date for every provider-facing table -- 'Sep 25, 2026'.
-    ISO stays internal-only; anything unparseable passes through as-is."""
+    """Format a provider-facing date; preserve unparseable values."""
     text = str(value or "")[:10]
     try:
         y, m, d = (int(p) for p in text.split("-"))
@@ -454,10 +428,7 @@ def _fmt_date(value):
 
 
 def _safe_display_value(value):
-    """Phase 5: one shared masking helper -- was duplicated as an identical
-    lambda at 8 call sites, risking drift as new renderers get added. Hides
-    a raw Salesforce-ID-shaped value (15+ char alphanumeric) from provider
-    display; anything else passes through unchanged."""
+    """Hide Salesforce-ID-shaped values from provider display."""
     text = str(value) if value else ""
     return text if text and not (text.isalnum() and len(text) >= 15) else "--"
 
@@ -481,11 +452,7 @@ def _fmt_hours(value):
 
 
 def _rate_type_display(row):
-    """Rate type paired with the basis (attended/scheduled) it was paid on,
-    e.g. "Regular(attended)", "Overnight(scheduled)" -- so the provider can
-    tell whether an amount reflects actual attendance or a forecasted/
-    authorized day. Falls back to the classification label for older rows
-    that predate this field."""
+    """Format rate type with its payment basis."""
     label = row.get("rate_type_label")
     basis = row.get("payment_basis")
     if label and basis:
@@ -527,8 +494,7 @@ def _period_label():
 
 
 def _group_by_classification(rows):
-    """Preserves first-seen order -- used for the compact category summary
-    that replaces the always-inline day-by-day table."""
+    """Group rows by classification in first-seen order."""
     groups = {}
     for r in rows:
         label = (r.get("classification") or "Other").replace("_", " ").title()
@@ -537,8 +503,7 @@ def _group_by_classification(rows):
 
 
 def _safe_decimal(value, default=Decimal("0")):
-    """Per-value Decimal parse -- one malformed upstream amount degrades
-    that row/total instead of raising and killing the whole response."""
+    """Parse a value as Decimal without raising."""
     if value is None:
         return default
     try:
@@ -548,8 +513,7 @@ def _safe_decimal(value, default=Decimal("0")):
 
 
 def _escape_cell(value):
-    """A name/reason containing '|' or a newline would otherwise corrupt the
-    Markdown table structure -- escape pipes, collapse embedded newlines."""
+    """Escape pipes and collapse newlines for Markdown cells."""
     text = str(value) if value is not None else "--"
     return text.replace("|", "\\|").replace("\n", " ").replace("\r", "")
 
@@ -944,10 +908,7 @@ MULTI_PERIOD_PAGE_SIZE = 7
 
 
 def render_payment_multi_period(recommended):
-    """Compact table -- one row per period, total only, flat status label
-    (Calculated/At-risk). Category breakdown per period is a drill-down
-    (name a specific period -> renders render_payment()'s table for it).
-    Paginated at MULTI_PERIOD_PAGE_SIZE via turnRequest.fetchParams.page."""
+    """Render paginated payment periods with totals and status."""
     result = _ctx("paymentResult") or {}
     periods = result.get("periods") or []
     if not periods:
@@ -985,8 +946,7 @@ def render_payment_multi_period(recommended):
 
 
 def _at_risk_reason(result):
-    """Short inline note explaining why the at-risk amount is at risk.
-    Returns None when there is nothing at risk."""
+    """Explain at-risk amounts, or return None when absent."""
     rows = result.get("rows") or []
     at_risk_rows = [r for r in rows if r.get("status") == "at_risk"]
     if not at_risk_rows:
@@ -1005,11 +965,7 @@ def _at_risk_reason(result):
     return "; ".join(parts) if parts else "under review"
 
 def render_payment(recommended):
-    """Single consistent 2-column payout summary table -- Service period,
-    Payout date, Attendance-based payment, Vacant slot payment, At risk,
-    Potential total. Always shown, no conditional omission. Day-by-day
-    detail and per-classification breakdown live only in
-    render_payment_full_breakdown() (drill-down action)."""
+    """Render the standard payout summary; details use the drill-down."""
     result = _ctx("paymentResult") or {}
     rows = result.get("rows") or []
     top_level_blockers = result.get("blockers") or []
@@ -1017,8 +973,7 @@ def render_payment(recommended):
 
     if not rows and not settled:
         if not top_level_blockers:
-            # No rows, no blockers — genuine absence of payment history,
-            # not a calculation failure.
+            # Distinguish missing history from calculation failure.
             body = [
                 "## No payment history found",
                 "",
@@ -1064,15 +1019,10 @@ FULL_BREAKDOWN_PAGE_SIZE = 7
 
 
 def render_payment_full_breakdown(recommended):
-    """The full day-by-day detail -- a drill-down action (subFilter=
-    FULL_BREAKDOWN) rather than the default view. Paginated at
-    FULL_BREAKDOWN_PAGE_SIZE rows via turnRequest.fetchParams.page -- this is
-    a chat interface, a 40+ row table in one response is bad UX."""
+    """Render paginated day-by-day payment detail."""
     result = _ctx("paymentResult") or {}
     rows = result.get("rows") or []
-    # Vacant-slot rows are facility-level (no child/rate-type/hours dimension)
-    # -- keeping them out of the attendance detail table avoids blank
-    # "--" cells; they get their own small section below instead.
+    # Keep facility-level vacant slots in a separate table.
     attended_rows_all = [r for r in rows if r.get("kind") != "VACANT_SLOT"]
     vacant_rows_all = [r for r in rows if r.get("kind") == "VACANT_SLOT"]
     calculated_rows = [r for r in attended_rows_all if r.get("status") in ("calculated", "at_risk")]
@@ -1138,11 +1088,7 @@ def render_payment_full_breakdown(recommended):
 
 
 def _child_rows(rows, child_key):
-    """Matches by authorization_name (e.g. "963383") or authorization_id --
-    there is no confirmed child-name field anywhere in this pipeline (same
-    known gap documented in attendance_risks_analyzer_py.py), so the
-    authorization identifier is the honest display fallback, not a
-    fabricated child name."""
+    """Match rows by authorization name or ID."""
     key = str(child_key or "").strip().lower()
     return [
         r for r in rows
@@ -1152,9 +1098,7 @@ def _child_rows(rows, child_key):
 
 
 def render_payment_child_detail(recommended, child_key):
-    """Level 1a drill-down -- header liner (Authorization + County) then a
-    classification-level summary table (Days/Hours/Amount per category),
-    not raw individual dates (that's Level 2, render_payment_full_breakdown)."""
+    """Render authorization summary by classification."""
     result = _ctx("paymentResult") or {}
     rows = _child_rows(result.get("rows") or [], child_key)
     if not rows:
@@ -1185,9 +1129,7 @@ def render_payment_child_detail(recommended, child_key):
 
 
 def render_payment_county_detail(recommended, county_key):
-    """Level 1b drill-down -- single aggregated row (Attendance-based
-    payment, Vacant slot payment, hours bracketed). No per-child breakout at
-    this level -- name a specific child to go deeper (Level 1a)."""
+    """Render aggregated county payment detail."""
     result = _ctx("paymentResult") or {}
     rows = result.get("rows") or []
     key = str(county_key or "").strip().lower()
@@ -1237,7 +1179,7 @@ def render_clarify(recommended, prior_recommended=None):
     provider_name = (session_state.get("providerName") or "").strip()
     clarify_reason = (_ctx("turnRequest") or {}).get("clarifyReason") or ""
     if clarify_reason == "greeting" and provider_verified:
-        # Mid-session greeting: ask open question, no kickstart menu
+        # Use an open question for mid-session greetings.
         name_suffix = f", {provider_name}" if provider_name else ""
         return f"Of course{name_suffix}. What would you like to look at?"
     if provider_verified and provider_name:
@@ -1261,7 +1203,7 @@ def render_explain(recommended):
     payment_result = _ctx("paymentResult") or {}
     sections = ["## Explanation", ""]
 
-    # Explain at-risk concept when there is live at-risk data to reference.
+    # Explain at-risk amounts when present.
     at_risk_amt = payment_result.get("amount_at_risk")
     at_risk_days = payment_result.get("at_risk_day_count") or 0
     try:
@@ -1282,7 +1224,7 @@ def render_explain(recommended):
             "",
         ]
 
-    # Current-period status digest.
+    # Add current-period status.
     risk = snapshot.get("risk_categories") or {}
     pending_days = (risk.get("pending_parent_confirmations") or {}).get("days", 0) or 0
     absence_children = (
@@ -1321,8 +1263,7 @@ def render_fallback(recommended):
 
 
 def render_end():
-    # Phase 5: action_dispatch's END branch used to skip the formatter
-    # entirely, so the provider never got a closing message.
+    # Return a closing message for END.
     return "Thank you for checking in. Have a good rest of your day."
 
 
@@ -1338,8 +1279,7 @@ DISCLAIMER_TEXT = (
 
 
 def _mk_table(caption, col_specs, row_list, no_limit=False, footer=None):
-    """col_specs: list of (key, label) or (key, label, align) tuples.
-    row_list: list of dicts keyed by col_specs[*][0]."""
+    """Build a rich table from column specs and row dictionaries."""
     if not row_list:
         return None
     total = len(row_list)
@@ -1364,10 +1304,7 @@ def _mk_buttons(recommended):
         return None
     items = []
     for i, r in enumerate(recommended):
-        # value is the candidate's own meaningful id (e.g. "upcoming_payment"),
-        # not a positional index -- resolution then becomes a direct,
-        # order-independent keyword lookup instead of depending on the LLM
-        # router correctly classifying a bare digit as a positional reference.
+        # Use action IDs so button resolution is order-independent.
         item = {"label": r["label"], "value": r["id"]}
         if i == 0:
             item["variant"] = "primary"
@@ -1796,9 +1733,7 @@ def _blocks_payment_multi_period(recommended):
 def _blocks_payment_full_breakdown(recommended):
     result = _ctx("paymentResult") or {}
     rows = result.get("rows") or []
-    # Vacant-slot rows are facility-level (no child/rate-type/hours dimension)
-    # -- keeping them out of the attendance detail table avoids blank
-    # "--" cells; they get their own small section below instead.
+    # Keep facility-level vacant slots in a separate table.
     attended_rows_all = [r for r in rows if r.get("kind") != "VACANT_SLOT"]
     vacant_rows_all = [r for r in rows if r.get("kind") == "VACANT_SLOT"]
     calculated_rows = [r for r in attended_rows_all if r.get("status") in ("calculated", "at_risk")]
@@ -2170,8 +2105,7 @@ else:
     _blocks = _blocks_fallback(_recommended)
 
 
-# Central disclaimer injection for blocks path (mirrors the markdown path check above).
-# Insert before the buttons block if present, else append.
+# Inject the disclaimer before buttons when needed.
 _disc_block = _mk_text(DISCLAIMER_TEXT, italic=True)
 _blocks_have_dollar = any(
     (isinstance(b, dict) and b.get("type") == "text" and "$" in (b.get("content") or ""))

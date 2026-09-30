@@ -3,10 +3,7 @@ id: ccare_scope_cache_gate_py
 name: CCARE Scope Cache Gate (PY)
 version: 1.0.0
 description: |-
-  Single shared Phase 0 cache-validity check for PAYMENT and ATTENDANCE --
-  one normalization pass over turnRequest/dataSnapshotVersion so both
-  domains use the exact same scope comparison against the same shared
-  context, instead of two separate gates that could drift apart.
+  Resolves button clicks/positional replies into action+subFilter without an LLM round-trip.
 model: null
 model_error: null
 task_type: deterministic
