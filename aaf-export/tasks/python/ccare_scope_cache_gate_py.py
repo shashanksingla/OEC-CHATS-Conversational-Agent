@@ -64,7 +64,17 @@ def _resolve_by_keyword(user_message, recommended_actions, payment_candidates):
             return {
                 "action": item.get("action"),
                 "subFilter": item.get("subFilter"),
-                "servicePeriodId": None,
+                # Most recommended actions genuinely have no period scope
+                # (None is correct for them) -- but some, like "view full
+                # breakdown", carry the period the provider was already
+                # looking at forward so re-clicking it doesn't re-trigger
+                # disambiguation against a broader multi-period fetch.
+                "servicePeriodId": item.get("servicePeriodId"),
+                # Same idea for "see highest-impacted/highest-paid child" --
+                # carries the specific child/county forward so the click scopes
+                # straight to them instead of asking the provider to type a name.
+                "childNames": item.get("childNames"),
+                "countyNames": item.get("countyNames"),
                 "actionId": item.get("id"),
             }, True
     return {}, False
@@ -111,11 +121,15 @@ def _resolve_positional(ref, recommended_actions, payment_candidates):
         item = recommended_actions[idx]
         if not isinstance(item, dict):
             return {}, False
-        # Recommended-action IDs are labels, not service-period IDs.
+        # Recommended-action IDs are labels, not service-period IDs. Carry
+        # child/county scope so positional picks (e.g. "option 2") respect
+        # any entity scope the candidate already carries.
         return {
             "action": item.get("action"),
             "subFilter": item.get("subFilter"),
-            "servicePeriodId": None,
+            "servicePeriodId": item.get("servicePeriodId"),
+            "childNames": item.get("childNames"),
+            "countyNames": item.get("countyNames"),
             "actionId": item.get("id"),
         }, True
 
@@ -139,6 +153,11 @@ if _matched:
         "action": _resolved.get("action"),
         "subFilter": _resolved.get("subFilter"),
         "servicePeriodId": _resolved.get("servicePeriodId"),
+        # childNames/countyNames are carried through so entity-scoped buttons
+        # (highest_paid_child, highest_impact_child, etc.) preserve scope
+        # all the way to the finalizer without re-derivation.
+        "childNames": _resolved.get("childNames") or [],
+        "countyNames": _resolved.get("countyNames") or [],
         "actionId": _resolved.get("actionId"),
     })
     log(f"action shortcut: matched action={_resolved.get('action')} subFilter={_resolved.get('subFilter')} actionId={_resolved.get('actionId')} -- skipping LLM router")

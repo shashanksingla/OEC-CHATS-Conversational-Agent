@@ -1,15 +1,14 @@
 kind: Process
 id: ccare_provider_agent_process
 name: CCARE Provider Agent process
-version: 1.25.0
+version: 1.25.2
 description: |-
   CCARE provider agent turn-processing graph: intent routing, data collection, payment/attendance calc, response formatting.
 model: bedrock/us.anthropic.claude-sonnet-5
 model_error: null
 tasks:
 - node_id: ccare_scope_cache_gate_py
-  name: Action shortcut gate (button clicks / bare positional replies -- deterministic,
-    no LLM)
+  name: Action shortcut gate (button clicks / bare positional replies -- deterministic, no LLM)
   task_type: task
   bound_task: ccare_scope_cache_gate_py
   position: 1
@@ -166,11 +165,59 @@ tasks:
     - name: default
       condition_type: default
   parallel_group: null
+- node_id: explain_topic_gate
+  name: Explain topic gate (known topic -> deterministic; OTHER -> LLM synthesis)
+  task_type: decision
+  bound_task: null
+  position: 12
+  config:
+    branches:
+    - value: PAYMENT_CALCULATION
+      name: known_topic
+      source: context.turnRequest
+      path: explainTopic
+      operator: equals
+      condition_type: text
+    - value: ABSENCE_LIMIT_RULE
+      name: known_topic
+      source: context.turnRequest
+      path: explainTopic
+      operator: equals
+      condition_type: text
+    - value: CONFIRMATION_WINDOW
+      name: known_topic
+      source: context.turnRequest
+      path: explainTopic
+      operator: equals
+      condition_type: text
+    - value: RATE_OR_TIER
+      name: known_topic
+      source: context.turnRequest
+      path: explainTopic
+      operator: equals
+      condition_type: text
+    - value: AT_RISK_REASON
+      name: known_topic
+      source: context.turnRequest
+      path: explainTopic
+      operator: equals
+      condition_type: text
+    - name: needs_synthesis
+      condition_type: default
+  parallel_group: null
+- node_id: ccare_explain_synthesizer
+  name: Constrained LLM synthesis for non-fixed EXPLAIN questions
+  task_type: task
+  bound_task: ccare_explain_synthesizer
+  position: 13
+  config:
+    bound_task: ccare_explain_synthesizer
+  parallel_group: null
 - node_id: engine_cache_gate
   name: Calc engine cache gate
   task_type: decision
   bound_task: null
-  position: 12
+  position: 14
   config:
     branches:
     - value: 'YES'
@@ -186,7 +233,7 @@ tasks:
   name: Consolidated calc engine (payment + attendance risk + payout impact)
   task_type: task
   bound_task: ccare_payment_engine
-  position: 13
+  position: 15
   config:
     bound_task: ccare_payment_engine
   parallel_group: null
@@ -194,7 +241,7 @@ tasks:
   name: Deterministic response formatter (+ recommended actions)
   task_type: task
   bound_task: ccare_response_formatter
-  position: 14
+  position: 16
   config:
     bound_task: ccare_response_formatter
   parallel_group: null
@@ -202,7 +249,7 @@ tasks:
   name: Response exit gate
   task_type: decision
   bound_task: null
-  position: 15
+  position: 17
   config:
     branches:
     - value: failed
@@ -224,7 +271,7 @@ tasks:
   name: Human turn
   task_type: human
   bound_task: null
-  position: 16
+  position: 18
   config: {}
   parallel_group: null
 edges:
@@ -280,7 +327,7 @@ edges:
   to: engine_cache_gate
   condition: payment
 - from: action_dispatch
-  to: ccare_response_formatter
+  to: explain_topic_gate
   condition: explain
 - from: action_dispatch
   to: engine_cache_gate
@@ -294,6 +341,15 @@ edges:
 - from: action_dispatch
   to: ccare_response_formatter
   condition: end
+- from: explain_topic_gate
+  to: ccare_response_formatter
+  condition: known_topic
+- from: explain_topic_gate
+  to: ccare_explain_synthesizer
+  condition: needs_synthesis
+- from: ccare_explain_synthesizer
+  to: ccare_response_formatter
+  condition: always
 - from: engine_cache_gate
   to: ccare_response_formatter
   condition: cache_valid
@@ -318,4 +374,4 @@ edges:
 tags:
 - Child Care
 created_at: '2026-08-14T11:10:21.136879Z'
-updated_at: '2026-09-30T17:09:01.531670Z'
+updated_at: '2026-09-30T20:25:59.943129Z'

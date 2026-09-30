@@ -1,6 +1,7 @@
 """_______________This Code was generated using GenAI tool : Codify, Please check for accuracy_______________
 Builds the deterministic turnRequest from router output and session context.
 Runtime affordances: read_context, write_context, respond().
+
 """
 
 if "read_context" not in globals():
@@ -75,11 +76,16 @@ def _resolve_positional(classification, recommended_actions, payment_candidates)
         item = recommended_actions[idx]
         if not isinstance(item, dict):
             return {}, False
-        # Recommendation IDs are labels, not service-period IDs.
+        # Recommendation IDs are labels, not service-period IDs -- except
+        # for the handful (e.g. "view full breakdown", "see highest-paid
+        # child") that explicitly carry a period or child forward so
+        # re-selecting them doesn't re-trigger disambiguation or drop scope.
         return {
             "action": item.get("action"),
             "subFilter": item.get("subFilter"),
-            "servicePeriodId": None,
+            "servicePeriodId": item.get("servicePeriodId"),
+            "childNames": item.get("childNames"),
+            "countyNames": item.get("countyNames"),
             "actionId": item.get("id"),
         }, True
 
@@ -102,6 +108,55 @@ def _build_fetch_params(sub_filter, date_filter, date_from, date_to, period_coun
     if date_filter in ("LAST_N_MONTHS", "LAST_N_DAYS") and period_count:
         return {"dateFilter": date_filter, "periodCount": period_count}
     return {}
+
+
+def _resolve_action_id_scope(action_id, prior_engine):
+    """Derive concrete countyNames/childNames from a rank-based actionId.
+
+    Reads the rows from the prior payment engine output and returns the
+    highest-earning county or child so the engine can filter correctly.
+    Returns (child_names, county_names) — one will be non-empty, the other [].
+    """
+    if not isinstance(prior_engine, dict) or not action_id:
+        return [], []
+    rows = prior_engine.get("rows") or []
+    if action_id == "highest_paid_county":
+        totals = {}
+        for r in rows:
+            name = r.get("county_name")
+            if name:
+                totals[name] = totals.get(name, 0.0) + float(r.get("amount") or 0)
+        if totals:
+            return [], [max(totals, key=lambda k: totals[k])]
+    elif action_id == "highest_paid_child":
+        totals = {}
+        for r in rows:
+            # Key by authorization_name to avoid merging two children who share
+            # a display name, but map back to child_name for engine filtering.
+            key = r.get("authorization_name") or r.get("child_name")
+            if key:
+                totals[key] = totals.get(key, 0.0) + float(r.get("amount") or 0)
+        if totals:
+            top_key = max(totals, key=lambda k: totals[k])
+            top_child = next(
+                (r.get("child_name") for r in rows
+                 if (r.get("authorization_name") or r.get("child_name")) == top_key and r.get("child_name")),
+                top_key,
+            )
+            return [top_child], []
+    return [], []
+
+
+def _resolve_impact_child(prior_impact_rows):
+    """Derive the highest-at-risk child from payoutImpactResult rows."""
+    totals = {}
+    for r in (prior_impact_rows or []):
+        name = r.get("child_name")
+        if name and r.get("amount") is not None:
+            totals[name] = totals.get(name, 0.0) + float(r.get("amount") or 0)
+    if totals:
+        return [max(totals, key=lambda k: totals[k])]
+    return []
 
 
 def _scope_ref(child_names, county_names):
@@ -215,6 +270,7 @@ if isinstance(_session_state, dict) and _session_state.get("providerVerified") =
 
 _action = _classification.get("action") or "CLARIFY"
 _sub_filter = _classification.get("subFilter")
+_explain_topic = _classification.get("explainTopic")
 _clarify_reason = _classification.get("clarifyReason")
 _child_names = _classification.get("childNames") or []
 _county_names = _classification.get("countyNames") or []
@@ -233,8 +289,10 @@ if _shortcut_matched:
     _service_period_id = _shortcut.get("servicePeriodId")
     _action_id = _shortcut.get("actionId")
     _clarify_reason = None
-    _child_names = []
-    _county_names = []
+    # Gate now carries childNames/countyNames through shortcutResolution so
+    # entity-scoped buttons preserve scope without re-derivation here.
+    _child_names = _shortcut.get("childNames") or []
+    _county_names = _shortcut.get("countyNames") or []
     _date_filter = None
     _date_from = None
     _date_to = None
@@ -251,6 +309,61 @@ else:
             _sub_filter = _positional_fields.get("subFilter")
             _service_period_id = _positional_fields.get("servicePeriodId")
             _action_id = _positional_fields.get("actionId")
+            _child_names = _positional_fields.get("childNames") or []
+            _county_names = _positional_fields.get("countyNames") or []
+    # Carry through any rank-based actionId the router signalled for natural
+    # language queries like "show highest paid child" (no button click).
+    if not _action_id:
+        _action_id = _classification.get("actionId")
+
+# Rank-based resolution -- fires on both shortcut and router paths when
+# entity names weren't carried through (button candidates with no childNames,
+# or router-signalled rank intents where no name exists in the message).
+if _action_id in ("highest_paid_county", "highest_paid_child", "highest_impact_child") and not (_child_names or _county_names):
+    # Primary: read scope + servicePeriodId from the matching recommendedActions candidate
+    # (populated by the formatter on the prior turn -- carries entity name and period context).
+    for _cand in (_recommended_actions or []):
+        if isinstance(_cand, dict) and _cand.get("id") == _action_id:
+            _child_names = _cand.get("childNames") or []
+            _county_names = _cand.get("countyNames") or []
+            if not _service_period_id:
+                _service_period_id = _cand.get("servicePeriodId")
+            # Use the candidate subFilter (e.g. null for detail buttons) so the
+            # engine fetches detail rows rather than a generic multi-period list.
+            _sub_filter = _cand.get("subFilter")
+            break
+    # Fallback: derive entity from prior engine/impact data when not in recommendedActions.
+    if not (_child_names or _county_names):
+        if _action_id in ("highest_paid_county", "highest_paid_child"):
+            _prior_engine = read_context("ccare_payment_engine") or {}
+            _resolved_children, _resolved_counties = _resolve_action_id_scope(_action_id, _prior_engine)
+            _child_names = _resolved_children or _child_names
+            _county_names = _resolved_counties or _county_names
+        elif _action_id == "highest_impact_child":
+            _impact_rows = (read_context("payoutImpactResult") or {}).get("rows") or []
+            _child_names = _resolve_impact_child(_impact_rows) or _child_names
+
+# When entity scope is set via the router but no service period was selected,
+# inherit the last-seen period from the payment engine so detail views resolve
+# rather than returning multi-period data. Also drop subFilter=ALL which signals
+# an unscoped list query and conflicts with entity-scoped detail rendering.
+if (_child_names or _county_names) and _action == "PAYMENT" and not _service_period_id:
+    _prior_engine = read_context("ccare_payment_engine") or {}
+    _inherited_period = _prior_engine.get("service_period_id")
+    if _inherited_period:
+        _service_period_id = _inherited_period
+        if _sub_filter == "ALL":
+            _sub_filter = None
+    # Resolve authorization numbers to display names: the engine filters by
+    # child_name, so a bare auth number must be mapped before the engine runs.
+    if _child_names:
+        _prior_rows = _prior_engine.get("rows") or []
+        _auth_map = {
+            str(r.get("authorization_name") or "").strip(): (r.get("child_name") or "").strip()
+            for r in _prior_rows if r.get("authorization_name") and r.get("child_name")
+        }
+        if _auth_map:
+            _child_names = [_auth_map.get(n, n) for n in _child_names]
 
 # Require explicit dates for SPECIFIC_PERIOD.
 if _sub_filter == "SPECIFIC_PERIOD" and not (_date_from and _date_to):
@@ -288,6 +401,7 @@ _turn_request = {
     "routingClass": _routing_class,
     "intent": _intent,
     "subFilter": _sub_filter,
+    "explainTopic": _explain_topic if _action == "EXPLAIN" else None,
     "query": _user_message,
     "user_id": _external_id,
     "dateFilter": _date_filter,

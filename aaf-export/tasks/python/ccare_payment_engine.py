@@ -606,6 +606,13 @@ def build_day_ledger(schedules, auth_by_name, auth_by_id, closures, holidays,
             "schedule_id": _text(schedule, "Id", "id"),
             "service_date": service_date,
             "auth_id": auth_id,
+            # Salesforce object ID (used for lookups/joins only). The
+            # human-facing reference shown in attendance-risk/payout-impact
+            # tables is `auth_ref` below -- the schedule's own
+            # CI_Authorization_Id__c (e.g. "963383"), which is what
+            # providers actually recognize. Conflating the two was a
+            # regression: it showed the opaque Salesforce ID instead.
+            "auth_ref": auth_ref or auth_id,
             "status_ok": True,
             "blocker": None,
             "limit_blocker": None,
@@ -726,7 +733,7 @@ def _group_absence_and_drop_in(records, county_policy_by_id):
     for rec in records:
         if rec.get("classification") not in {"ABSENCE", "DROP_IN"} or not rec.get("auth_id") or rec.get("is_pending_confirmation"):
             continue
-        key = (rec["auth_id"], rec["service_date"].strftime("%Y-%m"))
+        key = (rec.get("auth_ref") or rec["auth_id"], rec["service_date"].strftime("%Y-%m"))
         group = groups.setdefault(key, {
             "confirmed": [], "probable": [], "drop_in": [],
             "county_id": rec.get("county_id"), "tier": rec.get("quality_tier"),
@@ -855,9 +862,17 @@ def _vacant_slot_rows(vacant_slots, period_start, period_end, holidays, closures
                 excluded.extend(days[remaining:])
             segment_start = month_end + timedelta(days=1)
 
+        # County name: prefer the county rate-plan index, but fall back to the
+        # slot's own embedded CDE_COUNTY__r.Name -- vacant slots can exist for
+        # a county the provider has no active fiscal AGREEMENT in (getCountyData
+        # is scoped off agreements), which otherwise left this blank even
+        # though the slot record itself carries the name.
+        slot_county_name = ((county_policy_by_id.get(slot_county_id or "", {}) or {}).get("county_name")
+                             or _text(slot.get("CDE_COUNTY__r") or {}, "Name", "name"))
         for d in excluded:
             rows.append({"kind": "VACANT_SLOT", "service_date": d.isoformat(), "status": "blocked",
-                         "blocker": "vacant_slot_monthly_cap_exceeded", "amount": "0.00"})
+                         "blocker": "vacant_slot_monthly_cap_exceeded", "amount": "0.00",
+                         "county_id": slot_county_id, "county_name": slot_county_name})
             blockers.append("vacant_slot_monthly_cap_exceeded")
         rate_type = _text(slot, "CDE_RATE_TYPE__c")
         care_unit = _text(slot, "CDE_CARE_UNIT__c")
@@ -874,12 +889,11 @@ def _vacant_slot_rows(vacant_slots, period_start, period_end, holidays, closures
                         break
             if amount is None:
                 rows.append({"kind": "VACANT_SLOT", "service_date": d.isoformat(), "status": "blocked",
-                             "blocker": blocker, "amount": "0.00"})
+                             "blocker": blocker, "amount": "0.00", "county_id": slot_county_id, "county_name": slot_county_name})
                 blockers.append(blocker)
             else:
                 rows.append({"kind": "VACANT_SLOT", "service_date": d.isoformat(), "amount": _money(amount),
-                             "status": "calculated", "county_id": slot_county_id,
-                             "county_name": (county_policy_by_id.get(slot_county_id or "", {}) or {}).get("county_name")})
+                             "status": "calculated", "county_id": slot_county_id, "county_name": slot_county_name})
     return rows, blockers
 
 
@@ -972,7 +986,9 @@ def calculate_payment(raw_bundle, ledger):
 
     multi_period_window = raw_bundle.get("multi_period_window")
     if multi_period_window:
-        window_start, window_end = multi_period_window
+        window_start, window_end = (
+            date.fromisoformat(str(v)[:10]) if not isinstance(v, date) else v for v in multi_period_window
+        )
         matching = _periods_overlapping(service_periods, window_start, window_end)
         if not matching:
             return _blocked(["service_period"])
@@ -1004,7 +1020,7 @@ def summarize_attendance_risk(ledger, county_policy_by_id, child_filter, county_
     records, groups = ledger["records"], ledger["absence_groups"]
 
     def _passes(name, county):
-        if child_filter and (name or "").strip().lower() not in child_filter:
+        if child_filter and not _name_matches(name, child_filter):
             return False
         if county_filter and (county or "").strip().lower() not in county_filter:
             return False
@@ -1038,7 +1054,7 @@ def summarize_attendance_risk(ledger, county_policy_by_id, child_filter, county_
             })
 
     pending = [
-        {"schedule_id": r.get("schedule_id"), "auth_id": r.get("auth_id"), "child_id": r.get("child_id"),
+        {"schedule_id": r.get("schedule_id"), "auth_id": r.get("auth_ref") or r.get("auth_id"), "child_id": r.get("child_id"),
          "child_name": r.get("child_name"), "county_name": r.get("county_name"), "provider_id": r.get("provider_id"),
          "county_id": r.get("county_id"), "date": r["service_date"].isoformat(), "status": PARENT_PENDING}
         for r in records if r.get("is_pending_confirmation") and _passes(r.get("child_name"), r.get("county_name"))
@@ -1048,7 +1064,7 @@ def summarize_attendance_risk(ledger, county_policy_by_id, child_filter, county_
     # check-in/out is now a direct ledger field, so it no longer silently
     # depends on payout-impact having run earlier in the same turn.
     incomplete = [
-        {"child_name": r.get("child_name"), "authorization_id": r.get("auth_id"), "county_name": r.get("county_name"),
+        {"child_name": r.get("child_name"), "authorization_id": r.get("auth_ref") or r.get("auth_id"), "county_name": r.get("county_name"),
          "date": r["service_date"].isoformat(), "reason": "A check-in or check-out was not logged for this day"}
         for r in records if r.get("is_incomplete_checkinout") and _passes(r.get("child_name"), r.get("county_name"))
     ]
@@ -1075,7 +1091,7 @@ def summarize_payout_impact(ledger, risk_result, child_filter, county_filter):
     records = ledger["records"]
 
     def _skip(child_name, county_name):
-        if child_filter and (child_name or "").lower() not in child_filter:
+        if child_filter and not _name_matches(child_name, child_filter):
             return True
         if county_filter and county_name and (county_name or "").lower() not in county_filter:
             return True
@@ -1087,7 +1103,7 @@ def summarize_payout_impact(ledger, risk_result, child_filter, county_filter):
         nonlocal total_hours, total_dollar
         hours = rec.get("payable_hours") or Decimal("0")
         amount = rec.get("rate")
-        out = {"child_name": rec.get("child_name"), "authorization_id": rec.get("auth_id"),
+        out = {"child_name": rec.get("child_name"), "authorization_id": rec.get("auth_ref") or rec.get("auth_id"),
                "county_name": rec.get("county_name"), "risk_category": category}
         if amount is None:
             out.update(care_hours=float(hours) if hours else None, amount=None, amount_type=None, reason=rec.get("rate_blocker"))
@@ -1105,9 +1121,21 @@ def summarize_payout_impact(ledger, risk_result, child_filter, county_filter):
 
     rows = []
     for rec in records:
-        if rec.get("classification") == "ABSENCE" and rec.get("limit_blocker") == "absence_limit_exceeded" \
-                and not _skip(rec.get("child_name"), rec.get("county_name")):
-            rows.append(_row(rec, "Absence beyond the confirmed limit is at risk of exclusion from payment", "absence"))
+        if rec.get("classification") != "ABSENCE" or _skip(rec.get("child_name"), rec.get("county_name")):
+            continue
+        # Days 9+ days old are outside the actionable/confirmation window --
+        # the payment cycle has already processed them one way or the other,
+        # so they're no longer a "risk," just a settled fact (see the
+        # payment view's own blocker for what actually happened to them).
+        if not rec.get("is_tentative"):
+            continue
+        # A day whose group has ALREADY crossed the county's absence limit
+        # is a certainty, not a risk -- it will not be paid, full stop.
+        # Only days still within the limit (or where the limit itself is
+        # unknown) have a payment outcome that's still genuinely open.
+        if rec.get("limit_blocker") == "absence_limit_exceeded":
+            continue
+        rows.append(_row(rec, "Recent, unconfirmed absence within the county limit -- still pending, payment could change", "absence"))
 
     for rec in records:
         if rec.get("is_pending_confirmation") and (not win_start or rec["service_date"].isoformat() >= win_start) \
@@ -1150,6 +1178,36 @@ def summarize_payout_impact(ledger, risk_result, child_filter, county_filter):
     }
 
 
+def _name_matches(name, filters):
+    """Tolerant child-name match: exact, substring, or all filter tokens present
+    ('murti' matches 'MURTI SB')."""
+    n = (name or "").strip().lower()
+    if not n:
+        return False
+    tokens = n.split()
+    return any(f == n or f in n or all(t in tokens for t in f.split()) for f in filters)
+
+
+def filter_ledger(ledger, child_filter, county_filter):
+    """Scope the computed ledger by child/county. Whole authorizations are kept
+    or dropped (an authorization has one child and one county), so monthly
+    absence/drop-in grouping stays correct. Raw fetched data is never narrowed."""
+    if not child_filter and not county_filter:
+        return ledger
+
+    def keep(rec):
+        if child_filter and not _name_matches(rec.get("child_name"), child_filter):
+            return False
+        if county_filter and (rec.get("county_name") or "").strip().lower() not in county_filter:
+            return False
+        return True
+
+    records = [r for r in ledger["records"] if keep(r)]
+    groups = {k: g for k, g in ledger["absence_groups"].items()
+              if any(keep(r) for r in g["confirmed"] + g["probable"] + g["drop_in"])}
+    return {"records": records, "absence_groups": groups}
+
+
 # ==============================================================================
 # SECTION 9 -- ENTRY POINT (thin dispatch; the previous version's ~230-line
 # entry point shrinks because index-building and ledger-building are now
@@ -1182,11 +1240,7 @@ _child_filter = {c.strip().lower() for c in (_turn_request.get("childNames") or 
 _county_name_filter = {c.strip().lower() for c in (_turn_request.get("countyNames") or []) if c}
 
 _authorizations = _authorizations_all
-if _child_filter:
-    _authorizations = [
-        a for a in _authorizations
-        if _text(a.get("IDN_CLIENT__r") or {}, "Name") and _text(a.get("IDN_CLIENT__r") or {}, "Name").strip().lower() in _child_filter
-    ]
+_schedules = _schedules_all
 if _county_name_filter:
     _name_to_id = {}
     for row in _county_info if isinstance(_county_info, list) else []:
@@ -1195,27 +1249,9 @@ if _county_name_filter:
         if name and cid:
             _name_to_id.setdefault(name.strip().lower(), cid)
     _allowed_county_ids = {_name_to_id[n] for n in _county_name_filter if n in _name_to_id}
-    _authorizations = [a for a in _authorizations if _text(a, "CDE_COUNTY__c", "county_id") in _allowed_county_ids]
     _vslots = _payment_bundle.get("vacantSlots") if isinstance(_payment_bundle, dict) else None
     if isinstance(_vslots, list):
         _payment_bundle["vacantSlots"] = [s for s in _vslots if isinstance(s, dict) and _text(s, "CDE_COUNTY__c") in _allowed_county_ids]
-
-
-def _schedule_matches_filters(schedule):
-    if _child_filter:
-        name = _text(schedule, "IDN_CLIENT__r.Name", "childName", "child_name", "clientName", "client_name", "Contact_Name__c")
-        if not name or name.strip().lower() not in _child_filter:
-            return False
-    if _county_name_filter:
-        county = _text(schedule, "CDE_COUNTY__r.Name", "countyName", "county_name")
-        if not county or county.strip().lower() not in _county_name_filter:
-            return False
-    return True
-
-
-_schedules = _schedules_all if not (_child_filter or _county_name_filter) else [
-    s for s in _schedules_all if isinstance(s, dict) and _schedule_matches_filters(s)
-]
 
 _provider_closures = _records(_first(_payment_bundle, "provider_closures", "providerClosures", "getProviderClosures")) if isinstance(_payment_bundle, dict) else []
 _county_policy_by_id = build_county_policy_index(_county_info)
@@ -1236,6 +1272,7 @@ _ledger = (
                       _county_policy_by_id, _fiscal_schedule_index, _rate_lookup, _as_of_date)
     if _needs_ledger else {"records": [], "absence_groups": {}}
 )
+_ledger = filter_ledger(_ledger, _child_filter, _county_name_filter)
 
 if _action == "PAYMENT":
     if not isinstance(_payment_bundle, dict) or not _payment_bundle:
@@ -1289,7 +1326,7 @@ if _action in ("ATTENDANCE", "STARTER"):
         write_context("result.pending_confirmation_records", _attendance_result["pending_confirmation_records"])
         write_context("result.scopeFingerprint", _attendance_result["scopeFingerprint"])
 
-        if _sub_filter == "PAYOUT_IMPACT" or _action == "STARTER":
+        if _attendance_result is not None:  # always fresh with the attendance scan -- no stale impact rows
             _impact_result = summarize_payout_impact(_ledger, _attendance_result, _child_filter, _county_name_filter)
             _data_result = _ctx("data_collection_result") or {}
             _snapshot = (_data_result.get("snapshot") if isinstance(_data_result, dict) else None) or {}
