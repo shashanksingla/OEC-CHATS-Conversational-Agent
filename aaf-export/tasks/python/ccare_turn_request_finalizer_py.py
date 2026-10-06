@@ -120,6 +120,10 @@ def _resolve_action_id_scope(action_id, prior_engine):
     if not isinstance(prior_engine, dict) or not action_id:
         return [], []
     rows = prior_engine.get("rows") or []
+    if not rows and prior_engine.get("mode") == "multi_period":
+        for period in prior_engine.get("periods") or []:
+            if isinstance(period, dict):
+                rows.extend(period.get("rows") or [])
     if action_id == "highest_paid_county":
         totals = {}
         for r in rows:
@@ -279,8 +283,16 @@ _date_from = _classification.get("dateFrom")
 _date_to = _classification.get("dateTo")
 _period_count = _classification.get("periodCount")
 _confidence = _classification.get("confidence", 1.0)
+_auth_ref = _classification.get("authRef")
 _service_period_id = None
 _action_id = None
+
+# Period-selecting subFilters signal an explicit period switch -- never
+# inherit the current period over them.
+_PERIOD_SELECTING = {"NEXT_PAYOUT", "LAST_PAYOUT", "CURRENT_PERIOD_FORECAST",
+                     "CURRENT_MONTH", "SPECIFIC_PERIOD", "ALL"}
+# Prior turn's finalized request -- used for context inheritance below.
+_prior_turn_req = read_context("turnRequest") or {}
 
 # Use shortcut resolution directly; its classification may be stale.
 if _shortcut_matched:
@@ -316,6 +328,36 @@ else:
     if not _action_id:
         _action_id = _classification.get("actionId")
 
+# Universal auth-reference resolution: the router emits authRef when the provider typed a
+# bare authorization number. Resolve to child_name (via AuthInformation or prior rows) so
+# the engine can filter correctly for both PAYMENT and ATTENDANCE actions.
+if not _shortcut_matched and _auth_ref:
+    _auth_refs_list = [_auth_ref] if isinstance(_auth_ref, str) else list(_auth_ref)
+    _auth_to_child = {}
+    for _ar in (read_context("AuthInformation") or []):
+        if not isinstance(_ar, dict):
+            continue
+        _ar_num = (str(_ar.get("Name") or _ar.get("NAM_AUTH__c") or _ar.get("authorization_name") or "")).strip()
+        if not _ar_num:
+            continue
+        _ar_cname = (str(((_ar.get("IDN_CLIENT__r") or {}).get("Name")) or "").strip()
+                     or str(((_ar.get("IDN_CLIENT__r") or {}).get("NAM_FIRST__c")) or "").strip())
+        if _ar_cname:
+            _auth_to_child[_ar_num] = _ar_cname
+    _prior_pay_for_auth = read_context("paymentResult") or {}
+    _prior_pay_rows_for_auth = list(_prior_pay_for_auth.get("rows") or []) if isinstance(_prior_pay_for_auth, dict) else []
+    for _pp in (_prior_pay_for_auth.get("periods") or [] if isinstance(_prior_pay_for_auth, dict) else []):
+        if isinstance(_pp, dict):
+            _prior_pay_rows_for_auth.extend(_pp.get("rows") or [])
+    for _r in _prior_pay_rows_for_auth:
+        if isinstance(_r, dict):
+            _r_auth = (str(_r.get("authorization_name") or "")).strip()
+            _r_child = (str(_r.get("child_name") or "")).strip()
+            if _r_auth and _r_child:
+                _auth_to_child.setdefault(_r_auth, _r_child)
+    _resolved_auth = [_auth_to_child.get(ref, ref) for ref in _auth_refs_list]
+    _child_names = list({*_child_names, *_resolved_auth})
+
 # Rank-based resolution -- fires on both shortcut and router paths when
 # entity names weren't carried through (button candidates with no childNames,
 # or router-signalled rank intents where no name exists in the message).
@@ -335,7 +377,7 @@ if _action_id in ("highest_paid_county", "highest_paid_child", "highest_impact_c
     # Fallback: derive entity from prior engine/impact data when not in recommendedActions.
     if not (_child_names or _county_names):
         if _action_id in ("highest_paid_county", "highest_paid_child"):
-            _prior_engine = read_context("ccare_payment_engine") or {}
+            _prior_engine = read_context("paymentResult") or read_context("ccare_payment_engine") or {}
             _resolved_children, _resolved_counties = _resolve_action_id_scope(_action_id, _prior_engine)
             _child_names = _resolved_children or _child_names
             _county_names = _resolved_counties or _county_names
@@ -348,26 +390,61 @@ if _action_id in ("highest_paid_county", "highest_paid_child", "highest_impact_c
 # rather than returning multi-period data. Also drop subFilter=ALL which signals
 # an unscoped list query and conflicts with entity-scoped detail rendering.
 if (_child_names or _county_names) and _action == "PAYMENT" and not _service_period_id:
-    _prior_engine = read_context("ccare_payment_engine") or {}
+    _prior_engine = read_context("paymentResult") or read_context("ccare_payment_engine") or {}
     _inherited_period = _prior_engine.get("service_period_id")
     if _inherited_period:
         _service_period_id = _inherited_period
-        if _sub_filter == "ALL":
+        # Drop any period-selecting subFilter now that we have an explicit
+        # period pinned -- a stale NEXT_PAYOUT etc. would cause cache misses
+        # and potentially re-select the wrong period.
+        if _sub_filter in _PERIOD_SELECTING:
             _sub_filter = None
-    # Resolve authorization numbers to display names: the engine filters by
-    # child_name, so a bare auth number must be mapped before the engine runs.
-    if _child_names:
-        _prior_rows = _prior_engine.get("rows") or []
-        _auth_map = {
-            str(r.get("authorization_name") or "").strip(): (r.get("child_name") or "").strip()
-            for r in _prior_rows if r.get("authorization_name") and r.get("child_name")
-        }
-        if _auth_map:
-            _child_names = [_auth_map.get(n, n) for n in _child_names]
+
+# GAP 3 -- ATTENDANCE entity-scope drill-downs: if the router emitted no
+# specific sub-view (null or ALL), inherit the prior ATTENDANCE subFilter so
+# the scoped view stays on the same category (e.g. ABSENCE_LIMITS → scoped
+# ABSENCE_LIMITS, not reset to ALL).
+if (_child_names or _county_names) and _action == "ATTENDANCE" and _sub_filter in (None, "ALL"):
+    _prior_att_sf = _prior_turn_req.get("subFilter")
+    if _prior_turn_req.get("action") == "ATTENDANCE" and _prior_att_sf not in (None, "ALL"):
+        _sub_filter = _prior_att_sf
 
 # Require explicit dates for SPECIFIC_PERIOD.
 if _sub_filter == "SPECIFIC_PERIOD" and not (_date_from and _date_to):
     _action, _sub_filter, _clarify_reason = "CLARIFY", None, "vague"
+
+# If the requested date range falls within exactly one period already
+# computed in a prior multi-period paymentResult, set servicePeriodId
+# so the engine can extract it from context without re-running
+# calculate_payment (scope-aware cache in ccare_payment_engine).
+if _action == "PAYMENT" and not _service_period_id and _date_from and _date_to:
+    _mp_result = read_context("paymentResult") or {}
+    if _mp_result.get("mode") == "multi_period":
+        _mp_matching = [
+            p for p in (_mp_result.get("periods") or [])
+            if (p.get("service_period_start") or "") <= _date_to
+            and (p.get("service_period_end") or "") >= _date_from
+        ]
+        if len(_mp_matching) == 1:
+            _service_period_id = _mp_matching[0].get("service_period_id")
+
+# GAP 1 -- Natural language PAYMENT refinements: when the provider says
+# "show the breakdown" or "show details" without an explicit period keyword,
+# inherit the current servicePeriodId so they stay on the period they were
+# already viewing. Only fires when:
+#   - no period was set by shortcut or entity-scope inheritance above
+#   - subFilter is NOT a period-selector (explicit new-period request)
+#   - no explicit date was provided by the router
+#   - prior action was also PAYMENT (don't inherit across action switches)
+if (not _service_period_id
+        and _action == "PAYMENT"
+        and _sub_filter not in _PERIOD_SELECTING
+        and not _date_filter
+        and not (_child_names or _county_names)
+        and _prior_turn_req.get("action") == "PAYMENT"):
+    _prior_engine = read_context("paymentResult") or read_context("ccare_payment_engine") or {}
+    if isinstance(_prior_engine, dict) and _prior_engine.get("service_period_id"):
+        _service_period_id = _prior_engine["service_period_id"]
 
 _date_filter = _resolve_date_filter(_action, _date_filter)
 _fetch_params = _build_fetch_params(_sub_filter, _date_filter, _date_from, _date_to, _period_count)
@@ -392,7 +469,7 @@ write_context("progressMessage", _progress)
 # independently. It exists only so the formatter can decide whether to
 # still show its own opening line. Do not repurpose this as if it were
 # delivered; see ccare_response_formatter.py's `_progress_sent` handling.
-if _action != "END":
+if _action != "END" and isinstance(_session_state, dict) and _session_state.get("providerVerified") in (True, "YES"):
     write_context("greetingDone", True)
 
 _turn_request = {

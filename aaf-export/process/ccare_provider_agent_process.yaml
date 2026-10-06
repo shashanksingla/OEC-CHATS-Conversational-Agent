@@ -1,9 +1,8 @@
-kind: Process
 id: ccare_provider_agent_process
 name: CCARE Provider Agent process
 version: 1.25.2
-description: |-
-  CCARE provider agent turn-processing graph: intent routing, data collection, payment/attendance calc, response formatting.
+description: 'CCARE provider agent turn-processing graph: intent routing, data collection, payment/attendance calc, response
+  formatting.'
 model: bedrock/us.anthropic.claude-sonnet-5
 model_error: null
 tasks:

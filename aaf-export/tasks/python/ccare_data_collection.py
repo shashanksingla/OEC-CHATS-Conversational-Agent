@@ -275,6 +275,20 @@ def _service_period_params(sub_filter, turn_request, resolved_filters):
         return {"dateOn": "TODAY", "limitOne": True}
     if sub_filter == "LAST_PAYOUT":
         return {"paymentBefore": "TODAY", "limitOne": True}
+    if sub_filter is None and isinstance(turn_request, dict) and turn_request.get("servicePeriodId"):
+        # Child/county drill-down on a specific period (subFilter omitted by the button).
+        # Cover last month + this month so the target period resolves whether its
+        # payout date is upcoming or already released.
+        first, _ = _month_bounds(today, 1)
+        _, last = _month_bounds(today)
+        return _date_range_params(first, last)
+    if sub_filter == "FULL_BREAKDOWN":
+        # Drill-down onto a specific servicePeriodId. Cover last month + this month
+        # so the target period resolves whether its payout date is upcoming (next
+        # payout) or already released (last payout).
+        first, _ = _month_bounds(today, 1)
+        _, last = _month_bounds(today)
+        return _date_range_params(first, last)
     if sub_filter == "CURRENT_MONTH":
         return _date_range_params(*_month_bounds(today))
     if sub_filter == "ALL" and isinstance(turn_request, dict) and turn_request.get("action") == "PAYMENT":
@@ -550,7 +564,12 @@ def _drill_down_reuse(turn_request, manifest, payment_result, attendance_result,
         if str(service_period_id) not in (fp.get("resolved_service_period_ids") or []):
             return False
         if fp.get("subFilter") != current_sub_filter:
-            return False
+            # Child/county drill-down (subFilter=None) on an already-resolved period:
+            # the engine result already has the rows; formatter re-filters by child/county.
+            # Skip the date-window check -- no new fetch is needed.
+            if current_sub_filter is not None:
+                return False
+            return True
     else:
         fp = None
         for candidate in (payment_result, attendance_result):
@@ -559,6 +578,19 @@ def _drill_down_reuse(turn_request, manifest, payment_result, attendance_result,
                     and cfp.get("subFilter") == current_sub_filter:
                 fp = cfp
                 break
+        # Fallback for attendance child/county drill-downs: the engine computes all
+        # attendance records in one pass; subFilter only selects the formatter view.
+        # An unfiltered prior attendance result covers any scoped request.
+        if fp is None and isinstance(turn_request, dict) and turn_request.get("action") == "ATTENDANCE":
+            _child_req = {str(c).strip().lower() for c in (turn_request.get("childNames") or []) if c}
+            _county_req = {str(c).strip().lower() for c in (turn_request.get("countyNames") or []) if c}
+            if _child_req or _county_req:
+                cfp = attendance_result.get("scopeFingerprint") if isinstance(attendance_result, dict) else None
+                if (isinstance(cfp, dict)
+                        and cfp.get("dataSnapshotVersion") == snapshot_version
+                        and not (cfp.get("child_filter") or [])
+                        and not (cfp.get("county_filter") or [])):
+                    fp = cfp
         if fp is None:
             return False
 
@@ -587,8 +619,21 @@ def _engine_cache_status(turn_request, manifest, payment_result, attendance_resu
             return "NO"
         # Payment results depend on subFilter; the attendance scan does not.
         if check_sub_filter and fp.get("subFilter") != current_sub_filter:
+            # Allow reuse for child/county drill-downs (subFilter=None) on a period
+            # already computed. build_payment_child_detail filters rows itself via
+            # _child_rows(), so re-running the engine is wasteful and error-prone.
+            if current_sub_filter is not None:
+                return "NO"
+            if not current_period or str(current_period) not in (fp.get("resolved_service_period_ids") or []):
+                return "NO"
+        # A prior unfiltered result (empty fp_child/fp_county) covers any child/county
+        # drill-down because the formatter re-filters via _child_rows()/_all_engine_rows().
+        # A prior filtered result only covers the same or broader scope.
+        fp_child = set(fp.get("child_filter") or [])
+        fp_county = set(fp.get("county_filter") or [])
+        if fp_child and not fp_child.issuperset(current_child):
             return "NO"
-        if set(fp.get("child_filter") or []) != current_child or set(fp.get("county_filter") or []) != current_county:
+        if fp_county and not fp_county.issuperset(current_county):
             return "NO"
         if current_period and str(current_period) not in (fp.get("resolved_service_period_ids") or []):
             return "NO"
@@ -877,7 +922,9 @@ def _main():
 
     if turn_request.get("servicePeriodId"):
         payment_bundle["service_period_id"] = turn_request["servicePeriodId"]
-    if sub_filter == "CURRENT_MONTH":
+    if action == "STARTER":
+        payment_bundle["multi_period_window"] = [d.isoformat() for d in _month_bounds(date.today())]
+    elif sub_filter == "CURRENT_MONTH":
         payment_bundle["multi_period_window"] = [d.isoformat() for d in _month_bounds(date.today())]
     elif sub_filter == "ALL":
         payment_bundle["multi_period_window"] = [_month_bounds(date.today(), 1)[0].isoformat(), _month_bounds(date.today())[1].isoformat()]

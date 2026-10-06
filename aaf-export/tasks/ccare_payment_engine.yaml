@@ -1,10 +1,12 @@
-kind: Task
 id: ccare_payment_engine
-name: CCARE_Payment_Engine
-version: 1.3.44
-description: |-
-  Consolidated payment + attendance-risk + payout-impact calc engine.
-  Handles settlement, absence/drop-in limits, vacant-slot fees, per-subFilter period dispatch.
+name: CCARE Calculation Engine
+version: 1.4.8
+description: 'Critical fix: unquoted set[str] type annotations (added for the county-holiday-list vacant-slot work) crash
+  at function-definition time -- the AAF sandbox exec environment restricts the set builtin to a plain non-subscriptable wrapper
+  function, so set[str] raised TypeError: ''function'' object is not subscriptable on every single run since that feature
+  was deployed. Every occurrence quoted as a forward-reference string (never evaluated at runtime) -- dict[...]/list[...]
+  are unaffected and left as-is. | skip NO_CARE rows entirely: no scheduled care + no attendance is not a payment event, not
+  a blocker. | HOLIDAY excluded from absence limit counter: holidays do not burn an absence slot.'
 model: null
 model_error: null
 task_type: deterministic
@@ -17,6 +19,7 @@ allowed_tools:
 knowledge_base_scope: null
 tags:
 - Child Care
+max_tokens: null
 response: null
 created_at: '2026-09-24T12:56:39.271789Z'
-updated_at: '2026-09-29T12:00:52.408781Z'
+updated_at: '2026-10-05T18:11:20.128637Z'

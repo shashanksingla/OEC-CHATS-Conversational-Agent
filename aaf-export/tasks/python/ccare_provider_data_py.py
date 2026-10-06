@@ -67,6 +67,7 @@ if not _skip_rest:
 
     log("calling getProviderInfo userId=%s filters=%s" % (user_id, {k: v for k, v in params.items() if k != "userId"}))
     _connection_failed = False
+    _validation_failed = False
     try:
         response = call_endpoint("getProviderInfo", params)
     except RuntimeError as _exc:
@@ -91,8 +92,9 @@ if not _skip_rest:
             log("provider validation failed: %s" % reason)
             # Clear stale trust after failed re-check.
             write_context("sessionState", {"providerVerified": "NO"})
+            _validation_failed = True
             respond({"status": "failed", "reason": reason}, confidence=1.0)
-        else:
+        elif not _validation_failed:
             provider_data = response.get("data") or {}
             provider_name = provider_data.get("ProviderName")
             conversation_state = {
@@ -104,7 +106,7 @@ if not _skip_rest:
             # Persist validation state and reset the revalidation counter.
             write_context("sessionState", {"providerVerified": "YES", "providerName": provider_name, "validatedTurnCount": 0})
             log("provider validated: providerName=%s intent=%s" % (provider_name, intent))
-        if intent == "Unclear":
+        if not _validation_failed and intent == "Unclear":
             log("intent unclear -- routing to clarification after provider validated")
             write_context("ccare_provider_data_py", {
                 "status": "needs_clarification",
@@ -119,7 +121,7 @@ if not _skip_rest:
                 "resolvedFilters": resolved_filters,
                 "conversationState": conversation_state,
             }, confidence=1.0)
-        else:
+        elif not _validation_failed:
             write_context("ccare_provider_data_py", {
                 "status": "success",
                 "providerName": provider_name,

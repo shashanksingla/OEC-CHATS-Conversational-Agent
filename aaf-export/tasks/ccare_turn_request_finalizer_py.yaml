@@ -1,20 +1,27 @@
-kind: Task
 id: ccare_turn_request_finalizer_py
 name: CCARE Turn Request Finalizer (PY)
-version: 1.0.0
-description: |-
-  Deterministic post-processor for the router: resolves positional refs, builds fetchParams/date defaults, composes progressMessage.
+version: 1.0.30
+description: 'Deterministic post-processor for the shrunk ccare_unified_intent_router.
+
+  Resolves positional references, builds fetchParams, applies date defaults,
+
+  derives routingClass/intent, and composes a templated context-aware
+
+  progressMessage -- assembles the same turnRequest shape the rest of the
+
+  process already expects, with zero LLM cost.'
 model: null
 model_error: null
 task_type: deterministic
-system_prompt: ""
+system_prompt: ''
 max_turns: 10
 code: SEE_FILE:tasks/python/ccare_turn_request_finalizer_py.py
 timeout: 10
 allowed_tools: []
 knowledge_base_scope: null
 tags:
-  - Child Care
+- Child Care
+max_tokens: null
 response: null
-created_at: '2026-09-29T19:31:00.000000Z'
-updated_at: '2026-09-29T19:31:00.000000Z'
+created_at: '2026-09-29T15:17:25.703154Z'
+updated_at: '2026-10-06T10:00:42.012138Z'

@@ -707,6 +707,10 @@ def build_day_ledger(schedules, auth_by_name, auth_by_id, closures, holidays,
 
         if classification in {"CARE_NOT_OFFERED", "NO_CARE"} or payable_hours <= 0:
             rec.update(rate=None)
+            if is_pending and authorized_hours and authorized_hours > 0:
+                est_rate, _ = resolve_attended_rate(authorization, rate_type_code, age_group_code,
+                                                    authorized_hours, fiscal_schedule_index, rate_lookup)
+                rec.update(estimated_rate=est_rate, estimated_hours=authorized_hours)
         else:
             rate, rate_blocker = resolve_attended_rate(authorization, rate_type_code, age_group_code,
                                                         payable_hours, fiscal_schedule_index, rate_lookup)
@@ -1053,27 +1057,39 @@ def summarize_attendance_risk(ledger, county_policy_by_id, child_filter, county_
                 "probable_absence_dates": sorted(r["service_date"].isoformat() for r in probable),
             })
 
-    pending = [
-        {"schedule_id": r.get("schedule_id"), "auth_id": r.get("auth_ref") or r.get("auth_id"), "child_id": r.get("child_id"),
-         "child_name": r.get("child_name"), "county_name": r.get("county_name"), "provider_id": r.get("provider_id"),
-         "county_id": r.get("county_id"), "date": r["service_date"].isoformat(), "status": PARENT_PENDING}
-        for r in records if r.get("is_pending_confirmation") and _passes(r.get("child_name"), r.get("county_name"))
-    ]
+    pending = []
+    for r in records:
+        if not r.get("is_pending_confirmation"):
+            continue
+        if not _passes(r.get("child_name"), r.get("county_name")):
+            continue
+        pending.append({
+            "schedule_id": r.get("schedule_id"), "auth_id": r.get("auth_ref") or r.get("auth_id"),
+            "child_id": r.get("child_id"), "child_name": r.get("child_name"),
+            "county_name": r.get("county_name"), "provider_id": r.get("provider_id"),
+            "county_id": r.get("county_id"), "date": r["service_date"].isoformat(),
+            "status": PARENT_PENDING,
+        })
 
-    # Decoupled from payoutImpactResult (restructuring fix): incomplete
-    # check-in/out is now a direct ledger field, so it no longer silently
-    # depends on payout-impact having run earlier in the same turn.
-    incomplete = [
-        {"child_name": r.get("child_name"), "authorization_id": r.get("auth_ref") or r.get("auth_id"), "county_name": r.get("county_name"),
-         "date": r["service_date"].isoformat(), "reason": "A check-in or check-out was not logged for this day"}
-        for r in records if r.get("is_incomplete_checkinout") and _passes(r.get("child_name"), r.get("county_name"))
-    ]
+    # G2: incomplete_checkinout — attendance logged but check-in/check-out pair is incomplete.
+    # Days with no attendance at all (MISSING_ATTENDANCE) are ABSENCE-classified and fold
+    # into absence-limit risk — they are NOT a separate display category.
+    incomplete_cio = []
+    for r in records:
+        if not _passes(r.get("child_name"), r.get("county_name")):
+            continue
+        if r.get("is_incomplete_checkinout"):
+            incomplete_cio.append({
+                "child_name": r.get("child_name"), "authorization_id": r.get("auth_ref") or r.get("auth_id"),
+                "county_name": r.get("county_name"), "date": r["service_date"].isoformat(),
+                "reason": "A check-in or check-out was not logged for this day",
+            })
 
     return {
         "provider_id": provider_id, "reference_date": reference_date,
         "approaching_absence_limits": sorted(approaching, key=lambda r: (r["county_id"] or "", r["child_id"] or "")),
         "pending_confirmation_records": sorted(pending, key=lambda r: (r["date"], r.get("child_id") or "")),
-        "incomplete_attendance_records": sorted(incomplete, key=lambda r: r["date"]),
+        "incomplete_checkinout_records": sorted(incomplete_cio, key=lambda r: r["date"]),
         "lookback_days": RISK_WINDOW_DAYS,
         "scopeFingerprint": {"child_filter": sorted(child_filter), "county_filter": sorted(county_filter),
                              "as_of_date": reference_date, "dataSnapshotVersion": data_snapshot_version},
@@ -1104,9 +1120,17 @@ def summarize_payout_impact(ledger, risk_result, child_filter, county_filter):
         hours = rec.get("payable_hours") or Decimal("0")
         amount = rec.get("rate")
         out = {"child_name": rec.get("child_name"), "authorization_id": rec.get("auth_ref") or rec.get("auth_id"),
-               "county_name": rec.get("county_name"), "risk_category": category}
+               "county_name": rec.get("county_name"), "risk_category": category,
+               "date": rec.get("service_date").isoformat() if rec.get("service_date") else None}
         if amount is None:
-            out.update(care_hours=float(hours) if hours else None, amount=None, amount_type=None, reason=rec.get("rate_blocker"))
+            est_amount = rec.get("estimated_rate") if category == "unconfirmed" else None
+            est_hours = rec.get("estimated_hours") if category == "unconfirmed" else None
+            if est_amount is not None and est_hours:
+                total_hours += est_hours
+                total_dollar += est_amount
+                out.update(care_hours=float(est_hours), amount=_money(est_amount), amount_type="Estimated", reason=reason)
+            else:
+                out.update(care_hours=float(hours) if hours else None, amount=None, amount_type=None, reason=rec.get("rate_blocker"))
         else:
             total_hours += hours
             total_dollar += amount
@@ -1135,22 +1159,24 @@ def summarize_payout_impact(ledger, risk_result, child_filter, county_filter):
         # unknown) have a payment outcome that's still genuinely open.
         if rec.get("limit_blocker") == "absence_limit_exceeded":
             continue
-        rows.append(_row(rec, "Recent, unconfirmed absence within the county limit -- still pending, payment could change", "absence"))
+        rows.append(_row(rec, "Unrecorded or recent absence within the county limit -- payment at risk", "absence"))
 
     for rec in records:
-        if rec.get("is_pending_confirmation") and (not win_start or rec["service_date"].isoformat() >= win_start) \
+        if rec.get("is_pending_confirmation") \
+                and (not win_start or rec["service_date"].isoformat() >= win_start) \
                 and not _skip(rec.get("child_name"), rec.get("county_name")):
             rows.append(_row(rec, "Pending parent confirmation -- payment not yet finalized", "unconfirmed"))
 
     for rec in records:
-        if rec.get("is_incomplete_checkinout") and (not win_start or rec["service_date"].isoformat() >= win_start) \
+        if rec.get("is_incomplete_checkinout") \
+                and (not win_start or rec["service_date"].isoformat() >= win_start) \
                 and not _skip(rec.get("child_name"), rec.get("county_name")):
-            row = _row(rec, "Incomplete check-in or check-out -- payment may be withheld", "incomplete")
+            row = _row(rec, "Incomplete check-in or check-out -- payment may be withheld", "incomplete_cio")
             row["date"] = rec["service_date"].isoformat()
             rows.append(row)
 
     totals = {"absence": [Decimal("0"), Decimal("0"), False], "unconfirmed": [Decimal("0"), Decimal("0"), False],
-              "incomplete": [Decimal("0"), Decimal("0"), False]}
+              "incomplete_cio": [Decimal("0"), Decimal("0"), False]}
     for row in rows:
         cat = row.get("risk_category")
         if cat not in totals:
@@ -1171,8 +1197,8 @@ def summarize_payout_impact(ledger, risk_result, child_filter, county_filter):
         "absence_risk_amount": None if totals["absence"][2] else (_money(totals["absence"][1]) if totals["absence"][1] else "0.00"),
         "unconfirmed_risk_hours": None if totals["unconfirmed"][2] else float(totals["unconfirmed"][0]),
         "unconfirmed_risk_amount": None if totals["unconfirmed"][2] else (_money(totals["unconfirmed"][1]) if totals["unconfirmed"][1] else "0.00"),
-        "incomplete_risk_hours": float(totals["incomplete"][0]),
-        "incomplete_risk_amount": None if totals["incomplete"][2] else (_money(totals["incomplete"][1]) if totals["incomplete"][1] else "0.00"),
+        "incomplete_cio_risk_hours": float(totals["incomplete_cio"][0]),
+        "incomplete_cio_risk_amount": _money(totals["incomplete_cio"][1]) if totals["incomplete_cio"][1] else "0.00",
         "unconfirmed_count": len(unconfirmed_recs),
         "unconfirmed_children": len({r.get("child_name") or r.get("child_id") for r in unconfirmed_recs if r.get("child_name") or r.get("child_id")}),
     }
@@ -1266,7 +1292,47 @@ _payment_result = None
 _attendance_result = None
 _impact_result = None
 
-_needs_ledger = _action in ("PAYMENT", "ATTENDANCE", "STARTER")
+# Scope-aware cache: reuse already-computed context data on drill-down
+# turns when the data scope (date, snapshot, child/county filters) has not
+# changed.  Avoids rebuilding the full day ledger on every navigation.
+def _scope_fp_matches(fp):
+    # dataSnapshotVersion is time.time() — changes every turn even when
+    # data is unchanged, so it cannot be used as a cache key.
+    return (
+        fp.get("as_of_date") == _as_of_date.isoformat()
+        and set(fp.get("child_filter") or []) == _child_filter
+        and set(fp.get("county_filter") or []) == _county_name_filter
+    )
+
+_prior_payment = _ctx("paymentResult") or {}
+_requested_sp_id = _turn_request.get("servicePeriodId") if isinstance(_turn_request, dict) else None
+_payment_cache_period = None
+if (_action in ("PAYMENT", "STARTER")
+        and _requested_sp_id
+        and _prior_payment.get("mode") == "multi_period"
+        and _scope_fp_matches(_prior_payment.get("scopeFingerprint") or {})):
+    _payment_cache_period = next(
+        (dict(p) for p in (_prior_payment.get("periods") or [])
+         if p.get("service_period_id") == _requested_sp_id),
+        None,
+    )
+
+_prior_attendance = _ctx("attendance_risks_analyzer_py") or {}
+_attendance_scope_hit = (
+    _action in ("ATTENDANCE", "STARTER")
+    and isinstance(_prior_attendance, dict)
+    and _prior_attendance.get("status") not in (None, "FAILED_BAD_INPUT")
+    and _scope_fp_matches(_prior_attendance.get("scopeFingerprint") or {})
+)
+
+_needs_ledger = (
+    _action in ("PAYMENT", "ATTENDANCE", "STARTER")
+    and not (
+        (_action == "PAYMENT" and _payment_cache_period is not None)
+        or (_action == "ATTENDANCE" and _attendance_scope_hit)
+        # STARTER always rebuilds: payout impact needs a fresh ledger
+    )
+)
 _ledger = (
     build_day_ledger(_schedules, _auth_by_name, _auth_by_id, _provider_closures, _holidays,
                       _county_policy_by_id, _fiscal_schedule_index, _rate_lookup, _as_of_date)
@@ -1274,8 +1340,10 @@ _ledger = (
 )
 _ledger = filter_ledger(_ledger, _child_filter, _county_name_filter)
 
-if _action == "PAYMENT":
-    if not isinstance(_payment_bundle, dict) or not _payment_bundle:
+if _action in ("PAYMENT", "STARTER"):
+    if _payment_cache_period is not None:
+        _payment_result = _payment_cache_period
+    elif not isinstance(_payment_bundle, dict) or not _payment_bundle:
         _payment_result = _blocked(["payment_data_collection"])
     else:
         _raw_bundle = {**_payment_bundle}
@@ -1295,7 +1363,7 @@ if _action == "PAYMENT":
     write_context("paymentResult", _payment_result)
 
 if _action in ("ATTENDANCE", "STARTER"):
-    _attendance_cache_valid = _turn_request.get("attendanceCacheValid") == "YES"
+    _attendance_cache_valid = _attendance_scope_hit or _turn_request.get("attendanceCacheValid") == "YES"
     _cached_attendance = _ctx("attendance_risks_analyzer_py")
     if not _providers or not _county_info or not _schedules:
         _attendance_result = {
@@ -1337,8 +1405,8 @@ if _action in ("ATTENDANCE", "STARTER"):
             _pending_category.update(
                 potential_loss_hours=_impact_result["unconfirmed_risk_hours"], potential_loss_amount=_impact_result["unconfirmed_risk_amount"],
                 days=_impact_result.get("unconfirmed_count", 0), children=_impact_result.get("unconfirmed_children", 0))
-            _risk_categories.setdefault("incomplete_attendance", {}).update(
-                potential_loss_hours=_impact_result["incomplete_risk_hours"], potential_loss_amount=_impact_result["incomplete_risk_amount"])
+            _risk_categories.setdefault("incomplete_checkinout", {}).update(
+                potential_loss_hours=_impact_result["incomplete_cio_risk_hours"], potential_loss_amount=_impact_result["incomplete_cio_risk_amount"])
             _data_result["snapshot"] = _snapshot
             write_context("snapshot", _snapshot)
             write_context("data_collection_result", _data_result)

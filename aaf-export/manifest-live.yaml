@@ -1,0 +1,18 @@
+kind: ExportManifest
+process_id: ccare_provider_agent_process
+source: https://d3thytbs9a5a1.cloudfront.net
+fetched_at: '2026-10-06T15:23:22.160927+05:30'
+process_version: 1.25.2
+node_count: 16
+edge_count: 32
+bound_tasks:
+- ccare_scope_cache_gate_py
+- ccare_unified_intent_router
+- ccare_turn_request_finalizer_py
+- ccare_provider_data_py
+- ccare_data_collection
+- ccare_explain_synthesizer
+- ccare_payment_engine
+- ccare_response_formatter
+referenced_tools:
+- getproviderdata

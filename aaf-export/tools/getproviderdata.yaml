@@ -1,20 +1,18 @@
 id: getproviderdata
 name: CCARE Attendance APIs
-version: 1.0.139
-description: |-
-  sf org auth show-access-token --target-org CHATS_SIT
+version: 1.0.152
+description: sf org auth show-access-token --target-org CHATS_SIT
 tool_type: http
 base_url: https://cccap--sitfull.sandbox.my.salesforce.com/
 auth_type: bearer
 auth_config:
-  token: ••••••••
+  token: '[REDACTED]'
 endpoints:
 - name: getProviderInfo
   path: /services/apexrest/CccapPortalApi/v1/getProviderData
   method: POST
-  description: 'Returns provider details for a userId and applies a date window to active fiscal agreements,
-    rate schedules, and closures. If dateFilter is provided, it scopes records to that range; otherwise
-    it defaults to TODAY.
+  description: 'Returns provider details for a userId and applies a date window to active fiscal agreements, rate schedules,
+    and closures. If dateFilter is provided, it scopes records to that range; otherwise it defaults to TODAY.
 
     '
   input_schema:
@@ -32,8 +30,8 @@ endpoints:
         - LAST_N_MONTHS
         - LAST_N_DAYS
         - DATE_RANGE
-        description: Optional date window for provider fiscal agreements, rate schedules, and closures.
-          Defaults to TODAY if omitted.
+        description: Optional date window for provider fiscal agreements, rate schedules, and closures. Defaults to TODAY
+          if omitted.
       periodCount:
         type: integer
         minimum: 1
@@ -52,9 +50,9 @@ endpoints:
 - name: getServicePeriods
   path: /services/apexrest/CccapPortalApi/v1/getServicePeriods
   method: POST
-  description: 'Returns service period data using dateFilter plus optional TODAY-only switches dateOn
-    and paymentAfter. dateFilter controls range-based lookups, dateOn is for point-in-time lookup, paymentAfter
-    is for next payout lookup, and limitOne can be combined with any of them.
+  description: 'Returns service period data using dateFilter plus optional TODAY-only switches dateOn and paymentAfter. dateFilter
+    controls range-based lookups, dateOn is for point-in-time lookup, paymentAfter is for next payout lookup, and limitOne
+    can be combined with any of them.
 
     '
   input_schema:
@@ -69,8 +67,7 @@ endpoints:
         - LAST_N_MONTHS
         - LAST_N_DAYS
         - DATE_RANGE
-        description: Generic date filter. TODAY maps to point-in-time lookup; all others map to a date
-          range.
+        description: Generic date filter. TODAY maps to point-in-time lookup; all others map to a date range.
       periodCount:
         type: integer
         minimum: 1
@@ -107,9 +104,8 @@ endpoints:
 - name: getSchedules
   path: /services/apexrest/CccapPortalApi/v1/getSchedules
   method: POST
-  description: Returns schedule for providerIds, optionally narrowed by authNames, and requires dateFilter.
-    The dateFilter controls the schedule date window; dateOn and paymentAfter are supported only as TODAY-only
-    switches where applicable.
+  description: Returns schedule for providerIds, optionally narrowed by authNames, and requires dateFilter. The dateFilter
+    controls the schedule date window; dateOn and paymentAfter are supported only as TODAY-only switches where applicable.
   input_schema:
     type: object
     properties:
@@ -169,8 +165,8 @@ endpoints:
 - name: getHolidayList
   path: /services/apexrest/CccapPortalApi/v1/getHolidayList
   method: POST
-  description: Returns holiday records optionally filtered by dateFilter. If provided, the filter applies
-    as a date window; otherwise all holidays are returned.
+  description: Returns holiday records optionally filtered by dateFilter. If provided, the filter applies as a date window;
+    otherwise all holidays are returned.
   input_schema:
     type: object
     properties:
@@ -202,9 +198,8 @@ endpoints:
 - name: getAuthData
   path: /services/apexrest/CccapPortalApi/v1/getAuthData
   method: POST
-  description: 'Returns active authorizations scoped by caseIds, countyIds, providerIds, authIds, authNames,
-    caseId, countyCode, or providerId. This endpoint always returns active records based on the current
-    date and does not accept a dateFilter.
+  description: 'Returns active authorizations scoped by caseIds, countyIds, providerIds, authIds, authNames, caseId, countyCode,
+    or providerId. This endpoint always returns active records based on the current date and does not accept a dateFilter.
 
     '
   input_schema:
@@ -283,8 +278,8 @@ endpoints:
 - name: getVacantSlots
   path: /services/apexrest/CccapPortalApi/v1/getVacantSlots
   method: POST
-  description: 'Returns active Vacant Slot contracts scoped by providerIds , countyIds, providerIds.  This
-    endpoint always returns active records based on the current date and does not accept a dateFilter.
+  description: 'Returns active Vacant Slot contracts scoped by providerIds , countyIds, providerIds.  This endpoint always
+    returns active records based on the current date and does not accept a dateFilter.
 
     '
   input_schema:
@@ -331,8 +326,7 @@ endpoints:
 - name: getFiscalRates
   path: /services/apexrest/CccapPortalApi/v1/getFiscalRates
   method: POST
-  description: returns the applicable fiscal rates for the providerIds, fiscalScheduleIds and dateRange
-    applicable
+  description: returns the applicable fiscal rates for the providerIds, fiscalScheduleIds and dateRange applicable
   input_schema:
     type: object
     properties:
@@ -420,4 +414,4 @@ retry_policy: {}
 tags:
 - Child Care
 created_at: '2026-08-13T12:14:33.794426Z'
-updated_at: '2026-09-29T05:16:29.092896Z'
+updated_at: '2026-10-06T09:10:13.555027Z'
